@@ -41,9 +41,15 @@ export interface SlotDiningPageProps {
   source: StudentSource;
   draft: OrderDraft;
   onBack: () => void;
+  onConfirm: () => void;
 }
 
-export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPageProps) {
+export default function SlotDiningPage({
+  source,
+  draft,
+  onBack,
+  onConfirm,
+}: SlotDiningPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
@@ -128,7 +134,7 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
       ? '请选择时段'
       : snapshot.diningMode === null
         ? '请选择堂食或外带'
-        : '确认页在 S5 接入；当前选择会保留。';
+        : '进入确认页核对后再提交。';
 
   return (
     <section className="student-page" aria-labelledby="student-slot-title">
@@ -139,7 +145,7 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S4 · 时段与用餐方式（拥挤参考与定位说明）</p>
+        <p className="student-kicker">S5 · 时段与用餐方式（可进入确认页）</p>
         <h2 id="student-slot-title">选择时段与用餐方式</h2>
         <p className="student-page__lead">已选菜品会保留；时段与用餐方式必须显式选择。</p>
       </header>
@@ -240,7 +246,12 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
         <p className="student-summary__note">
           {snapshot.diningMode ? `用餐方式：${MODE_TEXT[snapshot.diningMode]}` : '用餐方式：未选择'}
         </p>
-        <button type="button" className="student-primary" disabled>
+        <button
+          type="button"
+          className="student-primary"
+          disabled={!snapshot.canConfirm}
+          onClick={onConfirm}
+        >
           去确认
         </button>
         <p className="student-summary__hint">{hint}</p>
