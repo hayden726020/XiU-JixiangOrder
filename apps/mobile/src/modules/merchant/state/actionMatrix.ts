@@ -13,6 +13,11 @@ export interface OrderAction {
   needsDiningMode?: boolean;
 }
 
+export interface ActionInput {
+  pickupCode?: string;
+  reason?: string;
+}
+
 const ORDER_PATH = '/api/v1/merchant/orders/{id}';
 
 const ACTIONS: Record<string, OrderAction> = {
@@ -122,16 +127,51 @@ export function actionPath(action: OrderAction, orderId: string): string {
   return action.path.replace('{id}', orderId);
 }
 
+export function actionRequestName(action: OrderAction): string {
+  return action.path.split('/').at(-1) ?? action.path;
+}
+
+export function validateActionInput(
+  action: OrderAction,
+  input: ActionInput = {},
+): string | null {
+  if (action.needsPickupCode && !(input.pickupCode ?? '').trim()) {
+    return '请先输入学生出示的取餐码；样例模式不会核销成功。';
+  }
+  if (action.code === 'APPROVE_CANCEL' || action.code === 'REJECT_CANCEL') {
+    if (!(input.reason ?? '').trim()) {
+      return `${action.label}必须填写理由；样例模式不会产生真实变更。`;
+    }
+  }
+  return null;
+}
+
 export function actionPrompt(
   action: OrderAction,
   orderId: string,
   mode: 'sample' | 'real' = 'sample',
+  input: ActionInput = {},
 ): string {
   const path = actionPath(action, orderId);
   const fields: string[] = [];
-  if (action.action) fields.push(`action=${action.action}`);
-  if (action.needsPickupCode) fields.push('pickupCode=学生出示的取餐码');
-  if (action.needsReason) fields.push('reason=处理理由');
+  if (action.action) {
+    const key = action.code === 'APPROVE_CANCEL' || action.code === 'REJECT_CANCEL'
+      ? 'decision'
+      : 'action';
+    fields.push(`${key}=${action.action}`);
+  }
+  if (action.needsPickupCode) {
+    const code = input.pickupCode?.trim();
+    fields.push(
+      mode === 'sample' && code
+        ? `pickupCode=${code}`
+        : 'pickupCode=学生出示的取餐码',
+    );
+  }
+  if (action.needsReason) {
+    const reason = input.reason?.trim();
+    fields.push(reason ? `reason=${reason}` : 'reason=处理理由');
+  }
   if (action.needsExpectedReadyAt) fields.push('expectedReadyAt=带时区的 ISO 时间');
   if (action.needsDiningMode) fields.push('diningMode=DINE_IN 或 TAKEAWAY');
   const fieldText = fields.length > 0 ? `（${fields.join('，')}）` : '';

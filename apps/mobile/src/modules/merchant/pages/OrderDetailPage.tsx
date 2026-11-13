@@ -2,9 +2,9 @@ import { useState } from 'react';
 import ActionBar from '../components/ActionBar';
 import type { MerchantOrder } from '../data/types';
 import {
-
   getOrderActions,
   getPrimaryAction,
+  type ActionInput,
   type OrderAction,
 } from '../state/actionMatrix';
 import {
@@ -23,10 +23,19 @@ interface OrderDetailPageProps {
   order: MerchantOrder;
   mode: 'sample' | 'real';
   onBack: () => void;
-  onAction: (action: OrderAction) => void;
+  onAction: (action: OrderAction, input?: ActionInput) => void;
+  pendingCode?: string | null;
+  actionError?: { code: string; message: string } | null;
 }
 
-export default function OrderDetailPage({ order, mode, onBack, onAction }: OrderDetailPageProps) {
+export default function OrderDetailPage({
+  order,
+  mode,
+  onBack,
+  onAction,
+  pendingCode = null,
+  actionError = null,
+}: OrderDetailPageProps) {
   const [pickupCode, setPickupCode] = useState('');
   const [reason, setReason] = useState('');
 
@@ -41,6 +50,14 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
     (action) => action.kind === 'primary' && action.code !== 'VERIFY'
       || action.code === 'CANCEL_ORDER',
   );
+  const busy = (action: OrderAction | undefined) => Boolean(action) && pendingCode === action?.code;
+  const busyLabel = (action: OrderAction | undefined) => (busy(action) ? '提交中…' : action?.label);
+  const errorFor = (code: string) => (actionError?.code === code ? actionError.message : null);
+  const cancelError = errorFor('APPROVE_CANCEL') ?? errorFor('REJECT_CANCEL');
+  const otherError = actionError
+    && !['VERIFY', 'APPROVE_CANCEL', 'REJECT_CANCEL'].includes(actionError.code)
+    ? actionError.message
+    : null;
 
   const status = statusView(order.status);
   const dining = diningModeView(order.diningMode);
@@ -145,11 +162,18 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
             <button
               type="button"
               className="action-button action-button--primary"
-              onClick={() => onAction(verifyAction)}
+              onClick={() => onAction(verifyAction, { pickupCode })}
+              disabled={busy(verifyAction)}
+              aria-busy={busy(verifyAction) || undefined}
             >
-              核销取餐
+              {busyLabel(verifyAction)}
             </button>
           </div>
+          {errorFor('VERIFY') && (
+            <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
+              {errorFor('VERIFY')}
+            </p>
+          )}
           <p className="hint">第 2—3 天接入服务后可用；当前点击只显示接口提示，不会核销成功。</p>
         </section>
       )}
@@ -173,18 +197,27 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
               <button
                 type="button"
                 className="action-button action-button--danger"
-                onClick={() => onAction(approveAction)}
+                onClick={() => onAction(approveAction, { reason })}
+                disabled={busy(approveAction)}
+                aria-busy={busy(approveAction) || undefined}
               >
-                批准取消
+                {busyLabel(approveAction)}
               </button>
               <button
                 type="button"
                 className="action-button action-button--secondary"
-                onClick={() => onAction(rejectAction)}
+                onClick={() => onAction(rejectAction, { reason })}
+                disabled={busy(rejectAction)}
+                aria-busy={busy(rejectAction) || undefined}
               >
-                拒绝取消
+                {busyLabel(rejectAction)}
               </button>
             </div>
+            {cancelError && (
+              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
+                {cancelError}
+              </p>
+            )}
             <p className="hint">批准会取消订单并模拟退款；申请不等于已取消。</p>
           </>
         )}
@@ -204,8 +237,10 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
             type="button"
             className="action-button action-button--secondary"
             onClick={() => onAction(delayAction)}
+            disabled={busy(delayAction)}
+            aria-busy={busy(delayAction) || undefined}
           >
-            填写延迟
+            {busyLabel(delayAction)}
           </button>
         )}
       </section>
@@ -219,8 +254,10 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
               type="button"
               className="action-button action-button--secondary"
               onClick={() => onAction(diningAction)}
+              disabled={busy(diningAction)}
+              aria-busy={busy(diningAction) || undefined}
             >
-              变更用餐方式
+              {busyLabel(diningAction)}
             </button>
             <p className="hint">需档口明确确认，只有未结束订单才可变更。</p>
           </>
@@ -229,7 +266,13 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
 
       <section className="detail-block">
         <h3>操作</h3>
-        <ActionBar actions={mainActions} onAction={onAction} emptyText={emptyText} />
+        <ActionBar
+          actions={mainActions}
+          onAction={onAction}
+          emptyText={emptyText}
+          pendingCode={pendingCode}
+          errorText={otherError}
+        />
         {isEmptyOperation && (
           <p className="hint">终态订单只读，不显示接单、制作或核销按钮。</p>
         )}

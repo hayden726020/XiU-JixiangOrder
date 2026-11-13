@@ -537,6 +537,25 @@
   cursor: not-allowed;
 }
 
+.action-feedback {
+  margin: 0.35rem 0 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.action-feedback--pending {
+  background: #eef3ee;
+  color: #3f5245;
+}
+
+.action-feedback--error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 .merchant-readonly-tag {
   display: inline-block;
   margin-left: 0.45rem;

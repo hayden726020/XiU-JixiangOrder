@@ -6,7 +6,12 @@ import type { MenuDay, MerchantOrder, MerchantScenario, SlotDay } from './data/t
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
-import { actionPrompt, type OrderAction } from './state/actionMatrix';
+import {
+  actionPrompt,
+  validateActionInput,
+  type ActionInput,
+  type OrderAction,
+} from './state/actionMatrix';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
 import { demoLogin } from '../../shared/auth';
 import { getApiBaseInfo, saveStoredApiBaseUrl } from '../../shared/config';
@@ -38,6 +43,9 @@ export default function MerchantHome() {
     today,
   ));
   const [notice, setNotice] = useState<string | null>(null);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ code: string; message: string } | null>(null);
+  const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [menu, setMenu] = useState<MenuDay | null>(null);
   const [slots, setSlots] = useState<SlotDay | null>(null);
@@ -126,8 +134,18 @@ export default function MerchantHome() {
     ? orders.find((order) => order.id === view.orderId) ?? null
     : null;
 
+  function clearActionState() {
+    if (actionTimer.current !== null) {
+      clearTimeout(actionTimer.current);
+      actionTimer.current = null;
+    }
+    setPendingCode(null);
+    setActionError(null);
+  }
+
   function changeMode(next: DataMode) {
     if (next === mode) return;
+    clearActionState();
     setMode(next);
     setView({ name: 'list' });
     setNotice(null);
@@ -136,31 +154,55 @@ export default function MerchantHome() {
   }
 
   function changeScenario(next: MerchantScenario) {
+    clearActionState();
     setScenario(next);
     setView({ name: 'list' });
     setNotice(null);
   }
 
   function openOrder(id: string) {
+    clearActionState();
     listScrollTop.current = window.scrollY;
     setView({ name: 'detail', orderId: id });
     setNotice(null);
   }
 
   function backToList() {
+    clearActionState();
     restoreListScroll.current = true;
     setView({ name: 'list' });
     setNotice(null);
   }
 
   function openMenu() {
+    clearActionState();
     setView({ name: 'menu' });
     setNotice(null);
   }
 
-  function handleAction(orderId: string, action: OrderAction) {
-    setNotice(actionPrompt(action, orderId, mode));
+  function handleAction(orderId: string, action: OrderAction, input: ActionInput = {}) {
+    if (pendingCode !== null) return;
+    const validation = validateActionInput(action, input);
+    if (validation) {
+      setActionError({ code: action.code, message: validation });
+      setNotice(null);
+      return;
+    }
+    setActionError(null);
+    setNotice(null);
+    setPendingCode(action.code);
+    actionTimer.current = setTimeout(() => {
+      actionTimer.current = null;
+      setPendingCode(null);
+      setNotice(actionPrompt(action, orderId, mode, input));
+    }, 600);
   }
+
+  useEffect(() => () => {
+    if (actionTimer.current !== null) {
+      clearTimeout(actionTimer.current);
+    }
+  }, []);
 
   useLayoutEffect(() => {
     if (view.name !== 'list' || !restoreListScroll.current) {
@@ -243,7 +285,9 @@ export default function MerchantHome() {
             order={activeOrder}
             mode={mode}
             onBack={backToList}
-            onAction={(action) => handleAction(activeOrder.id, action)}
+            onAction={(action, input) => handleAction(activeOrder.id, action, input)}
+            pendingCode={pendingCode}
+            actionError={actionError}
           />
         ) : (
           <p className="merchant-empty">
