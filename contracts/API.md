@@ -103,7 +103,11 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 - 详情复用 `GET /orders/{id}`，管理身份可读；不存在或不可见返回 404 ORDER_NOT_FOUND。
 - 当前只定义状态与分页；日期、档口、异常筛选参数尚未定义，页面不得自行猜测。异常（待处理取消申请、延迟）只在已加载结果中标记，不跨页推断。
 - 当前订单响应未返回 `merchantId`、`merchantName` 或学生信息；管理端无法按档口展示或筛选，需后续补字段或专用视图，页面不得用样例名称冒充真实档口。
-- `GET /admin/settings` 当前返回 `dining` 与 `crowd` 两段，与 S1 演示配置页结构不同；S5 再对齐页面与保存流程。
+- `GET /admin/settings` 返回 `{ data: { dining, crowd } }`：
+  - `dining`：`canteenId,name,center{latitude,longitude},radiusMeters,accuracyToleranceMeters,updatedAt,version,demo`。
+  - `crowd`：`crowdedAt,version,demo`；当前只有单一提醒阈值，预约需求阈值尚无字段。
+  - 当前没有档口营业时间、启用状态或档口名称字段；管理端真实模式不得用样例值填充。
+  - 管理端 S3 已按此结构只读展示；`PUT /admin/settings`（`requestId,section,expectedVersion,value`、`SETTING_VERSION_CONFLICT`）的保存与冲突流程在 S5 接入。
 
 `GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
 

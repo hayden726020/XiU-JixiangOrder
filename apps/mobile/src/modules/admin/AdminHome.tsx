@@ -9,7 +9,7 @@ import {
 import './admin.css';
 import './admin-s2.css';
 import SampleBanner from './components/SampleBanner';
-import { sampleSettings } from './data/sample';
+
 import { createAdminSource, type AdminSourceMode } from './data/source';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrdersPage from './pages/OrdersPage';
@@ -85,9 +85,10 @@ export default function AdminHome() {
         </div>
       )}
 
-      <h2 id="admin-title">管理端 · 订单查询</h2>
+      <h2 id="admin-title">管理端 · 订单与配置</h2>
       <p className="admin-muted">
-        S2 提供订单状态筛选、分页、异常标记与只读详情。管理端不改订单状态，也不显示取餐码或学生位置。
+        S2 提供订单状态筛选、分页、异常标记与只读详情；S3 提供对齐服务端 dining/crowd 结构的只读配置。
+        管理端不改订单状态，也不显示取餐码或学生位置。
       </p>
 
       <div className="admin-session">
@@ -134,7 +135,7 @@ export default function AdminHome() {
       ) : location.route === 'orders' ? (
         <OrdersPage source={source} />
       ) : location.route === 'settings' ? (
-        <SettingsPage settings={sampleSettings} />
+        <SettingsPage source={source} />
       ) : (
         <OverviewPage mode={mode} session={session} />
       )}

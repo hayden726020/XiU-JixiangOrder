@@ -1,4 +1,4 @@
-import type { AdminSettings, Order } from '../types';
+import type { AdminSettings, Order, StallSettings } from '../types';
 
 export const sampleOrders: Order[] = [
   {
@@ -91,34 +91,38 @@ export const sampleOrders: Order[] = [
   },
 ];
 
-export const sampleSettings: AdminSettings = {
-  canteenId: 'canteen-demo-01',
-  canteenName: '演示第一食堂',
-  centerLabel: '演示点：第一食堂东门（非学生位置）',
-  radiusMeters: 300,
-  accuracyToleranceMeters: 80,
-  stalls: [
-    {
-      stallId: 'demo-merchant-01',
-      name: '一食堂 · 家常档',
-      businessHours: [{ start: '10:30', end: '13:30' }],
-      enabled: true,
-    },
-    {
-      stallId: 'demo-merchant-02',
-      name: '一食堂 · 面档',
-      businessHours: [
-        { start: '10:30', end: '13:30' },
-        { start: '16:30', end: '19:00' },
-      ],
-      enabled: true,
-    },
-  ],
-  alerts: {
-    reservedDineInThreshold: 40,
-    currentReferenceThreshold: 25,
+export const sampleStalls: StallSettings[] = [
+  {
+    stallId: 'demo-merchant-01',
+    name: '一食堂 · 家常档',
+    businessHours: [{ start: '10:30', end: '13:30' }],
+    enabled: true,
   },
-  version: 3,
-  updatedAt: '2026-11-13T10:00:00+08:00',
-  demo: true,
+  {
+    stallId: 'demo-merchant-02',
+    name: '一食堂 · 面档',
+    businessHours: [
+      { start: '10:30', end: '13:30' },
+      { start: '16:30', end: '19:00' },
+    ],
+    enabled: true,
+  },
+];
+
+export const sampleSettings: AdminSettings = {
+  dining: {
+    canteenId: 'canteen-demo-01',
+    name: '演示第一食堂',
+    center: { latitude: 30, longitude: 120 },
+    radiusMeters: 300,
+    accuracyToleranceMeters: 80,
+    updatedAt: '2026-11-13T10:00:00+08:00',
+    demo: true,
+    version: 3,
+  },
+  crowd: {
+    crowdedAt: 25,
+    demo: true,
+    version: 2,
+  },
 };

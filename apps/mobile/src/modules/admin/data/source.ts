@@ -1,6 +1,6 @@
 import { ApiError, apiRequest } from '../../../shared';
-import type { Order, OrderStatus } from '../types';
-import { sampleOrders } from './sample';
+import type { AdminSettings, Order, OrderStatus } from '../types';
+import { sampleOrders, sampleSettings } from './sample';
 
 export type AdminSourceMode = 'sample' | 'live';
 
@@ -21,6 +21,7 @@ export interface AdminSource {
   mode: AdminSourceMode;
   listOrders(query: AdminOrderQuery): Promise<AdminOrderPage>;
   getOrder(id: string): Promise<Order | null>;
+  getSettings(): Promise<AdminSettings>;
 }
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -40,6 +41,15 @@ function invalidResponse(): ApiError {
   return new ApiError({
     code: 'INVALID_RESPONSE',
     message: '订单响应格式不正确，未显示为有效订单。',
+    status: 0,
+    retryable: false,
+  });
+}
+
+function invalidSettingsResponse(): ApiError {
+  return new ApiError({
+    code: 'INVALID_RESPONSE',
+    message: '配置响应格式不正确，未显示为有效配置。',
     status: 0,
     retryable: false,
   });
@@ -74,6 +84,46 @@ function parsePage(value: unknown): AdminOrderPage {
     page: value.page,
     pageSize: value.pageSize,
     total: value.total,
+  };
+}
+
+function parseSettings(value: unknown): AdminSettings {
+  if (!isRecord(value) || !isRecord(value.dining) || !isRecord(value.crowd)) {
+    throw invalidSettingsResponse();
+  }
+  const dining = value.dining;
+  const crowd = value.crowd;
+  const center = dining.center;
+  if (
+    typeof dining.canteenId !== 'string' ||
+    typeof dining.name !== 'string' ||
+    !isRecord(center) ||
+    typeof center.latitude !== 'number' ||
+    typeof center.longitude !== 'number' ||
+    typeof dining.radiusMeters !== 'number' ||
+    typeof dining.accuracyToleranceMeters !== 'number' ||
+    typeof dining.version !== 'number' ||
+    typeof crowd.crowdedAt !== 'number' ||
+    typeof crowd.version !== 'number'
+  ) {
+    throw invalidSettingsResponse();
+  }
+  return {
+    dining: {
+      canteenId: dining.canteenId,
+      name: dining.name,
+      center: { latitude: center.latitude, longitude: center.longitude },
+      radiusMeters: dining.radiusMeters,
+      accuracyToleranceMeters: dining.accuracyToleranceMeters,
+      updatedAt: typeof dining.updatedAt === 'string' ? dining.updatedAt : undefined,
+      demo: dining.demo === true,
+      version: dining.version,
+    },
+    crowd: {
+      crowdedAt: crowd.crowdedAt,
+      demo: crowd.demo === true,
+      version: crowd.version,
+    },
   };
 }
 
@@ -117,6 +167,7 @@ export function createAdminSource(options: { mode: AdminSourceMode }): AdminSour
           throw error;
         }
       },
+      getSettings: async () => parseSettings(await apiRequest<unknown>('/admin/settings')),
     };
   }
 
@@ -124,5 +175,6 @@ export function createAdminSource(options: { mode: AdminSourceMode }): AdminSour
     mode: 'sample',
     listOrders: async (query) => samplePage(query),
     getOrder: async (id) => sampleOrders.find((order) => order.id === id) ?? null,
+    getSettings: async () => sampleSettings,
   };
 }

@@ -57,20 +57,24 @@ export interface StallSettings {
   enabled: boolean;
 }
 
-export interface AlertSettings {
-  reservedDineInThreshold: number;
-  currentReferenceThreshold: number;
+export interface DiningSettings {
+  canteenId: string;
+  name: string;
+  center: { latitude: number; longitude: number };
+  radiusMeters: number;
+  accuracyToleranceMeters: number;
+  updatedAt?: string;
+  demo: boolean;
+  version: number;
+}
+
+export interface CrowdSettings {
+  crowdedAt: number;
+  demo: boolean;
+  version: number;
 }
 
 export interface AdminSettings {
-  canteenId: string;
-  canteenName: string;
-  centerLabel: string;
-  radiusMeters: number;
-  accuracyToleranceMeters: number;
-  stalls: StallSettings[];
-  alerts: AlertSettings;
-  version: number;
-  updatedAt: string;
-  demo: true;
+  dining: DiningSettings;
+  crowd: CrowdSettings;
 }
