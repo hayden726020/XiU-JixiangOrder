@@ -52,6 +52,7 @@ export interface OrderDraft {
   buildInput(): CreateOrderInput;
   submit(): Promise<StudentOrder | null>;
   queryResult(): Promise<StudentOrder>;
+  resetSubmission(): void;
   startNewOrder(): void;
 }
 
@@ -229,6 +230,13 @@ export function createOrderDraft({
     return order;
   }
 
+  function resetSubmission(): void {
+    requestIds.complete();
+    state.status = 'idle';
+    state.order = null;
+    state.error = null;
+  }
+
   function startNewOrder(): void {
     requestIds.complete();
     quantities.clear();
@@ -254,6 +262,7 @@ export function createOrderDraft({
     buildInput,
     submit,
     queryResult,
+    resetSubmission,
     startNewOrder,
   };
 }
