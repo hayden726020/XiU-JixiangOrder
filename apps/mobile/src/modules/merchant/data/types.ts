@@ -1,0 +1,97 @@
+export type OrderStatus = 'NEW' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+
+export type DiningMode = 'DINE_IN' | 'TAKEAWAY';
+
+export type PaymentStatus = 'SIMULATED_PAID' | 'SIMULATED_REFUNDED';
+
+export type CancelRequestStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export type MerchantScenario = 'normal' | 'empty' | 'pending-cancel';
+
+export interface OrderItem {
+  dishId: string;
+  name: string;
+  quantity: number;
+  unitPriceFen: number;
+}
+
+export interface CancelRequest {
+  status: CancelRequestStatus;
+  reason: string | null;
+}
+
+export interface OrderDelay {
+  reason: string;
+  expectedReadyAt: string;
+}
+
+export interface MerchantOrder {
+  id: string;
+  items: OrderItem[];
+  slotId: string;
+  slotStart: string;
+  slotEnd: string;
+  diningMode: DiningMode;
+  totalFen: number;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  cancelRequest: CancelRequest;
+  cancellationReason: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  pickedUpAt: string | null;
+  delay: OrderDelay | null;
+  pickupCode: string | null;
+  demo: boolean;
+}
+
+export interface Dish {
+  dishId: string;
+  name: string;
+  unitPriceFen: number;
+  availableQuantity: number;
+  onSale: boolean;
+}
+
+export interface MenuDay {
+  date: string;
+  demo: boolean;
+  dishes: Dish[];
+}
+
+export interface Slot {
+  slotId: string;
+  slotStart: string;
+  slotEnd: string;
+  capacity: number;
+  occupied: number;
+  remaining: number;
+  enabled: boolean;
+  full: boolean;
+}
+
+export interface SlotDay {
+  date: string;
+  demo: boolean;
+  slots: Slot[];
+}
+
+export interface ApiError {
+  code: string;
+  message: string;
+  retryable: boolean;
+}
+
+export type SourceResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: ApiError };
+
+export interface MerchantSource {
+  mode: 'sample' | 'real';
+  scenario: MerchantScenario;
+  getOrders: () => SourceResult<MerchantOrder[]>;
+  getOrder: (id: string) => SourceResult<MerchantOrder>;
+  getMenu: (date: string) => SourceResult<MenuDay>;
+  getSlots: (date: string) => SourceResult<SlotDay>;
+}
