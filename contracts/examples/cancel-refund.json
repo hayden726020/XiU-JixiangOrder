@@ -1,0 +1,56 @@
+{
+  "_meta": {
+    "contractVersion": "DRAFT v0.1",
+    "fictional": true,
+    "implemented": false,
+    "note": "仅为接口讨论与页面演示样例；不是实际服务返回或真实学生数据。"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/merchant/orders/demo-order-001/cancel",
+    "body": {
+      "requestId": "demo-cancel-001",
+      "expectedVersion": 1,
+      "reason": "演示缺货"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "id": "demo-order-001",
+        "items": [
+          {
+            "dishId": "demo-dish-01",
+            "name": "演示鸡肉饭",
+            "quantity": 1,
+            "unitPriceFen": 1800
+          }
+        ],
+        "slotId": "demo-slot-20261113-lunch",
+        "slotStart": "2026-11-13T11:30:00+08:00",
+        "slotEnd": "2026-11-13T12:00:00+08:00",
+        "diningMode": "DINE_IN",
+        "totalFen": 1800,
+        "status": "CANCELLED",
+        "paymentStatus": "SIMULATED_REFUNDED",
+        "cancelRequest": {
+          "status": "NONE",
+          "reason": null
+        },
+        "cancellationReason": "演示缺货",
+        "version": 2,
+        "createdAt": "2026-11-13T11:15:00+08:00",
+        "updatedAt": "2026-11-13T11:20:00+08:00",
+        "pickedUpAt": null,
+        "delay": null,
+        "pickupCode": null
+      }
+    }
+  },
+  "inventoryEffect": {
+    "note": "本例未开始制作且预约时段未开始；此效果是讨论预期，尚无实际服务",
+    "restoredDishQuantity": 1,
+    "restoredSlotCapacity": 1
+  }
+}

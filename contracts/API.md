@@ -1,0 +1,103 @@
+# 三端接口草案
+
+DRAFT v0.1，待三人确认，尚未实现。以下是本轮准备的建议约定，不能作为已有后端证据。统一前缀 /api/v1；具体技术、身份登录方式、地址和命令由 spcuteag 在第一阶段补齐。
+
+## 基础格式
+
+成功响应为 { "data": ... }，错误为 { "error": { "code": "...", "message": "...", "retryable": false } }。金额为整数分，日期按 Asia/Shanghai，时间戳带 +08:00 或明确的时区。所有 ID 都是不透明字符串。
+
+用餐方式 diningMode = DINE_IN（堂食）或 TAKEAWAY（外带），下单必填。
+用户身份由服务端认证上下文获得，禁止客户端传 userId/role 来决定权限。具体演示登录/会话方案是正式确认前的必补项，示例不包含密码或令牌。后端不接受前端指定总价。
+
+修改请求带 requestId；同一身份、同一操作、同一 requestId 重试返回首次结果，同键不同内容返回 REQUEST_CONFLICT。requestId 去重不能只在进程内保存。已有订单操作另带 expectedVersion，匹配后原子更新并递增 version；版本冲突返回 ORDER_VERSION_CONFLICT，页面刷新再确认。完全相同的重试先识别原操作，不因首次成功已增加 version 而错误再次执行。
+
+## 订单字段与状态
+
+订单至少包含 id、items（dishId/name/quantity/unitPriceFen）、slotId、slotStart、slotEnd、diningMode、totalFen、status、paymentStatus、cancelRequest、cancellationReason（未取消为 null）、version、createdAt、updatedAt、pickedUpAt（未取为 null）、delay（无则 null）。学生订单按权限展示 pickupCode，仅 READY 返回可用码，其他状态为 null；档口列表不暴露全部取餐码，管理查询同样按最少必要字段返回。
+
+status：NEW → ACCEPTED → PREPARING → READY → COMPLETED。
+NEW/ACCEPTED/PREPARING/READY 可在规定权限下取消为 CANCELLED；COMPLETED/CANCELLED 是终态。
+paymentStatus：SIMULATED_PAID 或 SIMULATED_REFUNDED；未取消的正常订单为前者，取消成功与模拟退款完成一起变为后者。
+cancelRequest 为 { status: NONE | PENDING | APPROVED | REJECTED, reason: string | null }，独立于订单状态。申请取消不自动停止原订单流程，档口应优先处理；终态不得再批准取消。
+订单在申请待处理时完成取餐，必须在同一操作中把申请改为 REJECTED 并注明“订单已取餐”；档口主动取消或批准申请导致订单取消时，把已有 PENDING 申请改为 APPROVED 并记录处理原因。终态订单不能残留 PENDING。
+delay 为 { reason, expectedReadyAt }，不替换主状态。
+
+订单创建与模拟付款：POST /orders 一次完成，成功即 NEW + SIMULATED_PAID。无单独待付款订单或支付按钮二次确认接口。失败不能遗留已扣库存或“已付款但无订单”。
+
+取消与模拟退款：NEW 学生可直接取消；ACCEPTED/PREPARING/READY 学生提交申请，由档口批准或拒绝。档口缺货可以主动取消尚未结束订单。批准/主动取消必须记录原因，原子完成取消及模拟退款。制作后的申请由档口按公示规则处理，不自动承诺批准。
+
+库存按菜品份数扣减；时段容量按订单笔数，每单占 1。仅未开始制作取消时恢复菜品；同时尚未到时段开始时才恢复该订单占用的 1 个时段名额。已经开始制作的不恢复。重复取消不重复恢复。降低上限不能小于已占用名额；新增订单由后端原子检查。
+
+## 操作清单
+
+以下未展开的分页、会话和配置详情，由 spcuteag 在第一阶段补齐并与三人确认后正式冻结，不由各前端自行猜测。
+
+| 方法与路径 | 输入或用途 | 主要输出与限制 |
+| --- | --- | --- |
+| GET /menu?date=YYYY-MM-DD | 今天或明天菜单及时段 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选 |
+| POST /orders | requestId, items[{dishId,quantity}], slotId, diningMode | 服务端计价并模拟付款后的订单；字段例子见 create-order.json |
+| GET /orders | 学生自己的订单列表 | 不返回其他学生订单 |
+| GET /orders/{id} | 获取有权限的订单 | 三端从同一订单来源读取，字段按角色过滤 |
+| POST /orders/{id}/cancel | requestId, expectedVersion, reason | NEW 直接取消退款；其余可申请状态设 PENDING，不假装已退款 |
+| GET /merchant/orders | 本档口订单列表 | 受档口身份约束 |
+| POST /merchant/orders/{id}/advance | requestId, expectedVersion, action=ACCEPT/START_PREPARING/MARK_READY | 仅允许合法的下一状态，不支持跳到 COMPLETED |
+| POST /merchant/orders/{id}/verify | requestId, expectedVersion, pickupCode | 仅 READY 且码正确、未用过时完成；示例见 verify-order.json |
+| POST /merchant/orders/{id}/cancel-decision | requestId, expectedVersion, decision=APPROVE/REJECT, reason | 仅处理 PENDING；批准后取消并模拟退款；终态拒绝 |
+| POST /merchant/orders/{id}/cancel | requestId, expectedVersion, reason | 缺货等主动取消；未结束订单才允许；见 cancel-refund.json |
+| POST /merchant/orders/{id}/delay | requestId, expectedVersion, reason, expectedReadyAt | 保存延迟信息，主状态不变，学生能查看 |
+| PATCH /merchant/orders/{id}/dining-mode | requestId, expectedVersion, diningMode, reason | 档口确认后更改未结束订单，三端及统计更新 |
+| PUT /merchant/menu/{dishId} | requestId, expectedVersion, priceFen, availableQuantity, onSale | 校验非负价格/数量和档口归属；不修改历史订单价格 |
+| PUT /merchant/slots/{slotId} | requestId, expectedVersion, capacity, enabled | 容量不得低于已占用量；不静默取消既有订单 |
+| GET /dining/config | 当前公开的食堂范围配置 | canteenId、中心点和范围半径、误差容忍条件；这是食堂位置，不是学生位置 |
+| PUT /me/location | requestId, presence=INSIDE/OUTSIDE/UNKNOWN | 按会话身份保存判断，返回服务端 observedAt 和 expiresAt；拒绝多余坐标字段 |
+| DELETE /me/location | 清除本人位置判断 | 重复删除仍成功，不删除订单、不阻碍继续下单 |
+| GET /crowd?slotId=... | 所选预约时段的堂食参考 | 见 crowd-reference.json；未来时段不返回当前参考 |
+| GET /admin/orders | 必要的订单和异常查询 | 仅管理身份 |
+| GET/PUT /admin/settings | 档口营业、范围与提醒条件 | 修改含 requestId/expectedVersion；仅管理身份 |
+
+首版不增加学生在线申请变更用餐方式的流程。学生订单详情说明“如需更改堂食或外带，请联系档口，由档口确认”；学生线下提出后，档口使用 dining-mode 操作更新。学生端只读回结果，不自行修改或假装已经提交变更申请。
+
+核销错误的检查顺序固定为：先身份和订单访问权限，再识别同一 requestId 的重试或不同内容冲突，再判断该订单是否已取餐及是否处于 READY，最后检查 expectedVersion 和取餐码。同一请求重试返回首次结果；新的请求再次核销已取订单返回 PICKUP_CODE_USED，即使它携带旧版本，也不优先显示版本冲突。未准备好或已取消返回 INVALID_ORDER_STATE。
+
+## 位置和堂食参考
+
+位置在手机侧一次计算后只提交 presence。服务端以收到新报告的时间作为 observedAt，不允许重放同一 requestId 延长有效期。位置判断 10 分钟后失效，最迟 24 小时清除；学生可主动删除。这里的 10 分钟、取餐后 30 分钟是演示初值，待现场验证后调整。精确经纬度不能进入请求、日志、持久化或错误报告。
+
+范围内必须考虑定位误差；误差过大、边界不确定用 UNKNOWN。手机范围判断的具体示例由 spcuteag 在第一阶段提供。客户端判断可被伪造，仅作参考，不能用于鉴权、付款、核销或确认真实入场。
+
+统计按同一食堂的稳定用户身份去重；菜品份数不能直接当人数：
+
+- reservedDineInUsers：所选时段有效堂食订单的不同用户数，排除取消/退款/外带；包括该时段已取餐的有效订单，表示预约用户规模。
+- currentReferenceUsers：取当前时段有效堂食订单且有 10 分钟内 INSIDE 判断的用户，与 30 分钟内已取堂食订单的用户的并集，再按用户去重。这里“当前时段”明确为 slotStart ≤ now < slotEnd，不把未来订单加入。
+- 最近有效 OUTSIDE 判断优先排除当前参考中的该用户；UNKNOWN 不作为 INSIDE。位置过期或用户清除判断后，仍可仅按近期取餐记录参考，但必须说明该依据，不继续沿用旧 INSIDE。
+- 未来时段 currentReferenceUsers = null，basis 仅为 RESERVATION；当前时段可使用 LOCATION 与 PICKUP 等实际存在的依据。当前位置不能推断明天人数。
+- 没有足够数据时人数可为 null，不能强行用 0 表示未知。重复刷新或重复请求不得增加人数；取消、退款、变更为外带和过期记录及时退出对应统计。
+
+返回至少包含 canteenId、slotId、referenceScope=PLATFORM_ONLY、reservedDineInUsers、currentReferenceUsers、level、basis、updatedAt、expiresAt、demo、message。
+level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有座位。位置和取餐只是近似依据，不提供精确全食堂人数或座位承诺。
+
+提醒条件由管理端设置，预约需求和当前参考分别比较各自条件，不将两个数直接相加。未有现场验证时演示值只在 demo=true 下演示；正式条件未确认或数据不够则 UNKNOWN。当前缺少位置不等于所有信息都缺失：可仅按预约或近期取餐提示，并准确说明依据。
+
+## 错误清单
+
+| HTTP | code | 页面行为 |
+| --- | --- | --- |
+| 400 | VALIDATION_ERROR / INVALID_LOCATION_PAYLOAD | 说明输入问题；不记录含坐标的原始请求 |
+| 401 | UNAUTHENTICATED | 引导重新进入演示身份，不泄露其他账号 |
+| 403 | FORBIDDEN | 拒绝越权操作 |
+| 404 | ORDER_NOT_FOUND | 订单不存在或对当前身份不可见 |
+| 409 | OUT_OF_STOCK / SLOT_FULL / SLOT_CLOSED | 刷新可售信息，保留学生选择供调整 |
+| 409 | REQUEST_CONFLICT / ORDER_VERSION_CONFLICT | 不创建另一单；核对或刷新再确认 |
+| 409 | INVALID_ORDER_STATE / ALREADY_CANCELLED | 显示当前状态，不重复修改或返还 |
+| 409 | PICKUP_CODE_USED / PICKUP_CODE_INVALID | 核销未成功，不改已取状态 |
+| 503 | SERVICE_UNAVAILABLE | 明确失败或结果待确认，重试同请求；不返回样例成功 |
+
+返回错误码和易懂 message。具体是否可重试由 retryable 字段说明；网络超时不代表操作未发生，客户端按同一 requestId 恢复查询或重试。
+
+## 正式确认前仍需补齐
+
+实际技术与认证/会话流程、菜单/配置/列表的完整响应结构和分页、范围及精度参数、提醒条件与样本充足标准、取消规则的对外文案、联调环境与实际测试命令。它们是 spcuteag 第一天的交付项，不能为了让前端开工假装已有正式接口。
+
+## 单 APK 客户端补充
+
+客户端统一为 apps/mobile 中三个角色模块，接口仍由独立 services/api 提供，不能把服务端放进 APK。公共会话与角色入口由 spcuteag维护，服务器逐请求验证角色和对象归属；客户端切换入口不改变授权。Android 一次性定位通过公共适配实现，模块只使用范围结果，仍遵守不上传坐标、短时失效和用户可删除的约定。此架构补充不改变 DRAFT v0.1 的待确认状态，演示登录/会话的具体请求响应仍须在第一阶段确定。

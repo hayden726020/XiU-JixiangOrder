@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "contractVersion": "DRAFT v0.1",
+    "fictional": true,
+    "implemented": false,
+    "note": "仅为接口讨论与页面演示样例；不是实际服务返回或真实学生数据。"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/crowd?slotId=demo-slot-20261113-lunch"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "canteenId": "demo-canteen-01",
+        "slotId": "demo-slot-20261113-lunch",
+        "referenceScope": "PLATFORM_ONLY",
+        "reservedDineInUsers": 5,
+        "currentReferenceUsers": 3,
+        "level": "CROWDED",
+        "basis": [
+          "RESERVATION",
+          "LOCATION",
+          "PICKUP"
+        ],
+        "updatedAt": "2026-11-13T11:45:00+08:00",
+        "expiresAt": "2026-11-13T11:50:00+08:00",
+        "demo": true,
+        "message": "演示数据：当前堂食可能较拥挤。仍可选择堂食，不保证座位；仅为本平台参考。"
+      }
+    }
+  },
+  "futureVariant": {
+    "requestPath": "/api/v1/crowd?slotId=demo-slot-20261114-lunch",
+    "data": {
+      "canteenId": "demo-canteen-01",
+      "slotId": "demo-slot-20261114-lunch",
+      "referenceScope": "PLATFORM_ONLY",
+      "reservedDineInUsers": 4,
+      "currentReferenceUsers": null,
+      "level": "CROWDED",
+      "basis": [
+        "RESERVATION"
+      ],
+      "updatedAt": "2026-11-13T11:45:00+08:00",
+      "expiresAt": "2026-11-13T11:50:00+08:00",
+      "demo": true,
+      "message": "演示数据：明天所选时段预约堂食需求较集中，不代表明天现场实测人数。"
+    }
+  },
+  "unknownVariant": {
+    "data": {
+      "canteenId": "demo-canteen-01",
+      "slotId": "demo-slot-20261113-lunch",
+      "referenceScope": "PLATFORM_ONLY",
+      "reservedDineInUsers": null,
+      "currentReferenceUsers": null,
+      "level": "UNKNOWN",
+      "basis": [],
+      "updatedAt": "2026-11-13T11:45:00+08:00",
+      "expiresAt": "2026-11-13T11:50:00+08:00",
+      "demo": true,
+      "message": "暂无足够信息判断堂食人数，请以现场为准。"
+    }
+  }
+}

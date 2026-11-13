@@ -1,0 +1,70 @@
+{
+  "_meta": {
+    "contractVersion": "DRAFT v0.1",
+    "fictional": true,
+    "implemented": false,
+    "note": "仅为接口讨论与页面演示样例；不是实际服务返回或真实学生数据。"
+  },
+  "cases": [
+    {
+      "status": 409,
+      "body": {
+        "error": {
+          "code": "OUT_OF_STOCK",
+          "message": "所选菜品数量不足，请调整数量。",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "status": 409,
+      "body": {
+        "error": {
+          "code": "SLOT_FULL",
+          "message": "该时段名额已满，请选择其他时段。",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "status": 409,
+      "body": {
+        "error": {
+          "code": "PICKUP_CODE_USED",
+          "message": "该订单已取餐，请勿重复确认。",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "status": 409,
+      "body": {
+        "error": {
+          "code": "ORDER_VERSION_CONFLICT",
+          "message": "订单已发生变化，请刷新后再操作。",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "你无权操作此订单。",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "status": 503,
+      "body": {
+        "error": {
+          "code": "SERVICE_UNAVAILABLE",
+          "message": "服务暂不可用，请稍后查询或重试原请求。",
+          "retryable": true
+        }
+      }
+    }
+  ]
+}

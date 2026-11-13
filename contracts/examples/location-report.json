@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "contractVersion": "DRAFT v0.1",
+    "fictional": true,
+    "implemented": false,
+    "note": "仅为接口讨论与页面演示样例；不是实际服务返回或真实学生数据。"
+  },
+  "request": {
+    "method": "PUT",
+    "path": "/api/v1/me/location",
+    "body": {
+      "requestId": "demo-location-001",
+      "presence": "INSIDE"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "presence": "INSIDE",
+        "observedAt": "2026-11-13T11:45:00+08:00",
+        "expiresAt": "2026-11-13T11:55:00+08:00"
+      }
+    }
+  },
+  "otherAllowedValues": [
+    "OUTSIDE",
+    "UNKNOWN"
+  ],
+  "forbiddenFields": [
+    "latitude",
+    "longitude",
+    "coords",
+    "userId",
+    "role"
+  ],
+  "permissionDeniedBehavior": "不发送虚构位置；展示无法获取位置，继续允许堂食/外带及下单。"
+}
