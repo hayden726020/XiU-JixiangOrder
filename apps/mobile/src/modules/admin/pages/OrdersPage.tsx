@@ -31,11 +31,53 @@ const exceptionOptions: Array<{ value: ExceptionFilter; label: string }> = [
   { value: 'DELAYED', label: '已设置延迟' },
 ];
 
-function describeError(error: unknown): string {
+interface OrdersError {
+  title: string;
+  detail: string;
+  canRelogin: boolean;
+}
+
+function describeError(error: unknown): OrdersError {
   if (error instanceof ApiError) {
-    return `${error.message}（${error.code}）`;
+    if (error.status === 401) {
+      return {
+        title: '身份失效',
+        detail: `${error.message}（${error.code}）页面未显示任何订单，请重新登录管理员演示身份。`,
+        canRelogin: true,
+      };
+    }
+    if (error.status === 403) {
+      return {
+        title: '当前身份无管理权限',
+        detail: `服务端拒绝了订单查询（${error.code}）。页面未显示任何订单，也不提供切换管理员的按钮。`,
+        canRelogin: true,
+      };
+    }
+    if (error.status === 503 || error.code === 'SERVICE_UNAVAILABLE') {
+      return {
+        title: '订单查询未完成',
+        detail: '服务暂不可用；这是查询请求，可按当前筛选重试。页面未显示样例数据。',
+        canRelogin: false,
+      };
+    }
+    if (error.status === 0 || error.code === 'NETWORK_TIMEOUT') {
+      return {
+        title: '订单查询未完成',
+        detail: `${error.message}（${error.code}）请检查网络与服务地址后重试；页面未显示样例数据。`,
+        canRelogin: false,
+      };
+    }
+    return {
+      title: '订单读取失败',
+      detail: `${error.message}（${error.code}）`,
+      canRelogin: false,
+    };
   }
-  return '读取订单失败，未显示样例数据。';
+  return {
+    title: '订单读取失败',
+    detail: '无法读取订单，未显示样例数据。请检查服务地址与登录状态。',
+    canRelogin: false,
+  };
 }
 
 interface OrdersPageProps {
@@ -48,7 +90,7 @@ export default function OrdersPage({ source }: OrdersPageProps) {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<AdminOrderPage | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<OrdersError | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -131,13 +173,13 @@ export default function OrdersPage({ source }: OrdersPageProps) {
 
       {error ? (
         <div className="notice admin-error" role="alert">
-          <strong>订单读取失败</strong>
-          <p>{error}</p>
+          <strong>{error.title}</strong>
+          <p>{error.detail}</p>
           <p>未显示样例数据。请检查登录状态、管理员权限与服务地址后重试。</p>
           <button type="button" className="admin-action" onClick={() => setAttempt((value) => value + 1)}>
             重试
           </button>
-          <a href="#/system-check">去公共自检页检查登录与服务 →</a>
+          {error.canRelogin ? <a href="#/system-check">去公共自检页重新登录或检查服务 →</a> : null}
         </div>
       ) : null}
 

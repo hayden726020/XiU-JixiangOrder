@@ -108,7 +108,21 @@ function describeSaveError(error: unknown): SaveErrorView {
     if (error.status === 403) {
       return {
         title: '当前身份无管理权限',
-        detail: `服务端拒绝了配置保存（${error.code}）。`,
+        detail: `服务端拒绝了配置保存（${error.code}）。当前输入已保留，不提供切换管理员的按钮。`,
+        conflict: false,
+      };
+    }
+    if (error.status === 503 || error.code === 'SERVICE_UNAVAILABLE') {
+      return {
+        title: '保存结果待确认',
+        detail: '服务暂不可用；写操作可能未生效，也可能已经生效。请用同一 requestId 重试，不要重新进入编辑。当前输入已保留。',
+        conflict: false,
+      };
+    }
+    if (error.status === 0 || error.code === 'NETWORK_TIMEOUT' || error.code === 'NETWORK_ERROR') {
+      return {
+        title: '保存结果待确认',
+        detail: `${error.message}（${error.code}）请用同一 requestId 重试，不要重新进入编辑；当前输入已保留。`,
         conflict: false,
       };
     }

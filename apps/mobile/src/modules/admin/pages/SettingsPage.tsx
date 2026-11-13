@@ -16,19 +16,31 @@ function describeError(error: unknown): SettingsError {
     if (error.status === 401) {
       return {
         title: '身份失效',
-        detail: '请到公共自检页重新登录管理员演示身份后再读取配置。',
+        detail: '请到公共自检页重新登录管理员演示身份后再读取配置；页面未显示任何配置。',
       };
     }
     if (error.status === 403) {
       return {
         title: '当前身份无管理权限',
-        detail: `服务端拒绝读取配置（${error.code}）。页面不会显示样例配置冒充真实结果。`,
+        detail: `服务端拒绝读取配置（${error.code}）。页面不会显示样例配置冒充真实结果，也不提供切换管理员的按钮。`,
       };
     }
     if (error.status === 404) {
       return {
         title: '配置尚未初始化',
         detail: `${error.message}（${error.code}）`,
+      };
+    }
+    if (error.status === 503 || error.code === 'SERVICE_UNAVAILABLE') {
+      return {
+        title: '配置读取未完成',
+        detail: '服务暂不可用；这是查询请求，可重试。页面未显示样例数据。',
+      };
+    }
+    if (error.status === 0 || error.code === 'NETWORK_TIMEOUT') {
+      return {
+        title: '配置读取未完成',
+        detail: `${error.message}（${error.code}）请检查网络与服务地址后重试；页面未显示样例数据。`,
       };
     }
     return {
@@ -87,7 +99,7 @@ export default function SettingsPage({ source }: SettingsPageProps) {
         {source.mode === 'live'
           ? '真实服务只读，数据来自 GET /admin/settings 的 dining 与 crowd 两段。'
           : '样例只读配置，不会请求服务端。'}
-        S3 已按服务端结构只读对齐；S5 已接入 PUT /admin/settings，dining 与 crowd 分别保存、成功后重新读取确认，冲突时保留输入。
+        S3 已按服务端结构只读对齐；S5 已接入 PUT /admin/settings，dining 与 crowd 分别保存、成功后重新读取确认，冲突时保留输入；S6 的 401/403/503 错误态不显示样例配置。
       </p>
 
       {loading ? <p className="admin-muted">正在读取配置…</p> : null}

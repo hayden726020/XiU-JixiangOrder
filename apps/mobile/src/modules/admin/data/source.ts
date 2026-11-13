@@ -4,6 +4,8 @@ import { sampleOrders, sampleSettings } from './sample';
 
 export type AdminSourceMode = 'sample' | 'live';
 
+export type AdminErrorSimulation = 'none' | '401' | '403' | '503';
+
 export interface AdminOrderQuery {
   status: OrderStatus | 'ALL';
   page: number;
@@ -186,7 +188,52 @@ function samplePage(query: AdminOrderQuery): AdminOrderPage {
   };
 }
 
-export function createAdminSource(options: { mode: AdminSourceMode }): AdminSource {
+function simulatedError(simulation: AdminErrorSimulation): ApiError | null {
+  switch (simulation) {
+    case '401':
+      return new ApiError({
+        code: 'UNAUTHENTICATED',
+        message: '身份已失效，请重新登录管理员演示身份。',
+        status: 401,
+        retryable: false,
+      });
+    case '403':
+      return new ApiError({
+        code: 'FORBIDDEN',
+        message: '当前身份无管理权限。',
+        status: 403,
+        retryable: false,
+      });
+    case '503':
+      return new ApiError({
+        code: 'SERVICE_UNAVAILABLE',
+        message: '服务暂不可用，查询未完成；保存结果可能未确定。',
+        status: 503,
+        retryable: true,
+      });
+    case 'none':
+      return null;
+  }
+}
+
+function applySimulation(source: AdminSource, simulation: AdminErrorSimulation): AdminSource {
+  if (simulation === 'none') {
+    return source;
+  }
+  const fail = (): Promise<never> => Promise.reject(simulatedError(simulation));
+  return {
+    ...source,
+    listOrders: fail,
+    getOrder: fail,
+    getSettings: fail,
+    updateSettings: fail,
+  };
+}
+
+export function createAdminSource(options: {
+  mode: AdminSourceMode;
+  simulateError?: AdminErrorSimulation;
+}): AdminSource {
   if (options.mode === 'live') {
     return {
       mode: 'live',
@@ -228,7 +275,7 @@ export function createAdminSource(options: { mode: AdminSourceMode }): AdminSour
     };
   }
 
-  return {
+  const sample: AdminSource = {
     mode: 'sample',
     listOrders: async (query) => samplePage(query),
     getOrder: async (id) => sampleOrders.find((order) => order.id === id) ?? null,
@@ -242,4 +289,5 @@ export function createAdminSource(options: { mode: AdminSourceMode }): AdminSour
       });
     },
   };
+  return applySimulation(sample, options.simulateError ?? 'none');
 }
