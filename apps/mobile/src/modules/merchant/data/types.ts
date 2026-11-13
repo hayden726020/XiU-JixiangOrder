@@ -90,8 +90,8 @@ export type SourceResult<T> =
 export interface MerchantSource {
   mode: 'sample' | 'real';
   scenario: MerchantScenario;
-  getOrders: () => SourceResult<MerchantOrder[]>;
-  getOrder: (id: string) => SourceResult<MerchantOrder>;
-  getMenu: (date: string) => SourceResult<MenuDay>;
-  getSlots: (date: string) => SourceResult<SlotDay>;
+  getOrders: () => Promise<SourceResult<MerchantOrder[]>>;
+  getOrder: (id: string) => Promise<SourceResult<MerchantOrder>>;
+  getMenu: (date: string) => Promise<SourceResult<MenuDay>>;
+  getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
 }

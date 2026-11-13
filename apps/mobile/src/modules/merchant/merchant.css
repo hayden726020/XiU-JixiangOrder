@@ -15,6 +15,51 @@
   line-height: 1.5;
 }
 
+.merchant-source {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.merchant-source__label {
+  flex: none;
+}
+
+.merchant-source__button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.merchant-source__button--active {
+  border-color: var(--green-700);
+  background: var(--green-100);
+  color: var(--green-900);
+  font-weight: 600;
+}
+
+.merchant-real-banner {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #93c5fd;
+  border-radius: 0.7rem;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.merchant-real-banner strong {
+  font-size: 0.84rem;
+}
+
 .merchant-sample-banner strong {
   font-size: 0.84rem;
 }

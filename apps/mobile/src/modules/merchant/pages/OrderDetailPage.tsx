@@ -21,11 +21,12 @@ import { fenToYuan, formatYuan, totalQuantity } from '../utils/money';
 
 interface OrderDetailPageProps {
   order: MerchantOrder;
+  mode: 'sample' | 'real';
   onBack: () => void;
   onAction: (action: OrderAction) => void;
 }
 
-export default function OrderDetailPage({ order, onBack, onAction }: OrderDetailPageProps) {
+export default function OrderDetailPage({ order, mode, onBack, onAction }: OrderDetailPageProps) {
   const [pickupCode, setPickupCode] = useState('');
   const [reason, setReason] = useState('');
 
@@ -55,7 +56,9 @@ export default function OrderDetailPage({ order, onBack, onAction }: OrderDetail
       <button type="button" className="back-link" onClick={onBack}>← 返回订单列表</button>
 
       <header className="detail-header">
-        <p className="badge">样例订单 · demo=true</p>
+        <p className="badge">
+          {order.demo || mode === 'sample' ? '样例订单 · demo=true' : '真实数据 · 演示服务'}
+        </p>
         <h2>{order.id}</h2>
         <div className="detail-tags">
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>

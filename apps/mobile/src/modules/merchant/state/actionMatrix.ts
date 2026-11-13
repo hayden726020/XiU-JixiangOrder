@@ -122,7 +122,11 @@ export function actionPath(action: OrderAction, orderId: string): string {
   return action.path.replace('{id}', orderId);
 }
 
-export function actionPrompt(action: OrderAction, orderId: string): string {
+export function actionPrompt(
+  action: OrderAction,
+  orderId: string,
+  mode: 'sample' | 'real' = 'sample',
+): string {
   const path = actionPath(action, orderId);
   const fields: string[] = [];
   if (action.action) fields.push(`action=${action.action}`);
@@ -131,5 +135,8 @@ export function actionPrompt(action: OrderAction, orderId: string): string {
   if (action.needsExpectedReadyAt) fields.push('expectedReadyAt=带时区的 ISO 时间');
   if (action.needsDiningMode) fields.push('diningMode=DINE_IN 或 TAKEAWAY');
   const fieldText = fields.length > 0 ? `（${fields.join('，')}）` : '';
+  if (mode === 'real') {
+    return `真实模式：写操作尚未接入，这里将调用 ${action.method} ${path}${fieldText}，当前不产生真实变更。`;
+  }
   return `样例模式：这里将调用 ${action.method} ${path}${fieldText}，当前不产生真实变更。`;
 }
