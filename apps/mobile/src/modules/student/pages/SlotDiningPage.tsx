@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { DATES } from '../data/sampleData';
 import type { OrderDraft } from '../state/orderDraft';
+import { createSlotRequestGuard, type SlotGuardState } from '../state/slotGuard';
 import type { DiningMode, MenuResponse, SlotDto, StudentSource } from '../types';
 import { isApiError } from '../types';
+import CrowdHint from '../components/CrowdHint';
 import DemoModeNotice from '../components/DemoModeNotice';
+import LocationNote from '../components/LocationNote';
 import SampleBanner from '../components/SampleBanner';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -46,7 +49,27 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [errorText, setErrorText] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
+  const [guard] = useState(() =>
+    createSlotRequestGuard({ fetchCrowd: (slotId) => source.getCrowd(slotId) }),
+  );
+  const [crowd, setCrowd] = useState<SlotGuardState>(() => guard.getState());
   const date = snapshot.date;
+
+  async function requestCrowd(slotId: string): Promise<void> {
+    const pending = guard.selectSlot(slotId);
+    setCrowd(guard.getState());
+    const result = await pending;
+    if (!result.discarded) {
+      setCrowd(guard.getState());
+    }
+  }
+
+  useEffect(() => {
+    const restoredSlotId = draft.getState().slotId;
+    if (restoredSlotId !== null) {
+      void requestCrowd(restoredSlotId);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +101,7 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
     }
     draft.setSlot(slot.slotId);
     setSnapshot(draft.getState());
+    void requestCrowd(slot.slotId);
   }
 
   function selectMode(mode: DiningMode): void {
@@ -115,7 +139,7 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S3 · 时段与用餐方式（确认页下一步开放）</p>
+        <p className="student-kicker">S4 · 时段与用餐方式（拥挤参考与定位说明）</p>
         <h2 id="student-slot-title">选择时段与用餐方式</h2>
         <p className="student-page__lead">已选菜品会保留；时段与用餐方式必须显式选择。</p>
       </header>
@@ -201,6 +225,13 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
           </button>
         </div>
       </section>
+
+      <CrowdHint
+        slotRange={selectedSlot ? slotRange(selectedSlot) : null}
+        state={crowd}
+      />
+
+      <LocationNote />
 
       <footer className="student-summary">
         <p className="student-summary__main">

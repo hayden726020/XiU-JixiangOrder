@@ -373,3 +373,117 @@
   font-size: 0.78rem;
   line-height: 1.45;
 }
+.student-crowd {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green-700);
+  border-radius: 0.75rem;
+  background: #fafcf9;
+}
+
+.student-crowd.is-crowded {
+  border-left-color: var(--amber-700);
+  background: #fffaf0;
+}
+
+.student-crowd.is-unknown,
+.student-crowd.is-muted {
+  border-left-color: #9aa69d;
+  background: #f6f7f6;
+}
+
+.student-crowd__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.student-crowd__detail,
+.student-crowd__numbers,
+.student-crowd__basis,
+.student-crowd__meta,
+.student-crowd__loading,
+.student-crowd__empty {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.student-crowd__detail {
+  color: var(--green-900);
+}
+
+.student-crowd__numbers,
+.student-crowd__basis,
+.student-crowd__meta,
+.student-crowd__loading {
+  color: var(--muted);
+}
+
+.student-crowd__meta {
+  font-size: 0.76rem;
+}
+
+.student-crowd__empty {
+  color: #7f1d1d;
+  font-weight: 600;
+}
+
+.student-location {
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.student-location__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--green-900);
+  text-align: left;
+  cursor: pointer;
+}
+
+.student-location__title {
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.student-location__state {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.student-location__body {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0 1rem 0.9rem;
+}
+
+.student-location__list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.student-location__hint {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.55rem;
+  background: #eef6ef;
+  color: var(--green-900);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
