@@ -13,7 +13,7 @@
 - 建立公共应用入口、hash 入口、模块契约与公共样式；注册学生模块占位入口（#/student）；档口和管理员为公共占位。
 - 实际执行 npm install、npm run typecheck、npm run build、npm run preview；类型检查与构建通过，预览返回 HTTP 200，用无头 Edge 实际渲染首页与 #/student。以上均为浏览器检查。
 - 已初始化本地 Git（main），提交骨架并成功推送 origin/main；首个骨架提交为 a4795a2fadc4。远端不再是空仓库，本次推送同时验证了写权限。
-- 2026-11-13 生成 Capacitor android/ 工程（minSdk 24、compileSdk/targetSdk 36），并使用本机已有 JDK 21 与 Android SDK 36 成功构建 debug APK：android/app/build/outputs/apk/debug/app-debug.apk（4.1 MB，package com.xiujixiang.order、versionCode 1、versionName 1.0、Android Debug 签名）。android/ 尚未提交 Git，APK 被 .gitignore 排除。
+- 2026-11-13 生成 Capacitor android/ 工程（minSdk 24、compileSdk/targetSdk 36），并使用本机已有 JDK 21 与 Android SDK 36 成功构建 debug APK：android/app/build/outputs/apk/debug/app-debug.apk（4.1 MB，package com.xiujixiang.order、versionCode 1、versionName 1.0、Android Debug 签名）。android/ 已纳入 Git；APK、build/ 与 local.properties 被忽略。
 - 2026-11-13 管理端 S1 样例骨架接入：`modules/admin` 新增类型、样例数据、数据源、概览/订单/配置页与样式；`#/admin` 由公共占位改为 `adminModule`，模块内部处理 `#/admin/orders`、`#/admin/settings`；页面只读、标注样例、不显示取餐码。
 - 管理端 S1 实际验证：`npm run typecheck` 退出码 0（覆盖 `src/shared/`）；`npm run build` 成功（44 modules，CSS 8.73 kB、JS 261.39 kB、web chunk 2.08 kB；`shared/` 已随 `#/system-check` 进入产物）；preview 首页/JS/CSS 均 HTTP 200；Vite SSR 渲染管理端三个子路径，14 项断言全部通过。以上不是浏览器手工验收，也不是真机复验。
 
@@ -34,8 +34,8 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 ## 下一步
 
 1. 管理端 S2：订单筛选与只读详情，并把 admin 段补进 `contracts/API.md` 待确认区。
-2. 配置服务地址并补服务端最小实现，联调 `#/system-check` 的登录/会话/定位；档口模块待漪x3推送文件后在 moduleRegistry.ts 注册。
-3. 配置服务地址并补服务端最小实现，联调 `#/system-check` 的登录成功、会话与位置上报/清除；真实食堂边界仍需现场校准。
+2. 配置服务地址并补服务端最小实现，联调 `#/system-check` 的登录成功、会话与位置上报/清除；真实食堂边界仍需现场校准。
+3. 档口模块待漪x3推送文件后在 moduleRegistry.ts 注册。
 4. 魈嘶在自己电脑克隆后启动统一应用，打开 #/student 并改一处文字确认生效。
 
 ## 验证记录
@@ -46,5 +46,4 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 - 真机管理端：`#/admin` 概览显示 4 笔样例订单、1 待处理取消、1 已延迟；`#/admin/orders` 列表渲染 4 笔，不显示取餐码。
 - 公共层自检页：无头 Edge dump-dom 确认 `#/system-check` 渲染出服务地址、登录、一次性定位区块；CDP 实际点击“读取范围配置”得到 NOT_FOUND 且无成功文案，点击“演示登录”失败后会话仍为“未登录”。浏览器检查；真机仅验证定位权限路径与入口，未验证真实登录或位置上报。
 - 管理端 S1：typecheck 退出码 0；build 成功；preview 静态资源均 HTTP 200；SSR 14/14 通过。SSR 是渲染检查，不替代浏览器手工验收、APK 安装或真机检查。
-- 公共层自检页：无头 Edge dump-dom 确认 `#/system-check` 渲染出服务地址、登录、一次性定位区块；CDP 实际点击“读取范围配置”得到 NOT_FOUND 且无成功文案，点击“演示登录”失败后会话仍为“未登录”。浏览器检查，未验证真机定位授权/拒绝。
-- 契约仍为 DRAFT v0.2，没有真实接口测试；工作区改动尚未提交。
+- 契约仍为 DRAFT v0.2，没有真实接口测试。本轮提交 `f2670ef`（88 个文件）已推送 `origin/main`，`git ls-remote` 与本地 HEAD 一致，工作区干净；交接见 `team-context/backend/HANDOFF.md`。
