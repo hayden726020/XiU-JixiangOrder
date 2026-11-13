@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import SampleBanner from './components/SampleBanner';
 import { SAMPLE_DATES } from './data/sampleData';
 import { createMerchantSource } from './data/source';
@@ -46,6 +46,8 @@ export default function MerchantHome() {
   const [loading, setLoading] = useState(true);
   const [loginHint, setLoginHint] = useState<string | null>(null);
   const autoLoginStarted = useRef(false);
+  const listScrollTop = useRef(0);
+  const restoreListScroll = useRef(false);
 
   const source = useMemo(() => createMerchantSource({ mode, scenario }), [mode, scenario]);
   const [session, setSession] = useState<Session | null>(getSession);
@@ -140,11 +142,13 @@ export default function MerchantHome() {
   }
 
   function openOrder(id: string) {
+    listScrollTop.current = window.scrollY;
     setView({ name: 'detail', orderId: id });
     setNotice(null);
   }
 
   function backToList() {
+    restoreListScroll.current = true;
     setView({ name: 'list' });
     setNotice(null);
   }
@@ -157,6 +161,14 @@ export default function MerchantHome() {
   function handleAction(orderId: string, action: OrderAction) {
     setNotice(actionPrompt(action, orderId, mode));
   }
+
+  useLayoutEffect(() => {
+    if (view.name !== 'list' || !restoreListScroll.current) {
+      return;
+    }
+    restoreListScroll.current = false;
+    window.scrollTo(0, listScrollTop.current);
+  }, [view.name]);
 
   return (
     <section className="module-panel merchant-panel">
