@@ -8,6 +8,7 @@ import {
 } from '../../shared';
 import './admin.css';
 import './admin-s2.css';
+import './admin-s4.css';
 import SampleBanner from './components/SampleBanner';
 
 import { createAdminSource, type AdminSourceMode } from './data/source';

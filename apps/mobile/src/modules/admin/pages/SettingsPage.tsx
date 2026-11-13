@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../../../shared';
+import SettingsEditor from '../components/SettingsEditor';
 import type { AdminSource } from '../data/source';
 import { sampleStalls } from '../data/sample';
 import type { AdminSettings } from '../types';
@@ -86,7 +87,7 @@ export default function SettingsPage({ source }: SettingsPageProps) {
         {source.mode === 'live'
           ? '真实服务只读，数据来自 GET /admin/settings 的 dining 与 crowd 两段。'
           : '样例只读配置，不会请求服务端。'}
-        本页没有任何保存控件；保存、requestId、expectedVersion 与 SETTING_VERSION_CONFLICT 在 S5 接入。
+        S3 已按服务端结构只读对齐；S4 提供受控草稿编辑，保存不会写入服务端，PUT 与版本冲突在 S5 接入。
       </p>
 
       {loading ? <p className="admin-muted">正在读取配置…</p> : null}
@@ -190,12 +191,14 @@ export default function SettingsPage({ source }: SettingsPageProps) {
               </p>
             </div>
           )}
+
+          <SettingsEditor mode={source.mode} settings={settings} />
         </>
       ) : null}
 
       <p className="hint">
         真实读写将使用 GET /admin/settings 与 PUT /admin/settings；PUT 的 requestId、section、expectedVersion
-        与 SETTING_VERSION_CONFLICT 已在 DRAFT v0.3 中定义，页面尚未发送写请求。
+        与 SETTING_VERSION_CONFLICT 已在 DRAFT v0.3 中定义，S4 页面只生成草稿，尚未发送写请求。
       </p>
     </div>
   );
