@@ -45,6 +45,16 @@ export default function MerchantHome() {
     setNotice(null);
   }
 
+  function backToList() {
+    setView({ name: 'list' });
+    setNotice(null);
+  }
+
+  function openMenu() {
+    setView({ name: 'menu' });
+    setNotice(null);
+  }
+
   function handleAction(orderId: string, action: OrderAction) {
     setNotice(actionPrompt(action, orderId));
   }
@@ -76,7 +86,7 @@ export default function MerchantHome() {
           scenario={scenario}
           onScenarioChange={changeScenario}
           onOpenOrder={openOrder}
-          onOpenMenu={() => setView({ name: 'menu' })}
+          onOpenMenu={openMenu}
         />
       )}
 
@@ -84,7 +94,7 @@ export default function MerchantHome() {
         activeOrder ? (
           <OrderDetailPage
             order={activeOrder}
-            onBack={() => setView({ name: 'list' })}
+            onBack={backToList}
             onAction={(action) => handleAction(activeOrder.id, action)}
           />
         ) : (
@@ -100,7 +110,7 @@ export default function MerchantHome() {
           onDateChange={setMenuDate}
           menu={menu}
           slots={slots}
-          onBack={() => setView({ name: 'list' })}
+          onBack={backToList}
         />
       )}
     </section>
