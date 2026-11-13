@@ -38,7 +38,7 @@ export default function OverviewPage({ mode, session }: OverviewPageProps) {
             </a>
             <a className="admin-link-card" href="#/admin/settings">
               <strong>营业与配置 →</strong>
-              <span>只读查看食堂范围 dining 与提醒阈值 crowd；档口营业时间暂无端点，保存与版本冲突在 S5 接入。</span>
+              <span>查看食堂范围 dining 与提醒阈值 crowd；S5 支持分别保存并处理版本冲突；档口营业时间暂无端点。</span>
             </a>
           </div>
 

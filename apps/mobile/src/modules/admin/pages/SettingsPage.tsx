@@ -87,7 +87,7 @@ export default function SettingsPage({ source }: SettingsPageProps) {
         {source.mode === 'live'
           ? '真实服务只读，数据来自 GET /admin/settings 的 dining 与 crowd 两段。'
           : '样例只读配置，不会请求服务端。'}
-        S3 已按服务端结构只读对齐；S4 提供受控草稿编辑，保存不会写入服务端，PUT 与版本冲突在 S5 接入。
+        S3 已按服务端结构只读对齐；S5 已接入 PUT /admin/settings，dining 与 crowd 分别保存、成功后重新读取确认，冲突时保留输入。
       </p>
 
       {loading ? <p className="admin-muted">正在读取配置…</p> : null}
@@ -192,13 +192,13 @@ export default function SettingsPage({ source }: SettingsPageProps) {
             </div>
           )}
 
-          <SettingsEditor mode={source.mode} settings={settings} />
+          <SettingsEditor source={source} settings={settings} onReloaded={setSettings} />
         </>
       ) : null}
 
       <p className="hint">
-        真实读写将使用 GET /admin/settings 与 PUT /admin/settings；PUT 的 requestId、section、expectedVersion
-        与 SETTING_VERSION_CONFLICT 已在 DRAFT v0.3 中定义，S4 页面只生成草稿，尚未发送写请求。
+        真实读写使用 GET /admin/settings 与 PUT /admin/settings；PUT 的 requestId、section、expectedVersion
+        与 SETTING_VERSION_CONFLICT 已在 DRAFT v0.3 中定义。页面每次只提交一个 section，保存后重新读取一次确认版本。
       </p>
     </div>
   );

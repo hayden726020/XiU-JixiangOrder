@@ -17,11 +17,49 @@ export interface AdminOrderPage {
   total: number;
 }
 
+export type AdminSettingsSection = 'dining' | 'crowd';
+
+export interface DiningUpdatePayload {
+  canteenId: string;
+  name: string;
+  center: { latitude: number; longitude: number };
+  radiusMeters: number;
+  accuracyToleranceMeters: number;
+  demo: boolean;
+}
+
+export interface CrowdUpdatePayload {
+  crowdedAt: number;
+  demo: boolean;
+}
+
+export interface SettingsUpdateRequestDining {
+  section: 'dining';
+  requestId: string;
+  expectedVersion: number;
+  value: DiningUpdatePayload;
+}
+
+export interface SettingsUpdateRequestCrowd {
+  section: 'crowd';
+  requestId: string;
+  expectedVersion: number;
+  value: CrowdUpdatePayload;
+}
+
+export type SettingsUpdateRequest = SettingsUpdateRequestDining | SettingsUpdateRequestCrowd;
+
+export interface SettingsUpdateResult {
+  section: AdminSettingsSection;
+  version: number;
+}
+
 export interface AdminSource {
   mode: AdminSourceMode;
   listOrders(query: AdminOrderQuery): Promise<AdminOrderPage>;
   getOrder(id: string): Promise<Order | null>;
   getSettings(): Promise<AdminSettings>;
+  updateSettings(request: SettingsUpdateRequest): Promise<SettingsUpdateResult>;
 }
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -127,6 +165,13 @@ function parseSettings(value: unknown): AdminSettings {
   };
 }
 
+function parseSettingsUpdate(value: unknown, section: AdminSettingsSection): SettingsUpdateResult {
+  if (!isRecord(value) || value.section !== section || typeof value.version !== 'number') {
+    throw invalidSettingsResponse();
+  }
+  return { section, version: value.version };
+}
+
 function samplePage(query: AdminOrderQuery): AdminOrderPage {
   const filtered =
     query.status === 'ALL'
@@ -168,6 +213,18 @@ export function createAdminSource(options: { mode: AdminSourceMode }): AdminSour
         }
       },
       getSettings: async () => parseSettings(await apiRequest<unknown>('/admin/settings')),
+      updateSettings: async (request) => {
+        const data = await apiRequest<unknown>('/admin/settings', {
+          method: 'PUT',
+          body: {
+            requestId: request.requestId,
+            section: request.section,
+            expectedVersion: request.expectedVersion,
+            value: request.value,
+          },
+        });
+        return parseSettingsUpdate(data, request.section);
+      },
     };
   }
 
@@ -176,5 +233,13 @@ export function createAdminSource(options: { mode: AdminSourceMode }): AdminSour
     listOrders: async (query) => samplePage(query),
     getOrder: async (id) => sampleOrders.find((order) => order.id === id) ?? null,
     getSettings: async () => sampleSettings,
+    updateSettings: async () => {
+      throw new ApiError({
+        code: 'SAMPLE_MODE',
+        message: '样例模式不会写入服务端配置。',
+        status: 0,
+        retryable: false,
+      });
+    },
   };
 }

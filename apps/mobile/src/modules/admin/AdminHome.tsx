@@ -88,7 +88,7 @@ export default function AdminHome() {
 
       <h2 id="admin-title">管理端 · 订单与配置</h2>
       <p className="admin-muted">
-        S2 提供订单状态筛选、分页、异常标记与只读详情；S3 提供对齐服务端 dining/crowd 结构的只读配置。
+        S2 提供订单状态筛选、分页、异常标记与只读详情；S3/S5 提供 dining/crowd 只读展示与真实保存，保存后重新读取确认。
         管理端不改订单状态，也不显示取餐码或学生位置。
       </p>
 

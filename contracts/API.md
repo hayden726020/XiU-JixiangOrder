@@ -107,7 +107,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
   - `dining`：`canteenId,name,center{latitude,longitude},radiusMeters,accuracyToleranceMeters,updatedAt,version,demo`。
   - `crowd`：`crowdedAt,version,demo`；当前只有单一提醒阈值，预约需求阈值尚无字段。
   - 当前没有档口营业时间、启用状态或档口名称字段；管理端真实模式不得用样例值填充。
-  - 管理端 S3 已按此结构只读展示；`PUT /admin/settings`（`requestId,section,expectedVersion,value`、`SETTING_VERSION_CONFLICT`）的保存与冲突流程在 S5 接入。
+  - 管理端 S3 已按此结构只读展示，S5 已接入 `PUT /admin/settings`：每次只提交一个 `section`，`value` 只含该段白名单字段；成功返回 `{ section, ...该段配置, version }`，以返回的 `version` 为准；保存后页面重新 `GET /admin/settings` 确认；`SETTING_VERSION_CONFLICT`（409）时保留输入、不自动覆盖，需用户重新读取最新配置。
 
 `GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
 
