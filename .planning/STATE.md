@@ -24,11 +24,13 @@
 - 2026-11-13 管理端 S3 接入：配置页对齐 `GET /admin/settings` 的 `dining`（canteenId/name/center/radius/accuracy/version/updatedAt/demo）与 `crowd`（crowdedAt 单阈值/version/demo）只读结构；`data/source.ts` 新增 `getSettings()`，live 严格解析且失败不回退样例；真实模式明确“服务端未提供档口营业时间”，不用样例档口与半径冒充；页面无保存控件。
 - 管理端 S2 实际验证：`npm run typecheck` 退出码 0；`npm run build` 成功（71 modules，CSS 23.31 kB、JS 318.16 kB、web chunk 2.08 kB）；用临时内存库启动 `services/api` 实测 18 项，17 项通过（学生/管理员登录、下单、管理列表与详情、401/403、分页、取餐码恒 null）；发现 `status=BOGUS` 未校验返回 200；样例筛选/分页与页面渲染检查 12/12。以上是接口与渲染检查，不是浏览器手工或真机验收。
 - 管理端 S3 实际验证：`npm run typecheck` 退出码 0；`npm run build` 成功（71 modules，CSS 23.31 kB、JS 321.57 kB、web chunk 2.08 kB）；临时内存库配置接口 17/17；无头 Edge + CDP 检查样例模式 7/7、真实模式 11/11（150/60 米、10 人、档口营业时间未提供、无样例残留、无保存按钮）、服务关闭后失败态 6/6。以上是浏览器与临时服务检查，不是真机或现场联调。
+- 2026-11-13 管理端 S4 接入：新增 `components/SettingsEditor.tsx` 与 `admin-s4.css`；受控草稿只编辑 dining 的 name/radiusMeters/accuracyToleranceMeters 与 crowd 的 crowdedAt，校验与服务端约束一致；进入编辑生成 requestId，字段改动重新生成，内容不变的提交复用同一 requestId；展示 expectedVersion。样例与真实模式都只生成“未写入服务端”草稿提示，不发送 PUT、不显示“已保存”；S5 再实现真实保存与 `SETTING_VERSION_CONFLICT`。
+- 管理端 S4 实际验证：`npm run typecheck` 退出码 0；`npm run build` 成功（84 modules，含并行学生 S4—S6 合并；CSS 29.65 kB、JS 349.94 kB、web chunk 2.08 kB）；无头 Edge + CDP 检查 23/23：编辑入口、表单初值、requestId 变化、样例不写入提示、按钮禁用、半径 0 校验、刷新恢复 300 米、真实模式只读提示、服务端配置保持 150/60/10、真实订单页回归。以上不是真机或现场联调。
 
 ## 当前尚未完成
 
-- 学生 S1—S3 已合入 main 并随 `c67f606` 推送；合并后真机验收未做，S4—S6 未做。档口 S1 已合入 main。管理端 S2 已完成并推送；S3 配置只读已完成但未提交；S5 保存、版本冲突与档口营业时间端点未做；管理端入口仍只提示登录，未按会话角色隐藏。
-- android/ 已生成；4.1 MB 旧包与 7.6 MB 新包均已在 A024（Android 16 / API 36）安装。新包完成自检页定位授权/拒绝检查与管理端 S1 概览、订单页复验；未做两机联调、真实服务联调或现场食堂边界校准。管理端 S2/S3 页面未重新打包。
+- 学生 S1—S6 已合入 main（并行合并 `7f40dfa`）并随 `bc0d0b2` 推送；合并后真机验收未做，S7 交付检查未做。档口 S1 已合入 main。管理端 S2/S3/S4 已提交推送；S5 保存、版本冲突与档口营业时间端点未做；管理端入口仍只提示登录，未按会话角色隐藏。
+- android/ 已生成；4.1 MB 旧包与 7.6 MB 新包均已在 A024（Android 16 / API 36）安装。新包完成自检页定位授权/拒绝检查与管理端 S1 概览、订单页复验；未做两机联调、真实服务联调或现场食堂边界校准。管理端 S2/S3/S4 页面未重新打包。
 - 学生端已在自己电脑完成克隆与 S0 验证，S1—S3 已提交并推送；S4 起的公共接入口径见 `team-context/backend/公共资料/学生端公共能力接入说明.md`。
 - 尚未建立两机联调与现场定位验收记录。
 - 公共层已有演示登录/会话、请求封装、服务地址配置与一次性定位代码（`src/shared/`），并通过首页“公共能力自检”进入 `#/system-check`；浏览器 CDP 已实际验证页面渲染、未配置服务的明确失败与登录失败不保存会话。`services/api/` 已合入 main（`00b4ae7`）并通过 46 项自动测试；本轮用临时内存库实测登录、下单、管理列表/详情、401/403 与管理配置结构。尚无长期服务地址、无真机联调。契约已升到 DRAFT v0.3，管理端 `GET /admin/orders` 与 `GET /admin/settings` 的 dining/crowd 字段已补并对齐；`PUT /admin/settings` 保存流程未接。
@@ -41,7 +43,7 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 
 ## 下一步
 
-1. 复核并提交推送管理端 S3（7 个文件）；重新打包后在 A024 复验管理端 S2/S3 页面（当前真机只验过 S1 旧包）。
+1. 重新打包后在 A024 复验管理端 S2/S3/S4 页面（当前真机只验过 S1 旧包），并复验学生 S4—S6。
 2. 管理端 S5：接 `PUT /admin/settings` 的 `requestId`/`expectedVersion`、`SETTING_VERSION_CONFLICT`，以及档口营业时间端点确认；补服务端 `status` 非法值校验。
 3. 配置真机可访问服务地址与演示账号，用 `#/system-check` 联调登录、会话过期与位置上报/清除。
 4. 魈嘶从最新 main 建 S4 分支并完成 APK 真机验收；两机联调与现场食堂边界校准放最后。
@@ -55,4 +57,5 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 - 公共层自检页：无头 Edge dump-dom 确认 `#/system-check` 渲染出服务地址、登录、一次性定位区块；CDP 实际点击“读取范围配置”得到 NOT_FOUND 且无成功文案，点击“演示登录”失败后会话仍为“未登录”。浏览器检查；真机仅验证定位权限路径与入口，未验证真实登录或位置上报。
 - 管理端 S1：typecheck 退出码 0；build 成功；preview 静态资源均 HTTP 200；SSR 14/14 通过。SSR 是渲染检查，不替代浏览器手工验收、APK 安装或真机检查。
 - 管理端 S3：typecheck 退出码 0；build 成功（71 modules，CSS 23.31 kB、JS 321.57 kB、web chunk 2.08 kB）；临时内存库配置接口 17/17；无头 Edge + CDP 检查 `#/admin/settings` 样例 7/7、真实 11/11、服务关闭失败态 6/6。浏览器与临时服务检查，不是真机或现场联调。
+- 管理端 S4：typecheck 退出码 0；build 成功（84 modules，CSS 29.65 kB、JS 349.94 kB、web chunk 2.08 kB）；CDP 23/23，含草稿编辑、requestId 重新生成、样例/真实均不发送 PUT、半径 0 校验、刷新恢复与真实订单回归。未打包、未真机。
 - 契约升为 DRAFT v0.3，管理端段已补；临时内存库已做管理查询实测（不等同真机联调）。此前提交 `f2670ef`（88 个文件）已推送 `origin/main`。2026-11-13 第七轮：合并学生分支后 `npm run typecheck` 退出码 0；`npm run build` 成功（55 modules，CSS 14.10 kB、JS 283.49 kB、web chunk 2.08 kB）；用 JDK 21 与 Android SDK 36 构建 APK 1.1 成功，`aapt2 dump badging` 确认 versionCode 2 / versionName 1.1 / targetSdk 36，包内 `capacitor.plugins.json` 含 geolocation，assets 含学生 S3 文案。APK 构建使用了工作区未提交的 `SystemCheck.tsx` 与 `AndroidManifest.xml`（cleartext）改动；已在 A024（Android 16 / API 36）通过 `adb install -r` 安装并完成学生 S3 页面真机点击验收（菜单→时段→堂食→返回保留→切日期清空），截图见 `team-context/backend/截图/apk-1.1-*.png`。长期服务、两机联调与档口页面仍未验证；管理端 S2 未打包。
