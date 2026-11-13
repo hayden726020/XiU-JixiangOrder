@@ -433,6 +433,18 @@
   cursor: not-allowed;
 }
 
+.merchant-readonly-tag {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #eef3ee;
+  color: #3f5245;
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
 .date-switch {
   display: flex;
   gap: 0.45rem;

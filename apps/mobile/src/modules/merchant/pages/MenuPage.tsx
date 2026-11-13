@@ -1,36 +1,43 @@
 import type { MenuDay, SlotDay } from '../data/types';
+import { menuDateOptions } from '../state/menuView';
 import { formatClock } from '../state/orderView';
 import { formatYuan } from '../utils/money';
 
 interface MenuPageProps {
   dates: ReadonlyArray<string>;
   date: string;
+  today: string;
   onDateChange: (date: string) => void;
   menu: MenuDay | null;
   slots: SlotDay | null;
   onBack: () => void;
 }
 
-export default function MenuPage({ dates, date, onDateChange, menu, slots, onBack }: MenuPageProps) {
+export default function MenuPage({ dates, date, today, onDateChange, menu, slots, onBack }: MenuPageProps) {
+  const dateOptions = menuDateOptions(dates, today);
+
   return (
     <div className="merchant-view">
       <button type="button" className="back-link" onClick={onBack}>← 返回订单列表</button>
       <header className="merchant-view__header">
         <div>
-          <h2>菜单与库存</h2>
-          <p className="lead">只读样例。档口读取接口在契约中缺失，第 2—3 天接入服务后才可修改。</p>
+          <h2>
+            菜单与库存
+            <span className="merchant-readonly-tag">只读样例</span>
+          </h2>
+          <p className="lead">价格与可售数量来自样例数据源，页面不写死；档口读取接口在契约中缺失，第 2—3 天接入服务后才可修改。</p>
         </div>
       </header>
 
       <div className="date-switch">
-        {dates.map((option) => (
+        {dateOptions.map((option) => (
           <button
-            key={option}
+            key={option.date}
             type="button"
-            className={option === date ? 'date-switch__button date-switch__button--active' : 'date-switch__button'}
-            onClick={() => onDateChange(option)}
+            className={option.date === date ? 'date-switch__button date-switch__button--active' : 'date-switch__button'}
+            onClick={() => onDateChange(option.date)}
           >
-            {option === '2026-11-13' ? `今天 ${option}` : `明天 ${option}`}
+            {option.label}
           </button>
         ))}
       </div>

@@ -7,6 +7,7 @@ import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
 import { actionPrompt, type OrderAction } from './state/actionMatrix';
+import { resolveMenuDate, todayIso } from './state/menuView';
 import './merchant.css';
 
 type View =
@@ -17,7 +18,8 @@ type View =
 export default function MerchantHome() {
   const [scenario, setScenario] = useState<MerchantScenario>('normal');
   const [view, setView] = useState<View>({ name: 'list' });
-  const [menuDate, setMenuDate] = useState<string>(SAMPLE_DATES[0]);
+  const today = useMemo(() => todayIso(), []);
+  const [menuDate, setMenuDate] = useState<string>(() => resolveMenuDate(SAMPLE_DATES, today));
   const [notice, setNotice] = useState<string | null>(null);
 
   const source = useMemo(() => createMerchantSource({ mode: 'sample', scenario }), [scenario]);
@@ -94,6 +96,7 @@ export default function MerchantHome() {
         <MenuPage
           dates={SAMPLE_DATES}
           date={menuDate}
+          today={today}
           onDateChange={setMenuDate}
           menu={menu}
           slots={slots}
