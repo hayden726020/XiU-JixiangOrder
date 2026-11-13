@@ -4,7 +4,7 @@
 
 用户提供的 https://github.com/hayden726020/XiU-JixiangOrder/settings/access 是访问权限设置页。对应项目主页为 https://github.com/hayden726020/XiU-JixiangOrder，Git 克隆/推送地址为 https://github.com/hayden726020/XiU-JixiangOrder.git。
 
-本轮只读查询连接成功，HEAD 查询无引用返回。未验证写权限，未初始化本地 Git、设置 origin、提交、推送或更改协作者权限。后续连接前先检查远端分支及已有内容；如果有历史，保留并在正确基线工作，不能强推覆盖。默认分支和仓库是否为空需实际检查，不由此文档猜测。
+2026-11-13 已初始化本地 Git，默认分支 main，关联 origin 并推送首个骨架提交 a4795a2fadc4；推送退出码 0，远端 refs/heads/main 与本地 HEAD 一致，写权限经本次推送验证。推送前再次查询远端仍为空仓库，未覆盖任何历史。后续仍先检查远端分支及已有内容，保留历史，不强推。默认分支现为 main；远端不再是空仓库。
 
 spcuteag负责统一仓库基础，三人分别使用 student/、merchant/、backend/ 前缀任务分支。先给出实际验证结果并发起评审，确认后合入共同主分支。接口变更同时更新契约、示例、版本和页面影响，页面适配由各自负责人完成。
 

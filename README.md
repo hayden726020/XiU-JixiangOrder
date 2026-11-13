@@ -25,7 +25,7 @@
 
 `apps/mobile` 已有 S0 最小可运行骨架：一个公共入口、模块契约、学生模块占位入口，以及已安装的依赖锁文件。类型检查、生产构建和浏览器渲染检查已通过；独立只读复核已完成，指出的公共层问题已修复。没有业务代码、后端、数据库、APK 或通过的业务测试，也没有安卓安装或真机验收结果。
 
-用户指定仓库：[hayden726020/XiU-JixiangOrder](https://github.com/hayden726020/XiU-JixiangOrder)。克隆及推送地址：https://github.com/hayden726020/XiU-JixiangOrder.git。远端在 2026-11-13 检查时为空仓库；只读连接成功不等于拥有写权限。后续连接本地仓库前先检查远端已有分支与内容，保留历史，不覆盖或强推。
+用户指定仓库：[hayden726020/XiU-JixiangOrder](https://github.com/hayden726020/XiU-JixiangOrder)。克隆及推送地址：https://github.com/hayden726020/XiU-JixiangOrder.git。远端初始为空；2026-11-13 已推送默认分支 main，首个骨架提交为 a4795a2fadc4，写权限经实际推送验证。后续修改仍先检查远端已有分支与内容，保留历史，不覆盖或强推。
 
 ## 第一阶段需要补齐
 
