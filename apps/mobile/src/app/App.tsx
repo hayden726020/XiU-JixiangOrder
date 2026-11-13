@@ -20,7 +20,7 @@ function Home() {
     <section className="home-panel" aria-labelledby="home-title">
       <h2 id="home-title">角色入口预览</h2>
       <p className="lead">
-        三个角色最终共用一个安装包。当前已接通公共入口、学生模块和管理员样例模块，不含登录、真实订单或后端；这里点击入口只用于预览，不构成角色授权。
+        三个角色最终共用一个安装包。当前已接通公共入口、学生、档口和管理员样例模块，不含登录、真实订单或后端；这里点击入口只用于预览，不构成角色授权。
       </p>
       <div className="module-grid">
         {mobileModules.map((module) => (
@@ -104,7 +104,7 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <p>当前为 S1 样例骨架：学生与管理员模块已接入，页面为样例，业务接口与服务端尚未实现。</p>
+        <p>当前为 S1 样例骨架：学生、档口与管理员模块已接入，页面为样例，业务接口与服务端尚未实现。</p>
         <p>公共层已封装登录、请求与一次性定位；服务地址未配置时明确失败，不回落样例成功。S1 页面尚未在真机复验。</p>
       </footer>
     </div>
