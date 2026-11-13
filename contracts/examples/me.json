@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "contractVersion": "DRAFT v0.2",
+    "fictional": true,
+    "implemented": false,
+    "note": "虚构示例，用于说明会话身份字段；不是实际服务返回或真实学生数据。"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/me",
+    "headers": {
+      "Authorization": "Bearer <会话令牌>"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "user": {
+          "id": "demo-user-merchant-01",
+          "displayName": "演示档口",
+          "role": "MERCHANT",
+          "merchantId": "demo-merchant-01"
+        },
+        "canteenId": "demo-canteen-01"
+      }
+    }
+  },
+  "expiredExample": {
+    "status": 401,
+    "body": {
+      "error": {
+        "code": "SESSION_EXPIRED",
+        "message": "登录已过期，请重新登录。",
+        "retryable": false
+      }
+    }
+  }
+}

@@ -7,13 +7,3 @@ export function MerchantPlaceholder() {
     </section>
   );
 }
-
-export function AdminPlaceholder() {
-  return (
-    <section className="module-panel" aria-labelledby="admin-title">
-      <p className="badge">公共占位 · 非管理业务实现</p>
-      <h2 id="admin-title">管理员入口待实现</h2>
-      <p className="lead">该入口由公共层预留，S0 不包含管理功能。</p>
-    </section>
-  );
-}
