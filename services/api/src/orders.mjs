@@ -99,6 +99,7 @@ export function serializeOrder(db, row, user) {
     cancelRequest: {
       status: row.cancel_status,
       reason: row.cancel_status === 'NONE' ? null : row.cancel_reason,
+      decisionReason: row.cancel_decision_reason ?? null,
     },
     cancellationReason: row.cancellation_reason,
     version: row.version,
@@ -164,10 +165,11 @@ function cancelOrder(db, row, { reason, now }) {
          payment_status = 'SIMULATED_REFUNDED',
          cancellation_reason = ?,
          cancel_status = CASE WHEN cancel_status = 'PENDING' THEN 'APPROVED' ELSE cancel_status END,
+         cancel_decision_reason = CASE WHEN cancel_status = 'PENDING' THEN ? ELSE cancel_decision_reason END,
          version = version + 1,
          updated_at = ?
      WHERE id = ? AND version = ?`,
-  ).run(reason ?? null, now, row.id, row.version);
+  ).run(reason ?? null, reason ?? null, now, row.id, row.version);
   return loadOrder(db, row.id);
 }
 
@@ -281,12 +283,12 @@ export function createOrder({ db, clock, user, body }) {
 }
 
 export function listStudentOrders({ db, user, query }) {
-  const status = query.get('status');
+  const status = parseStatus(query.get('status'));
   const rows = status
     ? db
-        .prepare('SELECT * FROM orders WHERE student_id = ? AND status = ? ORDER BY created_at DESC')
+        .prepare('SELECT * FROM orders WHERE student_id = ? AND status = ? ORDER BY created_at DESC, id DESC')
         .all(user.id, status)
-    : db.prepare('SELECT * FROM orders WHERE student_id = ? ORDER BY created_at DESC').all(user.id);
+    : db.prepare('SELECT * FROM orders WHERE student_id = ? ORDER BY created_at DESC, id DESC').all(user.id);
   return { status: 200, body: { data: { orders: rows.map((row) => serializeOrder(db, row, user)) } } };
 }
 
@@ -334,12 +336,12 @@ export function studentCancelOrder({ db, clock, user, params, body }) {
 }
 
 export function listMerchantOrders({ db, user, query }) {
-  const status = query.get('status');
+  const status = parseStatus(query.get('status'));
   const { page, pageSize, offset } = pageParams(query);
   const where = status ? 'AND status = ?' : '';
   const params = status ? [user.merchant_id, status] : [user.merchant_id];
   const rows = db
-    .prepare(`SELECT * FROM orders WHERE merchant_id = ? ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+    .prepare(`SELECT * FROM orders WHERE merchant_id = ? ${where} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`)
     .all(...params, pageSize, offset);
   const total = db
     .prepare(`SELECT COUNT(*) AS count FROM orders WHERE merchant_id = ? ${where}`)
@@ -405,7 +407,7 @@ export function verifyOrder({ db, clock, user, params, body }) {
       const rejectPending =
         current.cancel_status === 'PENDING'
           ? db.prepare(
-              `UPDATE orders SET cancel_status = 'REJECTED', cancel_reason = '订单已取餐'
+              `UPDATE orders SET cancel_status = 'REJECTED', cancel_decision_reason = '订单已取餐'
                WHERE id = ?`,
             )
           : null;
@@ -443,7 +445,7 @@ export function decideCancellation({ db, clock, user, params, body }) {
       }
       if (decision === 'REJECT') {
         db.prepare(
-          `UPDATE orders SET cancel_status = 'REJECTED', cancel_reason = ?, version = version + 1, updated_at = ?
+          `UPDATE orders SET cancel_status = 'REJECTED', cancel_decision_reason = ?, version = version + 1, updated_at = ?
            WHERE id = ? AND version = ?`,
         ).run(reason, now, current.id, current.version);
         return { status: 200, body: { data: serializeOrder(db, loadOrder(db, current.id), user) } };
@@ -628,11 +630,11 @@ export function updateMerchantSlot({ db, clock, user, params, body }) {
 
 export function listAdminOrders({ db, user, query }) {
   const { page, pageSize, offset } = pageParams(query);
-  const status = query.get('status');
+  const status = parseStatus(query.get('status'));
   const where = status ? 'WHERE status = ?' : '';
   const params = status ? [status] : [];
   const rows = db
-    .prepare(`SELECT * FROM orders ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+    .prepare(`SELECT * FROM orders ${where} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`)
     .all(...params, pageSize, offset);
   const total = db.prepare(`SELECT COUNT(*) AS count FROM orders ${where}`).get(...params).count;
   return {
