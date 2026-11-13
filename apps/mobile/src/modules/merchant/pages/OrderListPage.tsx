@@ -9,7 +9,11 @@ interface OrderListPageProps {
   isSample: boolean;
   loading: boolean;
   error: string | null;
+  page: number;
+  pageSize: number;
+  total: number;
   onScenarioChange: (scenario: MerchantScenario) => void;
+  onPageChange: (page: number) => void;
   onOpenOrder: (id: string) => void;
   onOpenMenu: () => void;
 }
@@ -20,11 +24,16 @@ export default function OrderListPage({
   isSample,
   loading,
   error,
+  page,
+  pageSize,
+  total,
   onScenarioChange,
+  onPageChange,
   onOpenOrder,
   onOpenMenu,
 }: OrderListPageProps) {
   const groups = groupOrders(orders);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="merchant-view">
@@ -65,7 +74,9 @@ export default function OrderListPage({
         <p className="merchant-empty">订单读取失败：{error}</p>
       ) : groups.length === 0 ? (
         <p className="merchant-empty">
-          {isSample ? '暂无订单，样例模式下可切换演示场景。' : '服务返回 0 笔订单。'}
+          {total > 0
+            ? '本页没有订单，请返回上一页。'
+            : isSample ? '暂无订单，样例模式下可切换演示场景。' : '服务返回 0 笔订单。'}
         </p>
       ) : (
         groups.map((group) => (
@@ -84,12 +95,35 @@ export default function OrderListPage({
         ))
       )}
 
-      {!loading && !error && orders.length > 0 && (
-        <p className="hint">
-          {isSample
-            ? `共 ${orders.length} 笔样例订单，其中已取消 ${orders.filter((order) => order.status === 'CANCELLED').length} 笔；已取消订单保留在列表，点击可查看取消原因与模拟退款标记。`
-            : `服务共返回 ${orders.length} 笔订单；点击查看详情。`}
-        </p>
+      {!loading && !error && total > 0 && (
+        <>
+          <p className="hint">
+            {isSample
+              ? `共 ${total} 笔样例订单，其中本页已取消 ${orders.filter((order) => order.status === 'CANCELLED').length} 笔；已取消订单保留在列表，点击可查看取消原因与模拟退款标记。`
+              : `档口共 ${total} 笔订单，本页 ${orders.length} 笔；点击查看详情。`}
+          </p>
+          <nav className="merchant-pager" aria-label="订单分页">
+            <button
+              type="button"
+              className="merchant-link-button"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page <= 1}
+            >
+              上一页
+            </button>
+            <span className="merchant-pager__status">
+              第 {page} / {totalPages} 页 · 共 {total} 笔
+            </span>
+            <button
+              type="button"
+              className="merchant-link-button"
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= totalPages}
+            >
+              下一页
+            </button>
+          </nav>
+        </>
       )}
     </div>
   );

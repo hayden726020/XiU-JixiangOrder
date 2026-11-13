@@ -20,6 +20,8 @@ import './merchant.css';
 
 type DataMode = 'sample' | 'real';
 
+const ORDERS_PAGE_SIZE = 20;
+
 type View =
   | { name: 'list' }
   | { name: 'detail'; orderId: string }
@@ -47,6 +49,8 @@ export default function MerchantHome() {
   const [actionError, setActionError] = useState<{ code: string; message: string } | null>(null);
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
+  const [orderPage, setOrderPage] = useState(1);
+  const [orderPageInfo, setOrderPageInfo] = useState({ page: 1, pageSize: ORDERS_PAGE_SIZE, total: 0 });
   const [menu, setMenu] = useState<MenuDay | null>(null);
   const [slots, setSlots] = useState<SlotDay | null>(null);
   const [ordersError, setOrdersError] = useState<string | null>(null);
@@ -101,15 +105,29 @@ export default function MerchantHome() {
     setOrders([]);
     setMenu(null);
     setSlots(null);
+    if (mode === 'real' && !merchantLoggedIn) {
+      setOrdersError('真实模式需要先登录档口演示账号，未登录不读取订单与菜单。');
+      setMenuError('真实模式需要先登录档口演示账号，未登录不读取订单与菜单。');
+      setOrderPageInfo({ page: 1, pageSize: ORDERS_PAGE_SIZE, total: 0 });
+      setLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
     void (async () => {
       const [ordersResult, menuResult, slotsResult] = await Promise.all([
-        source.getOrders(),
+        source.getOrders(orderPage, ORDERS_PAGE_SIZE),
         source.getMenu(menuDate),
         source.getSlots(menuDate),
       ]);
       if (!alive) return;
       if (ordersResult.ok) {
-        setOrders(ordersResult.data);
+        setOrders(ordersResult.data.orders);
+        setOrderPageInfo({
+          page: ordersResult.data.page,
+          pageSize: ordersResult.data.pageSize,
+          total: ordersResult.data.total,
+        });
       } else {
         setOrdersError(ordersResult.error.message);
       }
@@ -128,7 +146,7 @@ export default function MerchantHome() {
     return () => {
       alive = false;
     };
-  }, [source, menuDate, session?.user.id]);
+  }, [source, menuDate, orderPage, session?.user.id, mode, merchantLoggedIn]);
 
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
@@ -149,6 +167,7 @@ export default function MerchantHome() {
     setMode(next);
     setView({ name: 'list' });
     setNotice(null);
+    setOrderPage(1);
     const nextDates = next === 'sample' ? [...SAMPLE_DATES] : menuDatesFor(today);
     setMenuDate(resolveMenuDate(nextDates, today));
   }
@@ -158,6 +177,14 @@ export default function MerchantHome() {
     setScenario(next);
     setView({ name: 'list' });
     setNotice(null);
+    setOrderPage(1);
+  }
+
+  function changeOrderPage(next: number) {
+    if (next < 1 || next === orderPage) return;
+    clearActionState();
+    setOrderPage(next);
+    window.scrollTo(0, 0);
   }
 
   function openOrder(id: string) {
@@ -273,7 +300,11 @@ export default function MerchantHome() {
           isSample={mode === 'sample'}
           loading={loading}
           error={ordersError}
+          page={orderPageInfo.page}
+          pageSize={orderPageInfo.pageSize}
+          total={orderPageInfo.total}
           onScenarioChange={changeScenario}
+          onPageChange={changeOrderPage}
           onOpenOrder={openOrder}
           onOpenMenu={openMenu}
         />

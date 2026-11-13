@@ -192,6 +192,11 @@ export default function OrderDetailPage({
         {order.cancelRequest.reason && (
           <p className="merchant-muted">申请理由：{order.cancelRequest.reason}</p>
         )}
+        {order.cancelRequest.decisionReason && (
+          <p className="merchant-muted">
+            处理理由：{order.cancelRequest.decisionReason}
+          </p>
+        )}
         {approveAction && rejectAction && (
           <>
             <textarea
@@ -256,6 +261,9 @@ export default function OrderDetailPage({
       <section className="detail-block">
         <h3>用餐方式</h3>
         <p className="detail-emphasis">{dining.label} · {dining.description}</p>
+        {order.diningModeReason && (
+          <p className="merchant-muted">变更理由：{order.diningModeReason}</p>
+        )}
         {diningAction && (
           <>
             <button

@@ -18,6 +18,7 @@ export interface OrderItem {
 export interface CancelRequest {
   status: CancelRequestStatus;
   reason: string | null;
+  decisionReason: string | null;
 }
 
 export interface OrderDelay {
@@ -32,6 +33,7 @@ export interface MerchantOrder {
   slotStart: string;
   slotEnd: string;
   diningMode: DiningMode;
+  diningModeReason: string | null;
   totalFen: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -87,10 +89,17 @@ export type SourceResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: ApiError };
 
+export interface OrderPage {
+  orders: MerchantOrder[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export interface MerchantSource {
   mode: 'sample' | 'real';
   scenario: MerchantScenario;
-  getOrders: () => Promise<SourceResult<MerchantOrder[]>>;
+  getOrders: (page?: number, pageSize?: number) => Promise<SourceResult<OrderPage>>;
   getOrder: (id: string) => Promise<SourceResult<MerchantOrder>>;
   getMenu: (date: string) => Promise<SourceResult<MenuDay>>;
   getSlots: (date: string) => Promise<SourceResult<SlotDay>>;

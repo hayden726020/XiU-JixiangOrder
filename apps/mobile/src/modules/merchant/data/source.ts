@@ -1,7 +1,15 @@
 import { ApiError, apiRequest } from '../../../shared/apiClient';
 import { getSession } from '../../../shared/session';
 import { sampleMenu, sampleOrders, sampleSlots } from './sampleData';
-import type { MenuDay, MerchantOrder, MerchantScenario, MerchantSource, SlotDay, SourceResult } from './types';
+import type {
+  MenuDay,
+  MerchantOrder,
+  MerchantScenario,
+  MerchantSource,
+  OrderPage,
+  SlotDay,
+  SourceResult,
+} from './types';
 
 interface ApiDish {
   id: string;
@@ -29,12 +37,49 @@ interface ApiMenu {
   dishes: ApiDish[];
 }
 
+interface ApiOrderItem {
+  dishId: string;
+  name: string;
+  quantity: number;
+  unitPriceFen: number;
+}
+
+interface ApiCancelRequest {
+  status: MerchantOrder['cancelRequest']['status'];
+  reason: string | null;
+  decisionReason?: string | null;
+}
+
+interface ApiOrder {
+  id: string;
+  items: ApiOrderItem[];
+  slotId: string;
+  slotStart: string;
+  slotEnd: string;
+  diningMode: MerchantOrder['diningMode'];
+  diningModeReason?: string | null;
+  totalFen: number;
+  status: MerchantOrder['status'];
+  paymentStatus: MerchantOrder['paymentStatus'];
+  cancelRequest: ApiCancelRequest;
+  cancellationReason: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  pickedUpAt: string | null;
+  delay: MerchantOrder['delay'];
+  pickupCode: string | null;
+}
+
 interface ApiMerchantOrders {
-  orders: MerchantOrder[];
+  orders: ApiOrder[];
   page: number;
   pageSize: number;
   total: number;
 }
+
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
 
 function fail<T>(code: string, message: string, retryable = false): SourceResult<T> {
   return { ok: false, error: { code, message, retryable } };
@@ -45,6 +90,15 @@ function toFailure<T>(error: unknown): SourceResult<T> {
     return fail(error.code, error.message, error.retryable);
   }
   return fail('UNKNOWN_ERROR', '读取真实数据失败，请稍后重试。');
+}
+
+function normalizePage(page?: number): number {
+  return Number.isFinite(page) && page && page > 0 ? Math.trunc(page) : 1;
+}
+
+function normalizePageSize(pageSize?: number): number {
+  if (!Number.isFinite(pageSize) || !pageSize || pageSize <= 0) return DEFAULT_PAGE_SIZE;
+  return Math.min(MAX_PAGE_SIZE, Math.trunc(pageSize));
 }
 
 function mapMenu(payload: ApiMenu, merchantId: string): SourceResult<MenuDay> {
@@ -80,8 +134,41 @@ function mapSlots(payload: ApiMenu): SourceResult<SlotDay> {
   return { ok: true, data: { date: payload.date, demo: false, slots } };
 }
 
-function mapOrder(order: MerchantOrder): MerchantOrder {
-  return { ...order, demo: false };
+function mapOrder(order: ApiOrder): MerchantOrder {
+  return {
+    id: order.id,
+    items: Array.isArray(order.items)
+      ? order.items.map((item) => ({
+        dishId: item.dishId,
+        name: item.name,
+        quantity: item.quantity,
+        unitPriceFen: item.unitPriceFen,
+      }))
+      : [],
+    slotId: order.slotId,
+    slotStart: order.slotStart,
+    slotEnd: order.slotEnd,
+    diningMode: order.diningMode,
+    diningModeReason: order.diningModeReason ?? null,
+    totalFen: order.totalFen,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    cancelRequest: {
+      status: order.cancelRequest?.status ?? 'NONE',
+      reason: order.cancelRequest?.reason ?? null,
+      decisionReason: order.cancelRequest?.decisionReason ?? null,
+    },
+    cancellationReason: order.cancellationReason ?? null,
+    version: order.version,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    pickedUpAt: order.pickedUpAt ?? null,
+    delay: order.delay
+      ? { reason: order.delay.reason, expectedReadyAt: order.delay.expectedReadyAt }
+      : null,
+    pickupCode: order.pickupCode ?? null,
+    demo: false,
+  };
 }
 
 function createRealSource(scenario: MerchantScenario): MerchantSource {
@@ -107,20 +194,40 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
   return {
     mode: 'real',
     scenario,
-    getOrders: async () => {
+    getOrders: async (pageInput?: number, pageSizeInput?: number) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取订单。');
+      }
+      const page = normalizePage(pageInput);
+      const pageSize = normalizePageSize(pageSizeInput);
       try {
-        const data = await apiRequest<ApiMerchantOrders>('/merchant/orders?page=1&pageSize=100');
+        const data = await apiRequest<ApiMerchantOrders>(
+          `/merchant/orders?page=${page}&pageSize=${pageSize}`,
+        );
         if (!Array.isArray(data.orders)) {
           return fail('INVALID_RESPONSE', '档口订单响应缺少 orders。');
         }
-        return { ok: true, data: data.orders.map(mapOrder) };
+        const orders = data.orders.map(mapOrder);
+        return {
+          ok: true,
+          data: {
+            orders,
+            page: Number.isFinite(data.page) && data.page > 0 ? data.page : page,
+            pageSize: Number.isFinite(data.pageSize) && data.pageSize > 0
+              ? data.pageSize
+              : pageSize,
+            total: Number.isFinite(data.total) && data.total >= 0
+              ? data.total
+              : orders.length,
+          },
+        };
       } catch (error) {
         return toFailure(error);
       }
     },
     getOrder: async (id: string) => {
       try {
-        const data = await apiRequest<MerchantOrder>(`/orders/${encodeURIComponent(id)}`);
+        const data = await apiRequest<ApiOrder>(`/orders/${encodeURIComponent(id)}`);
         if (typeof data.id !== 'string') {
           return fail('INVALID_RESPONSE', '订单响应缺少 id。');
         }
@@ -163,7 +270,20 @@ export function createMerchantSource(options: {
   return {
     mode: 'sample',
     scenario,
-    getOrders: async (): Promise<SourceResult<MerchantOrder[]>> => ({ ok: true, data: structuredClone(orders) }),
+    getOrders: async (pageInput?: number, pageSizeInput?: number): Promise<SourceResult<OrderPage>> => {
+      const page = normalizePage(pageInput);
+      const pageSize = normalizePageSize(pageSizeInput);
+      const offset = (page - 1) * pageSize;
+      return {
+        ok: true,
+        data: {
+          orders: structuredClone(orders.slice(offset, offset + pageSize)),
+          page,
+          pageSize,
+          total: orders.length,
+        },
+      };
+    },
     getOrder: async (id: string): Promise<SourceResult<MerchantOrder>> => {
       const found = orders.find((order) => order.id === id);
       if (!found) return fail('ORDER_NOT_FOUND', '订单不存在或对当前身份不可见。');

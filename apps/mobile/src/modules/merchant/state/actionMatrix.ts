@@ -18,7 +18,7 @@ export interface ActionInput {
   reason?: string;
 }
 
-const ORDER_PATH = '/api/v1/merchant/orders/{id}';
+const ORDER_PATH = '/merchant/orders/{id}';
 
 const ACTIONS: Record<string, OrderAction> = {
   ACCEPT: {

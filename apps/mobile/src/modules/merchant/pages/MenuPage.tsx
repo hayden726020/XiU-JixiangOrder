@@ -43,8 +43,8 @@ export default function MenuPage({
           </h2>
           <p className="lead">
             {isSample
-              ? '价格与可售数量来自样例数据源，页面不写死；档口修改接口尚未接入。'
-              : '价格与可售数量来自 GET /menu；当前只读，档口修改接口尚未接入。'}
+              ? '价格与可售数量来自样例数据源，页面不写死；档口写操作尚未接入。'
+              : '价格与可售数量来自 GET /menu（契约 v0.3 已冻结）；档口端尚未接入 PUT /merchant/menu/{dishId} 与 PUT /merchant/slots/{slotId} 写操作。'}
           </p>
         </div>
       </header>
@@ -85,7 +85,7 @@ export default function MenuPage({
               ))}
             </ul>
             <button type="button" className="action-button action-button--secondary" disabled>
-              接入档口修改接口后可修改
+              写操作尚未接入（契约已定义 PUT /merchant/menu/{'{dishId}'}）
             </button>
           </section>
 

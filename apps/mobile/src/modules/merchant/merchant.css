@@ -584,6 +584,23 @@
   vertical-align: middle;
 }
 
+.merchant-pager {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.merchant-pager__status {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.merchant-pager .merchant-link-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .date-switch {
   display: flex;
   gap: 0.45rem;
