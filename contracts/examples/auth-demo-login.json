@@ -1,0 +1,48 @@
+{
+  "_meta": {
+    "contractVersion": "DRAFT v0.2",
+    "fictional": true,
+    "implemented": false,
+    "note": "虚构示例，不含真实账号、密码或可用令牌；不是实际服务返回。"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/demo-login",
+    "body": {
+      "account": "demo-student",
+      "password": "<由 spcuteag 线下交付，不写入示例>"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "token": "demo-token-not-real",
+        "tokenType": "Bearer",
+        "expiresAt": "2026-11-13T20:00:00+08:00",
+        "user": {
+          "id": "demo-user-student-01",
+          "displayName": "演示学生",
+          "role": "STUDENT",
+          "studentId": "demo-student-01"
+        }
+      }
+    }
+  },
+  "otherAllowedRoles": [
+    "MERCHANT",
+    "ADMIN"
+  ],
+  "rejectedExamples": [
+    {
+      "status": 401,
+      "body": {
+        "error": {
+          "code": "UNAUTHENTICATED",
+          "message": "账号或密码不正确。",
+          "retryable": false
+        }
+      }
+    }
+  ]
+}

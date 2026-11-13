@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "contractVersion": "DRAFT v0.2",
+    "fictional": true,
+    "implemented": false,
+    "note": "虚构的食堂范围配置示例。中心点与半径仅为演示值，未经过食堂现场测量。"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/dining/config"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "canteenId": "demo-canteen-01",
+        "name": "演示食堂",
+        "center": {
+          "latitude": 30.000000,
+          "longitude": 120.000000
+        },
+        "radiusMeters": 150,
+        "accuracyToleranceMeters": 60,
+        "updatedAt": "2026-11-13T10:00:00+08:00",
+        "demo": true
+      }
+    }
+  },
+  "clientRules": [
+    "配置由服务端下发，学生端与档口端不得自行改动半径或误差阈值",
+    "判断在设备内完成，只上报 INSIDE / OUTSIDE / UNKNOWN",
+    "精度大于 accuracyToleranceMeters 或计算处于边界不确定区时返回 UNKNOWN",
+    "配置获取失败时显示无法判断，不回落为 INSIDE 或 OUTSIDE"
+  ]
+}

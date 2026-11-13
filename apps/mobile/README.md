@@ -2,14 +2,15 @@
 
 这里是三个角色共用的唯一移动应用。学生、档口、管理模块位于 `src/modules/`，公共入口与模块注册位于 `src/app/`，公共样式位于 `src/shared/`。
 
-当前为 **S0 统一应用骨架**：只有一个可运行的网页应用和可打开的学生模块入口，不含登录、菜单、订单、后端请求或模拟账号，尚未生成 APK，也不代表安卓真机验收通过。
+当前为 **S1 样例骨架**：网页应用可打开学生与管理员样例模块；公共层已有演示登录、请求封装与一次性定位，但没有可用服务端、真实菜单/订单或模拟账号。含定位插件的 7.6 MB debug APK 已在 A024 安装，完成定位授权/拒绝与管理端 S1 页面真机复验；真实服务未接入。
 
 ## 技术栈（实际安装版本）
 
 - React 19.3.1 + React DOM 19.3.1
 - Vite 8.3.8 + `@vitejs/plugin-react` 6.3.0
 - TypeScript 7.0.2
-- Capacitor 8.6.2（`@capacitor/core`、`@capacitor/android` 为运行时依赖，`@capacitor/cli` 为开发依赖；`android/` 尚未生成）
+- Capacitor 8.6.2（`@capacitor/core`、`@capacitor/android` 为运行时依赖，`@capacitor/cli` 为开发依赖；`android/` 已生成）
+- `@capacitor/geolocation` 8.2.4（Android 一次性定位；权限在 AndroidManifest 中声明为 ACCESS_COARSE_LOCATION / ACCESS_FINE_LOCATION）
 
 Node 要求 **>=22.12.0**（已写入 `package.json` 的 `engines`，由 Vite 8 与 Capacitor CLI 8 的实际要求确定）。框架、依赖、锁文件、公共入口和安卓打包配置由 spcuteag 维护。模块负责人不另建项目、不改公共依赖。
 
@@ -32,13 +33,14 @@ npm run preview      # 预览生产构建，默认 http://127.0.0.1:4173/
 ## 入口与点击路径
 
 1. 打开 `http://127.0.0.1:5173/`。
-2. 首页显示“角色入口预览”，点击“学生”卡片。
-3. 地址变为 `#/student`，显示学生模块占位页。
-4. 点击“← 返回角色入口”回到首页。
+2. 首页显示“角色入口预览”与学生、档口、管理员三张卡片。
+3. 点击“学生”进入 `#/student`；点击“管理员”进入 `#/admin`，管理页内部使用 `#/admin/orders`、`#/admin/settings`。档口仍显示公共占位。
+4. 首页“公共能力自检”进入 `#/system-check`，用于检查服务地址、演示登录与一次性定位；该页不代表角色授权。
+5. 点击“← 返回角色入口”回到首页。
 
-直接打开 `http://127.0.0.1:5173/#/student` 也可进入学生模块。
+直接打开 `http://127.0.0.1:5173/#/student`、`#/admin` 或 `#/system-check` 也可进入对应页面。
 
-S0 没有登录：入口预览不代表角色授权，后续由公共服务端账号与权限决定可进入的模块。
+S1 没有真实登录授权：入口预览不代表角色授权，后续由公共服务端账号与权限决定可进入的模块。
 
 ## 学生模块接入方式
 
@@ -59,21 +61,28 @@ S0 没有登录：入口预览不代表角色授权，后续由公共服务端�
 
 - `npm run typecheck`：通过（退出码 0）。
 - `npm run build`：通过，产出 `dist/`。
-- `npm run preview`：HTTP 200；用无头 Edge 检查首页与 `#/student`，实际渲染出角色入口和学生占位页。
+- `npm run preview`：首页、JS、CSS 均 HTTP 200。
+- 管理员 S1 样例页另用 Vite SSR 渲染 `#/admin`、`#/admin/orders`、`#/admin/settings` 三个入口，14 项断言全部通过（样例横幅、4 笔订单、金额、状态、异常标记、不含取餐码）；这是渲染检查，不是浏览器手工验收。
 - 已推送默认分支 `main`，首个骨架提交 `a4795a2fadc4`；克隆地址见仓库根 README。
-- 以上均为浏览器检查，不是 APK 构建、安卓安装或真机验收。
-- 后端、测试服务地址、登录与角色权限均未接入。
+- debug APK 已于同日构建，旧包（4.1 MB，无定位插件）在 A024（Android 16 / API 36）真机安装并验证首页与角色入口；该包早于管理端 S1。
+- 公共层自检页 `#/system-check` 已用无头 Edge + CDP 实际点击检查：未配置服务时读取范围配置返回 NOT_FOUND 且无成功文案，演示登录失败后仍为“未登录”。这是浏览器检查。
+- 含 `@capacitor/geolocation` 与定位权限的新包（7.6 MB）已在 A024 安装。授权路径：系统弹窗选“使用应用时”后 FINE/COARSE 均 granted；无服务端配置时使用演示范围（半径 150 米、误差容忍 60 米），设备判断为“范围外 · 判断完成 · 演示范围”。拒绝路径：撤销权限后重试选“不允许”，结果为“无法判断 · 定位权限被拒绝”，页面仍可用。
+- 管理端 S1 已在同一 APK 真机复验：概览显示 4 笔样例订单、1 待处理取消、1 已延迟；订单与异常页渲染 4 笔，不显示取餐码。
+- 两机联调、真实登录成功、位置上报与真实食堂边界校准均未执行。
+- 后端、测试服务地址、登录与角色权限均未接入真实服务。
 
-## 安卓打包（尚未执行）
+## 安卓打包（已实际执行）
 
-Capacitor 已配置 `appId=com.xiujixiang.order`、`appName=吉祥点餐`、`webDir=dist`。`android/` 需要由工具生成，不能手工伪造空工程，也尚未在本机执行或验证：
+Capacitor 已配置 `appId=com.xiujixiang.order`、`appName=吉祥点餐`、`webDir=dist`。`android/` 已由 `npx cap add android` 生成（minSdk 24，compileSdk/targetSdk 36）。
+
+构建要求 **JDK 21**（Capacitor 8.6.2 的 Java 源发行版为 21，JDK 17 会报“无效的源发行版：21”）、Android SDK 36 与可用 Gradle。需设置 `JAVA_HOME` 指向 JDK 21、`ANDROID_HOME` 指向 Android SDK；工程路径应避免中文和空格。
 
 ```bash
 npm run build
-npx cap add android
+npx cap add android     # 仅在 android/ 不存在时执行
 npx cap sync android
 cd android
-./gradlew assembleDebug
+./gradlew assembleDebug # Windows 使用 gradlew.bat
 ```
 
-生成与构建需要可用的 JDK（建议 17）、Android SDK 和 Gradle 环境；工程路径应避免中文和空格。`appId` 也需在正式发布前由项目方确认。在这些命令实际执行并生成可安装 APK 之前，不得声称已有 APK 或安卓验收结果。
+产物为 `android/app/build/outputs/apk/debug/app-debug.apk`（debug 签名，`*.apk` 被 .gitignore 忽略）。2026-11-13 实际构建结果：BUILD SUCCESSFUL，aapt 校验 package=`com.xiujixiang.order`、versionCode=1、versionName=1.0、label=吉祥点餐。19:35 首包（4.1 MB）已在 A024（Android 16 / API 36）安装并验证入口；20:02 含 `@capacitor/geolocation` 8.2.4 与定位权限的新包（7.6 MB）于 20:22 安装成功，完成自检页定位授权/拒绝与管理端 S1 页面真机检查。未做真实登录、位置上报、两机联调或现场食堂边界校准；构建通过不等于业务验收。AndroidManifest 已声明 `ACCESS_COARSE_LOCATION` 与 `ACCESS_FINE_LOCATION`。

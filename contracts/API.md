@@ -1,13 +1,29 @@
 # 三端接口草案
 
-DRAFT v0.1，待三人确认，尚未实现。以下是本轮准备的建议约定，不能作为已有后端证据。统一前缀 /api/v1；具体技术、身份登录方式、地址和命令由 spcuteag 在第一阶段补齐。
+DRAFT v0.2，待三人确认，尚未实现。以下是本轮准备的建议约定，不能作为已有后端证据。统一前缀 /api/v1；具体技术、身份登录方式、地址和命令由 spcuteag 在第一阶段补齐。v0.2 在 v0.1 上补充演示登录/会话与食堂范围配置，均为待确认草案。
 
 ## 基础格式
 
 成功响应为 { "data": ... }，错误为 { "error": { "code": "...", "message": "...", "retryable": false } }。金额为整数分，日期按 Asia/Shanghai，时间戳带 +08:00 或明确的时区。所有 ID 都是不透明字符串。
 
 用餐方式 diningMode = DINE_IN（堂食）或 TAKEAWAY（外带），下单必填。
-用户身份由服务端认证上下文获得，禁止客户端传 userId/role 来决定权限。具体演示登录/会话方案是正式确认前的必补项，示例不包含密码或令牌。后端不接受前端指定总价。
+用户身份由服务端认证上下文获得，禁止客户端传 userId/role 来决定权限。具体演示登录/会话方案见下节，示例不包含真实密码或令牌。后端不接受前端指定总价。
+
+## 演示登录与会话
+
+本轮不接真实学生认证。演示账号由 spcuteag 线下分配，密码不写入仓库、示例、日志或 team-context。账号能进入哪个角色由服务端账号数据决定，客户端角色按钮只选择要登录的演示账号，不直接赋权。
+
+| 方法与路径 | 请求 | 成功响应 |
+| --- | --- | --- |
+| POST /auth/demo-login | { "account": "...", "password": "..." } | 200 { "data": { "token": "...", "tokenType": "Bearer", "expiresAt": "...", "user": { "id": "...", "displayName": "...", "role": "STUDENT" } } } |
+| GET /me | 无 | 200 { "data": { "user": { ... }, "canteenId": "..." } } |
+| POST /auth/logout | 无 | 204 |
+
+- role 仅允许 STUDENT、MERCHANT、ADMIN；档口账号另含 merchantId，学生账号另含 studentId（均为不透明字符串）。
+- 客户端此后请求带 Authorization: Bearer <token>；令牌只保存在内存或必要的短期存储中，不写日志、不进 URL、不出现在错误截图。
+- 服务端逐请求校验会话、角色及对象归属；客户端隐藏入口不构成权限控制。
+- 会话过期返回 401 SESSION_EXPIRED；未登录或令牌无效返回 401 UNAUTHENTICATED；两者都引导重新登录，不泄露账号是否存在。
+- 示例见 auth-demo-login.json 与 me.json，均为虚构数据。
 
 修改请求带 requestId；同一身份、同一操作、同一 requestId 重试返回首次结果，同键不同内容返回 REQUEST_CONFLICT。requestId 去重不能只在进程内保存。已有订单操作另带 expectedVersion，匹配后原子更新并递增 version；版本冲突返回 ORDER_VERSION_CONFLICT，页面刷新再确认。完全相同的重试先识别原操作，不因首次成功已增加 version 而错误再次执行。
 
@@ -30,10 +46,13 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。
 
 ## 操作清单
 
-以下未展开的分页、会话和配置详情，由 spcuteag 在第一阶段补齐并与三人确认后正式冻结，不由各前端自行猜测。
+以下已给出 v0.2 草案的路径与主要字段；菜单、配置、列表的完整响应结构与分页仍待三人确认后冻结，不由各前端自行猜测。
 
 | 方法与路径 | 输入或用途 | 主要输出与限制 |
 | --- | --- | --- |
+| POST /auth/demo-login | account, password | 服务端签发会话令牌并返回服务端认定的角色；见上节 |
+| GET /me | 当前会话身份 | 返回 user 与 canteenId；仅本人信息 |
+| POST /auth/logout | 无 | 204；删除服务端会话，不删除订单 |
 | GET /menu?date=YYYY-MM-DD | 今天或明天菜单及时段 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选 |
 | POST /orders | requestId, items[{dishId,quantity}], slotId, diningMode | 服务端计价并模拟付款后的订单；字段例子见 create-order.json |
 | GET /orders | 学生自己的订单列表 | 不返回其他学生订单 |
@@ -48,7 +67,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。
 | PATCH /merchant/orders/{id}/dining-mode | requestId, expectedVersion, diningMode, reason | 档口确认后更改未结束订单，三端及统计更新 |
 | PUT /merchant/menu/{dishId} | requestId, expectedVersion, priceFen, availableQuantity, onSale | 校验非负价格/数量和档口归属；不修改历史订单价格 |
 | PUT /merchant/slots/{slotId} | requestId, expectedVersion, capacity, enabled | 容量不得低于已占用量；不静默取消既有订单 |
-| GET /dining/config | 当前公开的食堂范围配置 | canteenId、中心点和范围半径、误差容忍条件；这是食堂位置，不是学生位置 |
+| GET /dining/config | 当前公开的食堂范围配置 | { canteenId, name, center{latitude,longitude}, radiusMeters, accuracyToleranceMeters, updatedAt, demo }；这是食堂边界，不是学生位置 |
 | PUT /me/location | requestId, presence=INSIDE/OUTSIDE/UNKNOWN | 按会话身份保存判断，返回服务端 observedAt 和 expiresAt；拒绝多余坐标字段 |
 | DELETE /me/location | 清除本人位置判断 | 重复删除仍成功，不删除订单、不阻碍继续下单 |
 | GET /crowd?slotId=... | 所选预约时段的堂食参考 | 见 crowd-reference.json；未来时段不返回当前参考 |
@@ -83,7 +102,8 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 | HTTP | code | 页面行为 |
 | --- | --- | --- |
 | 400 | VALIDATION_ERROR / INVALID_LOCATION_PAYLOAD | 说明输入问题；不记录含坐标的原始请求 |
-| 401 | UNAUTHENTICATED | 引导重新进入演示身份，不泄露其他账号 |
+| 401 | UNAUTHENTICATED | 引导重新登录，不泄露其他账号 |
+| 401 | SESSION_EXPIRED | 提示会话过期并重新登录，不重复提交原写操作 |
 | 403 | FORBIDDEN | 拒绝越权操作 |
 | 404 | ORDER_NOT_FOUND | 订单不存在或对当前身份不可见 |
 | 409 | OUT_OF_STOCK / SLOT_FULL / SLOT_CLOSED | 刷新可售信息，保留学生选择供调整 |
@@ -96,8 +116,8 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 
 ## 正式确认前仍需补齐
 
-实际技术与认证/会话流程、菜单/配置/列表的完整响应结构和分页、范围及精度参数、提醒条件与样本充足标准、取消规则的对外文案、联调环境与实际测试命令。它们是 spcuteag 第一天的交付项，不能为了让前端开工假装已有正式接口。
+v0.2 已补演示登录/会话与食堂范围配置建议；仍需补齐菜单/配置/列表的完整响应结构和分页、范围与精度参数的实际取值、提醒条件与样本充足标准、取消规则的对外文案、联调环境与实际测试命令、服务端数据存储与部署方式。它们是 spcuteag 的交付项，不能为了让前端开工假装已有正式接口。
 
 ## 单 APK 客户端补充
 
-客户端统一为 apps/mobile 中三个角色模块，接口仍由独立 services/api 提供，不能把服务端放进 APK。公共会话与角色入口由 spcuteag维护，服务器逐请求验证角色和对象归属；客户端切换入口不改变授权。Android 一次性定位通过公共适配实现，模块只使用范围结果，仍遵守不上传坐标、短时失效和用户可删除的约定。此架构补充不改变 DRAFT v0.1 的待确认状态，演示登录/会话的具体请求响应仍须在第一阶段确定。
+客户端统一为 apps/mobile 中三个角色模块，接口仍由独立 services/api 提供，不能把服务端放进 APK。公共会话与角色入口由 spcuteag维护，服务器逐请求验证角色和对象归属；客户端切换入口不改变授权。Android 一次性定位通过公共适配实现，模块只使用范围结果，仍遵守不上传坐标、短时失效和用户可删除的约定。此架构补充不改变 DRAFT v0.2 的待确认状态，演示登录/会话仍须三人确认后生效。

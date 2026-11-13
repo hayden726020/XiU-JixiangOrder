@@ -242,3 +242,138 @@ code {
   font-size: 0.78rem;
   line-height: 1.6;
 }
+.check-entry {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px dashed var(--green-700);
+  border-radius: 0.8rem;
+  background: #f7fbf7;
+  color: var(--green-900);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.check-entry:hover,
+.check-entry:focus-visible {
+  background: var(--green-100);
+  outline: none;
+}
+
+.check-block {
+  margin-top: 1.2rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--surface);
+}
+
+.check-block h3 {
+  margin: 0 0 0.7rem;
+  font-size: 0.98rem;
+}
+
+.check-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.check-list > div {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: #fafcf9;
+}
+
+.check-list dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.check-list dd {
+  margin: 0;
+  font-size: 0.87rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.check-form {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.check-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.check-field span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.check-field input {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  font: inherit;
+  color: var(--ink);
+}
+
+.check-field input:focus {
+  border-color: var(--green-700);
+  outline: none;
+}
+
+.check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.check-form .check-action {
+  justify-self: start;
+}
+
+.check-action {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--green-700);
+  border-radius: 0.6rem;
+  background: var(--green-100);
+  color: var(--green-900);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.check-action:hover:not(:disabled),
+.check-action:focus-visible:not(:disabled) {
+  background: #bbf7d0;
+  outline: none;
+}
+
+.check-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.check-ok,
+.check-error {
+  margin: 0.8rem 0 0;
+  padding: 0.7rem 0.8rem;
+  border-left: 3px solid var(--green-700);
+  background: #f4fbf5;
+  color: var(--green-900);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.check-error {
+  border-left-color: #b91c1c;
+  background: #fef2f2;
+  color: #7f1d1d;
+}

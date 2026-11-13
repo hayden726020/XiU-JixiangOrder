@@ -2,13 +2,13 @@
 
 交付一个安卓安装包，内含学生、档口、管理三个角色。三个角色使用同一订单服务；登录身份决定可进入的功能，不能靠随意选择角色获得管理权限。完整方案见 [.planning/PROJECT.md](.planning/PROJECT.md)。
 
-已决定使用网页技术制作统一界面，通过 Capacitor 打包为安卓应用。统一移动应用位于 `apps/mobile`，当前技术栈为 React 19.3.1 + Vite 8.3.8 + TypeScript 7.0.2，要求 Node >=22.12.0；Capacitor 8.6.2 依赖已安装但 `android/` 尚未生成。网页只供开发检查与备用展示，本轮不另做微信小程序。
+已决定使用网页技术制作统一界面，通过 Capacitor 打包为安卓应用。统一移动应用位于 `apps/mobile`，当前技术栈为 React 19.3.1 + Vite 8.3.8 + TypeScript 7.0.2，要求 Node >=22.12.0；Capacitor 8.6.2 与 `@capacitor/geolocation` 8.2.4 已安装，`android/` 已由工具生成并成功构建 debug APK；7.6 MB 新包已在 A024 真机安装，完成定位授权/拒绝与管理端 S1 页面复验，但没有真实接口或登录联调。网页只供开发检查与备用展示，本轮不另做微信小程序。
 
 ## 开发入口
 
-先读 [共同规则](AGENTS.md)、[共同阶段](.planning/ROADMAP.md)、[状态](.planning/STATE.md)，再读 [移动项目规则](apps/mobile/AGENTS.md) 和本人模块规则。接口仍为 [DRAFT v0.1](contracts/README.md)，不得把示例当作真实服务。
+先读 [共同规则](AGENTS.md)、[共同阶段](.planning/ROADMAP.md)、[状态](.planning/STATE.md)，再读 [移动项目规则](apps/mobile/AGENTS.md) 和本人模块规则。接口仍为 [DRAFT v0.2](contracts/README.md)，不得把示例当作真实服务。
 
-移动应用启动方式见 [apps/mobile/README.md](apps/mobile/README.md)。在 `apps/mobile` 下执行 `npm ci`、`npm run dev`，打开 `http://127.0.0.1:5173/`；学生模块入口为 `#/student`。入口选择在 S0 仅用于预览，不代表角色授权。
+移动应用启动方式见 [apps/mobile/README.md](apps/mobile/README.md)。在 `apps/mobile` 下执行 `npm ci`、`npm run dev`，打开 `http://127.0.0.1:5173/`；学生模块入口为 `#/student`，管理员样例入口为 `#/admin`，公共自检入口为 `#/system-check`。入口选择仅用于预览，不代表角色授权。
 
 ## 目录
 
@@ -17,13 +17,13 @@
 - apps/mobile/src/modules/admin：spcuteag的简单管理模块。
 - apps/mobile/src/app：spcuteag维护的登录、角色入口和页面切换。
 - apps/mobile/src/shared：spcuteag维护的公共样式、请求、定位等共用方法。
-- apps/mobile/android：将由 Capacitor 工具初始化生成；当前未创建。
+- apps/mobile/android：已由 Capacitor 生成（minSdk 24、compileSdk/targetSdk 36）并纳入 Git；`build/`、`local.properties`、`*.apk` 与 Web 构建资源被忽略。
 - services/api：独立公共服务，由 spcuteag 维护。
 - contracts：共同接口与示例，由 spcuteag 协调三人确认。
 
 ## 当前事实与仓库
 
-`apps/mobile` 已有 S0 最小可运行骨架：一个公共入口、模块契约、学生模块占位入口，以及已安装的依赖锁文件。类型检查、生产构建和浏览器渲染检查已通过；独立只读复核已完成，指出的公共层问题已修复。没有业务代码、后端、数据库、APK 或通过的业务测试，也没有安卓安装或真机验收结果。
+`apps/mobile` 已有 S1 样例骨架：公共入口、模块契约、学生样例入口、管理员样例模块、公共登录/请求/定位封装，以及已安装的依赖锁文件。类型检查与生产构建通过；管理员页面为只读样例，没有真实接口。当前没有后端、数据库或联调结果；7.6 MB debug APK 已在 A024 真机安装，定位授权/拒绝与管理端 S1 页面已复验，真实登录与位置上报仍需服务端。
 
 用户指定仓库：[hayden726020/XiU-JixiangOrder](https://github.com/hayden726020/XiU-JixiangOrder)。克隆及推送地址：https://github.com/hayden726020/XiU-JixiangOrder.git。远端初始为空；2026-11-13 已推送默认分支 main，首个骨架提交为 a4795a2fadc4，写权限经实际推送验证。后续修改仍先检查远端已有分支与内容，保留历史，不覆盖或强推。
 

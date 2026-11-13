@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">吉祥点餐</string>
+    <string name="title_activity_main">吉祥点餐</string>
+    <string name="package_name">com.xiujixiang.order</string>
+    <string name="custom_url_scheme">com.xiujixiang.order</string>
+</resources>

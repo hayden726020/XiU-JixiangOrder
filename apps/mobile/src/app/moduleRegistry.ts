@@ -1,6 +1,7 @@
 import type { MobileModule } from './moduleContract';
 import { studentModule } from '../modules/student';
-import { AdminPlaceholder, MerchantPlaceholder } from './placeholders';
+import { adminModule } from '../modules/admin';
+import { MerchantPlaceholder } from './placeholders';
 
 export const mobileModules: MobileModule[] = [
   studentModule,
@@ -12,12 +13,5 @@ export const mobileModules: MobileModule[] = [
     status: 'pending',
     Component: MerchantPlaceholder,
   },
-  {
-    id: 'admin',
-    title: '管理员',
-    subtitle: '档口与参考规则配置（待公共实现）',
-    route: '/admin',
-    status: 'pending',
-    Component: AdminPlaceholder,
-  },
+  adminModule,
 ];
