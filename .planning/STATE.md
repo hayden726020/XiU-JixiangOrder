@@ -1,8 +1,12 @@
 # 公共开发状态
 
-更新日期：2026-11-13。方案版本：APK-v1。维护人：spcuteag。
+更新日期：2026-11-13。方案版本：APK-v2。维护人：spcuteag。
 
 ## 本轮已完成
+
+- 学生端 S1—S3 已由魈嘶推送 `student/s0-baseline @ 454553e`；本机核对改动仅限 `apps/mobile/src/modules/student/`，与 main 合并无冲突，合并提交 `32519ed`（本地，未推送）。
+- 契约 DRAFT v0.2 增补客户端接入口径：首版每天 3 个时段（档口 2026-11-13 冻结）、样例开关由模块 data source 决定、模块必须复用 shared 的 ApiError 与 requestId。
+- 重打 debug APK：versionCode 2 / versionName 1.1，含学生 S1—S3 页面与 geolocation 插件；4,915,302 字节，SHA-256 `7111a8430f0a05c7fe22c24c2d5b86db496fc83b782dc7b52779023cc0906f97`。本机无连接设备，未做安装验收。
 
 - 用户确认一个 APK，学生、档口和管理三个模块共用后台。
 - 新代码位置为 apps/mobile/src/modules/student、merchant、admin；公共 src/app、src/shared 与 APK 工程由 spcuteag 维护。
@@ -19,9 +23,9 @@
 
 ## 当前尚未完成
 
-- 学生、档口业务代码仍未实现；管理端 S1 只读样例已在真机复验，但仍无真实接口、权限、筛选与详情、配置保存；管理员入口尚未按会话角色限制。
+- 学生 S1—S3 已实现并在本地 main 完成合并，但尚未推送、未做合并后真机验收；S4—S6 未做。档口 S1 在 `backend/merchant-s1-registration`，未合入 main。管理端 S1 只读样例已在真机复验，但仍无真实接口、权限、筛选与详情、配置保存；管理员入口尚未按会话角色限制。
 - android/ 已生成；4.1 MB 旧包与 7.6 MB 新包均已在 A024（Android 16 / API 36）安装。新包完成自检页定位授权/拒绝检查与管理端 S1 概览、订单页复验；未做两机联调、真实服务联调或现场食堂边界校准。
-- 学生端尚未在自己电脑克隆并验证；S0 不能记为通过。
+- 学生端已在自己电脑完成克隆与 S0 验证，S1—S3 已提交并推送；S4 起的公共接入口径见 `team-context/backend/公共资料/学生端公共能力接入说明.md`。
 - 尚未建立两机联调与现场定位验收记录。
 - 公共层已有演示登录/会话、请求封装、服务地址配置与一次性定位代码（`src/shared/`），并通过首页“公共能力自检”进入 `#/system-check`；浏览器 CDP 已实际验证页面渲染、未配置服务的明确失败与登录失败不保存会话。服务端未实现，未做真实登录、位置上报或定位联调。契约已升到 DRAFT v0.2（补演示登录与食堂范围），管理端 admin 段仍缺，三人尚未确认。
 
@@ -29,11 +33,11 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 
 ## 接口与资料状态
 
-接口为 DRAFT v0.2，未经三人确认，没有正式发布提交和可用服务。v0.2 补了演示登录/会话与食堂范围配置；管理端所需的 `/admin/orders`、`/admin/settings` 字段、筛选分页与冲突码仍是缺口。资料包为 APK-v1 分发快照，以仓库中的规则与已确认契约为准；文档、JSON 示例和目录存在不代表功能实现。
+接口为 DRAFT v0.2，未经三人确认，没有正式发布提交和可用服务。v0.2 补了演示登录/会话与食堂范围配置，并增补客户端接入口径（时段数量、样例开关、错误与 requestId 统一）；管理端所需的 `/admin/orders`、`/admin/settings` 字段、筛选分页与冲突码仍是缺口。资料包为 APK-v2 分发快照，以仓库中的规则与已确认契约为准；文档、JSON 示例和目录存在不代表功能实现。
 
 ## 下一步
 
-1. 管理端 S2：订单筛选与只读详情，并把 admin 段补进 `contracts/API.md` 待确认区。
+1. 推送本地 main（含学生 S1—S3 合并）前先复核，再通知魈嘶从 main 拉取；随后管理端 S2：订单筛选与只读详情，并把 admin 段补进 `contracts/API.md` 待确认区。
 2. 配置服务地址并补服务端最小实现，联调 `#/system-check` 的登录成功、会话与位置上报/清除；真实食堂边界仍需现场校准。
 3. 档口模块待漪x3推送文件后在 moduleRegistry.ts 注册。
 4. 魈嘶在自己电脑克隆后启动统一应用，打开 #/student 并改一处文字确认生效。
@@ -46,4 +50,4 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 - 真机管理端：`#/admin` 概览显示 4 笔样例订单、1 待处理取消、1 已延迟；`#/admin/orders` 列表渲染 4 笔，不显示取餐码。
 - 公共层自检页：无头 Edge dump-dom 确认 `#/system-check` 渲染出服务地址、登录、一次性定位区块；CDP 实际点击“读取范围配置”得到 NOT_FOUND 且无成功文案，点击“演示登录”失败后会话仍为“未登录”。浏览器检查；真机仅验证定位权限路径与入口，未验证真实登录或位置上报。
 - 管理端 S1：typecheck 退出码 0；build 成功；preview 静态资源均 HTTP 200；SSR 14/14 通过。SSR 是渲染检查，不替代浏览器手工验收、APK 安装或真机检查。
-- 契约仍为 DRAFT v0.2，没有真实接口测试。本轮提交 `f2670ef`（88 个文件）已推送 `origin/main`，`git ls-remote` 与本地 HEAD 一致，工作区干净；交接见 `team-context/backend/HANDOFF.md`。
+- 契约仍为 DRAFT v0.2，没有真实接口测试。此前提交 `f2670ef`（88 个文件）已推送 `origin/main`。2026-11-13 第七轮：合并学生分支后 `npm run typecheck` 退出码 0；`npm run build` 成功（55 modules，CSS 14.10 kB、JS 283.49 kB、web chunk 2.08 kB）；用 JDK 21 与 Android SDK 36 构建 APK 1.1 成功，`aapt2 dump badging` 确认 versionCode 2 / versionName 1.1 / targetSdk 36，包内 `capacitor.plugins.json` 含 geolocation，assets 含学生 S3 文案。APK 构建使用了工作区未提交的 `SystemCheck.tsx` 与 `AndroidManifest.xml`（cleartext）改动；本机无连接设备，安装与真机验收未做。
