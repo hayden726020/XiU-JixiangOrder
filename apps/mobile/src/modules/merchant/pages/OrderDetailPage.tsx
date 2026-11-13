@@ -10,14 +10,14 @@ import {
 import {
   cancelRequestLabel,
   diningModeView,
-
   formatDateTime,
   formatSlot,
   paymentText,
+  shortOrderId,
   STATUS_TRACK,
   statusView,
 } from '../state/orderView';
-import { fenToYuan, formatYuan, totalQuantity } from '../utils/money';
+import { formatYuan, totalQuantity } from '../utils/money';
 
 interface OrderDetailPageProps {
   order: MerchantOrder;
@@ -52,17 +52,24 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
     : order.status === 'COMPLETED' ? '订单已完成，无可用操作' : '当前没有可用的主操作';
 
   return (
-    <div className="merchant-view">
+    <div className="merchant-view" data-order-id={order.id} data-order-status={order.status}>
       <button type="button" className="back-link" onClick={onBack}>← 返回订单列表</button>
 
       <header className="detail-header">
         <p className="badge">
           {order.demo || mode === 'sample' ? '样例订单 · demo=true' : '真实数据 · 演示服务'}
         </p>
-        <h2>{order.id}</h2>
+        <div className="detail-id">
+          <h2 className="detail-id__short">{shortOrderId(order.id)}</h2>
+          <p className="detail-id__full">订单号：{order.id}</p>
+        </div>
         <div className="detail-tags">
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
-          <span className={`merchant-tag merchant-tag--${dining.tone}`}>{dining.label}</span>
+        </div>
+        <div className={`detail-dining detail-dining--${dining.tone}`} data-dining-mode={order.diningMode}>
+          <span className="detail-dining__label">用餐方式</span>
+          <strong className="detail-dining__value">{dining.label}</strong>
+          <span className="detail-dining__desc">{dining.description}</span>
         </div>
         {order.cancelRequest.status === 'PENDING' && (
           <p className="detail-alert">学生申请取消，请优先处理；申请不等于已取消。</p>
@@ -82,7 +89,7 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
           {order.items.map((item) => (
             <li key={item.dishId}>
               <span>{item.name} ×{item.quantity}</span>
-              <span>{fenToYuan(item.unitPriceFen)} 元/份</span>
+              <span>{formatYuan(item.unitPriceFen)}/份</span>
             </li>
           ))}
         </ul>
@@ -100,6 +107,7 @@ export default function OrderDetailPage({ order, mode, onBack, onAction }: Order
             {STATUS_TRACK.map((step, index) => (
               <li
                 key={step}
+                aria-current={index === currentIndex ? 'step' : undefined}
                 className={index <= currentIndex ? 'status-track__step status-track__step--on' : 'status-track__step'}
               >
                 {statusView(step).label}
