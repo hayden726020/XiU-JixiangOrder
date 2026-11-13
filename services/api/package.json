@@ -1,0 +1,14 @@
+{
+  "name": "xiu-jixiang-order-api",
+  "private": true,
+  "version": "0.1.0-draft",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs",
+    "test": "node --test test/auth.test.mjs test/orders.test.mjs test/flow.test.mjs test/location.test.mjs test/admin.test.mjs"
+  }
+}

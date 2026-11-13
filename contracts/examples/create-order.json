@@ -1,9 +1,9 @@
 {
   "_meta": {
-    "contractVersion": "DRAFT v0.1",
+    "contractVersion": "DRAFT v0.3",
     "fictional": true,
     "implemented": false,
-    "note": "仅为接口讨论与页面演示样例；不是实际服务返回或真实学生数据。"
+    "note": "字段按 DRAFT v0.3 联调候选更新；ID、时间和菜品均为虚构样例，不是实际服务返回或真实学生数据。"
   },
   "request": {
     "method": "POST",
@@ -37,6 +37,7 @@
         "slotStart": "2026-11-13T11:30:00+08:00",
         "slotEnd": "2026-11-13T12:00:00+08:00",
         "diningMode": "DINE_IN",
+        "diningModeReason": null,
         "totalFen": 1800,
         "status": "NEW",
         "paymentStatus": "SIMULATED_PAID",
