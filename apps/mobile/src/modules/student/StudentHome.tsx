@@ -2,7 +2,7 @@ export default function StudentHome() {
   return (
     <section className="module-panel" aria-labelledby="student-title">
       <p className="badge">S0 · 样例占位（非学生业务页面）</p>
-      <h2 id="student-title">学生端入口已接通</h2>
+      <h2 id="student-title">学生端入口已接通 · 魈嘶已接入</h2>
       <p className="lead">
         这段文字在统一应用内显示，说明学生模块已经由公共入口加载。
       </p>
