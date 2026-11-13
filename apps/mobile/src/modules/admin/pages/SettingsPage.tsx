@@ -10,7 +10,8 @@ export default function SettingsPage({ settings }: SettingsPageProps) {
     <div className="admin-section">
       <h3>营业与食堂配置</h3>
       <p className="admin-muted">
-        只读样例，配置版本 {settings.version}，更新于 {formatDateTime(settings.updatedAt)}。保存、版本冲突与真实接口在 S4 接入。
+        当前仍是只读样例，配置版本 {settings.version}，更新于 {formatDateTime(settings.updatedAt)}。
+        真实 <code>GET /admin/settings</code> 返回 dining 与 crowd 两段，与本页演示结构不同；保存、版本冲突和结构对齐在 S5 处理。
       </p>
 
       <h3>档口营业时间</h3>
@@ -32,7 +33,9 @@ export default function SettingsPage({ settings }: SettingsPageProps) {
           </div>
         </div>
       ))}
-      <p className="admin-muted">营业时间由管理端维护，档口只读；本页暂无编辑控件。</p>
+      <p className="admin-muted">
+        营业时间由管理端维护、档口只读的设计尚未写入真实接口；当前没有营业时间端点。
+      </p>
 
       <h3>食堂范围</h3>
       <dl className="admin-kv">
@@ -68,11 +71,12 @@ export default function SettingsPage({ settings }: SettingsPageProps) {
         </div>
       </dl>
       <p className="admin-muted">
-        两类人数分开比较，不相加。阈值未经现场验证，不表示食堂真实人数，也不保证有座位。
+        两类人数分开比较，不相加。阈值未经现场验证，不表示食堂真实人数，也不保证有座位。真实接口为 crowd.crowdedAt 单阈值。
       </p>
 
       <p className="hint">
-        真实读写将使用 <code>GET /admin/settings</code> 与 <code>PUT /admin/settings</code>；字段结构、可改白名单和配置版本冲突码仍待确认。
+        真实读写将使用 <code>GET /admin/settings</code> 与 <code>PUT /admin/settings</code>；字段结构、可改白名单和
+        <code>SETTING_VERSION_CONFLICT</code> 已在 DRAFT v0.3 中定义，页面尚未接入。
       </p>
     </div>
   );

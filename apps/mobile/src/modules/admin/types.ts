@@ -1,4 +1,4 @@
-export type AdminRoute = 'overview' | 'orders' | 'settings';
+export type AdminRoute = 'overview' | 'orders' | 'orderDetail' | 'settings';
 
 export type DiningMode = 'DINE_IN' | 'TAKEAWAY';
 
@@ -7,6 +7,8 @@ export type OrderStatus = 'NEW' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETE
 export type PaymentStatus = 'SIMULATED_PAID' | 'SIMULATED_REFUNDED';
 
 export type CancelRequestStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export type ExceptionFilter = 'ALL' | 'CANCELLATION_PENDING' | 'DELAYED';
 
 export interface OrderItem {
   dishId: string;
@@ -27,13 +29,12 @@ export interface OrderDelay {
 
 export interface Order {
   id: string;
-  stallId: string;
-  stallName: string;
   items: OrderItem[];
   slotId: string;
   slotStart: string;
   slotEnd: string;
   diningMode: DiningMode;
+  diningModeReason: string | null;
   totalFen: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -44,7 +45,9 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   pickedUpAt: string | null;
-  demo: true;
+  merchantId?: string;
+  merchantName?: string;
+  demo?: boolean;
 }
 
 export interface StallSettings {

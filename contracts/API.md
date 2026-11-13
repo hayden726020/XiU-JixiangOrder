@@ -71,7 +71,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | PUT /me/location | requestId, presence=INSIDE/OUTSIDE/UNKNOWN | 按会话身份保存判断，返回服务端 observedAt 和 expiresAt；拒绝多余坐标字段 |
 | DELETE /me/location | 清除本人位置判断 | 重复删除仍成功，不删除订单、不阻碍继续下单 |
 | GET /crowd?slotId=... | 所选预约时段的堂食参考 | 见 crowd-reference.json；未来时段不返回当前参考 |
-| GET /admin/orders | 必要的订单和异常查询 | 仅管理身份 |
+| GET /admin/orders | query=status,page,pageSize | 仅管理身份；返回 {orders,page,pageSize,total}，取餐码恒为 null；不支持日期/档口/异常查询参数 |
 | GET/PUT /admin/settings | 档口营业、范围与提醒条件 | 修改含 requestId/expectedVersion；仅管理身份 |
 
 ### 档口读取响应（v0.3 联调冻结候选）
@@ -92,6 +92,18 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 - `status` 可省略；传入时只接受 NEW/ACCEPTED/PREPARING/READY/COMPLETED/CANCELLED，不合法返回 VALIDATION_ERROR。
 - 当前只支持状态筛选和分页，不承诺日期筛选；页面不得自行猜测未定义查询参数。
 - 列表和详情都按档口身份过滤，取餐码为 `null`。
+
+### 管理端读取响应（v0.3 联调候选）
+
+`GET /admin/orders?status=NEW&page=1&pageSize=20` 返回 `{ data: { orders, page, pageSize, total } }`：
+
+- 仅管理身份；未登录返回 401，学生/档口返回 403 FORBIDDEN。
+- `status` 可省略；取值同订单状态；`page` 默认 1，`pageSize` 默认 20、最大 100；按 `createdAt` 倒序。非法 `status` 应返回 VALIDATION_ERROR（当前服务端尚未校验，待补）。
+- 列表与详情均返回 `pickupCode: null`；管理端不得展示学生取餐码。
+- 详情复用 `GET /orders/{id}`，管理身份可读；不存在或不可见返回 404 ORDER_NOT_FOUND。
+- 当前只定义状态与分页；日期、档口、异常筛选参数尚未定义，页面不得自行猜测。异常（待处理取消申请、延迟）只在已加载结果中标记，不跨页推断。
+- 当前订单响应未返回 `merchantId`、`merchantName` 或学生信息；管理端无法按档口展示或筛选，需后续补字段或专用视图，页面不得用样例名称冒充真实档口。
+- `GET /admin/settings` 当前返回 `dining` 与 `crowd` 两段，与 S1 演示配置页结构不同；S5 再对齐页面与保存流程。
 
 `GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
 

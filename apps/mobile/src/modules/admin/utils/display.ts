@@ -1,4 +1,9 @@
-import type { DiningMode, Order, OrderStatus } from '../types';
+import type {
+  DiningMode,
+  ExceptionFilter,
+  Order,
+  OrderStatus,
+} from '../types';
 
 export const orderStatusText: Record<OrderStatus, string> = {
   NEW: '待接单',
@@ -39,4 +44,18 @@ export function exceptionText(order: Order): string | null {
     marks.push('已设置延迟');
   }
   return marks.length > 0 ? marks.join(' · ') : null;
+}
+
+export function matchesException(order: Order, filter: ExceptionFilter): boolean {
+  if (filter === 'ALL') {
+    return true;
+  }
+  if (filter === 'CANCELLATION_PENDING') {
+    return order.cancelRequest.status === 'PENDING';
+  }
+  return order.delay !== null;
+}
+
+export function orderStatusIndex(status: OrderStatus): number {
+  return ['NEW', 'ACCEPTED', 'PREPARING', 'READY', 'COMPLETED'].indexOf(status);
 }
