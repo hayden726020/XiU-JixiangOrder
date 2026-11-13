@@ -1,6 +1,6 @@
 # 三端接口草案
 
-DRAFT v0.2，待三人确认，尚未实现。以下是本轮准备的建议约定，不能作为已有后端证据。统一前缀 /api/v1；具体技术、身份登录方式、地址和命令由 spcuteag 在第一阶段补齐。v0.2 在 v0.1 上补充演示登录/会话与食堂范围配置，均为待确认草案。
+DRAFT v0.3（联调冻结候选），仍待三人确认，不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径；三人确认前按“联调候选”使用，不宣称正式上线。
 
 ## 基础格式
 
@@ -29,14 +29,14 @@ DRAFT v0.2，待三人确认，尚未实现。以下是本轮准备的建议约�
 
 ## 订单字段与状态
 
-订单至少包含 id、items（dishId/name/quantity/unitPriceFen）、slotId、slotStart、slotEnd、diningMode、totalFen、status、paymentStatus、cancelRequest、cancellationReason（未取消为 null）、version、createdAt、updatedAt、pickedUpAt（未取为 null）、delay（无则 null）。学生订单按权限展示 pickupCode，仅 READY 返回可用码，其他状态为 null；档口列表不暴露全部取餐码，管理查询同样按最少必要字段返回。
+订单至少包含 id、items（dishId/name/quantity/unitPriceFen）、slotId、slotStart、slotEnd、diningMode、diningModeReason（未修改为 null）、totalFen、status、paymentStatus、cancelRequest、cancellationReason（未取消为 null）、version、createdAt、updatedAt、pickedUpAt（未取为 null）、delay（无则 null）。学生订单按权限展示 pickupCode，仅 READY 且未取餐返回可用码，其他状态为 null；档口订单列表和详情、管理查询始终返回 `pickupCode: null`，档口核销时手工输入学生出示的码。
 
 status：NEW → ACCEPTED → PREPARING → READY → COMPLETED。
 NEW/ACCEPTED/PREPARING/READY 可在规定权限下取消为 CANCELLED；COMPLETED/CANCELLED 是终态。
 paymentStatus：SIMULATED_PAID 或 SIMULATED_REFUNDED；未取消的正常订单为前者，取消成功与模拟退款完成一起变为后者。
 cancelRequest 为 { status: NONE | PENDING | APPROVED | REJECTED, reason: string | null }，独立于订单状态。申请取消不自动停止原订单流程，档口应优先处理；终态不得再批准取消。
 订单在申请待处理时完成取餐，必须在同一操作中把申请改为 REJECTED 并注明“订单已取餐”；档口主动取消或批准申请导致订单取消时，把已有 PENDING 申请改为 APPROVED 并记录处理原因。终态订单不能残留 PENDING。
-delay 为 { reason, expectedReadyAt }，不替换主状态。
+delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPARING/READY 可设置延迟；NEW 尚未接单，不允许填延迟。ACCEPTED/PREPARING/READY 均可按权限主动缺货取消或批准已有 PENDING 申请，COMPLETED/CANCELLED 不可再改变。
 
 订单创建与模拟付款：POST /orders 一次完成，成功即 NEW + SIMULATED_PAID。无单独待付款订单或支付按钮二次确认接口。失败不能遗留已扣库存或“已付款但无订单”。
 
@@ -46,7 +46,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。
 
 ## 操作清单
 
-以下已给出 v0.2 草案的路径与主要字段；菜单、配置、列表的完整响应结构与分页仍待三人确认后冻结，不由各前端自行猜测。
+以下为 v0.3 联调冻结候选的路径、主要字段与已实现响应结构；如需变更字段，必须先更新本文、示例、版本和受影响页面，不能由各前端自行猜测。
 
 | 方法与路径 | 输入或用途 | 主要输出与限制 |
 | --- | --- | --- |
@@ -58,13 +58,13 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。
 | GET /orders | 学生自己的订单列表 | 不返回其他学生订单 |
 | GET /orders/{id} | 获取有权限的订单 | 三端从同一订单来源读取，字段按角色过滤 |
 | POST /orders/{id}/cancel | requestId, expectedVersion, reason | NEW 直接取消退款；其余可申请状态设 PENDING，不假装已退款 |
-| GET /merchant/orders | 本档口订单列表 | 受档口身份约束 |
+| GET /merchant/orders | 本档口订单列表，query=status,page,pageSize | 受档口身份约束；返回 {orders,page,pageSize,total}，取餐码始终为 null；默认 page=1、pageSize=20，最大 100，按 createdAt 倒序 |
 | POST /merchant/orders/{id}/advance | requestId, expectedVersion, action=ACCEPT/START_PREPARING/MARK_READY | 仅允许合法的下一状态，不支持跳到 COMPLETED |
 | POST /merchant/orders/{id}/verify | requestId, expectedVersion, pickupCode | 仅 READY 且码正确、未用过时完成；示例见 verify-order.json |
-| POST /merchant/orders/{id}/cancel-decision | requestId, expectedVersion, decision=APPROVE/REJECT, reason | 仅处理 PENDING；批准后取消并模拟退款；终态拒绝 |
-| POST /merchant/orders/{id}/cancel | requestId, expectedVersion, reason | 缺货等主动取消；未结束订单才允许；见 cancel-refund.json |
-| POST /merchant/orders/{id}/delay | requestId, expectedVersion, reason, expectedReadyAt | 保存延迟信息，主状态不变，学生能查看 |
-| PATCH /merchant/orders/{id}/dining-mode | requestId, expectedVersion, diningMode, reason | 档口确认后更改未结束订单，三端及统计更新 |
+| POST /merchant/orders/{id}/cancel-decision | requestId, expectedVersion, decision=APPROVE/REJECT, reason | 仅处理 PENDING 且非终态订单；批准后取消并模拟退款；拒绝保留原状态 |
+| POST /merchant/orders/{id}/cancel | requestId, expectedVersion, reason | 缺货等主动取消；NEW/ACCEPTED/PREPARING/READY 才允许；见 cancel-refund.json |
+| POST /merchant/orders/{id}/delay | requestId, expectedVersion, reason, expectedReadyAt | 仅 ACCEPTED/PREPARING/READY 允许；保存延迟信息，主状态不变，学生能查看 |
+| PATCH /merchant/orders/{id}/dining-mode | requestId, expectedVersion, diningMode, reason | 档口确认后更改未结束订单；reason 必填并持久化为 diningModeReason，三端及统计更新 |
 | PUT /merchant/menu/{dishId} | requestId, expectedVersion, priceFen, availableQuantity, onSale | 校验非负价格/数量和档口归属；不修改历史订单价格 |
 | PUT /merchant/slots/{slotId} | requestId, expectedVersion, capacity, enabled | 容量不得低于已占用量；不静默取消既有订单 |
 | GET /dining/config | 当前公开的食堂范围配置 | { canteenId, name, center{latitude,longitude}, radiusMeters, accuracyToleranceMeters, updatedAt, demo }；这是食堂边界，不是学生位置 |
@@ -74,7 +74,32 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。
 | GET /admin/orders | 必要的订单和异常查询 | 仅管理身份 |
 | GET/PUT /admin/settings | 档口营业、范围与提醒条件 | 修改含 requestId/expectedVersion；仅管理身份 |
 
-首版不增加学生在线申请变更用餐方式的流程。学生订单详情说明“如需更改堂食或外带，请联系档口，由档口确认”；学生线下提出后，档口使用 dining-mode 操作更新。学生端只读回结果，不自行修改或假装已经提交变更申请。
+### 档口读取响应（v0.3 联调冻结候选）
+
+`GET /merchant/orders?status=READY&page=1&pageSize=20` 返回：
+
+```json
+{
+  "data": {
+    "orders": ["Order，字段见订单字段与状态"],
+    "page": 1,
+    "pageSize": 20,
+    "total": 1
+  }
+}
+```
+
+- `status` 可省略；传入时只接受 NEW/ACCEPTED/PREPARING/READY/COMPLETED/CANCELLED，不合法返回 VALIDATION_ERROR。
+- 当前只支持状态筛选和分页，不承诺日期筛选；页面不得自行猜测未定义查询参数。
+- 列表和详情都按档口身份过滤，取餐码为 `null`。
+
+`GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
+
+- `slots[]` 字段为 `id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled`；已结束、已满或服务端停用的时段 `enabled=false`。
+- `dishes[]` 字段为 `id,merchantId,name,priceFen,availableQuantity,onSale`；档口按 `merchantId` 过滤自己的菜品。
+- 只支持今天和明天；其他日期返回 VALIDATION_ERROR。
+
+首版不增加学生在线申请变更用餐方式的流程。学生订单详情说明“如需更改堂食或外带，请联系档口，由档口确认”；学生线下提出后，档口使用 dining-mode 操作更新，`reason` 必填并持久化为响应的 `diningModeReason`。学生端只读回结果，不自行修改或假装已经提交变更申请。
 
 核销错误的检查顺序固定为：先身份和订单访问权限，再识别同一 requestId 的重试或不同内容冲突，再判断该订单是否已取餐及是否处于 READY，最后检查 expectedVersion 和取餐码。同一请求重试返回首次结果；新的请求再次核销已取订单返回 PICKUP_CODE_USED，即使它携带旧版本，也不优先显示版本冲突。未准备好或已取消返回 INVALID_ORDER_STATE。
 
@@ -114,10 +139,27 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 
 返回错误码和易懂 message。具体是否可重试由 retryable 字段说明；网络超时不代表操作未发生，客户端按同一 requestId 恢复查询或重试。
 
+## 档口接入口径（2026-11-13 联调冻结候选）
+
+1. READY 缺货取消：允许。NEW/ACCEPTED/PREPARING/READY 都可由档口按权限主动取消并模拟退款；COMPLETED/CANCELLED 不允许。
+2. NEW 延迟：不允许。只有 ACCEPTED/PREPARING/READY 可设置 `reason` 与 `expectedReadyAt`，且必须持久化。
+3. 取消申请审批：仅处理 `cancelRequest.status=PENDING` 且订单非终态；批准与订单取消/退款原子完成，拒绝只改申请状态，不改变订单主状态；理由必填。
+4. 用餐方式变更：档口确认后允许修改未结束订单，`reason` 必填并持久化，响应字段为 `diningModeReason`；学生端只读结果。
+5. 失败重试：成功的写操作按身份+操作+requestId 持久化首次响应；失败事务不缓存，可用同一 requestId 重试并重新判定；同一 requestId 不同内容返回 REQUEST_CONFLICT。
+6. 列表与取餐码：`GET /merchant/orders` 返回 `{orders,page,pageSize,total}`，支持 status 筛选，默认第 1 页、每页 20、最大 100，按 createdAt 倒序；档口列表和详情始终不返回取餐码，核销由学生出示、档口手工输入。
+
 ## 正式确认前仍需补齐
 
-v0.2 已补演示登录/会话与食堂范围配置建议；仍需补齐菜单/配置/列表的完整响应结构和分页、范围与精度参数的实际取值、提醒条件与样本充足标准、取消规则的对外文案、联调环境与实际测试命令、服务端数据存储与部署方式。它们是 spcuteag 的交付项，不能为了让前端开工假装已有正式接口。
+v0.3 已补齐档口菜单、订单列表、分页、延迟、取消审批、用餐方式理由与取餐码过滤，并已由演示服务实现和自动测试覆盖。仍需三人确认签署、真机可访问服务地址、Android 两机联调记录、现场食堂范围/提醒阈值和服务端正式部署方式；在这些完成前不能宣称正式接口或正式联调。
+
+## 客户端接入口径（v0.3 延续）
+
+1. 首版时段数量：午餐固定 3 个时段（11:30—12:00、12:00—12:30、12:30—13:00），由档口于 2026-11-13 冻结；样例中 12:30—13:00 为已满，用于演示不可选。GET /menu 返回的 slots 数量与启停始终以服务端为准，客户端不得写死时段或数量。
+2. 样例与真实模式：公共层不提供全局“样例开关”。各模块在自身 data source 内选择 sample/real，首版默认 sample。切换 real 的前提是已配置服务地址且已登录；real 请求失败必须显示失败或结果待确认，不得回退样例，也不得把样例数据标成真实结果。
+3. 错误与 requestId 统一：模块复用 apps/mobile/src/shared 的 apiClient（ApiError 含 code/message/status/retryable）与 requestId 能力；不得另定义同名错误类并用 instanceof 判断 shared 错误，避免把真实失败降级为 UNKNOWN，也不得维护第二套 requestId 生成/复用逻辑。下单 requestId 在内容不变时复用、内容变化时重生成、操作结束或开始新单后重置。
+4. 定位：模块只使用 shared/location 的一次性定位与范围判断，不直接引入 @capacitor/geolocation，不上传坐标。定位说明卡可先占位且不触发权限；接入真实定位时使用 shared/location 的现有方法。
+5. 以上口径为 DRAFT v0.3 联调冻结候选，三人确认前仍不能宣称正式发布。
 
 ## 单 APK 客户端补充
 
-客户端统一为 apps/mobile 中三个角色模块，接口仍由独立 services/api 提供，不能把服务端放进 APK。公共会话与角色入口由 spcuteag维护，服务器逐请求验证角色和对象归属；客户端切换入口不改变授权。Android 一次性定位通过公共适配实现，模块只使用范围结果，仍遵守不上传坐标、短时失效和用户可删除的约定。此架构补充不改变 DRAFT v0.2 的待确认状态，演示登录/会话仍须三人确认后生效。
+客户端统一为 apps/mobile 中三个角色模块，接口仍由独立 services/api 提供，不能把服务端放进 APK。公共会话与角色入口由 spcuteag维护，服务器逐请求验证角色和对象归属；客户端切换入口不改变授权。Android 一次性定位通过公共适配实现，模块只使用范围结果，仍遵守不上传坐标、短时失效和用户可删除的约定。此架构补充不改变 DRAFT v0.3 的待确认状态，演示登录/会话仍须三人确认后生效。

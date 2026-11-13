@@ -1,0 +1,149 @@
+export type DiningMode = 'DINE_IN' | 'TAKEAWAY';
+
+export type DemoScenario = 'normal' | 'slot-full' | 'out-of-stock' | 'timeout';
+
+export type OrderStatus = 'NEW' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+
+export type PaymentStatus = 'SIMULATED_PAID' | 'SIMULATED_REFUNDED';
+
+export type CancelRequestStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export type CrowdLevel = 'CROWDED' | 'NO_ALERT' | 'UNKNOWN';
+
+export type CrowdBasis = 'RESERVATION' | 'LOCATION' | 'PICKUP';
+
+export interface DishDto {
+  dishId: string;
+  name: string;
+  unitPriceFen: number;
+  availableQuantity: number;
+  onSale: boolean;
+}
+
+export interface SlotDto {
+  slotId: string;
+  slotStart: string;
+  slotEnd: string;
+  remainingCapacity: number;
+  enabled: boolean;
+}
+
+export interface MenuResponse {
+  date: string;
+  demo: true;
+  dishes: DishDto[];
+  slots: SlotDto[];
+}
+
+export interface CrowdReference {
+  canteenId: string;
+  slotId: string;
+  referenceScope: 'PLATFORM_ONLY';
+  reservedDineInUsers: number | null;
+  currentReferenceUsers: number | null;
+  level: CrowdLevel;
+  basis: CrowdBasis[];
+  updatedAt: string;
+  expiresAt: string;
+  demo: boolean;
+  message: string;
+}
+
+export interface OrderItem {
+  dishId: string;
+  name: string;
+  quantity: number;
+  unitPriceFen: number;
+}
+
+export interface CancelRequest {
+  status: CancelRequestStatus;
+  reason: string | null;
+}
+
+export interface OrderDelay {
+  reason: string | null;
+  expectedReadyAt: string;
+}
+
+export interface StudentOrder {
+  id: string;
+  items: OrderItem[];
+  slotId: string;
+  slotStart: string;
+  slotEnd: string;
+  diningMode: DiningMode;
+  totalFen: number;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  cancelRequest: CancelRequest;
+  cancellationReason: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  pickedUpAt: string | null;
+  delay: OrderDelay | null;
+  pickupCode: string | null;
+  demo: true;
+  local?: boolean;
+}
+
+export interface DraftItemInput {
+  dishId: string;
+  quantity: number;
+}
+
+export interface CreateOrderInput {
+  requestId: string;
+  items: DraftItemInput[];
+  slotId: string;
+  diningMode: DiningMode;
+}
+
+export interface StudentSource {
+  mode: 'sample';
+  getMenu(date: string): Promise<MenuResponse>;
+  getCrowd(slotId: string): Promise<CrowdReference>;
+  createOrder(input: CreateOrderInput): Promise<StudentOrder>;
+  queryOrderResult(requestId: string): Promise<StudentOrder>;
+  getOrder(id: string): Promise<StudentOrder>;
+  setScenario(next: DemoScenario): DemoScenario;
+  getScenario(): DemoScenario;
+}
+
+export interface SourceError {
+  code: string;
+  message: string;
+  retryable: boolean;
+}
+
+export class ApiError extends Error {
+  readonly code: string;
+  readonly retryable: boolean;
+
+  constructor(code: string, message: string, retryable = false) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError;
+}
+
+export function toSourceError(error: unknown): SourceError {
+  if (isApiError(error)) {
+    return {
+      code: error.code,
+      message: error.message,
+      retryable: error.retryable,
+    };
+  }
+  return {
+    code: 'UNKNOWN',
+    message: error instanceof Error ? error.message : '提交失败，请稍后重试。',
+    retryable: false,
+  };
+}

@@ -6,6 +6,7 @@ import {
   checkLocationPermission,
   checkPresenceOnce,
   clearPresence,
+  clearStoredApiBaseUrl,
   demoLogin,
   fetchDiningConfig,
   getApiBaseInfo,
@@ -13,7 +14,9 @@ import {
   logout,
   reportPresence,
   roleLabel,
+  saveStoredApiBaseUrl,
   subscribeSession,
+  type ApiBaseInfo,
   type DiningConfig,
   type Presence,
   type PresenceCheckResult,
@@ -59,8 +62,8 @@ export default function SystemCheck() {
   const [result, setResult] = useState<PresenceCheckResult | null>(null);
   const [reportText, setReportText] = useState<string | null>(null);
   const [requestGuard] = useState(() => new RequestIdGuard('location'));
-
-  const baseInfo = getApiBaseInfo();
+  const [baseInfo, setBaseInfo] = useState<ApiBaseInfo>(getApiBaseInfo);
+  const [baseUrlInput, setBaseUrlInput] = useState(() => getApiBaseInfo().baseUrl ?? '');
 
   useEffect(() => subscribeSession(() => setSessionState(getSession())), []);
 
@@ -72,6 +75,28 @@ export default function SystemCheck() {
     setBusy(action);
     setError(null);
     setMessage(null);
+  }
+
+  function onSaveBaseUrl(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    saveStoredApiBaseUrl(baseUrlInput);
+    const next = getApiBaseInfo();
+    setBaseInfo(next);
+    setBaseUrlInput(next.baseUrl ?? '');
+    if (next.problem) {
+      setError(next.problem);
+    } else {
+      setError(null);
+      setMessage(`服务地址已保存：${next.baseUrl}`);
+    }
+  }
+
+  function onClearBaseUrl(): void {
+    clearStoredApiBaseUrl();
+    const next = getApiBaseInfo();
+    setBaseInfo(next);
+    setBaseUrlInput(next.baseUrl ?? '');
+    setMessage('已清除本地服务地址；真机将无法连接，需重新填写。');
   }
 
   async function onLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -204,6 +229,26 @@ export default function SystemCheck() {
             </dd>
           </div>
         </dl>
+
+        <form className="check-form" onSubmit={onSaveBaseUrl}>
+          <label className="check-field">
+            <span>设置服务地址（真机填电脑局域网 IP，不能用 localhost）</span>
+            <input
+              type="url"
+              value={baseUrlInput}
+              onChange={(event) => setBaseUrlInput(event.target.value)}
+              placeholder="http://192.168.1.10:8787/api/v1"
+            />
+          </label>
+          <div className="check-actions">
+            <button type="submit" className="check-action">
+              保存地址
+            </button>
+            <button type="button" className="check-action" onClick={onClearBaseUrl}>
+              清除地址
+            </button>
+          </div>
+        </form>
 
         {session ? (
           <button type="button" className="check-action" onClick={() => void onLogout()} disabled={busy !== null}>
