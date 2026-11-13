@@ -3,7 +3,7 @@ import type { Dish, MenuDay, MerchantOrder, MerchantScenario, Slot, SlotDay } fr
 export const SAMPLE_DATES = ['2026-11-13', '2026-11-14'] as const;
 
 export const DEMO_SCENARIOS: ReadonlyArray<{ value: MerchantScenario; label: string }> = [
-  { value: 'normal', label: '正常（5 笔）' },
+  { value: 'normal', label: '正常（4 笔 + 已取消 1 笔）' },
   { value: 'empty', label: '无订单' },
   { value: 'pending-cancel', label: '待处理取消申请' },
 ];

@@ -82,6 +82,11 @@ export default function OrderDetailPage({
         </div>
         <div className="detail-tags">
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
+          {isCancelled && order.paymentStatus === 'SIMULATED_REFUNDED' && (
+            <span className="merchant-flag merchant-flag--refund" data-payment-status="SIMULATED_REFUNDED">
+              模拟退款
+            </span>
+          )}
         </div>
         <div className={`detail-dining detail-dining--${dining.tone}`} data-dining-mode={order.diningMode}>
           <span className="detail-dining__label">用餐方式</span>
@@ -145,7 +150,10 @@ export default function OrderDetailPage({
 
       <section className="detail-block">
         <h3>支付</h3>
-        <p className="merchant-muted">{paymentText(order.paymentStatus)}</p>
+        <p className="merchant-muted" data-payment-status={order.paymentStatus}>{paymentText(order.paymentStatus)}</p>
+        {isCancelled && (
+          <p className="hint">已取消订单保留在列表与详情中，不随状态变化消失。</p>
+        )}
       </section>
 
       {verifyAction && (

@@ -30,7 +30,10 @@ export default function OrderListPage({
     <div className="merchant-view">
       <header className="merchant-view__header">
         <div>
-          <h2>订单列表</h2>
+          <h2>
+            订单列表
+            {isSample && <span className="merchant-readonly-tag">样例 · demo=true</span>}
+          </h2>
           <p className="lead">
             {isSample
               ? '样例数据；按状态分组，堂食/外带与待处理取消申请一眼可见。'
@@ -81,11 +84,13 @@ export default function OrderListPage({
         ))
       )}
 
-      <p className="hint">
-        {isSample
-          ? `共 ${orders.length} 笔样例订单；点击订单进入详情，可查看预约时间、菜品份数、用餐方式与下一步按钮位置。`
-          : `服务共返回 ${orders.length} 笔订单；点击查看详情。`}
-      </p>
+      {!loading && !error && orders.length > 0 && (
+        <p className="hint">
+          {isSample
+            ? `共 ${orders.length} 笔样例订单，其中已取消 ${orders.filter((order) => order.status === 'CANCELLED').length} 笔；已取消订单保留在列表，点击可查看取消原因与模拟退款标记。`
+            : `服务共返回 ${orders.length} 笔订单；点击查看详情。`}
+        </p>
+      )}
     </div>
   );
 }
