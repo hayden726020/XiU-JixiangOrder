@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DATES } from '../data/sampleData';
-import { createOrderDraft } from '../state/orderDraft';
+import type { OrderDraft } from '../state/orderDraft';
 import type { DishDto, MenuResponse, StudentSource } from '../types';
 import { isApiError } from '../types';
 import { formatYuan } from '../utils/money';
@@ -18,10 +18,11 @@ function formatMonthDay(date: string): string {
 
 export interface MenuPageProps {
   source: StudentSource;
+  draft: OrderDraft;
+  onProceed: () => void;
 }
 
-export default function MenuPage({ source }: MenuPageProps) {
-  const [draft] = useState(() => createOrderDraft({ source }));
+export default function MenuPage({ source, draft, onProceed }: MenuPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
@@ -72,7 +73,7 @@ export default function MenuPage({ source }: MenuPageProps) {
       <SampleBanner />
 
       <header className="student-page__head">
-        <p className="student-kicker">S2 · 样例菜单与数量（时段选择下一步开放）</p>
+        <p className="student-kicker">S3 · 样例菜单与数量（可进入时段页）</p>
         <h2 id="student-menu-title">学生点餐</h2>
         <p className="student-page__lead">样例菜单可调整数量，全部数据来自模块内样例源。</p>
       </header>
@@ -169,11 +170,16 @@ export default function MenuPage({ source }: MenuPageProps) {
             : '尚未选择菜品'}
         </p>
         <p className="student-summary__note">预估仅用于预览，金额以服务端返回为准</p>
-        <button type="button" className="student-primary" disabled>
+        <button
+          type="button"
+          className="student-primary"
+          disabled={!snapshot.canProceedToSlot}
+          onClick={onProceed}
+        >
           下一步：选择时段
         </button>
         <p className="student-summary__hint">
-          {snapshot.totalQuantity > 0 ? '时段选择在 S3 接入；当前已选内容会保留。' : '请先选择菜品'}
+          {snapshot.canProceedToSlot ? '已选内容会带入时段页。' : '请先选择菜品'}
         </p>
       </footer>
 
