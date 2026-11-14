@@ -1,6 +1,6 @@
 import type { MerchantOrder } from '../data/types';
 import { getPrimaryAction } from '../state/actionMatrix';
-import { diningModeView, formatSlot, hasPendingCancel, shortOrderId, statusView } from '../state/orderView';
+import { cancellationNote, diningModeView, formatSlot, hasPendingCancel, shortOrderId, statusView } from '../state/orderView';
 import { itemsSummary, totalQuantity } from '../utils/money';
 
 interface OrderRowProps {
@@ -19,7 +19,7 @@ export default function OrderRow({ order, onOpen }: OrderRowProps) {
   return (
     <button type="button" className="order-row" data-order-id={order.id} onClick={() => onOpen(order.id)}>
       <span className="order-row__top">
-        <span className="order-row__id">{shortOrderId(order.id)}</span>
+        <span className="order-row__id" title={order.id}>{shortOrderId(order.id)}</span>
         <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
         <span className={`merchant-tag merchant-tag--${dining.tone}`}>{dining.label}</span>
         {hasPendingCancel(order) && <span className="merchant-flag">取消申请待处理</span>}
@@ -33,8 +33,8 @@ export default function OrderRow({ order, onOpen }: OrderRowProps) {
         <span className="order-row__next">{nextStep}</span>
       </span>
       {order.status === 'CANCELLED' && (
-        <span className="order-row__cancel" data-cancel-reason={order.cancellationReason ?? '未填写原因'}>
-          <span>取消原因：{order.cancellationReason ?? '未填写原因'}</span>
+        <span className="order-row__cancel" data-cancel-reason={cancellationNote(order)}>
+          <span>取消说明：{cancellationNote(order)}</span>
           {order.paymentStatus === 'SIMULATED_REFUNDED' && (
             <span className="merchant-flag merchant-flag--refund" data-payment-status="SIMULATED_REFUNDED">
               模拟退款

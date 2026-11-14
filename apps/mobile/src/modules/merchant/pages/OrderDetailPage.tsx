@@ -9,6 +9,7 @@ import {
 } from '../state/actionMatrix';
 import {
   cancelRequestLabel,
+  cancellationNote,
   diningModeView,
   formatDateTime,
   formatSlot,
@@ -135,7 +136,7 @@ export default function OrderDetailPage({
       <section className="detail-block">
         <h3>状态轴</h3>
         {isCancelled ? (
-          <p className="detail-alert">订单已取消：{order.cancellationReason ?? '未填写原因'}</p>
+          <p className="detail-alert">订单已取消：{cancellationNote(order)}</p>
         ) : (
           <ol className="status-track">
             {STATUS_TRACK.map((step, index) => (
