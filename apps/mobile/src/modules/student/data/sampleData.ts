@@ -1,6 +1,35 @@
-import type { CrowdReference, DishDto, SlotDto, StudentOrder } from '../types';
+import type { CrowdReference, DishDto, ShopSummary, SlotDto, StudentOrder } from '../types';
 
 export const DATES = ['2026-11-13', '2026-11-14'];
+
+export const DEMO_SHOPS: ShopSummary[] = [
+  {
+    merchantId: 'demo-merchant-01',
+    name: '一食堂·家常档',
+    canteenId: 'demo-canteen-01',
+    orderable: true,
+    demo: true,
+    sortOrder: 1,
+  },
+  {
+    merchantId: 'demo-merchant-02',
+    name: '一食堂·面档',
+    canteenId: 'demo-canteen-01',
+    orderable: true,
+    demo: true,
+    sortOrder: 2,
+  },
+];
+
+export const DISH_SHOP: Record<string, string> = {
+  'demo-dish-01': 'demo-merchant-01',
+  'demo-dish-02': 'demo-merchant-02',
+  'demo-dish-03': 'demo-merchant-01',
+  'demo-dish-04': 'demo-merchant-01',
+  'demo-dish-05': 'demo-merchant-01',
+};
+
+export const SAMPLE_ONLY_DISH_IDS = ['demo-dish-04', 'demo-dish-05'];
 
 export interface SampleDish {
   dishId: string;
@@ -150,6 +179,8 @@ export const CROWD_REFERENCE: Record<string, CrowdReference> = {
 
 export const DEMO_ORDER_001: StudentOrder = {
   id: 'demo-order-001',
+  merchantId: 'demo-merchant-01',
+  merchantName: '一食堂·家常档',
   items: [{ dishId: 'demo-dish-01', name: '演示鸡肉饭', quantity: 1, unitPriceFen: 1800 }],
   slotId: 'demo-slot-20261113-lunch',
   slotStart: '2026-11-13T11:30:00+08:00',
@@ -184,6 +215,7 @@ export function findSlot(slotId: string): SampleSlot | null {
 export function toDishDto(dish: SampleDish, date: string): DishDto {
   return {
     dishId: dish.dishId,
+    merchantId: DISH_SHOP[dish.dishId] ?? '',
     name: dish.name,
     unitPriceFen: dish.unitPriceFen,
     availableQuantity: dish.availability[date] ?? 0,

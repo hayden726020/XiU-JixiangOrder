@@ -12,10 +12,16 @@ type ListStatus = 'loading' | 'empty' | 'ready' | 'error';
 export interface OrderListPageProps {
   source: StudentSource;
   onBack: () => void;
+  backLabel?: string;
   onOpenOrder: (id: string) => void;
 }
 
-export default function OrderListPage({ source, onBack, onOpenOrder }: OrderListPageProps) {
+export default function OrderListPage({
+  source,
+  onBack,
+  backLabel = '← 返回菜单',
+  onOpenOrder,
+}: OrderListPageProps) {
   const { gate, refresh } = useStudentSessionGate();
   const [orders, setOrders] = useState<StudentOrder[]>([]);
   const [status, setStatus] = useState<ListStatus>('loading');
@@ -61,7 +67,7 @@ export default function OrderListPage({ source, onBack, onOpenOrder }: OrderList
       <section className="student-page" aria-labelledby="student-order-list-title">
         {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
         <button type="button" className="student-secondary student-back" onClick={onBack}>
-          ← 返回菜单
+          {backLabel}
         </button>
         <header className="student-page__head">
           <p className="student-kicker">真实模式 · 只读订单列表</p>
@@ -76,7 +82,7 @@ export default function OrderListPage({ source, onBack, onOpenOrder }: OrderList
     <section className="student-page" aria-labelledby="student-order-list-title">
       {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
       <button type="button" className="student-secondary student-back" onClick={onBack}>
-        ← 返回菜单
+        {backLabel}
       </button>
 
       <header className="student-page__head">
@@ -150,6 +156,9 @@ export default function OrderListPage({ source, onBack, onOpenOrder }: OrderList
                     <span className="student-order-list__total">{card.totalText}</span>
                   </span>
                   <span className="student-order-list__id">订单号 {card.id}</span>
+                  {card.shopText ? (
+                    <span className="student-order-list__shop">{card.shopText}</span>
+                  ) : null}
                   <span className="student-order-list__dish">{card.dishSummary}</span>
                   <span className="student-order-list__meta">
                     {card.diningModeText} · {card.slotRangeText || '时段未提供'} ·{' '}

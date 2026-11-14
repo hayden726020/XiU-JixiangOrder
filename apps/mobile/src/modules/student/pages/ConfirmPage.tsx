@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { OrderDraft } from '../state/orderDraft';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
-import type { DemoScenario, MenuResponse, SlotDto, StudentSource } from '../types';
+import type { DemoScenario, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
 import { sanitizeMessage } from '../utils/errorSemantics';
+import { filterDishesByShop } from '../utils/dishShopFilter';
+import { CURRENT_SHOP_PREFIX, DEMO_DATA_LABEL } from '../utils/shopTexts';
 import { formatYuan } from '../utils/money';
 import { toSubmitErrorView } from '../utils/orderSubmitView';
 import DemoModeNotice from '../components/DemoModeNotice';
@@ -44,6 +46,7 @@ function slotLabel(slot: SlotDto): string {
 export interface ConfirmPageProps {
   source: StudentSource;
   draft: OrderDraft;
+  shop: ShopSummary;
   onBack: () => void;
   onBackToMenu: () => void;
   onSubmitted: (orderId: string) => void;
@@ -52,6 +55,7 @@ export interface ConfirmPageProps {
 export default function ConfirmPage({
   source,
   draft,
+  shop,
   onBack,
   onBackToMenu,
   onSubmitted,
@@ -73,17 +77,18 @@ export default function ConfirmPage({
 
   useEffect(() => {
     let cancelled = false;
+    const token = draft.beginMenuRead();
     setMenuStatus('loading');
     source.getMenu(snapshot.date).then(
       (data) => {
-        if (!cancelled) {
+        if (!cancelled && draft.isMenuReadCurrent(token)) {
           setMenu(data);
           setMenuStatus('ready');
-          draft.applyDishCatalog(data.dishes);
+          draft.applyDishCatalog(filterDishesByShop(data.dishes, shop.merchantId));
         }
       },
       () => {
-        if (!cancelled) {
+        if (!cancelled && draft.isMenuReadCurrent(token)) {
           setMenu(null);
           setMenuStatus('error');
         }
@@ -92,7 +97,7 @@ export default function ConfirmPage({
     return () => {
       cancelled = true;
     };
-  }, [source, draft, snapshot.date]);
+  }, [source, draft, shop.merchantId, snapshot.date]);
 
   const realLoggedOut = source.mode === 'real' && !gate.usable;
 
@@ -225,6 +230,14 @@ export default function ConfirmPage({
       <button type="button" className="student-secondary student-back" onClick={onBack}>
         ← 返回时段
       </button>
+
+      <p
+        className="student-shop-title"
+        data-shop-demo={source.mode === 'sample' ? 'true' : 'false'}
+      >
+        {CURRENT_SHOP_PREFIX}：{shop.name}
+        {source.mode === 'sample' ? ` · ${DEMO_DATA_LABEL}` : ''}
+      </p>
 
       <header className="student-page__head">
         <p className="student-kicker">

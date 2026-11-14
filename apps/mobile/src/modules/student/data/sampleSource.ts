@@ -6,6 +6,7 @@ import type {
   MenuResponse,
   OrderItem,
   QueryOrderResultInput,
+  ShopSummary,
   StudentMode,
   StudentOrder,
   StudentSource,
@@ -19,6 +20,8 @@ import {
   CROWD_REFERENCE,
   DATES,
   DEMO_ORDER_001,
+  DEMO_SHOPS,
+  DISH_SHOP,
   DISHES,
   SLOTS,
   clone,
@@ -147,6 +150,14 @@ export function createStudentSource({
       }
       return { dishId: dish.dishId, name: dish.name, quantity: item.quantity, unitPriceFen: dish.unitPriceFen };
     });
+    const merchantIds = new Set(
+      input.items.map((item) => DISH_SHOP[item.dishId] ?? '').filter((id) => id !== ''),
+    );
+    if (merchantIds.size !== 1) {
+      throw apiError('VALIDATION_ERROR', '该订单包含不同店铺的菜品，请只保留当前店铺菜品。', false);
+    }
+    const merchantId = [...merchantIds][0];
+    const merchantName = DEMO_SHOPS.find((shop) => shop.merchantId === merchantId)?.name ?? null;
     const totalFen = sumFen(items);
     const isSameOrder =
       JSON.stringify(normalizeItems(input.items)) === SAME_ORDER_ITEMS &&
@@ -162,6 +173,8 @@ export function createStudentSource({
     localSeq += 1;
     return {
       id,
+      merchantId,
+      merchantName,
       items,
       slotId: slot.slotId,
       slotStart: `${slot.date}T${slot.start}:00+08:00`,
@@ -196,6 +209,10 @@ export function createStudentSource({
 
   return {
     mode: 'sample',
+
+    async listShops(): Promise<ShopSummary[]> {
+      return clone(DEMO_SHOPS);
+    },
 
     async getMenu(date: string): Promise<MenuResponse> {
       if (!DATES.includes(date)) {

@@ -18,8 +18,18 @@ export type CrowdLevel = 'CROWDED' | 'NO_ALERT' | 'UNKNOWN';
 
 export type CrowdBasis = 'RESERVATION' | 'LOCATION' | 'PICKUP';
 
+export interface ShopSummary {
+  merchantId: string;
+  name: string;
+  canteenId: string | null;
+  orderable: boolean | null;
+  demo: boolean;
+  sortOrder: number | null;
+}
+
 export interface DishDto {
   dishId: string;
+  merchantId: string;
   name: string;
   unitPriceFen: number;
   availableQuantity: number;
@@ -40,6 +50,8 @@ export interface MenuResponse {
   demo: boolean;
   dishes: DishDto[];
   slots: SlotDto[];
+  /** 可选适配点：契约尚未定义店铺列表内嵌结构，未拍板，不阻塞交付。 */
+  merchants?: ShopSummary[];
 }
 
 export interface CrowdReference {
@@ -75,6 +87,8 @@ export interface OrderDelay {
 
 export interface StudentOrder {
   id: string;
+  merchantId: string | null;
+  merchantName: string | null;
   items: OrderItem[];
   slotId: string;
   slotStart: string;
@@ -116,6 +130,7 @@ export interface QueryOrderResultInput {
 
 export interface StudentSource {
   mode: StudentMode;
+  listShops(): Promise<ShopSummary[]>;
   getMenu(date: string): Promise<MenuResponse>;
   getCrowd(slotId: string): Promise<CrowdReference>;
   createOrder(input: CreateOrderInput): Promise<StudentOrder>;

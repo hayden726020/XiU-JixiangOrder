@@ -10,6 +10,7 @@ export interface OrderListDishLine {
 export interface OrderListCardView {
   id: string;
   statusLabel: string;
+  shopText: string | null;
   totalText: string;
   diningModeText: string;
   slotRangeText: string;
@@ -51,6 +52,7 @@ export function deriveOrderListView(orders: StudentOrder[], mode: StudentMode): 
     return {
       id: view.orderId,
       statusLabel: view.statusLabel,
+      shopText: view.shop.showRow ? view.shop.text : null,
       totalText: view.totalText,
       diningModeText: view.diningModeText,
       slotRangeText: view.slotRangeText,
