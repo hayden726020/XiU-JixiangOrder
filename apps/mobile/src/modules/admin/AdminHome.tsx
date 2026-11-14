@@ -81,6 +81,25 @@ export default function AdminHome() {
   const baseInfo = getApiBaseInfo();
   const activeNav = location.route === 'orderDetail' ? 'orders' : location.route;
 
+  if (!isAdmin) {
+    return (
+      <section className="module-panel admin-panel" aria-labelledby="admin-title">
+        <h2 id="admin-title">管理端 · 需要管理员身份</h2>
+        <p className="admin-muted">
+          管理端不向学生或档口展示订单、配置或样例数据。请使用管理员演示账号登录后进入；前端不提供切换角色，服务端会逐请求校验权限。
+        </p>
+        <div className="admin-session">
+          <span>
+            当前会话：
+            {session ? `${session.user.displayName} · ${roleLabel(session.user.role)}` : '未登录'}
+          </span>
+          <a href="#/system-check">去公共自检页登录管理员 →</a>
+        </div>
+        <p className="hint">本页仅展示身份提示，不含订单、配置、取餐码或学生位置。</p>
+      </section>
+    );
+  }
+
   return (
     <section className="module-panel admin-panel" aria-labelledby="admin-title">
       {mode === 'sample' ? (
@@ -97,7 +116,7 @@ export default function AdminHome() {
 
       <h2 id="admin-title">管理端 · 订单与配置</h2>
       <p className="admin-muted">
-        S2 提供订单状态筛选、分页、异常标记与只读详情；S3/S5 提供 dining/crowd 只读展示与真实保存；S6 提供 401/403/503 错误态与失败重试核对。
+        S2 提供订单状态筛选、分页、异常标记与只读详情；S3/S5 提供 dining/crowd 只读展示与真实保存；S6/S7 提供 401/403/503 错误态、失败重试与管理员入口收口。
         管理端不改订单状态，也不显示取餐码或学生位置。
       </p>
 
@@ -106,7 +125,7 @@ export default function AdminHome() {
           当前会话：
           {session ? `${session.user.displayName} · ${roleLabel(session.user.role)}` : '未登录'}
         </span>
-        {mode === 'sample' && session ? (
+        {mode === 'sample' ? (
           <button type="button" className="admin-action" onClick={() => setMode('live')}>
             连接真实服务
           </button>
@@ -117,11 +136,6 @@ export default function AdminHome() {
           </button>
         ) : null}
         {!session ? <a href="#/system-check">去公共自检页登录 →</a> : null}
-        {session && !isAdmin ? (
-          <span className="admin-warn">
-            当前账号不是管理员；可连接真实服务核对 403 拒绝页，但不会渲染管理数据。
-          </span>
-        ) : null}
       </div>
 
       {mode === 'sample' ? (
