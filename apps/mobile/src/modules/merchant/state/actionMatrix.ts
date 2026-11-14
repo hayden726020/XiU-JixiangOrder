@@ -1,4 +1,4 @@
-import type { MerchantOrder, OrderStatus } from '../data/types';
+import type { DiningMode, MerchantOrder, OrderStatus } from '../data/types';
 
 export interface OrderAction {
   code: string;
@@ -16,6 +16,8 @@ export interface OrderAction {
 export interface ActionInput {
   pickupCode?: string;
   reason?: string;
+  expectedReadyAt?: string;
+  diningMode?: DiningMode;
 }
 
 const ORDER_PATH = '/merchant/orders/{id}';
@@ -131,7 +133,17 @@ export function actionRequestName(action: OrderAction): string {
   return action.path.split('/').at(-1) ?? action.path;
 }
 
-const REAL_WRITE_CODES = new Set(['ACCEPT', 'START_PREPARING', 'MARK_READY', 'VERIFY']);
+const REAL_WRITE_CODES = new Set([
+  'ACCEPT',
+  'START_PREPARING',
+  'MARK_READY',
+  'VERIFY',
+  'SET_DELAY',
+  'CANCEL_ORDER',
+  'APPROVE_CANCEL',
+  'REJECT_CANCEL',
+  'CHANGE_DINING_MODE',
+]);
 
 export function isRealWriteAction(action: OrderAction): boolean {
   return REAL_WRITE_CODES.has(action.code);
@@ -147,6 +159,8 @@ export function actionErrorText(code: string, message: string, action: OrderActi
       return '取餐码不正确，请核对学生出示的码后重试。';
     case 'PICKUP_CODE_USED':
       return '该订单已取餐，请勿重复核销；页面正在刷新。';
+    case 'ALREADY_CANCELLED':
+      return '订单已取消，本次不会重复返还库存或名额；页面正在刷新。';
     case 'REQUEST_CONFLICT':
       return '本次请求与之前的内容不一致，已准备新的请求号，请重新点击。';
     case 'UNAUTHENTICATED':
@@ -171,11 +185,26 @@ export function validateActionInput(
       ? '请先输入学生出示的取餐码。'
       : '请先输入学生出示的取餐码；样例模式不会核销成功。';
   }
-  if (action.code === 'APPROVE_CANCEL' || action.code === 'REJECT_CANCEL') {
-    if (!(input.reason ?? '').trim()) {
-      return mode === 'real'
-        ? `${action.label}必须填写理由。`
-        : `${action.label}必须填写理由；样例模式不会产生真实变更。`;
+  const reasonRequired = mode === 'real'
+    ? Boolean(action.needsReason)
+    : action.code === 'APPROVE_CANCEL' || action.code === 'REJECT_CANCEL';
+  if (reasonRequired && !(input.reason ?? '').trim()) {
+    return mode === 'real'
+      ? `${action.label}必须填写理由。`
+      : `${action.label}必须填写理由；样例模式不会产生真实变更。`;
+  }
+  if (mode === 'real' && action.needsExpectedReadyAt) {
+    const expectedReadyAt = (input.expectedReadyAt ?? '').trim();
+    if (!expectedReadyAt) {
+      return '请填写预计可取时间。';
+    }
+    if (Number.isNaN(Date.parse(expectedReadyAt))) {
+      return '预计可取时间格式不正确，请重新选择。';
+    }
+  }
+  if (mode === 'real' && action.needsDiningMode) {
+    if (input.diningMode !== 'DINE_IN' && input.diningMode !== 'TAKEAWAY') {
+      return '请选择变更后的用餐方式。';
     }
   }
   return null;

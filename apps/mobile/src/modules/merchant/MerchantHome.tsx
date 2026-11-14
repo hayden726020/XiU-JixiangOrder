@@ -2,7 +2,16 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import SampleBanner from './components/SampleBanner';
 import { SAMPLE_DATES } from './data/sampleData';
 import { createMerchantSource } from './data/source';
-import type { MenuDay, MerchantOrder, MerchantScenario, OrderAdvanceAction, SlotDay } from './data/types';
+import type {
+  CancelDecision,
+  DiningMode,
+  MenuDay,
+  MerchantOrder,
+  MerchantScenario,
+  OrderAdvanceAction,
+  SlotDay,
+  SourceResult,
+} from './data/types';
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
@@ -14,7 +23,7 @@ import {
   type ActionInput,
   type OrderAction,
 } from './state/actionMatrix';
-import { shortOrderId, statusView } from './state/orderView';
+import { localInputToZonedIso, shortOrderId, statusView } from './state/orderView';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
 import { demoLogin } from '../../shared/auth';
 import { getApiBaseInfo, saveStoredApiBaseUrl } from '../../shared/config';
@@ -252,17 +261,50 @@ export default function MerchantHome() {
     const requestId = actionRequestIds.current.get(key) ?? createRequestId('merchant-write');
     actionRequestIds.current.set(key, requestId);
     setPendingCode(action.code);
-    const result = action.code === 'VERIFY'
-      ? await source.verifyOrder(order.id, {
+    const base = { expectedVersion: order.version, requestId };
+    let result: SourceResult<MerchantOrder>;
+    if (action.code === 'VERIFY') {
+      result = await source.verifyOrder(order.id, {
+        ...base,
         pickupCode: (input.pickupCode ?? '').trim(),
-        expectedVersion: order.version,
-        requestId,
-      })
-      : await source.advanceOrder(order.id, {
-        action: action.action as OrderAdvanceAction,
-        expectedVersion: order.version,
-        requestId,
       });
+    } else if (
+      action.code === 'ACCEPT'
+      || action.code === 'START_PREPARING'
+      || action.code === 'MARK_READY'
+    ) {
+      result = await source.advanceOrder(order.id, {
+        ...base,
+        action: action.action as OrderAdvanceAction,
+      });
+    } else if (action.code === 'APPROVE_CANCEL' || action.code === 'REJECT_CANCEL') {
+      result = await source.decideCancellation(order.id, {
+        ...base,
+        decision: action.action as CancelDecision,
+        reason: (input.reason ?? '').trim(),
+      });
+    } else if (action.code === 'CANCEL_ORDER') {
+      result = await source.cancelOrder(order.id, {
+        ...base,
+        reason: (input.reason ?? '').trim(),
+      });
+    } else if (action.code === 'SET_DELAY') {
+      result = await source.setDelay(order.id, {
+        ...base,
+        reason: (input.reason ?? '').trim(),
+        expectedReadyAt: localInputToZonedIso((input.expectedReadyAt ?? '').trim()),
+      });
+    } else if (action.code === 'CHANGE_DINING_MODE') {
+      result = await source.changeDiningMode(order.id, {
+        ...base,
+        diningMode: input.diningMode as DiningMode,
+        reason: (input.reason ?? '').trim(),
+      });
+    } else {
+      setPendingCode(null);
+      setNotice(actionPrompt(action, order.id, mode, input));
+      return;
+    }
     setPendingCode(null);
     if (result.ok) {
       for (const storedKey of [...actionRequestIds.current.keys()]) {
@@ -281,7 +323,10 @@ export default function MerchantHome() {
       code: action.code,
       message: actionErrorText(result.error.code, result.error.message, action),
     });
-    if (['ORDER_VERSION_CONFLICT', 'INVALID_ORDER_STATE', 'PICKUP_CODE_USED'].includes(result.error.code)) {
+    if (
+      ['ORDER_VERSION_CONFLICT', 'INVALID_ORDER_STATE', 'PICKUP_CODE_USED', 'ALREADY_CANCELLED']
+        .includes(result.error.code)
+    ) {
       void refreshOrder(order.id);
     }
     if (!result.error.retryable) {

@@ -73,6 +73,19 @@ export function formatDateTime(iso: string): string {
   return `${iso.slice(5, 10)} ${iso.slice(11, 16)}`;
 }
 
+export function localInputToZonedIso(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? '+' : '-';
+  const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+  const minutes = String(Math.abs(offset) % 60).padStart(2, '0');
+  const clock = value.length >= 16 ? value.slice(0, 16) : value;
+  return `${clock}:00${sign}${hours}:${minutes}`;
+}
+
 export function formatSlot(order: MerchantOrder): string {
   return `${formatClock(order.slotStart)}—${formatClock(order.slotEnd)}`;
 }

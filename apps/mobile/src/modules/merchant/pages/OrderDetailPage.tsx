@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ActionBar from '../components/ActionBar';
-import type { MerchantOrder } from '../data/types';
+import type { DiningMode, MerchantOrder } from '../data/types';
 import {
   getOrderActions,
   getPrimaryAction,
@@ -37,25 +37,37 @@ export default function OrderDetailPage({
   actionError = null,
 }: OrderDetailPageProps) {
   const [pickupCode, setPickupCode] = useState('');
-  const [reason, setReason] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+  const [stockCancelReason, setStockCancelReason] = useState('');
+  const [delayReason, setDelayReason] = useState('');
+  const [delayExpectedReadyAt, setDelayExpectedReadyAt] = useState('');
+  const [diningReason, setDiningReason] = useState('');
+  const [diningModeInput, setDiningModeInput] = useState<DiningMode>(
+    order.diningMode === 'DINE_IN' ? 'TAKEAWAY' : 'DINE_IN',
+  );
+
+  useEffect(() => {
+    setDiningModeInput(order.diningMode === 'DINE_IN' ? 'TAKEAWAY' : 'DINE_IN');
+  }, [order.diningMode]);
 
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
   const verifyAction = actions.find((action) => action.code === 'VERIFY');
   const approveAction = actions.find((action) => action.code === 'APPROVE_CANCEL');
   const rejectAction = actions.find((action) => action.code === 'REJECT_CANCEL');
+  const stockCancelAction = actions.find((action) => action.code === 'CANCEL_ORDER');
   const delayAction = actions.find((action) => action.code === 'SET_DELAY');
   const diningAction = actions.find((action) => action.code === 'CHANGE_DINING_MODE');
   const mainActions = actions.filter(
-    (action) => action.kind === 'primary' && action.code !== 'VERIFY'
-      || action.code === 'CANCEL_ORDER',
+    (action) => action.kind === 'primary' && action.code !== 'VERIFY' && action.code !== 'CANCEL_ORDER',
   );
   const busy = (action: OrderAction | undefined) => Boolean(action) && pendingCode === action?.code;
   const busyLabel = (action: OrderAction | undefined) => (busy(action) ? '提交中…' : action?.label);
   const errorFor = (code: string) => (actionError?.code === code ? actionError.message : null);
   const cancelError = errorFor('APPROVE_CANCEL') ?? errorFor('REJECT_CANCEL');
   const otherError = actionError
-    && !['VERIFY', 'APPROVE_CANCEL', 'REJECT_CANCEL'].includes(actionError.code)
+    && !['VERIFY', 'APPROVE_CANCEL', 'REJECT_CANCEL', 'CANCEL_ORDER', 'SET_DELAY', 'CHANGE_DINING_MODE']
+      .includes(actionError.code)
     ? actionError.message
     : null;
 
@@ -194,7 +206,9 @@ export default function OrderDetailPage({
         <h3>取消申请</h3>
         <p className="merchant-muted">{cancelRequestLabel(order.cancelRequest)}</p>
         {order.cancelRequest.reason && (
-          <p className="merchant-muted">申请理由：{order.cancelRequest.reason}</p>
+          <p className="merchant-muted">
+            {order.cancelRequest.status === 'REJECTED' ? '处理理由' : '申请理由'}：{order.cancelRequest.reason}
+          </p>
         )}
         {order.cancelRequest.decisionReason && (
           <p className="merchant-muted">
@@ -204,8 +218,8 @@ export default function OrderDetailPage({
         {approveAction && rejectAction && (
           <>
             <textarea
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
+              value={cancelReason}
+              onChange={(event) => setCancelReason(event.target.value)}
               placeholder="批准或拒绝都必须填写理由"
               rows={2}
               aria-label="取消申请处理理由"
@@ -214,7 +228,7 @@ export default function OrderDetailPage({
               <button
                 type="button"
                 className="action-button action-button--danger"
-                onClick={() => onAction(approveAction, { reason })}
+                onClick={() => onAction(approveAction, { reason: cancelReason })}
                 disabled={busy(approveAction)}
                 aria-busy={busy(approveAction) || undefined}
               >
@@ -223,7 +237,7 @@ export default function OrderDetailPage({
               <button
                 type="button"
                 className="action-button action-button--secondary"
-                onClick={() => onAction(rejectAction, { reason })}
+                onClick={() => onAction(rejectAction, { reason: cancelReason })}
                 disabled={busy(rejectAction)}
                 aria-busy={busy(rejectAction) || undefined}
               >
@@ -237,11 +251,46 @@ export default function OrderDetailPage({
             )}
             <p className="hint">
               批准会取消订单并模拟退款；申请不等于已取消。
-              {mode === 'real' ? '本阶段尚未接入取消申请，点击仍为占位提示。' : ''}
+              {mode === 'real' ? '处理结果保存后学生端可读取同一订单。' : ''}
             </p>
           </>
         )}
       </section>
+
+      {stockCancelAction && (
+        <section className="detail-block">
+          <h3>缺货取消</h3>
+          <p className="merchant-muted">
+            仅未结束订单可取消；取消后模拟退款，并返还菜品库存与尚未开始时段的 1 个名额。
+          </p>
+          <textarea
+            value={stockCancelReason}
+            onChange={(event) => setStockCancelReason(event.target.value)}
+            placeholder="填写缺货原因"
+            rows={2}
+            aria-label="缺货取消原因"
+          />
+          <button
+            type="button"
+            className="action-button action-button--danger"
+            onClick={() => onAction(stockCancelAction, { reason: stockCancelReason })}
+            disabled={busy(stockCancelAction)}
+            aria-busy={busy(stockCancelAction) || undefined}
+          >
+            {busyLabel(stockCancelAction)}
+          </button>
+          {errorFor('CANCEL_ORDER') && (
+            <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
+              {errorFor('CANCEL_ORDER')}
+            </p>
+          )}
+          <p className="hint">
+            {mode === 'real'
+              ? '提交后由服务端判断状态与版本，失败会原样提示。'
+              : '样例模式只显示接口提示，不会取消订单。'}
+          </p>
+        </section>
+      )}
 
       <section className="detail-block">
         <h3>延迟</h3>
@@ -253,17 +302,45 @@ export default function OrderDetailPage({
           <p className="merchant-muted">未设置延迟</p>
         )}
         {delayAction && (
-          <button
-            type="button"
-            className="action-button action-button--secondary"
-            onClick={() => onAction(delayAction)}
-            disabled={busy(delayAction)}
-            aria-busy={busy(delayAction) || undefined}
-          >
-            {busyLabel(delayAction)}
-          </button>
+          <>
+            <p className="merchant-muted">延迟原因</p>
+            <textarea
+              value={delayReason}
+              onChange={(event) => setDelayReason(event.target.value)}
+              placeholder="例如：当前订单较多，出餐延后"
+              rows={2}
+              aria-label="延迟原因"
+            />
+            <p className="merchant-muted">预计可取时间</p>
+            <input
+              type="datetime-local"
+              value={delayExpectedReadyAt}
+              onChange={(event) => setDelayExpectedReadyAt(event.target.value)}
+              aria-label="预计可取时间"
+            />
+            <button
+              type="button"
+              className="action-button action-button--secondary"
+              onClick={() => onAction(delayAction, {
+                reason: delayReason,
+                expectedReadyAt: delayExpectedReadyAt,
+              })}
+              disabled={busy(delayAction)}
+              aria-busy={busy(delayAction) || undefined}
+            >
+              {busyLabel(delayAction)}
+            </button>
+            {errorFor('SET_DELAY') && (
+              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
+                {errorFor('SET_DELAY')}
+              </p>
+            )}
+            <p className="hint">
+              延迟不改变主状态，学生可读取原因与预计时间。
+              {mode === 'sample' ? '样例模式只显示接口提示。' : ''}
+            </p>
+          </>
         )}
-        {mode === 'real' && <p className="hint">本阶段尚未接入延迟保存，点击仍为占位提示。</p>}
       </section>
 
       <section className="detail-block">
@@ -274,18 +351,41 @@ export default function OrderDetailPage({
         )}
         {diningAction && (
           <>
+            <p className="merchant-muted">变更为</p>
+            <select
+              value={diningModeInput}
+              onChange={(event) => setDiningModeInput(event.target.value as DiningMode)}
+              aria-label="变更后的用餐方式"
+            >
+              <option value="DINE_IN">堂食</option>
+              <option value="TAKEAWAY">外带</option>
+            </select>
+            <textarea
+              value={diningReason}
+              onChange={(event) => setDiningReason(event.target.value)}
+              placeholder="填写确认变更理由"
+              rows={2}
+              aria-label="用餐方式变更理由"
+            />
             <button
               type="button"
               className="action-button action-button--secondary"
-              onClick={() => onAction(diningAction)}
+              onClick={() => onAction(diningAction, {
+                reason: diningReason,
+                diningMode: diningModeInput,
+              })}
               disabled={busy(diningAction)}
               aria-busy={busy(diningAction) || undefined}
             >
               {busyLabel(diningAction)}
             </button>
+            {errorFor('CHANGE_DINING_MODE') && (
+              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
+                {errorFor('CHANGE_DINING_MODE')}
+              </p>
+            )}
             <p className="hint">
-              需档口明确确认，只有未结束订单才可变更。
-              {mode === 'real' ? '本阶段尚未接入用餐方式变更，点击仍为占位提示。' : ''}
+              需档口明确确认，只有未结束订单才可变更；保存后学生端读取同一结果。
             </p>
           </>
         )}

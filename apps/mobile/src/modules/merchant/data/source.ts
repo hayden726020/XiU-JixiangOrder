@@ -174,9 +174,10 @@ function mapOrder(order: ApiOrder): MerchantOrder {
 async function requestMerchantOrderWrite(
   path: string,
   body: Record<string, unknown>,
+  method: 'POST' | 'PATCH' = 'POST',
 ): Promise<SourceResult<MerchantOrder>> {
   try {
-    const data = await apiRequest<ApiOrder>(path, { method: 'POST', body });
+    const data = await apiRequest<ApiOrder>(path, { method, body });
     if (typeof data.id !== 'string' || !Number.isFinite(data.version)) {
       return fail('INVALID_RESPONSE', '写操作响应缺少订单号或版本。');
     }
@@ -286,6 +287,53 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         pickupCode: input.pickupCode,
       });
     },
+    decideCancellation: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/cancel-decision`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        decision: input.decision,
+        reason: input.reason,
+      });
+    },
+    cancelOrder: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/cancel`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        reason: input.reason,
+      });
+    },
+    setDelay: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/delay`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        reason: input.reason,
+        expectedReadyAt: input.expectedReadyAt,
+      });
+    },
+    changeDiningMode: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(
+        `/merchant/orders/${encodeURIComponent(id)}/dining-mode`,
+        {
+          requestId: input.requestId,
+          expectedVersion: input.expectedVersion,
+          diningMode: input.diningMode,
+          reason: input.reason,
+        },
+        'PATCH',
+      );
+    },
   };
 }
 
@@ -338,6 +386,18 @@ export function createMerchantSource(options: {
       fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
     ),
     verifyOrder: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    decideCancellation: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    cancelOrder: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    setDelay: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    changeDiningMode: async (): Promise<SourceResult<MerchantOrder>> => (
       fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
     ),
   };

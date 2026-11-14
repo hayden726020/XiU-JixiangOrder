@@ -110,6 +110,35 @@ export interface VerifyOrderInput {
   requestId: string;
 }
 
+export type CancelDecision = 'APPROVE' | 'REJECT';
+
+export interface CancelDecisionInput {
+  decision: CancelDecision;
+  reason: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export interface MerchantCancelOrderInput {
+  reason: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export interface SetDelayInput {
+  reason: string;
+  expectedReadyAt: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export interface ChangeDiningModeInput {
+  diningMode: DiningMode;
+  reason: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
 export interface MerchantSource {
   mode: 'sample' | 'real';
   scenario: MerchantScenario;
@@ -119,4 +148,8 @@ export interface MerchantSource {
   getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
   advanceOrder: (id: string, input: AdvanceOrderInput) => Promise<SourceResult<MerchantOrder>>;
   verifyOrder: (id: string, input: VerifyOrderInput) => Promise<SourceResult<MerchantOrder>>;
+  decideCancellation: (id: string, input: CancelDecisionInput) => Promise<SourceResult<MerchantOrder>>;
+  cancelOrder: (id: string, input: MerchantCancelOrderInput) => Promise<SourceResult<MerchantOrder>>;
+  setDelay: (id: string, input: SetDelayInput) => Promise<SourceResult<MerchantOrder>>;
+  changeDiningMode: (id: string, input: ChangeDiningModeInput) => Promise<SourceResult<MerchantOrder>>;
 }
