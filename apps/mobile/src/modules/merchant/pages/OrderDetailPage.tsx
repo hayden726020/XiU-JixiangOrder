@@ -207,7 +207,7 @@ export default function OrderDetailPage({
         <p className="merchant-muted">{cancelRequestLabel(order.cancelRequest)}</p>
         {order.cancelRequest.reason && (
           <p className="merchant-muted">
-            {order.cancelRequest.status === 'REJECTED' ? '处理理由' : '申请理由'}：{order.cancelRequest.reason}
+            申请理由：{order.cancelRequest.reason}
           </p>
         )}
         {order.cancelRequest.decisionReason && (
