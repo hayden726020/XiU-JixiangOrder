@@ -96,6 +96,20 @@ export interface OrderPage {
   total: number;
 }
 
+export type OrderAdvanceAction = 'ACCEPT' | 'START_PREPARING' | 'MARK_READY';
+
+export interface AdvanceOrderInput {
+  action: OrderAdvanceAction;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export interface VerifyOrderInput {
+  pickupCode: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
 export interface MerchantSource {
   mode: 'sample' | 'real';
   scenario: MerchantScenario;
@@ -103,4 +117,6 @@ export interface MerchantSource {
   getOrder: (id: string) => Promise<SourceResult<MerchantOrder>>;
   getMenu: (date: string) => Promise<SourceResult<MenuDay>>;
   getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
+  advanceOrder: (id: string, input: AdvanceOrderInput) => Promise<SourceResult<MerchantOrder>>;
+  verifyOrder: (id: string, input: VerifyOrderInput) => Promise<SourceResult<MerchantOrder>>;
 }

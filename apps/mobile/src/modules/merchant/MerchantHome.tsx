@@ -2,19 +2,23 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import SampleBanner from './components/SampleBanner';
 import { SAMPLE_DATES } from './data/sampleData';
 import { createMerchantSource } from './data/source';
-import type { MenuDay, MerchantOrder, MerchantScenario, SlotDay } from './data/types';
+import type { MenuDay, MerchantOrder, MerchantScenario, OrderAdvanceAction, SlotDay } from './data/types';
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
 import {
+  actionErrorText,
   actionPrompt,
+  isRealWriteAction,
   validateActionInput,
   type ActionInput,
   type OrderAction,
 } from './state/actionMatrix';
+import { shortOrderId, statusView } from './state/orderView';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
 import { demoLogin } from '../../shared/auth';
 import { getApiBaseInfo, saveStoredApiBaseUrl } from '../../shared/config';
+import { createRequestId } from '../../shared/requestId';
 import { getSession, subscribeSession, type Session } from '../../shared/session';
 import './merchant.css';
 
@@ -48,6 +52,7 @@ export default function MerchantHome() {
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{ code: string; message: string } | null>(null);
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionRequestIds = useRef(new Map<string, string>());
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [orderPage, setOrderPage] = useState(1);
   const [orderPageInfo, setOrderPageInfo] = useState({ page: 1, pageSize: ORDERS_PAGE_SIZE, total: 0 });
@@ -157,6 +162,7 @@ export default function MerchantHome() {
       clearTimeout(actionTimer.current);
       actionTimer.current = null;
     }
+    actionRequestIds.current.clear();
     setPendingCode(null);
     setActionError(null);
   }
@@ -209,7 +215,7 @@ export default function MerchantHome() {
 
   function handleAction(orderId: string, action: OrderAction, input: ActionInput = {}) {
     if (pendingCode !== null) return;
-    const validation = validateActionInput(action, input);
+    const validation = validateActionInput(action, input, mode);
     if (validation) {
       setActionError({ code: action.code, message: validation });
       setNotice(null);
@@ -217,12 +223,70 @@ export default function MerchantHome() {
     }
     setActionError(null);
     setNotice(null);
+    const order = orders.find((item) => item.id === orderId) ?? null;
+    if (mode === 'real' && isRealWriteAction(action)) {
+      if (!order) {
+        setActionError({ code: action.code, message: '订单不在当前列表中，请返回列表刷新后重试。' });
+        return;
+      }
+      void runRealWrite(order, action, input);
+      return;
+    }
     setPendingCode(action.code);
     actionTimer.current = setTimeout(() => {
       actionTimer.current = null;
       setPendingCode(null);
       setNotice(actionPrompt(action, orderId, mode, input));
     }, 600);
+  }
+
+  async function refreshOrder(id: string) {
+    const result = await source.getOrder(id);
+    if (result.ok) {
+      setOrders((current) => current.map((item) => (item.id === id ? result.data : item)));
+    }
+  }
+
+  async function runRealWrite(order: MerchantOrder, action: OrderAction, input: ActionInput) {
+    const key = `${order.id}:${action.code}`;
+    const requestId = actionRequestIds.current.get(key) ?? createRequestId('merchant-write');
+    actionRequestIds.current.set(key, requestId);
+    setPendingCode(action.code);
+    const result = action.code === 'VERIFY'
+      ? await source.verifyOrder(order.id, {
+        pickupCode: (input.pickupCode ?? '').trim(),
+        expectedVersion: order.version,
+        requestId,
+      })
+      : await source.advanceOrder(order.id, {
+        action: action.action as OrderAdvanceAction,
+        expectedVersion: order.version,
+        requestId,
+      });
+    setPendingCode(null);
+    if (result.ok) {
+      for (const storedKey of [...actionRequestIds.current.keys()]) {
+        if (storedKey.startsWith(`${order.id}:`)) {
+          actionRequestIds.current.delete(storedKey);
+        }
+      }
+      const updated = result.data;
+      setOrders((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setNotice(
+        `${action.label}成功：订单 ${shortOrderId(updated.id)} 状态为「${statusView(updated.status).label}」，版本 v${updated.version}。`,
+      );
+      return;
+    }
+    setActionError({
+      code: action.code,
+      message: actionErrorText(result.error.code, result.error.message, action),
+    });
+    if (['ORDER_VERSION_CONFLICT', 'INVALID_ORDER_STATE', 'PICKUP_CODE_USED'].includes(result.error.code)) {
+      void refreshOrder(order.id);
+    }
+    if (!result.error.retryable) {
+      actionRequestIds.current.delete(key);
+    }
   }
 
   useEffect(() => () => {

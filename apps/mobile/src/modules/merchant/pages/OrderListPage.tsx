@@ -46,7 +46,7 @@ export default function OrderListPage({
           <p className="lead">
             {isSample
               ? '样例数据；按状态分组，堂食/外带与待处理取消申请一眼可见。'
-              : '真实数据；按状态分组，只读展示。写操作尚未接入。'}
+              : '真实数据；按状态分组。接单、开始制作、标记可取与核销已接入服务端，成功后状态立即更新。'}
           </p>
         </div>
         <button type="button" className="merchant-link-button" onClick={onOpenMenu}>

@@ -4,6 +4,7 @@ interface ActionBarProps {
   actions: OrderAction[];
   onAction: (action: OrderAction) => void;
   emptyText: string;
+  mode?: 'sample' | 'real';
   pendingCode?: string | null;
   errorText?: string | null;
 }
@@ -12,6 +13,7 @@ export default function ActionBar({
   actions,
   onAction,
   emptyText,
+  mode = 'sample',
   pendingCode = null,
   errorText = null,
 }: ActionBarProps) {
@@ -45,7 +47,9 @@ export default function ActionBar({
       </div>
       {pendingCode && (
         <p className="action-feedback action-feedback--pending" role="status" data-placeholder-state="pending">
-          提交中（样例占位）：尚未发送真实请求，也不会改变订单状态。
+          {mode === 'real'
+            ? '提交中：正在向服务端发送请求，请勿重复点击。'
+            : '提交中（样例占位）：尚未发送真实请求，也不会改变订单状态。'}
         </p>
       )}
       {errorText && (

@@ -17,7 +17,7 @@ export default function OrderRow({ order, onOpen }: OrderRowProps) {
     : (order.status === 'CANCELLED' ? '订单已取消' : '无可用操作');
 
   return (
-    <button type="button" className="order-row" onClick={() => onOpen(order.id)}>
+    <button type="button" className="order-row" data-order-id={order.id} onClick={() => onOpen(order.id)}>
       <span className="order-row__top">
         <span className="order-row__id">{shortOrderId(order.id)}</span>
         <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>

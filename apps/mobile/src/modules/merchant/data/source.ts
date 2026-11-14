@@ -85,11 +85,11 @@ function fail<T>(code: string, message: string, retryable = false): SourceResult
   return { ok: false, error: { code, message, retryable } };
 }
 
-function toFailure<T>(error: unknown): SourceResult<T> {
+function toFailure<T>(error: unknown, fallback = '读取真实数据失败，请稍后重试。'): SourceResult<T> {
   if (error instanceof ApiError) {
     return fail(error.code, error.message, error.retryable);
   }
-  return fail('UNKNOWN_ERROR', '读取真实数据失败，请稍后重试。');
+  return fail('UNKNOWN_ERROR', fallback);
 }
 
 function normalizePage(page?: number): number {
@@ -169,6 +169,21 @@ function mapOrder(order: ApiOrder): MerchantOrder {
     pickupCode: order.pickupCode ?? null,
     demo: false,
   };
+}
+
+async function requestMerchantOrderWrite(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<SourceResult<MerchantOrder>> {
+  try {
+    const data = await apiRequest<ApiOrder>(path, { method: 'POST', body });
+    if (typeof data.id !== 'string' || !Number.isFinite(data.version)) {
+      return fail('INVALID_RESPONSE', '写操作响应缺少订单号或版本。');
+    }
+    return { ok: true, data: mapOrder(data) };
+  } catch (error) {
+    return toFailure(error, '写操作未完成，请确认订单状态后重试。');
+  }
 }
 
 function createRealSource(scenario: MerchantScenario): MerchantSource {
@@ -251,6 +266,26 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
       const result = await loadMenu(date);
       return result.ok ? mapSlots(result.data) : result;
     },
+    advanceOrder: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/advance`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        action: input.action,
+      });
+    },
+    verifyOrder: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/verify`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        pickupCode: input.pickupCode,
+      });
+    },
   };
 }
 
@@ -299,5 +334,11 @@ export function createMerchantSource(options: {
       if (!slots) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
       return { ok: true, data: slots };
     },
+    advanceOrder: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    verifyOrder: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
   };
 }

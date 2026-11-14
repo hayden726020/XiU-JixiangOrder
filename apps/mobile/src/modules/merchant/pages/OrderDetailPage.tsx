@@ -182,7 +182,11 @@ export default function OrderDetailPage({
               {errorFor('VERIFY')}
             </p>
           )}
-          <p className="hint">第 2—3 天接入服务后可用；当前点击只显示接口提示，不会核销成功。</p>
+          <p className="hint">
+            {mode === 'real'
+              ? '输入学生出示的取餐码后提交；服务端校验订单状态与码，错误会原样提示。'
+              : '第 2—3 天接入服务后可用；当前点击只显示接口提示，不会核销成功。'}
+          </p>
         </section>
       )}
 
@@ -231,7 +235,10 @@ export default function OrderDetailPage({
                 {cancelError}
               </p>
             )}
-            <p className="hint">批准会取消订单并模拟退款；申请不等于已取消。</p>
+            <p className="hint">
+              批准会取消订单并模拟退款；申请不等于已取消。
+              {mode === 'real' ? '本阶段尚未接入取消申请，点击仍为占位提示。' : ''}
+            </p>
           </>
         )}
       </section>
@@ -256,6 +263,7 @@ export default function OrderDetailPage({
             {busyLabel(delayAction)}
           </button>
         )}
+        {mode === 'real' && <p className="hint">本阶段尚未接入延迟保存，点击仍为占位提示。</p>}
       </section>
 
       <section className="detail-block">
@@ -275,7 +283,10 @@ export default function OrderDetailPage({
             >
               {busyLabel(diningAction)}
             </button>
-            <p className="hint">需档口明确确认，只有未结束订单才可变更。</p>
+            <p className="hint">
+              需档口明确确认，只有未结束订单才可变更。
+              {mode === 'real' ? '本阶段尚未接入用餐方式变更，点击仍为占位提示。' : ''}
+            </p>
           </>
         )}
       </section>
@@ -286,6 +297,7 @@ export default function OrderDetailPage({
           actions={mainActions}
           onAction={onAction}
           emptyText={emptyText}
+          mode={mode}
           pendingCode={pendingCode}
           errorText={otherError}
         />

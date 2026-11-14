@@ -131,16 +131,51 @@ export function actionRequestName(action: OrderAction): string {
   return action.path.split('/').at(-1) ?? action.path;
 }
 
+const REAL_WRITE_CODES = new Set(['ACCEPT', 'START_PREPARING', 'MARK_READY', 'VERIFY']);
+
+export function isRealWriteAction(action: OrderAction): boolean {
+  return REAL_WRITE_CODES.has(action.code);
+}
+
+export function actionErrorText(code: string, message: string, action: OrderAction): string {
+  switch (code) {
+    case 'ORDER_VERSION_CONFLICT':
+      return '订单已被其他操作更新，正在刷新最新状态；请确认后重新点击。';
+    case 'INVALID_ORDER_STATE':
+      return `当前订单状态不允许「${action.label}」，正在刷新最新状态。`;
+    case 'PICKUP_CODE_INVALID':
+      return '取餐码不正确，请核对学生出示的码后重试。';
+    case 'PICKUP_CODE_USED':
+      return '该订单已取餐，请勿重复核销；页面正在刷新。';
+    case 'REQUEST_CONFLICT':
+      return '本次请求与之前的内容不一致，已准备新的请求号，请重新点击。';
+    case 'UNAUTHENTICATED':
+    case 'SESSION_EXPIRED':
+      return '登录已失效，请重新登录档口演示账号后重试。';
+    case 'NETWORK_TIMEOUT':
+      return '请求超时，结果待确认；重试会复用同一请求号，避免重复推进。';
+    case 'API_BASE_NOT_CONFIGURED':
+      return '尚未配置服务地址，请到 #/system-check 配置后再试。';
+    default:
+      return message;
+  }
+}
+
 export function validateActionInput(
   action: OrderAction,
   input: ActionInput = {},
+  mode: 'sample' | 'real' = 'sample',
 ): string | null {
   if (action.needsPickupCode && !(input.pickupCode ?? '').trim()) {
-    return '请先输入学生出示的取餐码；样例模式不会核销成功。';
+    return mode === 'real'
+      ? '请先输入学生出示的取餐码。'
+      : '请先输入学生出示的取餐码；样例模式不会核销成功。';
   }
   if (action.code === 'APPROVE_CANCEL' || action.code === 'REJECT_CANCEL') {
     if (!(input.reason ?? '').trim()) {
-      return `${action.label}必须填写理由；样例模式不会产生真实变更。`;
+      return mode === 'real'
+        ? `${action.label}必须填写理由。`
+        : `${action.label}必须填写理由；样例模式不会产生真实变更。`;
     }
   }
   return null;
@@ -176,7 +211,7 @@ export function actionPrompt(
   if (action.needsDiningMode) fields.push('diningMode=DINE_IN 或 TAKEAWAY');
   const fieldText = fields.length > 0 ? `（${fields.join('，')}）` : '';
   if (mode === 'real') {
-    return `真实模式：写操作尚未接入，这里将调用 ${action.method} ${path}${fieldText}，当前不产生真实变更。`;
+    return `真实模式：该写操作尚未接入，这里将调用 ${action.method} ${path}${fieldText}，当前不产生真实变更。`;
   }
   return `样例模式：这里将调用 ${action.method} ${path}${fieldText}，当前不产生真实变更。`;
 }
