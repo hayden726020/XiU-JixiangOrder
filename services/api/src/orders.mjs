@@ -132,10 +132,13 @@ function loadVisibleOrder(db, user, orderId) {
   return row;
 }
 
-function assertVersion(row, expectedVersion) {
+function assertVersion(row, expectedVersion, options = {}) {
   requireInteger(expectedVersion, 'expectedVersion', { min: 1, max: 1_000_000 });
   if (row.version !== expectedVersion) {
-    throw conflict('ORDER_VERSION_CONFLICT', '订单已发生变化，请刷新后再操作。');
+    throw conflict(
+      options.code ?? 'ORDER_VERSION_CONFLICT',
+      options.message ?? '订单已发生变化，请刷新后再操作。',
+    );
   }
 }
 
@@ -558,7 +561,10 @@ export function updateMerchantDish({ db, clock, user, params, body }) {
   }
   return transaction(db, () =>
     runIdempotent(db, { actorId: user.id, operation: `update-dish:${dish.id}`, requestId, hash, now }, () => {
-      assertVersion({ version: dish.version }, input.expectedVersion);
+      assertVersion({ version: dish.version }, input.expectedVersion, {
+        code: 'MENU_VERSION_CONFLICT',
+        message: '菜品已发生变化，请刷新菜单后重试。',
+      });
       db.prepare(
         `UPDATE dishes SET price_fen = ?, available_quantity = ?, on_sale = ?, version = version + 1
          WHERE id = ? AND version = ?`,
@@ -568,6 +574,7 @@ export function updateMerchantDish({ db, clock, user, params, body }) {
         body: {
           data: {
             id: dish.id,
+            merchantId: dish.merchant_id,
             name: dish.name,
             priceFen,
             availableQuantity,
@@ -598,7 +605,10 @@ export function updateMerchantSlot({ db, clock, user, params, body }) {
   }
   return transaction(db, () =>
     runIdempotent(db, { actorId: user.id, operation: `update-slot:${slot.id}`, requestId, hash, now }, () => {
-      assertVersion({ version: slot.version }, input.expectedVersion);
+      assertVersion({ version: slot.version }, input.expectedVersion, {
+        code: 'MENU_VERSION_CONFLICT',
+        message: '时段已发生变化，请刷新菜单后重试。',
+      });
       if (capacity < slot.booked_count) {
         throw conflict('INVALID_ORDER_STATE', '容量不能低于已占用名额。');
       }
@@ -670,6 +680,7 @@ export function listMenu({ db, clock, query }) {
       booked: slot.booked_count,
       remainingCapacity: Math.max(0, slot.capacity - slot.booked_count),
       enabled: slot.enabled === 1 && slot.end_at > now && slot.booked_count < slot.capacity,
+      version: slot.version,
     }));
   const dishes = db
     .prepare('SELECT * FROM dishes ORDER BY merchant_id, id')
@@ -681,6 +692,7 @@ export function listMenu({ db, clock, query }) {
       priceFen: dish.price_fen,
       availableQuantity: dish.available_quantity,
       onSale: dish.on_sale === 1,
+      version: dish.version,
     }));
   return { status: 200, body: { data: { date: requested, slots, dishes } } };
 }

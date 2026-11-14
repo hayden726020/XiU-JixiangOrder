@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { OrderDraft } from '../state/orderDraft';
+import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import type { DemoScenario, MenuResponse, SlotDto, StudentSource } from '../types';
-import { isApiError } from '../types';
+import { sanitizeMessage } from '../utils/errorSemantics';
 import { formatYuan } from '../utils/money';
 import { toSubmitErrorView } from '../utils/orderSubmitView';
 import DemoModeNotice from '../components/DemoModeNotice';
+import LoginGuide from '../components/LoginGuide';
+import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -16,8 +19,8 @@ const MODE_TEXT = {
 
 const SCENARIO_OPTIONS: Array<{ value: DemoScenario; label: string; hint: string }> = [
   { value: 'normal', label: '正常提交', hint: '按样例规则返回订单' },
-  { value: 'slot-full', label: '时段已满', hint: '提交返回名额已满' },
-  { value: 'out-of-stock', label: '菜品不足', hint: '提交返回数量不足' },
+  { value: 'slot-full', label: '时段不可用', hint: '提交返回时段不可用' },
+  { value: 'out-of-stock', label: '菜品不足', hint: '提交返回菜品不足' },
   { value: 'timeout', label: '提交超时', hint: '提交超时，结果待确认' },
 ];
 
@@ -53,12 +56,12 @@ export default function ConfirmPage({
   onBackToMenu,
   onSubmitted,
 }: ConfirmPageProps) {
+  const { gate, refresh } = useStudentSessionGate();
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [menuStatus, setMenuStatus] = useState<LoadStatus>('loading');
   const [scenario, setScenario] = useState<DemoScenario>(() => source.getScenario());
   const [busy, setBusy] = useState(false);
-  const [localError, setLocalError] = useState('');
   const [queryError, setQueryError] = useState('');
 
   useEffect(() => {
@@ -76,6 +79,7 @@ export default function ConfirmPage({
         if (!cancelled) {
           setMenu(data);
           setMenuStatus('ready');
+          draft.applyDishCatalog(data.dishes);
         }
       },
       () => {
@@ -88,14 +92,19 @@ export default function ConfirmPage({
     return () => {
       cancelled = true;
     };
-  }, [source, snapshot.date]);
+  }, [source, draft, snapshot.date]);
+
+  const realLoggedOut = source.mode === 'real' && !gate.usable;
 
   async function runSubmit(): Promise<void> {
     if (busy) {
       return;
     }
+    if (source.mode === 'real' && !gate.usable) {
+      refresh();
+      return;
+    }
     setBusy(true);
-    setLocalError('');
     setQueryError('');
     try {
       const order = await draft.submit();
@@ -103,16 +112,18 @@ export default function ConfirmPage({
       if (order) {
         onSubmitted(order.id);
       }
-    } catch (error) {
-      setLocalError(isApiError(error) ? error.message : '提交失败，请稍后重试。');
-      setSnapshot(draft.getState());
     } finally {
+      setSnapshot(draft.getState());
       setBusy(false);
     }
   }
 
   async function queryResult(): Promise<void> {
     if (busy) {
+      return;
+    }
+    if (source.mode === 'real' && !gate.usable) {
+      refresh();
       return;
     }
     setBusy(true);
@@ -122,11 +133,17 @@ export default function ConfirmPage({
       setSnapshot(draft.getState());
       onSubmitted(order.id);
     } catch (error) {
-      setQueryError(isApiError(error) ? error.message : '查询失败，请稍后重试。');
+      setQueryError(sanitizeMessage(error instanceof Error ? error.message : '', '查询失败，请稍后重试。'));
       setSnapshot(draft.getState());
     } finally {
       setBusy(false);
     }
+  }
+
+  function endRequest(): void {
+    draft.resetSubmission();
+    setSnapshot(draft.getState());
+    setQueryError('');
   }
 
   function changeScenario(next: DemoScenario): void {
@@ -135,7 +152,6 @@ export default function ConfirmPage({
     }
     source.setScenario(next);
     setScenario(next);
-    setLocalError('');
     setQueryError('');
     if (draft.getState().status !== 'idle') {
       draft.resetSubmission();
@@ -156,20 +172,75 @@ export default function ConfirmPage({
   });
   const errorView = toSubmitErrorView(snapshot.error);
   const timedOut = snapshot.status === 'timeout';
+  const menuReady = menuStatus === 'ready' && menu !== null;
+  const itemsReady =
+    menuReady &&
+    snapshot.items.every((item) => {
+      const dish = menu.dishes.find((candidate) => candidate.dishId === item.dishId);
+      return (
+        dish !== undefined &&
+        dish.onSale === true &&
+        (dish.availableQuantity ?? 0) >= item.quantity
+      );
+    });
+  const slotReady = menuReady && selectedSlot !== null;
+  const canSubmit =
+    menuReady &&
+    itemsReady &&
+    slotReady &&
+    snapshot.canConfirm &&
+    !timedOut &&
+    !busy &&
+    (source.mode === 'sample' || gate.usable);
+  const disabledReason = realLoggedOut
+    ? ''
+    : !menuReady
+      ? '确认信息尚未就绪。'
+      : !itemsReady
+        ? '部分菜品已变化，请返回菜单重新确认。'
+        : !slotReady
+          ? '所选时段已失效，请返回时段页重新选择。'
+          : '';
+
+  if (realLoggedOut) {
+    return (
+      <section className="student-page" aria-labelledby="student-confirm-title">
+        <RealModeNotice />
+        <button type="button" className="student-secondary student-back" onClick={onBack}>
+          ← 返回时段
+        </button>
+        <header className="student-page__head">
+          <p className="student-kicker">真实模式 · 以服务端结果为准</p>
+          <h2 id="student-confirm-title">确认订单</h2>
+        </header>
+        <LoginGuide gate={gate} onRecheck={refresh} onBack={onBackToMenu} />
+      </section>
+    );
+  }
 
   return (
     <section className="student-page" aria-labelledby="student-confirm-title">
-      <SampleBanner />
+      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <button type="button" className="student-secondary student-back" onClick={onBack}>
         ← 返回时段
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S5 · 确认下单与样例订单</p>
+        <p className="student-kicker">
+          {source.mode === 'real' ? '真实模式 · 以服务端结果为准' : 'S5 · 确认下单与样例订单'}
+        </p>
         <h2 id="student-confirm-title">确认订单</h2>
-        <p className="student-page__lead">核对菜品、时段与用餐方式；提交即模拟付款，不发生资金交易。</p>
+        <p className="student-page__lead">
+          {source.mode === 'real'
+            ? '核对菜品、时段与用餐方式；金额与订单结果以服务端返回为准。'
+            : '核对菜品、时段与用餐方式；提交即模拟付款，不发生资金交易。'}
+        </p>
       </header>
+
+      {source.mode === 'real' && gate.usable ? (
+        <p className="student-session-note">当前登录：{gate.identityText}（仅用于核对）</p>
+      ) : null}
 
       {menuStatus === 'loading' ? <p className="student-loading">正在读取确认信息…</p> : null}
 
@@ -220,7 +291,7 @@ export default function ConfirmPage({
 
           <section className="student-rule" aria-label="下单规则说明">
             <p>取消规则：接单前可直接取消；接单后需提交申请，由档口处理。</p>
-            <p>支付说明：模拟付款，不发生资金交易。</p>
+            <p>支付说明：{source.mode === 'real' ? '当前不发生真实资金交易。' : '模拟付款，不发生资金交易。'}</p>
           </section>
         </>
       ) : null}
@@ -241,12 +312,16 @@ export default function ConfirmPage({
         </div>
       ) : null}
 
-      {snapshot.status === 'error' && errorView ? (
+      {!timedOut && snapshot.status === 'error' && errorView && errorView.action !== 'login' ? (
         <div className="student-error" role="alert">
           <p>{errorView.message}</p>
           <div className="student-error__actions">
             {errorView.action === 'retry' ? (
               <button type="button" className="student-secondary" disabled={busy} onClick={runSubmit}>
+                {errorView.actionLabel}
+              </button>
+            ) : errorView.action === 'reconfirm' ? (
+              <button type="button" className="student-secondary" onClick={endRequest}>
                 {errorView.actionLabel}
               </button>
             ) : (
@@ -262,42 +337,38 @@ export default function ConfirmPage({
         </div>
       ) : null}
 
-      {localError ? (
-        <div className="student-error" role="alert">
-          <p>{localError}</p>
-        </div>
+      {source.mode === 'sample' ? (
+        <section className="student-scenario" aria-labelledby="student-scenario-title">
+          <h3 id="student-scenario-title" className="student-section-title">
+            样例场景（仅演示）
+          </h3>
+          <div className="student-scenario__options" role="group" aria-label="选择样例提交场景">
+            {SCENARIO_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`student-scenario__item${scenario === option.value ? ' is-active' : ''}`}
+                aria-pressed={scenario === option.value}
+                disabled={busy}
+                onClick={() => changeScenario(option.value)}
+              >
+                <span className="student-scenario__label">{option.label}</span>
+                <span className="student-scenario__hint">{option.hint}</span>
+              </button>
+            ))}
+          </div>
+          <p className="student-scenario__note">切换场景只影响下一次提交。</p>
+        </section>
       ) : null}
-
-      <section className="student-scenario" aria-labelledby="student-scenario-title">
-        <h3 id="student-scenario-title" className="student-section-title">
-          样例场景（仅演示）
-        </h3>
-        <div className="student-scenario__options" role="group" aria-label="选择样例提交场景">
-          {SCENARIO_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`student-scenario__item${scenario === option.value ? ' is-active' : ''}`}
-              aria-pressed={scenario === option.value}
-              disabled={busy}
-              onClick={() => changeScenario(option.value)}
-            >
-              <span className="student-scenario__label">{option.label}</span>
-              <span className="student-scenario__hint">{option.hint}</span>
-            </button>
-          ))}
-        </div>
-        <p className="student-scenario__note">切换场景只影响下一次提交；真实模式不显示此区域。</p>
-      </section>
 
       <footer className="student-summary">
         <button
           type="button"
           className="student-primary"
-          disabled={busy || timedOut || !snapshot.canConfirm}
+          disabled={!canSubmit}
           onClick={runSubmit}
         >
-          {busy ? '提交中…' : '确认下单（模拟付款）'}
+          {busy ? '提交中…' : source.mode === 'real' ? '确认下单' : '确认下单（模拟付款）'}
         </button>
         {busy ? (
           <p className="student-progress" role="status">
@@ -306,10 +377,12 @@ export default function ConfirmPage({
         ) : null}
         {timedOut ? (
           <p className="student-summary__hint">请先查询结果或重试同一请求，不要重复下单。</p>
+        ) : disabledReason ? (
+          <p className="student-summary__hint">{disabledReason}</p>
         ) : null}
       </footer>
 
-      <DemoModeNotice />
+      {source.mode === 'sample' ? <DemoModeNotice /> : null}
     </section>
   );
 }

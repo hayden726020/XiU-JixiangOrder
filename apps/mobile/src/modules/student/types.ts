@@ -1,4 +1,10 @@
+import { ApiError } from '../../shared/apiClient';
+
+export { ApiError };
+
 export type DiningMode = 'DINE_IN' | 'TAKEAWAY';
+
+export type StudentMode = 'sample' | 'real';
 
 export type DemoScenario = 'normal' | 'slot-full' | 'out-of-stock' | 'timeout';
 
@@ -30,7 +36,8 @@ export interface SlotDto {
 
 export interface MenuResponse {
   date: string;
-  demo: true;
+  /** 真实响应缺少 demo 字段时按 false 处理，只有样例数据明确为 true。 */
+  demo: boolean;
   dishes: DishDto[];
   slots: SlotDto[];
 }
@@ -84,7 +91,7 @@ export interface StudentOrder {
   pickedUpAt: string | null;
   delay: OrderDelay | null;
   pickupCode: string | null;
-  demo: true;
+  demo: boolean;
   local?: boolean;
 }
 
@@ -100,12 +107,19 @@ export interface CreateOrderInput {
   diningMode: DiningMode;
 }
 
+export interface QueryOrderResultInput {
+  requestId: string;
+  items?: DraftItemInput[];
+  slotId?: string | null;
+  diningMode?: DiningMode | null;
+}
+
 export interface StudentSource {
-  mode: 'sample';
+  mode: StudentMode;
   getMenu(date: string): Promise<MenuResponse>;
   getCrowd(slotId: string): Promise<CrowdReference>;
   createOrder(input: CreateOrderInput): Promise<StudentOrder>;
-  queryOrderResult(requestId: string): Promise<StudentOrder>;
+  queryOrderResult(input: QueryOrderResultInput | string): Promise<StudentOrder>;
   getOrder(id: string): Promise<StudentOrder>;
   setScenario(next: DemoScenario): DemoScenario;
   getScenario(): DemoScenario;
@@ -115,30 +129,49 @@ export interface SourceError {
   code: string;
   message: string;
   retryable: boolean;
+  dishNames?: string[];
 }
 
-export class ApiError extends Error {
-  readonly code: string;
-  readonly retryable: boolean;
+export type ApiErrorWithDishNames = ApiError & { dishNames?: string[] };
 
-  constructor(code: string, message: string, retryable = false) {
-    super(message);
-    this.name = 'ApiError';
-    this.code = code;
-    this.retryable = retryable;
-  }
+/**
+ * 统一构造 shared ApiError，避免模块内出现第二套错误类。
+ * 样例/本地校验没有 HTTP 状态，status 固定为 0；真实请求由 apiRequest 填充状态。
+ */
+export function apiError(code: string, message: string, retryable = false): ApiError {
+  return new ApiError({ code, message, status: 0, retryable });
+}
+
+export function apiErrorWithDishNames(
+  code: string,
+  message: string,
+  dishNames: string[],
+): ApiErrorWithDishNames {
+  const error = apiError(code, message, false);
+  return Object.assign(error, { dishNames: dishNames.slice() });
 }
 
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+function readDishNames(error: ApiError): string[] | undefined {
+  const value = (error as ApiErrorWithDishNames).dishNames;
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const kept = value.filter((name): name is string => typeof name === 'string' && name.trim() !== '');
+  return kept.length > 0 ? kept : undefined;
+}
+
 export function toSourceError(error: unknown): SourceError {
   if (isApiError(error)) {
+    const dishNames = readDishNames(error);
     return {
       code: error.code,
       message: error.message,
       retryable: error.retryable,
+      ...(dishNames ? { dishNames } : {}),
     };
   }
   return {

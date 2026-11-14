@@ -1,18 +1,52 @@
 import { useState } from 'react';
-import { createDefaultStudentSource } from './data/sampleSource';
+import { createStudentSource } from './data/sampleSource';
+import { resolveStudentMode } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
+import {
+  clearDraftSnapshot,
+  readDraftSnapshot,
+  saveDraftSnapshot,
+} from './state/draftSnapshot';
 import ConfirmPage from './pages/ConfirmPage';
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import SlotDiningPage from './pages/SlotDiningPage';
 import type { StudentSource } from './types';
+import { todayAndTomorrow } from './utils/dates';
 import './student.css';
 
 type StudentView = 'menu' | 'slot' | 'confirm' | 'order';
 
 export default function StudentHome() {
-  const [source] = useState<StudentSource>(() => createDefaultStudentSource());
-  const [draft] = useState(() => createOrderDraft({ source }));
+  const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
+  const [draft] = useState(() => {
+    if (source.mode === 'real') {
+      const dates = todayAndTomorrow(new Date());
+      const restored = readDraftSnapshot({ allowedDates: dates });
+      const realDraft = createOrderDraft({
+        source,
+        allowedDates: dates,
+        initialDate: restored?.date ?? dates[0],
+        onChange: (snapshot) => {
+          if (snapshot.status === 'success' || snapshot.totalQuantity === 0) {
+            clearDraftSnapshot();
+            return;
+          }
+          saveDraftSnapshot({
+            date: snapshot.date,
+            items: snapshot.items,
+            slotId: snapshot.slotId,
+            diningMode: snapshot.diningMode,
+          });
+        },
+      });
+      if (restored) {
+        realDraft.restoreSelection(restored);
+      }
+      return realDraft;
+    }
+    return createOrderDraft({ source });
+  });
   const [view, setView] = useState<StudentView>('menu');
   const [orderId, setOrderId] = useState<string | null>(null);
 

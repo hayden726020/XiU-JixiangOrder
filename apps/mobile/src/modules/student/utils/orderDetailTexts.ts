@@ -6,4 +6,4 @@ export const CANCEL_RULES = [
 
 export const CHANGE_DINING_NOTE = '当前仅展示规则，不提供变更申请按钮。';
 
-export const ORDER_CROWD_NOTE = '本页人数为演示数据，仅为本平台参考，不代表全食堂人数。';
+export const ORDER_CROWD_NOTE = '人数信息来自本平台，仅供参考，不代表全食堂人数。';

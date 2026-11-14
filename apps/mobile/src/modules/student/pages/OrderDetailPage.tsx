@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
-import type { StudentOrder, StudentSource } from '../types';
-import { isApiError } from '../types';
-import type { CrowdView } from '../utils/crowdView';
+import type { SourceError, StudentOrder, StudentSource } from '../types';
+import { isApiError, toSourceError } from '../types';
 import { toCrowdView } from '../utils/crowdView';
+import { toDetailErrorView } from '../utils/detailErrorView';
 import { CANCEL_RULES, CHANGE_DINING_NOTE } from '../utils/orderDetailTexts';
 import { toOrderStatusView } from '../utils/orderStatusView';
 import DemoModeNotice from '../components/DemoModeNotice';
+import LoginGuide from '../components/LoginGuide';
 import OrderCrowdNote from '../components/OrderCrowdNote';
+import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
+import { useStudentSessionGate } from '../state/useStudentSessionGate';
+import type { CrowdView } from '../utils/crowdView';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
@@ -18,16 +22,22 @@ export interface OrderDetailPageProps {
 }
 
 export default function OrderDetailPage({ source, orderId, onBack }: OrderDetailPageProps) {
+  const { gate, refresh } = useStudentSessionGate();
   const [order, setOrder] = useState<StudentOrder | null>(null);
   const [crowd, setCrowd] = useState<CrowdView | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
-  const [errorText, setErrorText] = useState('');
+  const [loadError, setLoadError] = useState<SourceError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
+  const realLoggedOut = source.mode === 'real' && !gate.usable;
+
   useEffect(() => {
+    if (realLoggedOut) {
+      return;
+    }
     let cancelled = false;
     setStatus('loading');
-    setErrorText('');
+    setLoadError(null);
     setCrowd(null);
     source.getOrder(orderId).then(
       (data) => {
@@ -53,47 +63,74 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
         if (!cancelled) {
           setOrder(null);
           setStatus('error');
-          setErrorText(
-            isApiError(error) && error.code === 'ORDER_NOT_FOUND'
-              ? '订单不存在或对当前身份不可见。'
-              : '订单信息读取失败，请重试',
-          );
+          setLoadError(isApiError(error) ? toSourceError(error) : null);
         }
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [source, orderId, reloadToken]);
+  }, [source, orderId, reloadToken, realLoggedOut]);
 
-  const view = order ? toOrderStatusView(order) : null;
+  const errorView = toDetailErrorView(loadError);
+  const view = order ? toOrderStatusView(order, { mode: source.mode }) : null;
+
+  if (realLoggedOut) {
+    return (
+      <section className="student-page" aria-labelledby="student-order-title">
+        <RealModeNotice />
+        <button type="button" className="student-secondary student-back" onClick={onBack}>
+          ← 返回菜单
+        </button>
+        <header className="student-page__head">
+          <p className="student-kicker">真实模式 · 只读订单</p>
+          <h2 id="student-order-title">订单详情</h2>
+        </header>
+        <LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} />
+      </section>
+    );
+  }
 
   return (
     <section className="student-page" aria-labelledby="student-order-title">
-      <SampleBanner />
+      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <button type="button" className="student-secondary student-back" onClick={onBack}>
         ← 返回菜单
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S6 · 订单详情（只读）</p>
+        <p className="student-kicker">
+          {source.mode === 'real' ? '真实模式 · 只读订单' : 'S6 · 订单详情（只读）'}
+        </p>
         <h2 id="student-order-title">订单详情</h2>
-        <p className="student-page__lead">只读展示样例订单；当前不会发生真实取餐或资金交易。</p>
+        <p className="student-page__lead">
+          {source.mode === 'real'
+            ? '只读展示服务端订单；状态与取餐码按返回展示。'
+            : '只读展示样例订单；当前不会发生真实取餐或资金交易。'}
+        </p>
       </header>
+
+      {source.mode === 'real' && gate.usable ? (
+        <p className="student-session-note">当前登录：{gate.identityText}（仅用于核对）</p>
+      ) : null}
 
       {status === 'loading' ? <p className="student-loading">正在读取订单信息…</p> : null}
 
-      {status === 'error' ? (
+      {status === 'error' && errorView && errorView.action !== 'login' ? (
         <div className="student-error" role="alert">
-          <p>{errorText}</p>
+          <p>{errorView.message}</p>
           <div className="student-error__actions">
             <button
               type="button"
               className="student-secondary"
-              onClick={() => setReloadToken((value) => value + 1)}
+              onClick={
+                errorView.action === 'back-to-menu'
+                  ? onBack
+                  : () => setReloadToken((value) => value + 1)
+              }
             >
-              重新读取
+              {errorView.action === 'back-to-menu' ? '返回菜单' : errorView.actionLabel}
             </button>
           </div>
         </div>
@@ -153,7 +190,9 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
               ))}
             </ul>
             <p className="student-total">合计 {view.totalText}</p>
-            <p className="student-total__note">金额为样例服务端返回结果</p>
+            <p className="student-total__note">
+              金额为{source.mode === 'real' ? '服务端' : '样例服务端'}返回结果
+            </p>
           </section>
 
           <section className="student-info" aria-label="预约与订单信息">
@@ -203,7 +242,7 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
         </>
       ) : null}
 
-      <DemoModeNotice />
+      {source.mode === 'sample' ? <DemoModeNotice /> : null}
     </section>
   );
 }
