@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
-import { DATES } from '../data/sampleData';
+
+import { createPresenceAdapter } from '../data/presenceAdapter';
 import type { OrderDraft } from '../state/orderDraft';
+import {
+  createPresenceController,
+  type PresenceState,
+} from '../state/locationController';
 import { createSlotRequestGuard, type SlotGuardState } from '../state/slotGuard';
 import type { DiningMode, MenuResponse, SlotDto, StudentSource } from '../types';
-import { isApiError } from '../types';
+import { EMPTY_SLOTS_TEXT } from '../utils/submitTexts';
+import { toSourceErrorView } from '../utils/sourceErrorView';
+import { formatSlotRange, toSlotView } from '../utils/slotView';
 import CrowdHint from '../components/CrowdHint';
 import DemoModeNotice from '../components/DemoModeNotice';
+import RealModeNotice from '../components/RealModeNotice';
 import LocationNote from '../components/LocationNote';
 import SampleBanner from '../components/SampleBanner';
 
@@ -22,19 +30,10 @@ function formatMonthDay(date: string): string {
   return `${month}-${day}`;
 }
 
-function dateLabel(date: string): string {
-  const index = DATES.indexOf(date);
+function dateLabel(date: string, dates: string[]): string {
+  const index = dates.indexOf(date);
   const label = DAY_LABELS[index] ?? '';
   return `${label} ${formatMonthDay(date)}`.trim();
-}
-
-function timeOf(iso: string): string {
-  const matched = /T(\d{2}:\d{2})/.exec(iso);
-  return matched ? matched[1] : iso;
-}
-
-function slotRange(slot: SlotDto): string {
-  return `${timeOf(slot.slotStart)}—${timeOf(slot.slotEnd)}`;
 }
 
 export interface SlotDiningPageProps {
@@ -59,6 +58,10 @@ export default function SlotDiningPage({
     createSlotRequestGuard({ fetchCrowd: (slotId) => source.getCrowd(slotId) }),
   );
   const [crowd, setCrowd] = useState<SlotGuardState>(() => guard.getState());
+  const [presenceController] = useState(() =>
+    createPresenceController({ adapter: createPresenceAdapter({ mode: source.mode }) }),
+  );
+  const [presence, setPresence] = useState<PresenceState>(() => presenceController.getState());
   const date = snapshot.date;
 
   async function requestCrowd(slotId: string): Promise<void> {
@@ -78,6 +81,19 @@ export default function SlotDiningPage({
   }, []);
 
   useEffect(() => {
+    let active = true;
+    void presenceController.startAuto().then((next) => {
+      if (active) {
+        setPresence(next);
+      }
+    });
+    return () => {
+      active = false;
+      presenceController.dispose();
+    };
+  }, [presenceController]);
+
+  useEffect(() => {
     let cancelled = false;
     setStatus('loading');
     setErrorText('');
@@ -86,13 +102,14 @@ export default function SlotDiningPage({
         if (!cancelled) {
           setMenu(data);
           setStatus('ready');
+          draft.applyDishCatalog(data.dishes);
         }
       },
       (error: unknown) => {
         if (!cancelled) {
           setMenu(null);
           setStatus('error');
-          setErrorText(isApiError(error) ? error.message : '时段信息读取失败，请重试');
+          setErrorText(toSourceErrorView(error));
         }
       },
     );
@@ -102,7 +119,7 @@ export default function SlotDiningPage({
   }, [source, date, reloadToken]);
 
   function selectSlot(slot: SlotDto): void {
-    if (!slot.enabled || slot.remainingCapacity <= 0) {
+    if (!toSlotView(slot).selectable) {
       return;
     }
     draft.setSlot(slot.slotId);
@@ -113,6 +130,14 @@ export default function SlotDiningPage({
   function selectMode(mode: DiningMode): void {
     draft.setDiningMode(mode);
     setSnapshot(draft.getState());
+  }
+
+  function retryPresence(): void {
+    void presenceController.retry().then(setPresence);
+  }
+
+  function clearPresenceRecord(): void {
+    void presenceController.clear().then(setPresence);
   }
 
   const selectedNames = menu
@@ -129,6 +154,8 @@ export default function SlotDiningPage({
       : '尚未选择菜品';
 
   const selectedSlot = menu?.slots.find((slot) => slot.slotId === snapshot.slotId) ?? null;
+  const allSlotsClosed =
+    menu !== null && menu.slots.length > 0 && menu.slots.every((slot) => slot.enabled !== true);
   const hint =
     snapshot.slotId === null
       ? '请选择时段'
@@ -138,21 +165,31 @@ export default function SlotDiningPage({
 
   return (
     <section className="student-page" aria-labelledby="student-slot-title">
-      <SampleBanner />
+      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <button type="button" className="student-secondary student-back" onClick={onBack}>
         ← 返回菜单
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S5 · 时段与用餐方式（可进入确认页）</p>
+        <p className="student-kicker">
+          {source.mode === 'real' ? 'S9 · 真实时段与拥挤（只读）' : 'S5 · 时段与用餐方式（可进入确认页）'}
+        </p>
         <h2 id="student-slot-title">选择时段与用餐方式</h2>
-        <p className="student-page__lead">已选菜品会保留；时段与用餐方式必须显式选择。</p>
+        <p className="student-page__lead">
+          {source.mode === 'real'
+            ? '时段与拥挤参考来自公共服务；用餐方式需显式选择。'
+            : '已选菜品会保留；时段与用餐方式必须显式选择。'}
+        </p>
       </header>
 
       <p className="student-selection-summary">{selectedSummary}</p>
 
-      {status === 'loading' ? <p className="student-loading">正在读取时段信息…</p> : null}
+      {status === 'loading' ? (
+        <p className="student-loading">
+          {source.mode === 'real' ? '正在读取时段信息…' : '正在读取样例时段信息…'}
+        </p>
+      ) : null}
 
       {status === 'error' ? (
         <div className="student-error" role="alert">
@@ -168,18 +205,21 @@ export default function SlotDiningPage({
       ) : null}
 
       {status === 'ready' && menu && menu.slots.length === 0 ? (
-        <p className="student-loading">暂无可用时段，请稍后重试</p>
+        <p className="student-loading">{EMPTY_SLOTS_TEXT}</p>
+      ) : null}
+
+      {status === 'ready' && allSlotsClosed ? (
+        <p className="student-loading">{EMPTY_SLOTS_TEXT}</p>
       ) : null}
 
       {status === 'ready' && menu && menu.slots.length > 0 ? (
         <section aria-labelledby="student-slot-list-title">
           <h3 id="student-slot-list-title" className="student-section-title">
-            选择时段 · {dateLabel(menu.date)}
+            选择时段 · {dateLabel(menu.date, snapshot.allowedDates)}
           </h3>
           <ul className="student-slot-list">
             {menu.slots.map((slot) => {
-              const full = slot.remainingCapacity <= 0;
-              const unavailable = !slot.enabled || full;
+              const view = toSlotView(slot);
               const selected = snapshot.slotId === slot.slotId;
               return (
                 <li key={slot.slotId}>
@@ -187,17 +227,11 @@ export default function SlotDiningPage({
                     type="button"
                     className={`student-slot${selected ? ' is-active' : ''}`}
                     aria-pressed={selected}
-                    disabled={unavailable}
+                    disabled={!view.selectable}
                     onClick={() => selectSlot(slot)}
                   >
-                    <span className="student-slot__time">{slotRange(slot)}</span>
-                    <span className="student-slot__meta">
-                      {!slot.enabled
-                        ? '该时段已关闭'
-                        : full
-                          ? '名额已满，不可选'
-                          : `剩余 ${slot.remainingCapacity} 个名额`}
-                    </span>
+                    <span className="student-slot__time">{view.selectedText}</span>
+                    <span className="student-slot__meta">{view.metaText}</span>
                   </button>
                 </li>
               );
@@ -233,15 +267,20 @@ export default function SlotDiningPage({
       </section>
 
       <CrowdHint
-        slotRange={selectedSlot ? slotRange(selectedSlot) : null}
+        slotRange={selectedSlot ? formatSlotRange(selectedSlot) : null}
         state={crowd}
       />
 
-      <LocationNote />
+      <LocationNote
+        state={presence}
+        mode={source.mode === 'real' ? 'real' : 'sample'}
+        onRetry={retryPresence}
+        onClear={clearPresenceRecord}
+      />
 
       <footer className="student-summary">
         <p className="student-summary__main">
-          {selectedSlot ? `时段 ${slotRange(selectedSlot)}` : '尚未选择时段'}
+          {selectedSlot ? `时段 ${formatSlotRange(selectedSlot)}` : '尚未选择时段'}
         </p>
         <p className="student-summary__note">
           {snapshot.diningMode ? `用餐方式：${MODE_TEXT[snapshot.diningMode]}` : '用餐方式：未选择'}
@@ -257,7 +296,7 @@ export default function SlotDiningPage({
         <p className="student-summary__hint">{hint}</p>
       </footer>
 
-      <DemoModeNotice />
+      {source.mode === 'sample' ? <DemoModeNotice /> : null}
     </section>
   );
 }

@@ -5,11 +5,16 @@ import type {
   DiningMode,
   MenuResponse,
   OrderItem,
+  QueryOrderResultInput,
+  StudentMode,
   StudentOrder,
   StudentSource,
 } from '../types';
-import { ApiError } from '../types';
+import { apiError, apiErrorWithDishNames } from '../types';
+import { createRealStudentSource, type RealRequest } from './realSource';
+import { resolveStudentMode } from './mode';
 import { sumFen } from '../utils/money';
+import { DISH_SHORTAGE_SUBMIT, SLOT_UNAVAILABLE_MESSAGE } from '../utils/submitTexts';
 import {
   CROWD_REFERENCE,
   DATES,
@@ -30,9 +35,10 @@ const SAME_ORDER_SLOT = 'demo-slot-20261113-lunch';
 const SAME_ORDER_ITEMS = JSON.stringify([{ dishId: 'demo-dish-01', quantity: 1 }]);
 
 export interface StudentSourceOptions {
-  mode?: 'sample' | 'real';
+  mode?: StudentMode;
   scenario?: DemoScenario;
   now?: () => Date;
+  request?: RealRequest;
 }
 
 function normalizeItems(items: DraftItemInput[]): DraftItemInput[] {
@@ -57,16 +63,25 @@ function isoShanghai(date: Date): string {
   return `${y}-${m}-${d}T${hh}:${mm}:${ss}+08:00`;
 }
 
+function dishNamesOf(items: DraftItemInput[]): string[] {
+  const names = items
+    .map((item) => findDish(item.dishId)?.name)
+    .filter((name): name is string => typeof name === 'string' && name.trim() !== '');
+  return [...new Set(names)];
+}
+
 export function createStudentSource({
   mode = 'sample',
   scenario = 'normal',
-  now = () => new Date('2026-11-13T11:45:00+08:00'),
+  now,
+  request,
 }: StudentSourceOptions = {}): StudentSource {
-  if (mode !== 'sample') {
-    throw new ApiError('REAL_MODE_NOT_READY', '真实模式尚未接入，不允许静默降级为样例数据。', false);
+  if (mode === 'real') {
+    return createRealStudentSource({ request, now });
   }
+  const clock = now ?? (() => new Date('2026-11-13T11:45:00+08:00'));
   if (!SCENARIOS.has(scenario)) {
-    throw new ApiError('VALIDATION_ERROR', '未知的样例场景切换值。', false);
+    throw apiError('VALIDATION_ERROR', '未知的样例场景切换值。', false);
   }
 
   let currentScenario: DemoScenario = scenario;
@@ -77,57 +92,58 @@ export function createStudentSource({
 
   function assertInput(input: CreateOrderInput): void {
     if (!input || typeof input !== 'object') {
-      throw new ApiError('VALIDATION_ERROR', '下单内容不完整。', false);
+      throw apiError('VALIDATION_ERROR', '下单内容不完整。', false);
     }
     if (typeof input.requestId !== 'string' || input.requestId.trim() === '') {
-      throw new ApiError('VALIDATION_ERROR', '缺少下单请求号。', false);
+      throw apiError('VALIDATION_ERROR', '缺少下单请求号。', false);
     }
     if (!Array.isArray(input.items) || input.items.length === 0) {
-      throw new ApiError('VALIDATION_ERROR', '请至少选择一道菜。', false);
+      throw apiError('VALIDATION_ERROR', '请至少选择一道菜。', false);
     }
     for (const item of input.items) {
       if (!DINING_MODES.has(input.diningMode)) {
-        throw new ApiError('VALIDATION_ERROR', '请选择堂食或外带。', false);
+        throw apiError('VALIDATION_ERROR', '请选择堂食或外带。', false);
       }
       if (!findDish(item.dishId) || !Number.isInteger(item.quantity) || item.quantity <= 0) {
-        throw new ApiError('VALIDATION_ERROR', '菜品或份数不合法。', false);
+        throw apiError('VALIDATION_ERROR', '菜品或份数不合法。', false);
       }
     }
     if (!findSlot(input.slotId)) {
-      throw new ApiError('VALIDATION_ERROR', '时段不存在。', false);
+      throw apiError('VALIDATION_ERROR', '时段不存在。', false);
     }
   }
 
   function assertBusiness(input: CreateOrderInput): void {
     const slot = findSlot(input.slotId);
     if (!slot) {
-      throw new ApiError('VALIDATION_ERROR', '时段不存在。', false);
+      throw apiError('VALIDATION_ERROR', '时段不存在。', false);
     }
-    if (slot.capacity - slot.occupied <= 0) {
-      throw new ApiError('SLOT_FULL', '该时段名额已满，请选择其他时段。', false);
-    }
+    const shortage: string[] = [];
     for (const item of input.items) {
       const dish = findDish(item.dishId);
       if (!dish) {
-        throw new ApiError('VALIDATION_ERROR', '菜品或份数不合法。', false);
+        throw apiError('VALIDATION_ERROR', '菜品或份数不合法。', false);
       }
       const available = dish.availability[slot.date] ?? 0;
       const onSale = dish.onSale[slot.date] === true;
       if (!onSale || item.quantity > available) {
-        throw new ApiError('OUT_OF_STOCK', '所选菜品数量不足，请调整数量。', false);
+        shortage.push(dish.name);
       }
+    }
+    if (shortage.length > 0) {
+      throw apiErrorWithDishNames('OUT_OF_STOCK', DISH_SHORTAGE_SUBMIT, [...new Set(shortage)]);
     }
   }
 
   function buildOrder(input: CreateOrderInput): StudentOrder {
     const slot = findSlot(input.slotId);
     if (!slot) {
-      throw new ApiError('VALIDATION_ERROR', '时段不存在。', false);
+      throw apiError('VALIDATION_ERROR', '时段不存在。', false);
     }
     const items: OrderItem[] = input.items.map((item) => {
       const dish = findDish(item.dishId);
       if (!dish) {
-        throw new ApiError('VALIDATION_ERROR', '菜品或份数不合法。', false);
+        throw apiError('VALIDATION_ERROR', '菜品或份数不合法。', false);
       }
       return { dishId: dish.dishId, name: dish.name, quantity: item.quantity, unitPriceFen: dish.unitPriceFen };
     });
@@ -141,7 +157,7 @@ export function createStudentSource({
       return clone(DEMO_ORDER_001);
     }
 
-    const timestamp = isoShanghai(now());
+    const timestamp = isoShanghai(clock());
     const id = `demo-order-local-${pad(localSeq)}`;
     localSeq += 1;
     return {
@@ -183,7 +199,7 @@ export function createStudentSource({
 
     async getMenu(date: string): Promise<MenuResponse> {
       if (!DATES.includes(date)) {
-        throw new ApiError('VALIDATION_ERROR', '日期只能是今天或明天。', false);
+        throw apiError('VALIDATION_ERROR', '日期只能是今天或明天。', false);
       }
       return clone({
         date,
@@ -196,7 +212,7 @@ export function createStudentSource({
     async getCrowd(slotId: string): Promise<CrowdReference> {
       const reference = CROWD_REFERENCE[slotId];
       if (!reference) {
-        throw new ApiError('ORDER_NOT_FOUND', '该时段不存在。', false);
+        throw apiError('ORDER_NOT_FOUND', '该时段不存在。', false);
       }
       return clone(reference);
     },
@@ -212,16 +228,16 @@ export function createStudentSource({
       const prior = createdByRequest.get(input.requestId);
       if (prior) {
         if (prior.fingerprint !== fingerprint) {
-          throw new ApiError('REQUEST_CONFLICT', '该请求号对应了不同内容，请重新确认后下单。', false);
+          throw apiError('REQUEST_CONFLICT', '该请求号对应了不同内容，请重新确认后下单。', false);
         }
         return clone(prior.order);
       }
 
       if (currentScenario === 'slot-full') {
-        throw new ApiError('SLOT_FULL', '该时段名额已满，请选择其他时段。', false);
+        throw apiError('SLOT_FULL', SLOT_UNAVAILABLE_MESSAGE, false);
       }
       if (currentScenario === 'out-of-stock') {
-        throw new ApiError('OUT_OF_STOCK', '所选菜品数量不足，请调整数量。', false);
+        throw apiErrorWithDishNames('OUT_OF_STOCK', DISH_SHORTAGE_SUBMIT, dishNamesOf(input.items));
       }
 
       assertBusiness(input);
@@ -229,15 +245,19 @@ export function createStudentSource({
       remember(input.requestId, order);
 
       if (currentScenario === 'timeout') {
-        throw new ApiError('TIMEOUT', '网络超时，订单可能已创建。请先查询结果，不要重复下单。', true);
+        throw apiError('TIMEOUT', '网络超时，订单可能已创建。请先查询结果，不要重复下单。', true);
       }
       return clone(order);
     },
 
-    async queryOrderResult(requestId: string): Promise<StudentOrder> {
+    async queryOrderResult(input: QueryOrderResultInput | string): Promise<StudentOrder> {
+      const requestId = typeof input === 'string' ? input : input.requestId;
+      if (typeof requestId !== 'string' || requestId.trim() === '') {
+        throw apiError('VALIDATION_ERROR', '缺少下单请求号。', false);
+      }
       const order = pendingByRequest.get(requestId) ?? createdByRequest.get(requestId)?.order;
       if (!order) {
-        throw new ApiError('ORDER_NOT_FOUND', '未找到该请求对应的订单。', false);
+        throw apiError('ORDER_NOT_FOUND', '未找到该请求对应的订单。', false);
       }
       return clone(order);
     },
@@ -245,14 +265,14 @@ export function createStudentSource({
     async getOrder(id: string): Promise<StudentOrder> {
       const order = ordersById.get(id);
       if (!order) {
-        throw new ApiError('ORDER_NOT_FOUND', '订单不存在或对当前身份不可见。', false);
+        throw apiError('ORDER_NOT_FOUND', '订单不存在或对当前身份不可见。', false);
       }
       return clone(order);
     },
 
     setScenario(next: DemoScenario): DemoScenario {
       if (!SCENARIOS.has(next)) {
-        throw new ApiError('VALIDATION_ERROR', '未知的样例场景切换值。', false);
+        throw apiError('VALIDATION_ERROR', '未知的样例场景切换值。', false);
       }
       currentScenario = next;
       return currentScenario;
@@ -265,5 +285,5 @@ export function createStudentSource({
 }
 
 export function createDefaultStudentSource(): StudentSource {
-  return createStudentSource({ mode: 'sample' });
+  return createStudentSource({ mode: resolveStudentMode() });
 }

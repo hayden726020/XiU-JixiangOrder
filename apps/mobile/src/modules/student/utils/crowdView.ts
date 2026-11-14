@@ -47,7 +47,7 @@ function emptyView(overrides: Partial<CrowdView> = {}): CrowdView {
     currentText: '',
     basisText: '',
     updatedText: '',
-    demoText: '演示数据',
+    demoText: '',
     ...overrides,
   };
 }
@@ -62,7 +62,13 @@ export function toCrowdView(
 
   const expiresAt = typeof crowd.expiresAt === 'string' ? new Date(crowd.expiresAt).getTime() : Number.NaN;
   if (Number.isFinite(expiresAt) && expiresAt <= now.getTime()) {
-    return emptyView({ level: crowd.level, expired: true, title: '信息已过期', detail: '请以现场为准' });
+    return emptyView({
+      level: crowd.level,
+      expired: true,
+      title: '信息已过期',
+      detail: '请以现场为准',
+      demoText: crowd.demo ? '演示数据' : '',
+    });
   }
 
   const text = LEVEL_TEXT[crowd.level] ?? LEVEL_TEXT.UNKNOWN;

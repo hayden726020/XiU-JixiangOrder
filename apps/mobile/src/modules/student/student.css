@@ -200,6 +200,33 @@
   font-weight: 600;
 }
 
+.student-dish.is-shortage {
+  background: #fdf6f6;
+  border-color: #e3b6b6;
+}
+
+.student-dish__shortage {
+  margin: 0.25rem 0 0;
+  padding: 0.12rem 0.55rem;
+  border: 1px solid #e3b6b6;
+  border-radius: 999px;
+  background: #fbe9e9;
+  color: #b91c1c;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.student-dish__shortage:hover {
+  background: #f7dede;
+}
+
+.student-dish__shortage:focus-visible {
+  outline: 2px solid #b91c1c;
+  outline-offset: 2px;
+}
+
 .student-notice {
   margin: 0;
   padding: 0.55rem 0.8rem;
@@ -466,6 +493,82 @@
   display: grid;
   gap: 0.7rem;
   padding: 0 1rem 0.9rem;
+}
+
+.student-location__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.8rem;
+  padding: 0.8rem 1rem 0.2rem;
+}
+
+.student-location__summary {
+  margin: 0;
+  padding: 0 1rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.student-location__status {
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  background: #eef2ef;
+  color: var(--green-900);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.student-location__status.is-loading {
+  background: #eef2ef;
+  color: var(--muted);
+}
+
+.student-location__status.is-inside {
+  background: #e6f4ea;
+  color: #166534;
+}
+
+.student-location__status.is-outside {
+  background: #fdf1e1;
+  color: var(--amber-700);
+}
+
+.student-location__status.is-unknown {
+  background: #f3f4f3;
+  color: #5b665e;
+}
+
+.student-location__status.is-sample {
+  background: #eef2ef;
+  color: #4b5563;
+}
+
+.student-location__status.is-idle {
+  background: #eef6ef;
+  color: var(--green-900);
+}
+
+.student-location__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.student-location__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  padding: 0 1rem 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: right;
+  cursor: pointer;
 }
 
 .student-location__list {
@@ -782,4 +885,46 @@
   color: #7f1d1d;
   font-size: 0.82rem;
   line-height: 1.55;
+}
+.student-session-note {
+  margin: 0 0 0.9rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  background: #eef6ff;
+  color: #1e4f7a;
+  font-size: 0.78rem;
+}
+
+.student-login-guide {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid #f1c27d;
+  border-radius: 0.8rem;
+  background: #fffaf0;
+}
+
+.student-login-guide__title {
+  margin: 0;
+  font-size: 1rem;
+  color: #92400e;
+}
+
+.student-login-guide__message {
+  margin: 0;
+  color: #7c2d12;
+  font-size: 0.9rem;
+}
+
+.student-login-guide__hint {
+  margin: 0;
+  color: #78350f;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.student-login-guide__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }

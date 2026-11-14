@@ -49,6 +49,13 @@ export const DISHES: SampleDish[] = [
     availability: { '2026-11-13': 50, '2026-11-14': 45 },
     onSale: { '2026-11-13': true, '2026-11-14': true },
   },
+  {
+    dishId: 'demo-dish-05',
+    name: '演示卤蛋',
+    unitPriceFen: 300,
+    availability: { '2026-11-13': 0, '2026-11-14': 10 },
+    onSale: { '2026-11-13': true, '2026-11-14': true },
+  },
 ];
 
 export const SLOTS: SampleSlot[] = [
