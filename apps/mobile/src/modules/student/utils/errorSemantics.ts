@@ -6,6 +6,7 @@ import {
   SLOT_CLOSED_MESSAGE,
   SLOT_UNAVAILABLE_MESSAGE,
 } from './submitTexts';
+import { SHOP_CROSS_ITEM_MESSAGE } from './shopTexts';
 
 export type ErrorAction =
   | 'login'
@@ -59,6 +60,9 @@ const SUBMIT_RULES: Record<string, ErrorSemantics> = {
     message: '网络超时，订单可能已创建。请先查询结果，不要重复下单。',
   },
   VALIDATION_ERROR: { action: 'back-to-menu', message: '提交信息不完整，请返回菜单核对。' },
+  /** 契约未登记，spec §7.4 建议；当前按未登记码兜底显示服务端原因。 */
+  MERCHANT_NOT_FOUND: { action: 'back-to-menu', message: '该店铺不存在或已下线，请重新选择店铺。' },
+  MERCHANT_CLOSED: { action: 'back-to-menu', message: '该店铺暂不可下单，请重新选择店铺。' },
   API_BASE_NOT_CONFIGURED: {
     action: 'retry',
     message: '尚未配置公共服务地址，请先在公共入口完成设置。',
@@ -118,7 +122,15 @@ export function sanitizeMessage(message: unknown, fallback: string): string {
   return trimmed;
 }
 
+const CROSS_SHOP_PATTERN = /档口|店铺|merchant/i;
+
 export function resolveSubmitSemantics(error: SourceError): ErrorSemantics {
+  if (
+    error.code === 'VALIDATION_ERROR' &&
+    CROSS_SHOP_PATTERN.test(error.message)
+  ) {
+    return { action: 'back-to-menu', message: SHOP_CROSS_ITEM_MESSAGE };
+  }
   const rule = SUBMIT_RULES[error.code];
   if (rule) {
     return rule;

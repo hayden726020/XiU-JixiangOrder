@@ -7,6 +7,7 @@ import type {
   StudentOrder,
 } from '../types';
 import { formatYuan } from './money';
+import { toOrderShopView, type OrderShopView } from './orderShopView';
 
 const STEPS = ['已下单', '已接单', '制作中', '可取餐', '已完成'];
 
@@ -57,6 +58,7 @@ export interface OrderStatusView {
   activeIndex: number;
   steps: TimelineStepView[];
   orderId: string;
+  shop: OrderShopView;
   items: OrderItemView[];
   totalText: string;
   slotRangeText: string;
@@ -153,6 +155,7 @@ export function toOrderStatusView(
     activeIndex,
     steps,
     orderId: order.id,
+    shop: toOrderShopView(order, mode),
     items: (order.items ?? []).map((item: OrderItem) => ({
       name: item.name,
       quantity: item.quantity,

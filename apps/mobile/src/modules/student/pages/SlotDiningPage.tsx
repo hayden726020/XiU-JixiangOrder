@@ -4,8 +4,10 @@ import { getPresenceRuntime, type PresenceState } from '../state/presenceRuntime
 import { derivePresenceView } from '../utils/presenceView';
 import { createSlotRequestGuard, type SlotGuardState } from '../state/slotGuard';
 import type { OrderDraft } from '../state/orderDraft';
-import type { DiningMode, MenuResponse, SlotDto, StudentSource } from '../types';
+import type { DiningMode, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
 import { EMPTY_SLOTS_TEXT } from '../utils/submitTexts';
+import { filterDishesByShop } from '../utils/dishShopFilter';
+import { CURRENT_SHOP_PREFIX, DEMO_DATA_LABEL } from '../utils/shopTexts';
 import { toSourceErrorView } from '../utils/sourceErrorView';
 import { formatSlotRange, toSlotView } from '../utils/slotView';
 import CrowdHint from '../components/CrowdHint';
@@ -36,6 +38,7 @@ function dateLabel(date: string, dates: string[]): string {
 export interface SlotDiningPageProps {
   source: StudentSource;
   draft: OrderDraft;
+  shop: ShopSummary;
   onBack: () => void;
   onConfirm: () => void;
 }
@@ -43,6 +46,7 @@ export interface SlotDiningPageProps {
 export default function SlotDiningPage({
   source,
   draft,
+  shop,
   onBack,
   onConfirm,
 }: SlotDiningPageProps) {
@@ -88,18 +92,19 @@ export default function SlotDiningPage({
 
   useEffect(() => {
     let cancelled = false;
+    const token = draft.beginMenuRead();
     setStatus('loading');
     setErrorText('');
     source.getMenu(date).then(
       (data) => {
-        if (!cancelled) {
+        if (!cancelled && draft.isMenuReadCurrent(token)) {
           setMenu(data);
           setStatus('ready');
-          draft.applyDishCatalog(data.dishes);
+          draft.applyDishCatalog(filterDishesByShop(data.dishes, shop.merchantId));
         }
       },
       (error: unknown) => {
-        if (!cancelled) {
+        if (!cancelled && draft.isMenuReadCurrent(token)) {
           setMenu(null);
           setStatus('error');
           setErrorText(toSourceErrorView(error));
@@ -109,7 +114,7 @@ export default function SlotDiningPage({
     return () => {
       cancelled = true;
     };
-  }, [source, date, reloadToken]);
+  }, [source, draft, shop.merchantId, date, reloadToken]);
 
   function selectSlot(slot: SlotDto): void {
     if (!toSlotView(slot).selectable) {
@@ -167,6 +172,14 @@ export default function SlotDiningPage({
       <button type="button" className="student-secondary student-back" onClick={onBack}>
         ← 返回菜单
       </button>
+
+      <p
+        className="student-shop-title"
+        data-shop-demo={source.mode === 'sample' ? 'true' : 'false'}
+      >
+        {CURRENT_SHOP_PREFIX}：{shop.name}
+        {source.mode === 'sample' ? ` · ${DEMO_DATA_LABEL}` : ''}
+      </p>
 
       <header className="student-page__head">
         <p className="student-kicker">

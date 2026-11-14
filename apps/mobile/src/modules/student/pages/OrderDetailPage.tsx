@@ -13,12 +13,15 @@ import {
   startRefresh,
   type DetailReadState,
 } from '../state/orderRead';
+import { useOrderPolling } from '../state/useOrderPolling';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { toCrowdView } from '../utils/crowdView';
 import { deriveDetailReadView } from '../utils/detailReadView';
 import { toDetailErrorView } from '../utils/detailErrorView';
 import { CANCEL_RULES, CHANGE_DINING_NOTE } from '../utils/orderDetailTexts';
 import { toOrderStatusView } from '../utils/orderStatusView';
+import { derivePollingView } from '../utils/pollingView';
+import { ORDER_SHOP_LABEL } from '../utils/shopTexts';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
 import OrderCrowdNote from '../components/OrderCrowdNote';
@@ -31,6 +34,8 @@ export interface OrderDetailPageProps {
   onBack: () => void;
   backLabel?: string;
 }
+
+type ReadKind = 'auto' | 'manual';
 
 export default function OrderDetailPage({
   source,
@@ -45,8 +50,22 @@ export default function OrderDetailPage({
   const guardRef = useRef(createReadGuard());
   const stateRef = useRef<DetailReadState>(readState);
   stateRef.current = readState;
+  const inFlightRef = useRef<{ kind: ReadKind; token: number } | null>(null);
+  const runReadRef = useRef<(kind: ReadKind) => void>(() => {
+    return;
+  });
 
   const realLoggedOut = source.mode === 'real' && !gate.usable;
+
+  const polling = useOrderPolling({
+    enabled: source.mode === 'real' && gate.usable,
+    offReason: source.mode === 'sample' ? 'sample' : 'blocked',
+    onAutoRead: () => {
+      runReadRef.current('auto');
+    },
+  });
+  const pollingRef = useRef(polling);
+  pollingRef.current = polling;
 
   useEffect(() => {
     if (realLoggedOut) {
@@ -54,6 +73,7 @@ export default function OrderDetailPage({
     }
     const guard = guardRef.current;
     const token = guard.next();
+    inFlightRef.current = null;
     setReadState((current) => startInitialRead(current));
     setCrowd(null);
     source.getOrder(orderId).then(
@@ -62,6 +82,7 @@ export default function OrderDetailPage({
           return;
         }
         setReadState((current) => settleRead(current, data, new Date()));
+        pollingRef.current.notifyInitialSuccess(data);
         source.getCrowd(data.slotId).then(
           (reference) => {
             if (guard.isCurrent(token)) {
@@ -80,6 +101,7 @@ export default function OrderDetailPage({
           return;
         }
         setReadState((current) => failInitialRead(current, toSourceError(failure)));
+        pollingRef.current.notifyInitialFailure();
       },
     );
     return () => {
@@ -87,39 +109,100 @@ export default function OrderDetailPage({
     };
   }, [source, orderId, realLoggedOut, reloadToken]);
 
-  function refreshOrder(): void {
-    if (source.mode !== 'real') {
+  function settleFromRead(token: number, data: Parameters<typeof settleRead>[1]): void {
+    const pending = inFlightRef.current;
+    if (pending === null || pending.token !== token || !guardRef.current.isCurrent(token)) {
+      if (pending !== null && pending.kind === 'auto') {
+        pollingRef.current.notifyAutoDropped();
+      }
+      return;
+    }
+    const kind = pending.kind;
+    inFlightRef.current = null;
+    setReadState((current) => settleRead(current, data, new Date()));
+    if (kind === 'manual') {
+      pollingRef.current.notifyManualSuccess(data);
+    } else {
+      pollingRef.current.notifyAutoSuccess(data);
+    }
+  }
+
+  function failFromRead(token: number, failure: unknown): void {
+    const pending = inFlightRef.current;
+    if (pending === null || pending.token !== token || !guardRef.current.isCurrent(token)) {
+      if (pending !== null && pending.kind === 'auto') {
+        pollingRef.current.notifyAutoDropped();
+      }
+      return;
+    }
+    const kind = pending.kind;
+    inFlightRef.current = null;
+    const error: SourceError = toSourceError(failure);
+    if (kind === 'manual') {
+      const failureKind = classifyRefreshFailure(error);
+      setReadState((current) => failRefresh(current, error, failureKind));
+      pollingRef.current.notifyManualFailure(error, failureKind);
+      return;
+    }
+    if (classifyRefreshFailure(error) === 'terminal') {
+      setReadState((current) => failRefresh(current, error, 'terminal'));
+    }
+    pollingRef.current.notifyAutoFailure(error);
+  }
+
+  function runRead(kind: ReadKind): void {
+    if (source.mode !== 'real' || realLoggedOut) {
       return;
     }
     const current = stateRef.current;
+
+    if (kind === 'auto') {
+      if (current.phase !== 'ready' || inFlightRef.current !== null) {
+        if (inFlightRef.current === null || inFlightRef.current.kind === 'auto') {
+          pollingRef.current.notifyAutoDropped();
+        }
+        return;
+      }
+      const token = guardRef.current.next();
+      inFlightRef.current = { kind: 'auto', token };
+      source.getOrder(orderId).then(
+        (data) => settleFromRead(token, data),
+        (failure: unknown) => failFromRead(token, failure),
+      );
+      return;
+    }
+
+    if (inFlightRef.current !== null) {
+      if (inFlightRef.current.kind === 'auto') {
+        inFlightRef.current = { kind: 'manual', token: inFlightRef.current.token };
+        setReadState((state) => startRefresh(state));
+        pollingRef.current.notifyManualStart();
+      }
+      return;
+    }
+
     if (current.phase !== 'ready' && current.phase !== 'refreshFailed') {
       return;
     }
-    const next = startRefresh(current);
-    if (next === current) {
-      return;
-    }
-    setReadState(next);
-    const guard = guardRef.current;
-    const token = guard.next();
+    setReadState((state) => startRefresh(state));
+    pollingRef.current.notifyManualStart();
+    const token = guardRef.current.next();
+    inFlightRef.current = { kind: 'manual', token };
     source.getOrder(orderId).then(
-      (data) => {
-        if (guard.isCurrent(token)) {
-          setReadState((state) => settleRead(state, data, new Date()));
-        }
-      },
-      (failure: unknown) => {
-        if (!guard.isCurrent(token)) {
-          return;
-        }
-        const error: SourceError = toSourceError(failure);
-        setReadState((state) => failRefresh(state, error, classifyRefreshFailure(error)));
-      },
+      (data) => settleFromRead(token, data),
+      (failure: unknown) => failFromRead(token, failure),
     );
   }
 
+  runReadRef.current = runRead;
+
   const errorView = toDetailErrorView(readState.error);
   const readView = deriveDetailReadView(readState, source.mode);
+  const pollingView = derivePollingView(polling.state, {
+    mode: source.mode,
+    hasOrder: readState.order !== null,
+    lastReadAt: readState.lastReadAt,
+  });
   const statusView =
     readState.order !== null ? toOrderStatusView(readState.order, { mode: source.mode }) : null;
 
@@ -202,13 +285,26 @@ export default function OrderDetailPage({
                 type="button"
                 className="student-secondary"
                 disabled={!readView.canRefresh}
-                onClick={refreshOrder}
+                onClick={() => runRead('manual')}
               >
                 {readView.refreshButtonText}
               </button>
               <p className="student-order-note">
                 点击后会重新读取本单最新状态；不会改变订单。
               </p>
+              <p
+                className="student-polling"
+                hidden={!pollingView.showText}
+                data-polling-state={pollingView.stateAttr}
+                data-polling-reason={pollingView.reasonAttr}
+                role={pollingView.tone === 'none' ? undefined : 'status'}
+                aria-live={pollingView.tone === 'active' ? 'off' : 'polite'}
+              >
+                {pollingView.text}
+              </p>
+              {pollingView.lastReadText ? (
+                <p className="student-order-note">{pollingView.lastReadText}</p>
+              ) : null}
               {readView.refreshNoticeText ? (
                 <p className="student-error__inline" role="status">
                   {readView.refreshNoticeText}
@@ -278,6 +374,13 @@ export default function OrderDetailPage({
           </section>
 
           <section className="student-info" aria-label="预约与订单信息">
+            <p className="student-info__row">
+              <span>{ORDER_SHOP_LABEL}</span>
+              <span>{statusView.shop.text}</span>
+            </p>
+            {statusView.shop.note ? (
+              <p className="student-order-note">{statusView.shop.note}</p>
+            ) : null}
             <p className="student-info__row">
               <span>时段</span>
               <span>{statusView.slotRangeText || '未提供'}</span>

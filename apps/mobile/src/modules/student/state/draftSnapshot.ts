@@ -2,10 +2,11 @@ import type { DiningMode, DraftItemInput } from '../types';
 
 export const DRAFT_SNAPSHOT_KEY = 'xiu.student.draft.v1';
 
-const VERSION = 1;
+const VERSION = 2;
 const MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
 export interface DraftSelection {
+  merchantId: string;
   date: string;
   items: DraftItemInput[];
   slotId: string | null;
@@ -63,6 +64,7 @@ export function saveDraftSnapshot(selection: DraftSelection, now: number = Date.
   }
   const payload: StoredDraft = {
     version: VERSION,
+    merchantId: selection.merchantId,
     date: selection.date,
     items: selection.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
     slotId: selection.slotId,
@@ -105,6 +107,8 @@ export function readDraftSnapshot({
   if (
     !isRecord(parsed) ||
     parsed.version !== VERSION ||
+    typeof parsed.merchantId !== 'string' ||
+    parsed.merchantId.trim() === '' ||
     typeof parsed.date !== 'string' ||
     !allowedDates.includes(parsed.date) ||
     !Array.isArray(parsed.items) ||
@@ -121,6 +125,7 @@ export function readDraftSnapshot({
   }
 
   return {
+    merchantId: parsed.merchantId,
     date: parsed.date,
     items: parsed.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
     slotId: parsed.slotId,

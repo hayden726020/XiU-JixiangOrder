@@ -1042,3 +1042,114 @@
   font-size: 0.82rem;
   line-height: 1.5;
 }
+.student-polling {
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  border-left: 3px solid #2e7d32;
+  border-radius: 0.35rem;
+  background: #f3faf4;
+  color: #35543a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.student-polling[hidden] {
+  display: none;
+}
+.student-shop-title {
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #2e7d32;
+  border-radius: 0.35rem;
+  background: #f3faf4;
+  color: #35543a;
+  font-size: 0.85rem;
+}
+
+.student-shop-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student-shop-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.85rem;
+  border: 1px solid #d8e2dc;
+  border-radius: 0.8rem;
+  background: #fbfdfc;
+}
+
+.student-shop-card.is-current {
+  border-color: #2e7d32;
+  background: #f3faf4;
+}
+
+.student-shop-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.student-shop-card__name {
+  margin: 0;
+  color: #23352b;
+  font-weight: 600;
+}
+
+.student-shop-card__demo {
+  padding: 0.1rem 0.4rem;
+  border: 1px dashed #b26a00;
+  border-radius: 0.35rem;
+  color: #8a5300;
+  font-size: 0.75rem;
+}
+
+.student-shop-card__current {
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.35rem;
+  background: #2e7d32;
+  color: #ffffff;
+  font-size: 0.75rem;
+}
+
+.student-shop-card__note,
+.student-shop-card__meta,
+.student-shop-card__disabled {
+  margin: 0;
+  color: #52616b;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.student-shop-card__disabled {
+  color: #7f1d1d;
+}
+
+.student-shop-card__enter {
+  width: 100%;
+}
+
+.student-shop-derived__entry {
+  margin-top: 0.5rem;
+}
+
+.student-sample-only {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border: 1px dashed #b26a00;
+  border-radius: 0.3rem;
+  color: #8a5300;
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+
+.student-order-list__shop {
+  margin: 0;
+  color: #35543a;
+  font-size: 0.8rem;
+}

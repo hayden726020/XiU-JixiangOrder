@@ -1,4 +1,5 @@
 import { isApiError } from '../types';
+import { SHOP_LIST_UNAVAILABLE_ERROR } from './shopTexts';
 
 const MESSAGES: Record<string, string> = {
   API_BASE_NOT_CONFIGURED: '尚未配置公共服务地址，请在公共入口设置服务地址。',
@@ -10,10 +11,14 @@ const MESSAGES: Record<string, string> = {
   SERVICE_UNAVAILABLE: '服务暂不可用，请稍后重新读取。',
   SLOT_NOT_FOUND: '该时段不存在或已下线，请重新选择。',
   VALIDATION_ERROR: '请求参数不符合约定，请返回上一步重新选择。',
+  SHOP_LIST_UNAVAILABLE: SHOP_LIST_UNAVAILABLE_ERROR,
 };
 
 export function toSourceErrorView(error: unknown): string {
   if (isApiError(error)) {
+    if (error.code === 'INVALID_RESPONSE' && error.message.includes('店铺')) {
+      return error.message;
+    }
     const known = MESSAGES[error.code];
     if (known) {
       return known;

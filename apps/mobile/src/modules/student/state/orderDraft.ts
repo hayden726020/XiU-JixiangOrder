@@ -10,6 +10,8 @@ import type {
 import { apiError, isApiError, toSourceError } from '../types';
 import { sumFen } from '../utils/money';
 import { DISH_LIMIT_TEXT, DISH_SHORTAGE_NOTICE } from '../utils/submitTexts';
+import { SHOP_FOREIGN_ITEM_NOTICE, SHOP_SWITCH_NOTICE } from '../utils/shopTexts';
+import { filterDishesByShop } from '../utils/dishShopFilter';
 import { createRequestIdKeeper, requestIdPrefixOf, type RequestIdKeeper } from '../utils/requestId';
 import type { DraftSelection } from './draftSnapshot';
 
@@ -18,8 +20,17 @@ const SAMPLE_DATE_LIST = ['2026-11-13', '2026-11-14'];
 
 export type DraftStatus = 'idle' | 'submitting' | 'success' | 'timeout' | 'error';
 
+export type SetShopReason = 'applied' | 'same-shop' | 'busy' | 'invalid';
+
+export interface SetShopResult {
+  ok: boolean;
+  changed: boolean;
+  reason: SetShopReason;
+}
+
 export interface DraftState {
   date: string;
+  shopId: string | null;
   slotId: string | null;
   diningMode: DiningMode | null;
   status: DraftStatus;
@@ -35,6 +46,8 @@ export interface DraftSnapshot extends DraftState {
   previewFen: number;
   canProceedToSlot: boolean;
   canConfirm: boolean;
+  canSwitchShop: boolean;
+  hasForeignItem: boolean;
   requestId: string | null;
 }
 
@@ -48,6 +61,11 @@ export interface OrderDraftOptions {
 
 export interface OrderDraft {
   getState(): DraftSnapshot;
+  getShopId(): string | null;
+  canSetShop(): boolean;
+  setShop(merchantId: string): SetShopResult;
+  beginMenuRead(): number;
+  isMenuReadCurrent(token: number): boolean;
   setDate(date: string): boolean;
   setQuantity(dish: DishDto, quantity: number): number;
   getLimit(dishId: string): number;
@@ -80,6 +98,7 @@ export function createOrderDraft({
   const limits = new Map<string, number>();
   const state: DraftState = {
     date: startDate,
+    shopId: null,
     slotId: null,
     diningMode: null,
     status: 'idle',
@@ -89,6 +108,9 @@ export function createOrderDraft({
   };
   let inFlight: Promise<StudentOrder | null> | null = null;
   let submission: CreateOrderInput | null = null;
+  let generation = 0;
+
+  let catalogDishIds = new Set<string>();
 
   function getItems(): DraftItemInput[] {
     return [...quantities.entries()]
@@ -117,8 +139,21 @@ export function createOrderDraft({
     return getItems().length > 0;
   }
 
+  function hasForeignItem(): boolean {
+    return getItems().some((item) => !catalogDishIds.has(item.dishId));
+  }
+
+  function canSetShop(): boolean {
+    return state.status !== 'submitting' && state.status !== 'timeout' && inFlight === null;
+  }
+
   function canConfirm(): boolean {
-    return getItems().length > 0 && state.slotId !== null && state.diningMode !== null;
+    return (
+      getItems().length > 0 &&
+      state.slotId !== null &&
+      state.diningMode !== null &&
+      !hasForeignItem()
+    );
   }
 
   function snapshot(): DraftSnapshot {
@@ -130,8 +165,51 @@ export function createOrderDraft({
       previewFen: getPreviewFen(),
       canProceedToSlot: canProceedToSlot(),
       canConfirm: canConfirm(),
+      canSwitchShop: canSetShop(),
+      hasForeignItem: hasForeignItem(),
       requestId: requestIds.current,
     };
+  }
+
+  function getShopId(): string | null {
+    return state.shopId;
+  }
+
+  function beginMenuRead(): number {
+    return generation;
+  }
+
+  function isMenuReadCurrent(token: number): boolean {
+    return token === generation;
+  }
+
+  function setShop(merchantId: string): SetShopResult {
+    if (typeof merchantId !== 'string' || merchantId.trim() === '') {
+      return { ok: false, changed: false, reason: 'invalid' };
+    }
+    if (state.shopId === merchantId) {
+      return { ok: true, changed: false, reason: 'same-shop' };
+    }
+    if (!canSetShop()) {
+      return { ok: false, changed: false, reason: 'busy' };
+    }
+    quantities.clear();
+    prices.clear();
+    limits.clear();
+
+    catalogDishIds = new Set<string>();
+    state.shopId = merchantId;
+    state.slotId = null;
+    state.diningMode = null;
+    state.status = 'idle';
+    state.order = null;
+    state.error = null;
+    state.notice = SHOP_SWITCH_NOTICE;
+    submission = null;
+    requestIds.complete();
+    generation += 1;
+    notifyChange();
+    return { ok: true, changed: true, reason: 'applied' };
   }
 
   function setDate(date: string): boolean {
@@ -153,6 +231,7 @@ export function createOrderDraft({
     state.notice = '已切换日期，请重新选择';
     submission = null;
     requestIds.complete();
+    generation += 1;
     notifyChange();
     return true;
   }
@@ -202,11 +281,26 @@ export function createOrderDraft({
   }
 
   function applyDishCatalog(dishes: DishDto[]): void {
-    const catalog = new Map(dishes.map((dish) => [dish.dishId, dish]));
+    if (state.shopId === null) {
+      quantities.clear();
+      prices.clear();
+      limits.clear();
+
+      catalogDishIds = new Set<string>();
+      notifyChange();
+      return;
+    }
+    const filtered = filterDishesByShop(dishes, state.shopId);
+    const catalog = new Map(filtered.map((dish) => [dish.dishId, dish]));
+
+    catalogDishIds = new Set(catalog.keys());
     let changed = false;
     for (const [dishId, quantity] of [...quantities.entries()]) {
       const dish = catalog.get(dishId);
       if (!dish) {
+        quantities.delete(dishId);
+        prices.delete(dishId);
+        limits.delete(dishId);
         changed = true;
         continue;
       }
@@ -225,7 +319,27 @@ export function createOrderDraft({
     notifyChange();
   }
 
+  function dropForeignItems(): boolean {
+    let dropped = false;
+    for (const dishId of [...quantities.keys()]) {
+      if (!catalogDishIds.has(dishId)) {
+        quantities.delete(dishId);
+        prices.delete(dishId);
+        limits.delete(dishId);
+        dropped = true;
+      }
+    }
+    if (dropped) {
+      state.notice = SHOP_FOREIGN_ITEM_NOTICE;
+      notifyChange();
+    }
+    return dropped;
+  }
+
   function restoreSelection(selection: DraftSelection): boolean {
+    if (state.shopId === null || selection.merchantId !== state.shopId) {
+      return false;
+    }
     if (!dateSet.has(selection.date)) {
       return false;
     }
@@ -263,12 +377,14 @@ export function createOrderDraft({
     state.notice = '已恢复上次选择，请重新核对';
     submission = null;
     requestIds.complete();
+    generation += 1;
     notifyChange();
     return true;
   }
 
   function buildInput(): CreateOrderInput {
-    if (state.slotId === null || state.diningMode === null) {
+    dropForeignItems();
+    if (getItems().length === 0 || state.slotId === null || state.diningMode === null) {
       throw apiError('VALIDATION_ERROR', '请选择时段和堂食或外带。', false);
     }
     return {
@@ -283,6 +399,7 @@ export function createOrderDraft({
     if (inFlight) {
       return inFlight;
     }
+    dropForeignItems();
     if (!canConfirm()) {
       throw apiError('VALIDATION_ERROR', '请选择时段和堂食或外带。', false);
     }
@@ -378,6 +495,11 @@ export function createOrderDraft({
 
   return {
     getState: snapshot,
+    getShopId,
+    canSetShop,
+    setShop,
+    beginMenuRead,
+    isMenuReadCurrent,
     setDate,
     setQuantity,
     getLimit,
