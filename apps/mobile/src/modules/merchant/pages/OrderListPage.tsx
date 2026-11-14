@@ -16,6 +16,7 @@ interface OrderListPageProps {
   onPageChange: (page: number) => void;
   onOpenOrder: (id: string) => void;
   onOpenMenu: () => void;
+  onOpenSetup: () => void;
 }
 
 export default function OrderListPage({
@@ -31,6 +32,7 @@ export default function OrderListPage({
   onPageChange,
   onOpenOrder,
   onOpenMenu,
+  onOpenSetup,
 }: OrderListPageProps) {
   const groups = groupOrders(orders);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -49,9 +51,14 @@ export default function OrderListPage({
               : '真实数据；按状态分组。接单、开始制作、标记可取与核销已接入服务端，成功后状态立即更新。'}
           </p>
         </div>
-        <button type="button" className="merchant-link-button" onClick={onOpenMenu}>
-          菜单与库存
-        </button>
+        <div className="merchant-view__actions">
+          <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
+            商家注册 / 开店
+          </button>
+          <button type="button" className="merchant-link-button" onClick={onOpenMenu} data-open-menu>
+            菜单与库存
+          </button>
+        </div>
       </header>
 
       {isSample && (
