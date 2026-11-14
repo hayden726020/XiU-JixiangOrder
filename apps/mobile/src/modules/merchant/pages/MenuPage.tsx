@@ -7,13 +7,27 @@ interface MenuPageProps {
   dates: ReadonlyArray<string>;
   date: string;
   today: string;
+  isSample: boolean;
+  loading: boolean;
+  error: string | null;
   onDateChange: (date: string) => void;
   menu: MenuDay | null;
   slots: SlotDay | null;
   onBack: () => void;
 }
 
-export default function MenuPage({ dates, date, today, onDateChange, menu, slots, onBack }: MenuPageProps) {
+export default function MenuPage({
+  dates,
+  date,
+  today,
+  isSample,
+  loading,
+  error,
+  onDateChange,
+  menu,
+  slots,
+  onBack,
+}: MenuPageProps) {
   const dateOptions = menuDateOptions(dates, today);
 
   return (
@@ -23,9 +37,15 @@ export default function MenuPage({ dates, date, today, onDateChange, menu, slots
         <div>
           <h2>
             菜单与库存
-            <span className="merchant-readonly-tag">只读样例</span>
+            <span className="merchant-readonly-tag">
+              {isSample ? '只读样例' : '只读 · 演示服务'}
+            </span>
           </h2>
-          <p className="lead">价格与可售数量来自样例数据源，页面不写死；档口读取接口在契约中缺失，第 2—3 天接入服务后才可修改。</p>
+          <p className="lead">
+            {isSample
+              ? '价格与可售数量来自样例数据源，页面不写死；档口写操作尚未接入。'
+              : '价格与可售数量来自 GET /menu（契约 v0.3 已冻结）；档口端尚未接入 PUT /merchant/menu/{dishId} 与 PUT /merchant/slots/{slotId} 写操作。'}
+          </p>
         </div>
       </header>
 
@@ -42,8 +62,12 @@ export default function MenuPage({ dates, date, today, onDateChange, menu, slots
         ))}
       </div>
 
-      {!menu || !slots ? (
-        <p className="merchant-empty">这一天没有样例数据。</p>
+      {loading ? (
+        <p className="merchant-empty">正在读取菜单与时段…</p>
+      ) : error ? (
+        <p className="merchant-empty">菜单读取失败：{error}</p>
+      ) : !menu || !slots ? (
+        <p className="merchant-empty">这一天没有数据。</p>
       ) : (
         <>
           <section className="detail-block">
@@ -61,25 +85,34 @@ export default function MenuPage({ dates, date, today, onDateChange, menu, slots
               ))}
             </ul>
             <button type="button" className="action-button action-button--secondary" disabled>
-              第 2—3 天接入服务后可修改
+              写操作尚未接入（契约已定义 PUT /merchant/menu/{'{dishId}'}）
             </button>
           </section>
 
           <section className="detail-block">
             <h3>时段（接单名额）</h3>
             <ul className="slot-list">
-              {slots.slots.map((slot) => (
-                <li key={slot.slotId} className={slot.full ? 'slot-item slot-item--full' : 'slot-item'}>
-                  <span className="slot-item__time">
-                    {formatClock(slot.slotStart)}—{formatClock(slot.slotEnd)}
-                  </span>
-                  <span>名额 {slot.capacity}</span>
-                  <span>已占 {slot.occupied}</span>
-                  <span>剩余 {slot.remaining}{slot.full ? '（已满）' : ''}</span>
-                </li>
-              ))}
+              {slots.slots.map((slot) => {
+                const closed = !slot.enabled;
+                const tone = slot.full || closed ? 'slot-item slot-item--full' : 'slot-item';
+                return (
+                  <li key={slot.slotId} className={tone}>
+                    <span className="slot-item__time">
+                      {formatClock(slot.slotStart)}—{formatClock(slot.slotEnd)}
+                    </span>
+                    <span>名额 {slot.capacity}</span>
+                    <span>已占 {slot.occupied}</span>
+                    <span>
+                      剩余 {slot.remaining}
+                      {slot.full ? '（已满）' : closed ? '（已关闭）' : ''}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
-            <p className="hint">“接单名额”指订单笔数上限，不是食堂座位数；页面不出现“座位/空位”。</p>
+            <p className="hint">
+              “接单名额”指订单笔数上限，不是食堂座位数；“已关闭”由服务端按时间、名额或启停状态返回。
+            </p>
           </section>
         </>
       )}

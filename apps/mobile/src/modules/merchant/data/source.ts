@@ -1,8 +1,340 @@
+import { ApiError, apiRequest } from '../../../shared/apiClient';
+import { getSession } from '../../../shared/session';
 import { sampleMenu, sampleOrders, sampleSlots } from './sampleData';
-import type { MenuDay, MerchantOrder, MerchantScenario, MerchantSource, SlotDay, SourceResult } from './types';
+import type {
+  MenuDay,
+  MerchantOrder,
+  MerchantScenario,
+  MerchantSource,
+  OrderPage,
+  SlotDay,
+  SourceResult,
+} from './types';
 
-function fail<T>(code: string, message: string): SourceResult<T> {
-  return { ok: false, error: { code, message, retryable: code === 'SERVICE_UNAVAILABLE' } };
+interface ApiDish {
+  id: string;
+  merchantId: string;
+  name: string;
+  priceFen: number;
+  availableQuantity: number;
+  onSale: boolean;
+}
+
+interface ApiSlot {
+  id: string;
+  date: string;
+  startAt: string;
+  endAt: string;
+  capacity: number;
+  booked: number;
+  remainingCapacity: number;
+  enabled: boolean;
+}
+
+interface ApiMenu {
+  date: string;
+  slots: ApiSlot[];
+  dishes: ApiDish[];
+}
+
+interface ApiOrderItem {
+  dishId: string;
+  name: string;
+  quantity: number;
+  unitPriceFen: number;
+}
+
+interface ApiCancelRequest {
+  status: MerchantOrder['cancelRequest']['status'];
+  reason: string | null;
+  decisionReason?: string | null;
+}
+
+interface ApiOrder {
+  id: string;
+  items: ApiOrderItem[];
+  slotId: string;
+  slotStart: string;
+  slotEnd: string;
+  diningMode: MerchantOrder['diningMode'];
+  diningModeReason?: string | null;
+  totalFen: number;
+  status: MerchantOrder['status'];
+  paymentStatus: MerchantOrder['paymentStatus'];
+  cancelRequest: ApiCancelRequest;
+  cancellationReason: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  pickedUpAt: string | null;
+  delay: MerchantOrder['delay'];
+  pickupCode: string | null;
+}
+
+interface ApiMerchantOrders {
+  orders: ApiOrder[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+function fail<T>(code: string, message: string, retryable = false): SourceResult<T> {
+  return { ok: false, error: { code, message, retryable } };
+}
+
+function toFailure<T>(error: unknown, fallback = '读取真实数据失败，请稍后重试。'): SourceResult<T> {
+  if (error instanceof ApiError) {
+    return fail(error.code, error.message, error.retryable);
+  }
+  return fail('UNKNOWN_ERROR', fallback);
+}
+
+function normalizePage(page?: number): number {
+  return Number.isFinite(page) && page && page > 0 ? Math.trunc(page) : 1;
+}
+
+function normalizePageSize(pageSize?: number): number {
+  if (!Number.isFinite(pageSize) || !pageSize || pageSize <= 0) return DEFAULT_PAGE_SIZE;
+  return Math.min(MAX_PAGE_SIZE, Math.trunc(pageSize));
+}
+
+function mapMenu(payload: ApiMenu, merchantId: string): SourceResult<MenuDay> {
+  if (!Array.isArray(payload.dishes) || !Array.isArray(payload.slots) || typeof payload.date !== 'string') {
+    return fail('INVALID_RESPONSE', '菜单响应缺少 date/slots/dishes。');
+  }
+  const dishes = payload.dishes
+    .filter((dish) => dish.merchantId === merchantId)
+    .map((dish) => ({
+      dishId: dish.id,
+      name: dish.name,
+      unitPriceFen: dish.priceFen,
+      availableQuantity: dish.availableQuantity,
+      onSale: dish.onSale,
+    }));
+  return { ok: true, data: { date: payload.date, demo: false, dishes } };
+}
+
+function mapSlots(payload: ApiMenu): SourceResult<SlotDay> {
+  if (!Array.isArray(payload.slots) || typeof payload.date !== 'string') {
+    return fail('INVALID_RESPONSE', '菜单响应缺少 date/slots。');
+  }
+  const slots = payload.slots.map((slot) => ({
+    slotId: slot.id,
+    slotStart: slot.startAt,
+    slotEnd: slot.endAt,
+    capacity: slot.capacity,
+    occupied: slot.booked,
+    remaining: slot.remainingCapacity,
+    enabled: slot.enabled,
+    full: slot.remainingCapacity <= 0,
+  }));
+  return { ok: true, data: { date: payload.date, demo: false, slots } };
+}
+
+function mapOrder(order: ApiOrder): MerchantOrder {
+  return {
+    id: order.id,
+    items: Array.isArray(order.items)
+      ? order.items.map((item) => ({
+        dishId: item.dishId,
+        name: item.name,
+        quantity: item.quantity,
+        unitPriceFen: item.unitPriceFen,
+      }))
+      : [],
+    slotId: order.slotId,
+    slotStart: order.slotStart,
+    slotEnd: order.slotEnd,
+    diningMode: order.diningMode,
+    diningModeReason: order.diningModeReason ?? null,
+    totalFen: order.totalFen,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    cancelRequest: {
+      status: order.cancelRequest?.status ?? 'NONE',
+      reason: order.cancelRequest?.reason ?? null,
+      decisionReason: order.cancelRequest?.decisionReason ?? null,
+    },
+    cancellationReason: order.cancellationReason ?? null,
+    version: order.version,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    pickedUpAt: order.pickedUpAt ?? null,
+    delay: order.delay
+      ? { reason: order.delay.reason, expectedReadyAt: order.delay.expectedReadyAt }
+      : null,
+    pickupCode: order.pickupCode ?? null,
+    demo: false,
+  };
+}
+
+async function requestMerchantOrderWrite(
+  path: string,
+  body: Record<string, unknown>,
+  method: 'POST' | 'PATCH' = 'POST',
+): Promise<SourceResult<MerchantOrder>> {
+  try {
+    const data = await apiRequest<ApiOrder>(path, { method, body });
+    if (typeof data.id !== 'string' || !Number.isFinite(data.version)) {
+      return fail('INVALID_RESPONSE', '写操作响应缺少订单号或版本。');
+    }
+    return { ok: true, data: mapOrder(data) };
+  } catch (error) {
+    return toFailure(error, '写操作未完成，请确认订单状态后重试。');
+  }
+}
+
+function createRealSource(scenario: MerchantScenario): MerchantSource {
+  const inFlightMenus = new Map<string, Promise<SourceResult<ApiMenu>>>();
+
+  function loadMenu(date: string): Promise<SourceResult<ApiMenu>> {
+    const running = inFlightMenus.get(date);
+    if (running) return running;
+    const request = apiRequest<ApiMenu>(`/menu?date=${encodeURIComponent(date)}`)
+      .then((data): SourceResult<ApiMenu> => ({ ok: true, data }))
+      .catch((error: unknown): SourceResult<ApiMenu> => toFailure<ApiMenu>(error))
+      .finally(() => inFlightMenus.delete(date));
+    inFlightMenus.set(date, request);
+    return request;
+  }
+
+  function currentMerchantId(): string | null {
+    const session = getSession();
+    if (!session || session.user.role !== 'MERCHANT') return null;
+    return session.user.merchantId ?? null;
+  }
+
+  return {
+    mode: 'real',
+    scenario,
+    getOrders: async (pageInput?: number, pageSizeInput?: number) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取订单。');
+      }
+      const page = normalizePage(pageInput);
+      const pageSize = normalizePageSize(pageSizeInput);
+      try {
+        const data = await apiRequest<ApiMerchantOrders>(
+          `/merchant/orders?page=${page}&pageSize=${pageSize}`,
+        );
+        if (!Array.isArray(data.orders)) {
+          return fail('INVALID_RESPONSE', '档口订单响应缺少 orders。');
+        }
+        const orders = data.orders.map(mapOrder);
+        return {
+          ok: true,
+          data: {
+            orders,
+            page: Number.isFinite(data.page) && data.page > 0 ? data.page : page,
+            pageSize: Number.isFinite(data.pageSize) && data.pageSize > 0
+              ? data.pageSize
+              : pageSize,
+            total: Number.isFinite(data.total) && data.total >= 0
+              ? data.total
+              : orders.length,
+          },
+        };
+      } catch (error) {
+        return toFailure(error);
+      }
+    },
+    getOrder: async (id: string) => {
+      try {
+        const data = await apiRequest<ApiOrder>(`/orders/${encodeURIComponent(id)}`);
+        if (typeof data.id !== 'string') {
+          return fail('INVALID_RESPONSE', '订单响应缺少 id。');
+        }
+        return { ok: true, data: mapOrder(data) };
+      } catch (error) {
+        return toFailure(error);
+      }
+    },
+    getMenu: async (date: string) => {
+      const merchantId = currentMerchantId();
+      if (!merchantId) {
+        return fail(
+          'UNAUTHENTICATED',
+          '真实模式需要先登录档口演示账号：请到 #/system-check 登录后重试。',
+        );
+      }
+      const result = await loadMenu(date);
+      return result.ok ? mapMenu(result.data, merchantId) : result;
+    },
+    getSlots: async (date: string) => {
+      const result = await loadMenu(date);
+      return result.ok ? mapSlots(result.data) : result;
+    },
+    advanceOrder: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/advance`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        action: input.action,
+      });
+    },
+    verifyOrder: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/verify`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        pickupCode: input.pickupCode,
+      });
+    },
+    decideCancellation: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/cancel-decision`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        decision: input.decision,
+        reason: input.reason,
+      });
+    },
+    cancelOrder: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/cancel`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        reason: input.reason,
+      });
+    },
+    setDelay: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(`/merchant/orders/${encodeURIComponent(id)}/delay`, {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+        reason: input.reason,
+        expectedReadyAt: input.expectedReadyAt,
+      });
+    },
+    changeDiningMode: async (id, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      return requestMerchantOrderWrite(
+        `/merchant/orders/${encodeURIComponent(id)}/dining-mode`,
+        {
+          requestId: input.requestId,
+          expectedVersion: input.expectedVersion,
+          diningMode: input.diningMode,
+          reason: input.reason,
+        },
+        'PATCH',
+      );
+    },
+  };
 }
 
 export function createMerchantSource(options: {
@@ -12,19 +344,8 @@ export function createMerchantSource(options: {
   const mode = options.mode ?? 'sample';
   const scenario = options.scenario ?? 'normal';
 
-  if (mode !== 'sample') {
-    const unavailable = <T,>() => fail<T>(
-      'SERVICE_UNAVAILABLE',
-      '真实数据源尚未接入：等待 spcuteag 提供公共请求封装与服务地址。',
-    );
-    return {
-      mode: 'real',
-      scenario,
-      getOrders: unavailable,
-      getOrder: unavailable,
-      getMenu: unavailable,
-      getSlots: unavailable,
-    };
+  if (mode === 'real') {
+    return createRealSource(scenario);
   }
 
   const orders = sampleOrders(scenario);
@@ -32,21 +353,52 @@ export function createMerchantSource(options: {
   return {
     mode: 'sample',
     scenario,
-    getOrders: (): SourceResult<MerchantOrder[]> => ({ ok: true, data: structuredClone(orders) }),
-    getOrder: (id: string): SourceResult<MerchantOrder> => {
+    getOrders: async (pageInput?: number, pageSizeInput?: number): Promise<SourceResult<OrderPage>> => {
+      const page = normalizePage(pageInput);
+      const pageSize = normalizePageSize(pageSizeInput);
+      const offset = (page - 1) * pageSize;
+      return {
+        ok: true,
+        data: {
+          orders: structuredClone(orders.slice(offset, offset + pageSize)),
+          page,
+          pageSize,
+          total: orders.length,
+        },
+      };
+    },
+    getOrder: async (id: string): Promise<SourceResult<MerchantOrder>> => {
       const found = orders.find((order) => order.id === id);
       if (!found) return fail('ORDER_NOT_FOUND', '订单不存在或对当前身份不可见。');
       return { ok: true, data: structuredClone(found) };
     },
-    getMenu: (date: string): SourceResult<MenuDay> => {
+    getMenu: async (date: string): Promise<SourceResult<MenuDay>> => {
       const menu = sampleMenu(date);
       if (!menu) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
       return { ok: true, data: menu };
     },
-    getSlots: (date: string): SourceResult<SlotDay> => {
+    getSlots: async (date: string): Promise<SourceResult<SlotDay>> => {
       const slots = sampleSlots(date);
       if (!slots) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
       return { ok: true, data: slots };
     },
+    advanceOrder: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    verifyOrder: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    decideCancellation: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    cancelOrder: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    setDelay: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
+    changeDiningMode: async (): Promise<SourceResult<MerchantOrder>> => (
+      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
+    ),
   };
 }

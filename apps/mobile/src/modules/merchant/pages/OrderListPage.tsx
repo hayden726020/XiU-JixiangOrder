@@ -6,7 +6,14 @@ import { groupOrders } from '../state/orderView';
 interface OrderListPageProps {
   orders: MerchantOrder[];
   scenario: MerchantScenario;
+  isSample: boolean;
+  loading: boolean;
+  error: string | null;
+  page: number;
+  pageSize: number;
+  total: number;
   onScenarioChange: (scenario: MerchantScenario) => void;
+  onPageChange: (page: number) => void;
   onOpenOrder: (id: string) => void;
   onOpenMenu: () => void;
 }
@@ -14,38 +21,63 @@ interface OrderListPageProps {
 export default function OrderListPage({
   orders,
   scenario,
+  isSample,
+  loading,
+  error,
+  page,
+  pageSize,
+  total,
   onScenarioChange,
+  onPageChange,
   onOpenOrder,
   onOpenMenu,
 }: OrderListPageProps) {
   const groups = groupOrders(orders);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="merchant-view">
       <header className="merchant-view__header">
         <div>
-          <h2>订单列表</h2>
-          <p className="lead">按状态分组；堂食/外带与待处理取消申请一眼可见。</p>
+          <h2>
+            订单列表
+            {isSample && <span className="merchant-readonly-tag">样例 · demo=true</span>}
+          </h2>
+          <p className="lead">
+            {isSample
+              ? '样例数据；按状态分组，堂食/外带与待处理取消申请一眼可见。'
+              : '真实数据；按状态分组。接单、开始制作、标记可取与核销已接入服务端，成功后状态立即更新。'}
+          </p>
         </div>
         <button type="button" className="merchant-link-button" onClick={onOpenMenu}>
           菜单与库存
         </button>
       </header>
 
-      <label className="merchant-scenario">
-        <span>样例场景</span>
-        <select
-          value={scenario}
-          onChange={(event) => onScenarioChange(event.target.value as MerchantScenario)}
-        >
-          {DEMO_SCENARIOS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </label>
+      {isSample && (
+        <label className="merchant-scenario">
+          <span>样例场景</span>
+          <select
+            value={scenario}
+            onChange={(event) => onScenarioChange(event.target.value as MerchantScenario)}
+          >
+            {DEMO_SCENARIOS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      )}
 
-      {groups.length === 0 ? (
-        <p className="merchant-empty">暂无订单，样例模式下可切换演示场景。</p>
+      {loading ? (
+        <p className="merchant-empty">正在读取订单…</p>
+      ) : error ? (
+        <p className="merchant-empty">订单读取失败：{error}</p>
+      ) : groups.length === 0 ? (
+        <p className="merchant-empty">
+          {total > 0
+            ? '本页没有订单，请返回上一页。'
+            : isSample ? '暂无订单，样例模式下可切换演示场景。' : '服务返回 0 笔订单。'}
+        </p>
       ) : (
         groups.map((group) => (
           <section key={group.key} className="order-group">
@@ -63,9 +95,36 @@ export default function OrderListPage({
         ))
       )}
 
-      <p className="hint">
-        共 {orders.length} 笔样例订单；点击订单进入详情，可查看预约时间、菜品份数、用餐方式与下一步按钮位置。
-      </p>
+      {!loading && !error && total > 0 && (
+        <>
+          <p className="hint">
+            {isSample
+              ? `共 ${total} 笔样例订单，其中本页已取消 ${orders.filter((order) => order.status === 'CANCELLED').length} 笔；已取消订单保留在列表，点击可查看取消原因与模拟退款标记。`
+              : `档口共 ${total} 笔订单，本页 ${orders.length} 笔；点击查看详情。`}
+          </p>
+          <nav className="merchant-pager" aria-label="订单分页">
+            <button
+              type="button"
+              className="merchant-link-button"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page <= 1}
+            >
+              上一页
+            </button>
+            <span className="merchant-pager__status">
+              第 {page} / {totalPages} 页 · 共 {total} 笔
+            </span>
+            <button
+              type="button"
+              className="merchant-link-button"
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= totalPages}
+            >
+              下一页
+            </button>
+          </nav>
+        </>
+      )}
     </div>
   );
 }

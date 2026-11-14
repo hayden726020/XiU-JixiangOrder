@@ -15,6 +15,51 @@
   line-height: 1.5;
 }
 
+.merchant-source {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.merchant-source__label {
+  flex: none;
+}
+
+.merchant-source__button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.merchant-source__button--active {
+  border-color: var(--green-700);
+  background: var(--green-100);
+  color: var(--green-900);
+  font-weight: 600;
+}
+
+.merchant-real-banner {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #93c5fd;
+  border-radius: 0.7rem;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.merchant-real-banner strong {
+  font-size: 0.84rem;
+}
+
 .merchant-sample-banner strong {
   font-size: 0.84rem;
 }
@@ -186,6 +231,22 @@
   font-weight: 600;
 }
 
+.order-row__cancel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--line);
+  color: #991b1b;
+  font-size: 0.78rem;
+}
+
+.merchant-flag--refund {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
 .merchant-tag {
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
@@ -258,6 +319,60 @@
 .detail-header {
   display: grid;
   gap: 0.4rem;
+}
+
+.detail-id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.detail-id__short {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.detail-id__full {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.detail-dining {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid;
+  border-radius: 0.7rem;
+  line-height: 1.35;
+}
+
+.detail-dining--dine-in {
+  border-color: #7dd3fc;
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.detail-dining--takeaway {
+  border-color: #fcd34d;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.detail-dining__label {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.detail-dining__value {
+  font-size: 1.25rem;
+}
+
+.detail-dining__desc {
+  font-size: 0.76rem;
+  opacity: 0.85;
 }
 
 .detail-header h2 {
@@ -361,6 +476,11 @@
   font-weight: 600;
 }
 
+.status-track__step[aria-current='step'] {
+  box-shadow: inset 0 0 0 1px var(--green-700);
+  border-color: var(--green-700);
+}
+
 .detail-times {
   display: grid;
   gap: 0.2rem;
@@ -433,6 +553,25 @@
   cursor: not-allowed;
 }
 
+.action-feedback {
+  margin: 0.35rem 0 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.action-feedback--pending {
+  background: #eef3ee;
+  color: #3f5245;
+}
+
+.action-feedback--error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 .merchant-readonly-tag {
   display: inline-block;
   margin-left: 0.45rem;
@@ -443,6 +582,23 @@
   font-size: 0.7rem;
   font-weight: 600;
   vertical-align: middle;
+}
+
+.merchant-pager {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.merchant-pager__status {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.merchant-pager .merchant-link-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .date-switch {

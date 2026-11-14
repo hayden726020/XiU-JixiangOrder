@@ -149,6 +149,25 @@ test('已开始制作后取消不恢复库存和名额', async () => {
   assert.equal(slot, 1);
 });
 
+test('READY 可缺货取消但不恢复库存和名额', async () => {
+  const student = await ctx.login('student');
+  const merchant = await ctx.login('merchant');
+  const ready = await toReady(student, merchant);
+  const stockBefore = ctx.db.prepare('SELECT available_quantity FROM dishes WHERE id = ?').get(DISH).available_quantity;
+  const slotBefore = ctx.db.prepare('SELECT booked_count FROM slots WHERE id = ?').get(SLOT_TODAY).booked_count;
+
+  const cancel = await ctx.api('POST', `/merchant/orders/${ready.id}/cancel`, {
+    token: merchant,
+    body: { requestId: 'cancel-ready', expectedVersion: ready.version, reason: '取餐前售罄' },
+  });
+  assert.equal(cancel.status, 200);
+  assert.equal(cancel.body.data.status, 'CANCELLED');
+  assert.equal(cancel.body.data.cancellationReason, '取餐前售罄');
+  assert.equal(cancel.body.data.cancelRequest.decisionReason, null);
+  assert.equal(ctx.db.prepare('SELECT available_quantity FROM dishes WHERE id = ?').get(DISH).available_quantity, stockBefore);
+  assert.equal(ctx.db.prepare('SELECT booked_count FROM slots WHERE id = ?').get(SLOT_TODAY).booked_count, slotBefore);
+});
+
 test('取消申请待处理，批准后原子退款并恢复，拒绝不改变订单状态', async () => {
   const student = await ctx.login('student');
   const merchant = await ctx.login('merchant');
@@ -171,6 +190,8 @@ test('取消申请待处理，批准后原子退款并恢复，拒绝不改变�
   assert.equal(reject.status, 200);
   assert.equal(reject.body.data.status, 'ACCEPTED');
   assert.equal(reject.body.data.cancelRequest.status, 'REJECTED');
+  assert.equal(reject.body.data.cancelRequest.reason, '临时有事');
+  assert.equal(reject.body.data.cancelRequest.decisionReason, '已备料');
 
   const applyAgain = await ctx.api('POST', `/orders/${order.id}/cancel`, {
     token: student,
@@ -178,6 +199,7 @@ test('取消申请待处理，批准后原子退款并恢复，拒绝不改变�
   });
   assert.equal(applyAgain.status, 200);
   assert.equal(applyAgain.body.data.cancelRequest.status, 'PENDING');
+  assert.equal(applyAgain.body.data.cancelRequest.reason, '仍然需要取消');
 
   const stockBefore = ctx.db.prepare('SELECT available_quantity FROM dishes WHERE id = ?').get(DISH).available_quantity;
   const approve = await ctx.api('POST', `/merchant/orders/${order.id}/cancel-decision`, {
@@ -187,6 +209,8 @@ test('取消申请待处理，批准后原子退款并恢复，拒绝不改变�
   assert.equal(approve.status, 200);
   assert.equal(approve.body.data.status, 'CANCELLED');
   assert.equal(approve.body.data.cancelRequest.status, 'APPROVED');
+  assert.equal(approve.body.data.cancelRequest.reason, '仍然需要取消');
+  assert.equal(approve.body.data.cancelRequest.decisionReason, '同意取消');
   assert.equal(approve.body.data.paymentStatus, 'SIMULATED_REFUNDED');
   const stockAfter = ctx.db.prepare('SELECT available_quantity FROM dishes WHERE id = ?').get(DISH).available_quantity;
   assert.equal(stockAfter, stockBefore + 1);
@@ -215,7 +239,8 @@ test('取餐完成时同一操作结束待处理取消申请', async () => {
   assert.equal(verified.status, 200);
   assert.equal(verified.body.data.status, 'COMPLETED');
   assert.equal(verified.body.data.cancelRequest.status, 'REJECTED');
-  assert.equal(verified.body.data.cancelRequest.reason, '订单已取餐');
+  assert.equal(verified.body.data.cancelRequest.reason, '想取消');
+  assert.equal(verified.body.data.cancelRequest.decisionReason, '订单已取餐');
 });
 
 test('延迟仅在接单后允许，并与用餐方式修改一起持久化理由', async () => {

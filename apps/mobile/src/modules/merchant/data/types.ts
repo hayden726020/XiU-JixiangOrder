@@ -18,6 +18,7 @@ export interface OrderItem {
 export interface CancelRequest {
   status: CancelRequestStatus;
   reason: string | null;
+  decisionReason: string | null;
 }
 
 export interface OrderDelay {
@@ -32,6 +33,7 @@ export interface MerchantOrder {
   slotStart: string;
   slotEnd: string;
   diningMode: DiningMode;
+  diningModeReason: string | null;
   totalFen: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -87,11 +89,67 @@ export type SourceResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: ApiError };
 
+export interface OrderPage {
+  orders: MerchantOrder[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export type OrderAdvanceAction = 'ACCEPT' | 'START_PREPARING' | 'MARK_READY';
+
+export interface AdvanceOrderInput {
+  action: OrderAdvanceAction;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export interface VerifyOrderInput {
+  pickupCode: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export type CancelDecision = 'APPROVE' | 'REJECT';
+
+export interface CancelDecisionInput {
+  decision: CancelDecision;
+  reason: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export interface MerchantCancelOrderInput {
+  reason: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export interface SetDelayInput {
+  reason: string;
+  expectedReadyAt: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
+export interface ChangeDiningModeInput {
+  diningMode: DiningMode;
+  reason: string;
+  expectedVersion: number;
+  requestId: string;
+}
+
 export interface MerchantSource {
   mode: 'sample' | 'real';
   scenario: MerchantScenario;
-  getOrders: () => SourceResult<MerchantOrder[]>;
-  getOrder: (id: string) => SourceResult<MerchantOrder>;
-  getMenu: (date: string) => SourceResult<MenuDay>;
-  getSlots: (date: string) => SourceResult<SlotDay>;
+  getOrders: (page?: number, pageSize?: number) => Promise<SourceResult<OrderPage>>;
+  getOrder: (id: string) => Promise<SourceResult<MerchantOrder>>;
+  getMenu: (date: string) => Promise<SourceResult<MenuDay>>;
+  getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
+  advanceOrder: (id: string, input: AdvanceOrderInput) => Promise<SourceResult<MerchantOrder>>;
+  verifyOrder: (id: string, input: VerifyOrderInput) => Promise<SourceResult<MerchantOrder>>;
+  decideCancellation: (id: string, input: CancelDecisionInput) => Promise<SourceResult<MerchantOrder>>;
+  cancelOrder: (id: string, input: MerchantCancelOrderInput) => Promise<SourceResult<MerchantOrder>>;
+  setDelay: (id: string, input: SetDelayInput) => Promise<SourceResult<MerchantOrder>>;
+  changeDiningMode: (id: string, input: ChangeDiningModeInput) => Promise<SourceResult<MerchantOrder>>;
 }
