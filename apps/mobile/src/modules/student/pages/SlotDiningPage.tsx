@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DATES } from '../data/sampleData';
+
 import { createPresenceAdapter } from '../data/presenceAdapter';
 import type { OrderDraft } from '../state/orderDraft';
 import {
@@ -8,8 +8,8 @@ import {
 } from '../state/locationController';
 import { createSlotRequestGuard, type SlotGuardState } from '../state/slotGuard';
 import type { DiningMode, MenuResponse, SlotDto, StudentSource } from '../types';
-import { isApiError } from '../types';
 import { EMPTY_SLOTS_TEXT } from '../utils/submitTexts';
+import { toSourceErrorView } from '../utils/sourceErrorView';
 import { formatSlotRange, toSlotView } from '../utils/slotView';
 import CrowdHint from '../components/CrowdHint';
 import DemoModeNotice from '../components/DemoModeNotice';
@@ -30,8 +30,8 @@ function formatMonthDay(date: string): string {
   return `${month}-${day}`;
 }
 
-function dateLabel(date: string): string {
-  const index = DATES.indexOf(date);
+function dateLabel(date: string, dates: string[]): string {
+  const index = dates.indexOf(date);
   const label = DAY_LABELS[index] ?? '';
   return `${label} ${formatMonthDay(date)}`.trim();
 }
@@ -108,7 +108,7 @@ export default function SlotDiningPage({
         if (!cancelled) {
           setMenu(null);
           setStatus('error');
-          setErrorText(isApiError(error) ? error.message : '时段信息读取失败，请重试');
+          setErrorText(toSourceErrorView(error));
         }
       },
     );
@@ -171,14 +171,24 @@ export default function SlotDiningPage({
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S5 · 时段与用餐方式（可进入确认页）</p>
+        <p className="student-kicker">
+          {source.mode === 'real' ? 'S9 · 真实时段与拥挤（只读）' : 'S5 · 时段与用餐方式（可进入确认页）'}
+        </p>
         <h2 id="student-slot-title">选择时段与用餐方式</h2>
-        <p className="student-page__lead">已选菜品会保留；时段与用餐方式必须显式选择。</p>
+        <p className="student-page__lead">
+          {source.mode === 'real'
+            ? '时段与拥挤参考来自公共服务；用餐方式需显式选择。'
+            : '已选菜品会保留；时段与用餐方式必须显式选择。'}
+        </p>
       </header>
 
       <p className="student-selection-summary">{selectedSummary}</p>
 
-      {status === 'loading' ? <p className="student-loading">正在读取时段信息…</p> : null}
+      {status === 'loading' ? (
+        <p className="student-loading">
+          {source.mode === 'real' ? '正在读取时段信息…' : '正在读取样例时段信息…'}
+        </p>
+      ) : null}
 
       {status === 'error' ? (
         <div className="student-error" role="alert">
@@ -204,7 +214,7 @@ export default function SlotDiningPage({
       {status === 'ready' && menu && menu.slots.length > 0 ? (
         <section aria-labelledby="student-slot-list-title">
           <h3 id="student-slot-list-title" className="student-section-title">
-            选择时段 · {dateLabel(menu.date)}
+            选择时段 · {dateLabel(menu.date, snapshot.allowedDates)}
           </h3>
           <ul className="student-slot-list">
             {menu.slots.map((slot) => {

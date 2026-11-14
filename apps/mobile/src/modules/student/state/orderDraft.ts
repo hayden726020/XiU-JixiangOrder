@@ -13,7 +13,7 @@ import { DISH_LIMIT_TEXT, DISH_SHORTAGE_NOTICE } from '../utils/submitTexts';
 import { createRequestIdKeeper, requestIdPrefixOf, type RequestIdKeeper } from '../utils/requestId';
 
 const MODES = new Set<DiningMode>(['DINE_IN', 'TAKEAWAY']);
-const SAMPLE_DATES = new Set(['2026-11-13', '2026-11-14']);
+const SAMPLE_DATE_LIST = ['2026-11-13', '2026-11-14'];
 
 export type DraftStatus = 'idle' | 'submitting' | 'success' | 'timeout' | 'error';
 
@@ -28,6 +28,7 @@ export interface DraftState {
 }
 
 export interface DraftSnapshot extends DraftState {
+  allowedDates: string[];
   items: DraftItemInput[];
   totalQuantity: number;
   previewFen: number;
@@ -39,6 +40,8 @@ export interface DraftSnapshot extends DraftState {
 export interface OrderDraftOptions {
   source: StudentSource;
   requestIds?: RequestIdKeeper;
+  allowedDates?: string[];
+  initialDate?: string;
 }
 
 export interface OrderDraft {
@@ -60,12 +63,18 @@ export interface OrderDraft {
 export function createOrderDraft({
   source,
   requestIds = createRequestIdKeeper({ prefix: requestIdPrefixOf(source.mode) }),
+  allowedDates,
+  initialDate,
 }: OrderDraftOptions): OrderDraft {
+  const dateList = allowedDates && allowedDates.length > 0 ? allowedDates.slice() : SAMPLE_DATE_LIST.slice();
+  const dateSet = new Set(dateList);
+  const startDate =
+    initialDate !== undefined && dateSet.has(initialDate) ? initialDate : dateList[0];
   const quantities = new Map<string, number>();
   const prices = new Map<string, number>();
   const limits = new Map<string, number>();
   const state: DraftState = {
-    date: '2026-11-13',
+    date: startDate,
     slotId: null,
     diningMode: null,
     status: 'idle',
@@ -104,6 +113,7 @@ export function createOrderDraft({
   function snapshot(): DraftSnapshot {
     return {
       ...state,
+      allowedDates: dateList.slice(),
       items: getItems(),
       totalQuantity: getTotalQuantity(),
       previewFen: getPreviewFen(),
@@ -114,7 +124,7 @@ export function createOrderDraft({
   }
 
   function setDate(date: string): boolean {
-    if (!SAMPLE_DATES.has(date)) {
+    if (!dateSet.has(date)) {
       throw apiError('VALIDATION_ERROR', '日期只能是今天或明天。', false);
     }
     if (date === state.date) {

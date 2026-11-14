@@ -1,18 +1,26 @@
 import { useState } from 'react';
-import { createDefaultStudentSource } from './data/sampleSource';
+import { createStudentSource } from './data/sampleSource';
+import { resolveStudentMode } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
 import ConfirmPage from './pages/ConfirmPage';
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import SlotDiningPage from './pages/SlotDiningPage';
 import type { StudentSource } from './types';
+import { todayAndTomorrow } from './utils/dates';
 import './student.css';
 
 type StudentView = 'menu' | 'slot' | 'confirm' | 'order';
 
 export default function StudentHome() {
-  const [source] = useState<StudentSource>(() => createDefaultStudentSource());
-  const [draft] = useState(() => createOrderDraft({ source }));
+  const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
+  const [draft] = useState(() => {
+    if (source.mode === 'real') {
+      const dates = todayAndTomorrow(new Date());
+      return createOrderDraft({ source, allowedDates: dates, initialDate: dates[0] });
+    }
+    return createOrderDraft({ source });
+  });
   const [view, setView] = useState<StudentView>('menu');
   const [orderId, setOrderId] = useState<string | null>(null);
 

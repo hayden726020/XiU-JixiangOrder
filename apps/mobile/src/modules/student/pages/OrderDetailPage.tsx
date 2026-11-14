@@ -78,9 +78,15 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S6 · 订单详情（只读）</p>
+        <p className="student-kicker">
+          {source.mode === 'real' ? 'S10 · 订单详情（只读）' : 'S6 · 订单详情（只读）'}
+        </p>
         <h2 id="student-order-title">订单详情</h2>
-        <p className="student-page__lead">只读展示样例订单；当前不会发生真实取餐或资金交易。</p>
+        <p className="student-page__lead">
+          {source.mode === 'real'
+            ? '只读展示服务端订单；状态与取餐码按返回展示。'
+            : '只读展示样例订单；当前不会发生真实取餐或资金交易。'}
+        </p>
       </header>
 
       {status === 'loading' ? <p className="student-loading">正在读取订单信息…</p> : null}
@@ -154,7 +160,9 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
               ))}
             </ul>
             <p className="student-total">合计 {view.totalText}</p>
-            <p className="student-total__note">金额为样例服务端返回结果</p>
+            <p className="student-total__note">
+              金额为{source.mode === 'real' ? '服务端' : '样例服务端'}返回结果
+            </p>
           </section>
 
           <section className="student-info" aria-label="预约与订单信息">

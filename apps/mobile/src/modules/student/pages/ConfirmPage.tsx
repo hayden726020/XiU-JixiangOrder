@@ -167,9 +167,15 @@ export default function ConfirmPage({
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S5 · 确认下单与样例订单</p>
+        <p className="student-kicker">
+          {source.mode === 'real' ? 'S10 · 真实确认下单' : 'S5 · 确认下单与样例订单'}
+        </p>
         <h2 id="student-confirm-title">确认订单</h2>
-        <p className="student-page__lead">核对菜品、时段与用餐方式；提交即模拟付款，不发生资金交易。</p>
+        <p className="student-page__lead">
+          {source.mode === 'real'
+            ? '核对菜品、时段与用餐方式；金额与订单结果以服务端返回为准。'
+            : '核对菜品、时段与用餐方式；提交即模拟付款，不发生资金交易。'}
+        </p>
       </header>
 
       {menuStatus === 'loading' ? <p className="student-loading">正在读取确认信息…</p> : null}
@@ -221,7 +227,7 @@ export default function ConfirmPage({
 
           <section className="student-rule" aria-label="下单规则说明">
             <p>取消规则：接单前可直接取消；接单后需提交申请，由档口处理。</p>
-            <p>支付说明：模拟付款，不发生资金交易。</p>
+            <p>支付说明：{source.mode === 'real' ? '当前不发生真实资金交易。' : '模拟付款，不发生资金交易。'}</p>
           </section>
         </>
       ) : null}
@@ -269,7 +275,8 @@ export default function ConfirmPage({
         </div>
       ) : null}
 
-      <section className="student-scenario" aria-labelledby="student-scenario-title">
+      {source.mode === 'sample' ? (
+        <section className="student-scenario" aria-labelledby="student-scenario-title">
         <h3 id="student-scenario-title" className="student-section-title">
           样例场景（仅演示）
         </h3>
@@ -288,8 +295,9 @@ export default function ConfirmPage({
             </button>
           ))}
         </div>
-        <p className="student-scenario__note">切换场景只影响下一次提交；真实模式不显示此区域。</p>
-      </section>
+        <p className="student-scenario__note">切换场景只影响下一次提交。</p>
+        </section>
+      ) : null}
 
       <footer className="student-summary">
         <button
@@ -298,7 +306,7 @@ export default function ConfirmPage({
           disabled={busy || timedOut || !snapshot.canConfirm}
           onClick={runSubmit}
         >
-          {busy ? '提交中…' : '确认下单（模拟付款）'}
+          {busy ? '提交中…' : source.mode === 'real' ? '确认下单' : '确认下单（模拟付款）'}
         </button>
         {busy ? (
           <p className="student-progress" role="status">

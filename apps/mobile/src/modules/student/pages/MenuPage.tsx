@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { DATES } from '../data/sampleData';
 import type { OrderDraft } from '../state/orderDraft';
 import type { DishDto, MenuResponse, StudentSource } from '../types';
-import { isApiError } from '../types';
 import { toDishView } from '../utils/dishView';
 import { formatYuan } from '../utils/money';
+import { toSourceErrorView } from '../utils/sourceErrorView';
 import { DISH_LIMIT_TEXT } from '../utils/submitTexts';
 import DemoModeNotice from '../components/DemoModeNotice';
 import RealModeNotice from '../components/RealModeNotice';
@@ -54,7 +53,7 @@ export default function MenuPage({
         if (!cancelled) {
           setMenu(null);
           setStatus('error');
-          setErrorText(isApiError(error) ? error.message : '菜单读取失败，请重试');
+          setErrorText(toSourceErrorView(error));
         }
       },
     );
@@ -82,13 +81,19 @@ export default function MenuPage({
       {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <header className="student-page__head">
-        <p className="student-kicker">S5 · 样例菜单与数量（可进入确认页）</p>
+        <p className="student-kicker">
+          {source.mode === 'real' ? 'S9 · 真实菜单与数量（只读）' : 'S5 · 样例菜单与数量（可进入确认页）'}
+        </p>
         <h2 id="student-menu-title">学生点餐</h2>
-        <p className="student-page__lead">样例菜单可调整数量，全部数据来自模块内样例源。</p>
+        <p className="student-page__lead">
+          {source.mode === 'real'
+            ? '菜品、价格与可售数量来自公共服务；金额以下单结果为准。'
+            : '样例菜单可调整数量，全部数据来自模块内样例源。'}
+        </p>
       </header>
 
       <div className="student-date-switch" role="group" aria-label="选择菜单日期">
-        {DATES.map((item, index) => (
+        {snapshot.allowedDates.map((item, index) => (
           <button
             key={item}
             type="button"
@@ -107,7 +112,11 @@ export default function MenuPage({
         </p>
       ) : null}
 
-      {status === 'loading' ? <p className="student-loading">正在读取样例菜单…</p> : null}
+      {status === 'loading' ? (
+        <p className="student-loading">
+          {source.mode === 'real' ? '正在读取菜单…' : '正在读取样例菜单…'}
+        </p>
+      ) : null}
 
       {status === 'error' ? (
         <div className="student-error" role="alert">
@@ -123,7 +132,10 @@ export default function MenuPage({
       ) : null}
 
       {status === 'ready' && menu && menu.dishes.length > 0 ? (
-        <ul className="student-dish-list" aria-label={`${formatMonthDay(menu.date)} 样例菜品`}>
+        <ul
+          className="student-dish-list"
+          aria-label={`${formatMonthDay(menu.date)} ${source.mode === 'real' ? '菜品' : '样例菜品'}`}
+        >
           {menu.dishes.map((dish) => {
             const quantity = snapshot.items.find((item) => item.dishId === dish.dishId)?.quantity ?? 0;
             const view = toDishView(dish);
