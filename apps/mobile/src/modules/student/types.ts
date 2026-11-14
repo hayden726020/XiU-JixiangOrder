@@ -78,6 +78,7 @@ export interface OrderItem {
 export interface CancelRequest {
   status: CancelRequestStatus;
   reason: string | null;
+  decisionReason: string | null;
 }
 
 export interface OrderDelay {
@@ -128,6 +129,13 @@ export interface QueryOrderResultInput {
   diningMode?: DiningMode | null;
 }
 
+export interface CancelOrderInput {
+  orderId: string;
+  requestId: string;
+  expectedVersion: number;
+  reason?: string;
+}
+
 export interface StudentSource {
   mode: StudentMode;
   listShops(): Promise<ShopSummary[]>;
@@ -137,6 +145,7 @@ export interface StudentSource {
   queryOrderResult(input: QueryOrderResultInput | string): Promise<StudentOrder>;
   getOrder(id: string): Promise<StudentOrder>;
   listOrders(): Promise<StudentOrder[]>;
+  cancelOrder(input: CancelOrderInput): Promise<StudentOrder>;
   setScenario(next: DemoScenario): DemoScenario;
   getScenario(): DemoScenario;
 }

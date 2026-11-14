@@ -156,6 +156,9 @@ export default function OrderListPage({
                     <span className="student-order-list__total">{card.totalText}</span>
                   </span>
                   <span className="student-order-list__id">订单号 {card.id}</span>
+                  {card.cancelBadge ? (
+                    <span className="student-order-list__cancel-badge">{card.cancelBadge}</span>
+                  ) : null}
                   {card.shopText ? (
                     <span className="student-order-list__shop">{card.shopText}</span>
                   ) : null}

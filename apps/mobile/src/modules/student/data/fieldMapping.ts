@@ -453,6 +453,7 @@ export function mapOrderResponse(payload: unknown, options: MapOrderOptions): St
     cancelRequest: {
       status: requireEnum(cancelRequest, 'status', CANCEL_STATUSES, cancelWhere),
       reason: requireNullableText(cancelRequest, 'reason', cancelWhere),
+      decisionReason: readNullableText(cancelRequest, 'decisionReason'),
     },
     cancellationReason: requireNullableText(payload, 'cancellationReason', where),
     version: requireCount(payload, 'version', where),

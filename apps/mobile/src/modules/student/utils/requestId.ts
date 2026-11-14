@@ -53,6 +53,25 @@ export function buildPresenceFingerprint(
   return { date: checkedAt, items: [], slotId: presence, diningMode: null };
 }
 
+export const CANCEL_REQUEST_PREFIX = 'stu-cancel';
+
+export interface CancelFingerprintInput {
+  orderId: string;
+  reason: string;
+}
+
+export function buildCancelFingerprint({
+  orderId,
+  reason,
+}: CancelFingerprintInput): DraftFingerprintInput {
+  return {
+    date: null,
+    items: [],
+    slotId: `${orderId}|${reason.trim()}`,
+    diningMode: null,
+  };
+}
+
 export function createRequestIdKeeper({
   prefix = 'demo-req',
 }: RequestIdKeeperOptions = {}): RequestIdKeeper {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { clearSession } from '../../../shared/session';
 import type { CrowdView } from '../utils/crowdView';
-import type { SourceError, StudentSource } from '../types';
+import type { SourceError, StudentOrder, StudentSource } from '../types';
 import { toSourceError } from '../types';
 import {
   classifyRefreshFailure,
@@ -15,12 +16,35 @@ import {
 } from '../state/orderRead';
 import { useOrderPolling } from '../state/useOrderPolling';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
+import {
+  initialCancelState,
+  isCancelSubmitting,
+  reduceCancel,
+  validateCancelReason,
+  type CancelState,
+} from '../state/orderCancel';
 import { toCrowdView } from '../utils/crowdView';
 import { deriveDetailReadView } from '../utils/detailReadView';
 import { toDetailErrorView } from '../utils/detailErrorView';
+import {
+  CANCEL_CONFIRM_TEXT,
+  CANCEL_REASON_LABEL,
+  CANCEL_REASON_PLACEHOLDER,
+  cancelErrorText,
+  isCancelAuthCode,
+  isCancelConflictCode,
+  isCancelForbiddenCode,
+  isCancelRetryableCode,
+} from '../utils/cancelTexts';
 import { CANCEL_RULES, CHANGE_DINING_NOTE } from '../utils/orderDetailTexts';
+import { deriveCancelAreaView } from '../utils/orderCancelView';
 import { toOrderStatusView } from '../utils/orderStatusView';
 import { derivePollingView } from '../utils/pollingView';
+import {
+  buildCancelFingerprint,
+  CANCEL_REQUEST_PREFIX,
+  createRequestIdKeeper,
+} from '../utils/requestId';
 import { ORDER_SHOP_LABEL } from '../utils/shopTexts';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
@@ -54,6 +78,11 @@ export default function OrderDetailPage({
   const runReadRef = useRef<(kind: ReadKind) => void>(() => {
     return;
   });
+  const [cancelState, setCancelState] = useState<CancelState>(() => initialCancelState());
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelBlocked, setCancelBlocked] = useState(false);
+  const cancelKeeperRef = useRef(createRequestIdKeeper({ prefix: CANCEL_REQUEST_PREFIX }));
+  const cancelSubmittingRef = useRef(false);
 
   const realLoggedOut = source.mode === 'real' && !gate.usable;
 
@@ -196,6 +225,121 @@ export default function OrderDetailPage({
 
   runReadRef.current = runRead;
 
+  useEffect(() => {
+    if (gate.usable && cancelState.phase === 'blocked-auth') {
+      setCancelState(initialCancelState());
+    }
+  }, [gate.usable, cancelState.phase]);
+
+  function applyOrderFromWrite(next: StudentOrder): void {
+    guardRef.current.next();
+    inFlightRef.current = null;
+    setReadState((current) => settleRead(current, next, new Date()));
+    pollingRef.current.notifyManualSuccess(next);
+  }
+
+  function openCancelConfirm(): void {
+    if (cancelSubmittingRef.current) {
+      return;
+    }
+    setCancelState((current) => reduceCancel(current, { type: 'open-confirm' }));
+  }
+
+  function closeCancelConfirm(): void {
+    setCancelState((current) => reduceCancel(current, { type: 'cancel-confirm' }));
+  }
+
+  function submitCancel(): void {
+    const order = stateRef.current.order;
+    if (!order || cancelSubmittingRef.current || cancelBlocked) {
+      return;
+    }
+
+    const isApply = order.status !== 'NEW';
+    let reason = '';
+    if (isApply) {
+      const checked = validateCancelReason(cancelReason);
+      if (!checked.ok) {
+        setCancelState({
+          phase: 'failed',
+          message: checked.message,
+          requestId: null,
+        });
+        return;
+      }
+      reason = checked.reason;
+    }
+
+    const requestId = cancelKeeperRef.current.ensure(
+      buildCancelFingerprint({ orderId: order.id, reason }),
+    );
+    cancelSubmittingRef.current = true;
+    setCancelState({ phase: 'submitting', message: '', requestId });
+
+    source
+      .cancelOrder({
+        orderId: order.id,
+        requestId,
+        expectedVersion: order.version,
+        ...(isApply ? { reason } : {}),
+      })
+      .then(
+        (next) => {
+          cancelSubmittingRef.current = false;
+          applyOrderFromWrite(next);
+          setCancelState(initialCancelState());
+          setCancelBlocked(false);
+          setCancelReason('');
+        },
+        (failure: unknown) => {
+          cancelSubmittingRef.current = false;
+          const error = toSourceError(failure);
+          if (isCancelAuthCode(error.code)) {
+            clearSession();
+            setCancelState({
+              phase: 'blocked-auth',
+              message: '登录已失效，请重新登录后继续。',
+              requestId,
+            });
+            refresh();
+            return;
+          }
+          if (isCancelForbiddenCode(error.code)) {
+            cancelKeeperRef.current.complete();
+            setCancelBlocked(true);
+            setCancelState({
+              phase: 'failed',
+              message: cancelErrorText(error.code),
+              requestId: null,
+            });
+            return;
+          }
+          if (isCancelConflictCode(error.code)) {
+            cancelKeeperRef.current.complete();
+            setCancelState({
+              phase: 'conflict-read',
+              message: cancelErrorText(error.code),
+              requestId: null,
+            });
+            runRead('manual');
+            return;
+          }
+          if (error.retryable || isCancelRetryableCode(error.code)) {
+            setCancelState((current) =>
+              reduceCancel(current, { type: 'retryable-fail' }),
+            );
+            return;
+          }
+          cancelKeeperRef.current.complete();
+          setCancelState({
+            phase: 'failed',
+            message: cancelErrorText(error.code),
+            requestId: null,
+          });
+        },
+      );
+  }
+
   const errorView = toDetailErrorView(readState.error);
   const readView = deriveDetailReadView(readState, source.mode);
   const pollingView = derivePollingView(polling.state, {
@@ -205,6 +349,12 @@ export default function OrderDetailPage({
   });
   const statusView =
     readState.order !== null ? toOrderStatusView(readState.order, { mode: source.mode }) : null;
+  const cancelArea =
+    readState.order !== null
+      ? deriveCancelAreaView(readState.order, { mode: source.mode })
+      : null;
+  const cancelAuthBlocked = cancelState.phase === 'blocked-auth';
+  const cancelBusy = isCancelSubmitting(cancelState.phase);
 
   if (realLoggedOut) {
     return (
@@ -404,6 +554,95 @@ export default function OrderDetailPage({
               </p>
             ) : null}
           </section>
+
+          {cancelArea && cancelArea.kind !== 'none' ? (
+            <section
+              className="student-cancel-action"
+              data-cancel-kind={cancelArea.kind}
+              aria-label="取消订单"
+            >
+              <h3 className="student-section-title">取消订单</h3>
+              {cancelArea.noticeText ? (
+                <p className="student-order-note" role="status">
+                  {cancelArea.noticeText}
+                </p>
+              ) : null}
+              {cancelArea.decisionReason ? (
+                <p className="student-order-note">档口理由：{cancelArea.decisionReason}</p>
+              ) : null}
+              {cancelArea.kind === 'apply' || cancelArea.kind === 'rejected' ? (
+                <label className="student-cancel-action__field">
+                  <span>{CANCEL_REASON_LABEL}</span>
+                  <textarea
+                    value={cancelReason}
+                    maxLength={200}
+                    placeholder={CANCEL_REASON_PLACEHOLDER}
+                    disabled={cancelBusy}
+                    onChange={(event) => setCancelReason(event.target.value)}
+                  />
+                  <span className="student-order-note">{cancelReason.trim().length}/200</span>
+                </label>
+              ) : null}
+              {cancelAuthBlocked ? (
+                <LoginGuide
+                  gate={gate}
+                  reason="session-expired"
+                  scope="detail"
+                  onRecheck={() => {
+                    refresh();
+                    setCancelState(initialCancelState());
+                  }}
+                  onBack={onBack}
+                />
+              ) : null}
+              {!cancelAuthBlocked && cancelArea.actionLabel && !cancelBlocked ? (
+                cancelArea.kind === 'new' && cancelState.phase === 'confirming' ? (
+                  <div className="student-cancel-action__confirm">
+                    <p>{CANCEL_CONFIRM_TEXT}</p>
+                    <div className="student-cancel-action__actions">
+                      <button
+                        type="button"
+                        className="student-primary"
+                        disabled={cancelBusy}
+                        onClick={submitCancel}
+                      >
+                        确认取消
+                      </button>
+                      <button
+                        type="button"
+                        className="student-secondary"
+                        disabled={cancelBusy}
+                        onClick={closeCancelConfirm}
+                      >
+                        放弃
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={
+                      cancelArea.kind === 'new' ? 'student-secondary' : 'student-primary'
+                    }
+                    disabled={cancelBusy || !cancelArea.actionEnabled}
+                    onClick={cancelArea.kind === 'new' ? openCancelConfirm : submitCancel}
+                  >
+                    {cancelArea.actionLabel}
+                  </button>
+                )
+              ) : null}
+              {cancelState.message ? (
+                <p className="student-error__inline" role="status">
+                  {cancelState.message}
+                </p>
+              ) : null}
+              {cancelBusy ? (
+                <p className="student-order-note" role="status">
+                  正在提交取消请求…
+                </p>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="student-info" aria-label="取餐码">
             <p className="student-info__row">
