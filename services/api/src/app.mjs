@@ -28,6 +28,7 @@ import {
   reportLocation,
 } from './location.mjs';
 import { getAdminSettings, putAdminSettings } from './admin.mjs';
+import { createDish, createShop, getMerchantProfile, registerMerchant } from './merchant.mjs';
 
 function withAuth(roles, handler) {
   return async (ctx) => {
@@ -121,6 +122,27 @@ export function createApp({ db, clock, logger = () => {} }) {
       method: 'POST',
       pattern: /^\/api\/v1\/orders\/(?<id>[^/]+)\/cancel$/,
       handler: withBody(['STUDENT'], (ctx) => studentCancelOrder({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/merchant\/profile$/,
+      handler: withAuth(['MERCHANT'], getMerchantProfile),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/merchant\/registration$/,
+      handler: withBody(['MERCHANT'], registerMerchant),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/merchant\/shops$/,
+      handler: withBody(['MERCHANT'], createShop),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/merchant\/menu$/,
+      handler: withBody(['MERCHANT'], createDish),
     },
 
     {

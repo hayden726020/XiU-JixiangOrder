@@ -688,6 +688,7 @@ export function listMenu({ db, clock, query }) {
     .map((dish) => ({
       id: dish.id,
       merchantId: dish.merchant_id,
+      type: dish.type,
       name: dish.name,
       priceFen: dish.price_fen,
       availableQuantity: dish.available_quantity,
