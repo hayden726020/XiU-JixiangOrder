@@ -183,7 +183,7 @@ export function createStudentSource({
       totalFen,
       status: 'NEW',
       paymentStatus: 'SIMULATED_PAID',
-      cancelRequest: { status: 'NONE', reason: null },
+      cancelRequest: { status: 'NONE', reason: null, decisionReason: null },
       cancellationReason: null,
       version: 1,
       createdAt: timestamp,
@@ -292,6 +292,10 @@ export function createStudentSource({
         .slice()
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map(clone);
+    },
+
+    async cancelOrder(): Promise<StudentOrder> {
+      throw apiError('SAMPLE_MODE_ONLY', '样例模式下不提供真实取消。', false);
     },
 
     setScenario(next: DemoScenario): DemoScenario {

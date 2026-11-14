@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { OrderDraft } from '../state/orderDraft';
+import { useStudentSessionGate } from '../state/useStudentSessionGate';
+import { deriveShopAuthGate } from '../utils/shopAuthView';
 import type { ShopSummary, SourceError, StudentSource } from '../types';
 import { toSourceError } from '../types';
 import { buildMenuDerivedShops } from '../utils/dishShopFilter';
@@ -19,6 +21,7 @@ import {
   SHOP_PICKER_TITLE,
 } from '../utils/shopTexts';
 import DemoModeNotice from '../components/DemoModeNotice';
+import LoginGuide from '../components/LoginGuide';
 import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
 
@@ -46,9 +49,18 @@ export default function ShopSelectPage({
   const [reloadToken, setReloadToken] = useState(0);
   const [derivedBusy, setDerivedBusy] = useState(false);
   const [derivedError, setDerivedError] = useState('');
+  const [recheckNotice, setRecheckNotice] = useState(false);
+  const { gate, refresh } = useStudentSessionGate();
 
   useEffect(() => {
     let cancelled = false;
+    if (source.mode === 'real' && !gate.usable) {
+      setLoading(false);
+      setShops([]);
+      setError(null);
+      setListSource('server');
+      return;
+    }
     setLoading(true);
     setError(null);
     setDerivedError('');
@@ -74,7 +86,7 @@ export default function ShopSelectPage({
     return () => {
       cancelled = true;
     };
-  }, [source, reloadToken]);
+  }, [source, reloadToken, gate.usable]);
 
   async function loadDerivedShops(): Promise<void> {
     if (derivedBusy) {
@@ -95,6 +107,12 @@ export default function ShopSelectPage({
     }
   }
 
+  useEffect(() => {
+    if (gate.usable) {
+      setRecheckNotice(false);
+    }
+  }, [gate.usable]);
+
   const picker: ShopPickerState = deriveShopPickerState({
     shops,
     loading,
@@ -104,6 +122,18 @@ export default function ShopSelectPage({
     canSetShop: draft.canSetShop(),
     listSource,
   });
+
+  const authGate = deriveShopAuthGate({
+    mode: source.mode,
+    gate,
+    error,
+    recheckNotice,
+  });
+
+  function handleRecheck(): void {
+    setRecheckNotice(true);
+    refresh();
+  }
 
   function shopOf(merchantId: string): ShopSummary | null {
     return shops.find((shop) => shop.merchantId === merchantId) ?? null;
@@ -128,15 +158,27 @@ export default function ShopSelectPage({
         </section>
       ) : null}
 
-      {notice ? (
+      {authGate.active ? (
+        <LoginGuide
+          gate={gate}
+          reason={authGate.reason ?? undefined}
+          notice={authGate.notice}
+          showBack={false}
+          scope="shop"
+          onRecheck={handleRecheck}
+          onBack={() => {}}
+        />
+      ) : null}
+
+      {!authGate.active && notice ? (
         <p className="student-notice" role="status">
           {notice}
         </p>
       ) : null}
 
-      {picker.phase === 'loading' ? <p className="student-loading">{SHOP_LIST_LOADING}</p> : null}
+      {!authGate.active && picker.phase === 'loading' ? <p className="student-loading">{SHOP_LIST_LOADING}</p> : null}
 
-      {picker.phase === 'error' && error ? (
+      {!authGate.active && picker.phase === 'error' && error ? (
         <div className="student-error" role="alert">
           <p>{toSourceErrorView(error)}</p>
           <button
@@ -149,7 +191,7 @@ export default function ShopSelectPage({
         </div>
       ) : null}
 
-      {picker.phase === 'unavailable' ? (
+      {!authGate.active && picker.phase === 'unavailable' ? (
         <div className="student-error student-shop-derived" role="alert">
           <p>{SHOP_LIST_UNAVAILABLE_TEXT}</p>
           <p className="student-order-note">{SHOP_LIST_UNAVAILABLE_HINT}</p>
@@ -179,7 +221,7 @@ export default function ShopSelectPage({
         </div>
       ) : null}
 
-      {picker.phase === 'empty' ? (
+      {!authGate.active && picker.phase === 'empty' ? (
         <div className="student-empty" role="status">
           <p>{picker.emptyText}</p>
           <button
@@ -192,7 +234,7 @@ export default function ShopSelectPage({
         </div>
       ) : null}
 
-      {picker.phase === 'ready' ? (
+      {!authGate.active && picker.phase === 'ready' ? (
         <ul className="student-shop-grid" aria-label="店铺列表">
           {picker.cards.map((card) => {
             const shop = shopOf(card.merchantId);

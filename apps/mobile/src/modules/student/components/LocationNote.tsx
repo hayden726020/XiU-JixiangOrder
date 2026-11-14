@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { PresenceView } from '../utils/presenceView';
+import type { StayView } from '../utils/stayView';
 import {
   LOCATION_NO_PROMISE_TEXT,
   LOCATION_SAMPLE_TEXT,
@@ -16,6 +17,7 @@ export interface LocationNoteProps {
   onRetry: () => void;
   onRetrySync: () => void;
   onClear: () => void;
+  stay?: StayView;
 }
 
 export default function LocationNote({
@@ -24,6 +26,7 @@ export default function LocationNote({
   onRetry,
   onRetrySync,
   onClear,
+  stay,
 }: LocationNoteProps) {
   const [open, setOpen] = useState(false);
   const realMode = mode === 'real';
@@ -49,6 +52,12 @@ export default function LocationNote({
       </div>
 
       <p className="student-location__summary">{LOCATION_USAGE_SUMMARY}</p>
+
+      {stay ? (
+        <p className="student-location__stay" data-stay-state={stay.stateAttr} hidden={!stay.showNotice}>
+          {stay.noticeText}
+        </p>
+      ) : null}
 
       <button
         type="button"

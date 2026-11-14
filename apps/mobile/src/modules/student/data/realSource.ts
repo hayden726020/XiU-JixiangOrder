@@ -1,5 +1,6 @@
 import { apiRequest, type ApiRequestOptions } from '../../../shared/apiClient';
 import type {
+  CancelOrderInput,
   CreateOrderInput,
   CrowdReference,
   DemoScenario,
@@ -126,6 +127,22 @@ export function createRealStudentSource(options: RealSourceOptions = {}): Studen
     async listOrders(): Promise<StudentOrder[]> {
       const payload = await request<unknown>('/orders');
       return mapOrdersResponse(payload, { where: '订单列表' });
+    },
+
+    async cancelOrder(input: CancelOrderInput): Promise<StudentOrder> {
+      const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
+      const body: Record<string, unknown> = {
+        requestId: input.requestId,
+        expectedVersion: input.expectedVersion,
+      };
+      if (reason !== '') {
+        body.reason = reason;
+      }
+      const payload = await request<unknown>(
+        `/orders/${encodeURIComponent(input.orderId)}/cancel`,
+        { method: 'POST', body },
+      );
+      return mapOrderResponse(payload, { demo: false, where: '取消订单响应' });
     },
 
     setScenario(): DemoScenario {

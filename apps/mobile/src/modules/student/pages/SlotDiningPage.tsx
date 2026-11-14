@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getPresenceRuntime, type PresenceState } from '../state/presenceRuntime';
+import { useStayTimer } from '../state/useStayTimer';
 import { derivePresenceView } from '../utils/presenceView';
+import { deriveStayView } from '../utils/stayView';
 import { createSlotRequestGuard, type SlotGuardState } from '../state/slotGuard';
 import type { OrderDraft } from '../state/orderDraft';
 import type { DiningMode, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
@@ -63,6 +65,21 @@ export default function SlotDiningPage({
     getPresenceRuntime(source.mode === 'real' ? 'real' : 'sample'),
   );
   const [presence, setPresence] = useState<PresenceState>(() => presenceRuntime.getState());
+  const stayResetRef = useRef<() => void>(() => {});
+  const stayFailRef = useRef<() => void>(() => {});
+  const stay = useStayTimer({
+    enabled: source.mode === 'real',
+    onThreshold: async () => {
+      const next = await presenceRuntime.locate();
+      if (next.phase === 'inside' || next.phase === 'outside') {
+        stayResetRef.current();
+      } else {
+        stayFailRef.current();
+      }
+    },
+  });
+  stayResetRef.current = stay.reset;
+  stayFailRef.current = stay.markFailed;
   const date = snapshot.date;
 
   async function requestCrowd(slotId: string): Promise<void> {
@@ -131,7 +148,11 @@ export default function SlotDiningPage({
   }
 
   function retryPresence(): void {
-    void presenceRuntime.locate();
+    void presenceRuntime.locate().then((next) => {
+      if (next.phase === 'inside' || next.phase === 'outside') {
+        stay.reset();
+      }
+    });
   }
 
   function retryPresenceSync(): void {
@@ -139,7 +160,11 @@ export default function SlotDiningPage({
   }
 
   function clearPresenceRecord(): void {
-    void presenceRuntime.clear();
+    void presenceRuntime.clear().then((next) => {
+      if (next.phase === 'cleared') {
+        stay.reset();
+      }
+    });
   }
 
   const selectedNames = menu
@@ -287,6 +312,7 @@ export default function SlotDiningPage({
         onRetry={retryPresence}
         onRetrySync={retryPresenceSync}
         onClear={clearPresenceRecord}
+        stay={deriveStayView(stay.state, source.mode === 'real' ? 'real' : 'sample')}
       />
 
       <footer className="student-summary">

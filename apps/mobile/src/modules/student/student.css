@@ -512,6 +512,18 @@
   line-height: 1.5;
 }
 
+.student-location__stay {
+  margin: 0;
+  padding: 0 1rem 0.6rem;
+  color: #7a4a12;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.student-location__stay[data-stay-state='failed'] {
+  color: #9a3412;
+}
+
 .student-location__status {
   padding: 0.12rem 0.55rem;
   border-radius: 999px;
@@ -886,6 +898,58 @@
   font-size: 0.82rem;
   line-height: 1.55;
 }
+
+.student-cancel-action {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e2d6c3;
+  border-radius: 0.75rem;
+  background: #fffdf8;
+}
+
+.student-cancel-action__field {
+  display: grid;
+  gap: 0.35rem;
+  color: #3f3a2f;
+  font-size: 0.86rem;
+}
+
+.student-cancel-action__field textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #cdbfa8;
+  border-radius: 0.6rem;
+  background: #fff;
+  color: #1b1b1b;
+  font: inherit;
+  resize: vertical;
+}
+
+.student-cancel-action__field textarea:disabled {
+  background: #f4f0e8;
+}
+
+.student-cancel-action__confirm {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.6rem;
+  background: #fdf2f2;
+  color: #7f1d1d;
+  font-size: 0.84rem;
+}
+
+.student-cancel-action__confirm p {
+  margin: 0;
+}
+
+.student-cancel-action__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 .student-session-note {
   margin: 0 0 0.9rem;
   padding: 0.55rem 0.7rem;
@@ -921,6 +985,13 @@
   color: #78350f;
   font-size: 0.78rem;
   line-height: 1.55;
+}
+
+.student-login-guide__notice {
+  margin: 0;
+  color: #8a4b00;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .student-login-guide__actions {
@@ -994,6 +1065,16 @@
   color: #52616b;
   font-size: 0.78rem;
   word-break: break-all;
+}
+
+.student-order-list__cancel-badge {
+  display: inline-block;
+  justify-self: start;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #fff1d6;
+  color: #8a4b00;
+  font-size: 0.72rem;
 }
 
 .student-order-list__dish {

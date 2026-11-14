@@ -11,7 +11,7 @@ const USAGE_CLEAR = '清除：可随时清除本人的位置判断记录；清�
 
 export const LOCATION_USAGE_ITEMS_REAL = [
   USAGE_USE,
-  '频率：进入时段与用餐方式页时自动获取一次（每次进入最多一次），不持续跟踪；也可点击“重新获取位置”。',
+  '频率：进入时段与用餐方式页时自动获取一次；在本页前台可见累计满 10 分钟会再判断一次；离开页面期间不计时。',
   USAGE_RANGE,
   USAGE_IMPACT,
   USAGE_CLEAR,
@@ -19,7 +19,7 @@ export const LOCATION_USAGE_ITEMS_REAL = [
 
 export const LOCATION_USAGE_ITEMS_SAMPLE = [
   USAGE_USE,
-  '频率：样例模式不获取真实位置；真实模式下进入时段与用餐方式页时自动获取一次，不持续跟踪。',
+  '频率：样例模式不获取真实位置，也不适用停留计时。',
   USAGE_RANGE,
   USAGE_IMPACT,
   USAGE_CLEAR,

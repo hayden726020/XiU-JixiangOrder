@@ -189,7 +189,7 @@ export const DEMO_ORDER_001: StudentOrder = {
   totalFen: 1800,
   status: 'NEW',
   paymentStatus: 'SIMULATED_PAID',
-  cancelRequest: { status: 'NONE', reason: null },
+  cancelRequest: { status: 'NONE', reason: null, decisionReason: null },
   cancellationReason: null,
   version: 1,
   createdAt: '2026-11-13T11:15:00+08:00',

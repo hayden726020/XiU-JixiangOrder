@@ -1,5 +1,6 @@
 import type { SourceError, StudentMode, StudentOrder } from '../types';
 import { ACTION_LABELS, resolveListSemantics } from './errorSemantics';
+import { cancelBadgeOf } from './cancelTexts';
 import { toOrderStatusView } from './orderStatusView';
 
 export interface OrderListDishLine {
@@ -18,6 +19,7 @@ export interface OrderListCardView {
   dishLines: OrderListDishLine[];
   dishSummary: string;
   cancelled: boolean;
+  cancelBadge: string;
 }
 
 export interface OrderListView {
@@ -61,6 +63,7 @@ export function deriveOrderListView(orders: StudentOrder[], mode: StudentMode): 
       dishSummary:
         dishLines.length > MAX_DISH_LINES ? `${shown} 等 ${dishLines.length} 项` : shown,
       cancelled: order.status === 'CANCELLED',
+      cancelBadge: cancelBadgeOf(order.cancelRequest?.status ?? 'NONE'),
     };
   });
   return {
