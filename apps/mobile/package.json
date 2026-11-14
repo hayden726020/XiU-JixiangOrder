@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node test/run-s17.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.2",
