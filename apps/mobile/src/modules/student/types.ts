@@ -1,3 +1,7 @@
+import { ApiError } from '../../shared/apiClient';
+
+export { ApiError };
+
 export type DiningMode = 'DINE_IN' | 'TAKEAWAY';
 
 export type DemoScenario = 'normal' | 'slot-full' | 'out-of-stock' | 'timeout';
@@ -30,7 +34,8 @@ export interface SlotDto {
 
 export interface MenuResponse {
   date: string;
-  demo: true;
+  /** 真实响应缺少 demo 字段时按 false 处理，只有样例数据明确为 true。 */
+  demo: boolean;
   dishes: DishDto[];
   slots: SlotDto[];
 }
@@ -117,16 +122,12 @@ export interface SourceError {
   retryable: boolean;
 }
 
-export class ApiError extends Error {
-  readonly code: string;
-  readonly retryable: boolean;
-
-  constructor(code: string, message: string, retryable = false) {
-    super(message);
-    this.name = 'ApiError';
-    this.code = code;
-    this.retryable = retryable;
-  }
+/**
+ * 统一构造 shared ApiError，避免模块内出现第二套错误类。
+ * 样例/本地校验没有 HTTP 状态，status 固定为 0；真实请求由 apiRequest 填充状态。
+ */
+export function apiError(code: string, message: string, retryable = false): ApiError {
+  return new ApiError({ code, message, status: 0, retryable });
 }
 
 export function isApiError(error: unknown): error is ApiError {

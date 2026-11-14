@@ -1,3 +1,4 @@
+import { createRequestId } from '../../../shared/requestId';
 import type { DiningMode, DraftItemInput } from '../types';
 
 export interface DraftFingerprintInput {
@@ -14,7 +15,7 @@ export interface RequestIdKeeper {
 }
 
 export interface RequestIdKeeperOptions {
-  now?: () => number;
+
   prefix?: string;
 }
 
@@ -36,10 +37,8 @@ export function buildDraftFingerprint(draft: DraftFingerprintInput): string {
 }
 
 export function createRequestIdKeeper({
-  now = () => Date.now(),
   prefix = 'demo-req',
 }: RequestIdKeeperOptions = {}): RequestIdKeeper {
-  let seq = 0;
   let currentId: string | null = null;
   let currentFingerprint: string | null = null;
 
@@ -49,8 +48,8 @@ export function createRequestIdKeeper({
       if (currentId !== null && nextFingerprint === currentFingerprint) {
         return currentId;
       }
-      seq += 1;
-      currentId = `${prefix}-${now()}-${seq}`;
+      // 实际请求号只由 shared 生成；本模块只决定何时复用或重置。
+      currentId = createRequestId(prefix);
       currentFingerprint = nextFingerprint;
       return currentId;
     },

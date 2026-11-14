@@ -7,7 +7,7 @@ import type {
   StudentOrder,
   StudentSource,
 } from '../types';
-import { ApiError, toSourceError } from '../types';
+import { ApiError, apiError, toSourceError } from '../types';
 import { sumFen } from '../utils/money';
 import { createRequestIdKeeper, type RequestIdKeeper } from '../utils/requestId';
 
@@ -113,7 +113,7 @@ export function createOrderDraft({
 
   function setDate(date: string): boolean {
     if (!SAMPLE_DATES.has(date)) {
-      throw new ApiError('VALIDATION_ERROR', '日期只能是今天或明天。', false);
+      throw apiError('VALIDATION_ERROR', '日期只能是今天或明天。', false);
     }
     if (date === state.date) {
       return false;
@@ -134,7 +134,7 @@ export function createOrderDraft({
 
   function setQuantity(dish: DishDto, quantity: number): number {
     if (!dish || typeof dish.dishId !== 'string') {
-      throw new ApiError('VALIDATION_ERROR', '菜品信息不完整。', false);
+      throw apiError('VALIDATION_ERROR', '菜品信息不完整。', false);
     }
     const limit = dish.onSale === true ? Math.max(0, dish.availableQuantity ?? 0) : 0;
     const wanted = Number.isInteger(quantity) ? quantity : 0;
@@ -163,14 +163,14 @@ export function createOrderDraft({
 
   function setDiningMode(mode: DiningMode): void {
     if (!MODES.has(mode)) {
-      throw new ApiError('VALIDATION_ERROR', '请选择堂食或外带。', false);
+      throw apiError('VALIDATION_ERROR', '请选择堂食或外带。', false);
     }
     state.diningMode = mode;
   }
 
   function buildInput(): CreateOrderInput {
     if (state.slotId === null || state.diningMode === null) {
-      throw new ApiError('VALIDATION_ERROR', '请选择时段和堂食或外带。', false);
+      throw apiError('VALIDATION_ERROR', '请选择时段和堂食或外带。', false);
     }
     return {
       requestId: requestIds.ensure(snapshot()),
@@ -185,7 +185,7 @@ export function createOrderDraft({
       return inFlight;
     }
     if (!canConfirm()) {
-      throw new ApiError('VALIDATION_ERROR', '请选择时段和堂食或外带。', false);
+      throw apiError('VALIDATION_ERROR', '请选择时段和堂食或外带。', false);
     }
     if (state.status === 'success' && state.order) {
       return { ...state.order };
@@ -217,11 +217,11 @@ export function createOrderDraft({
 
   async function queryResult(): Promise<StudentOrder> {
     if (state.status !== 'timeout') {
-      throw new ApiError('VALIDATION_ERROR', '当前没有待确认的结果。', false);
+      throw apiError('VALIDATION_ERROR', '当前没有待确认的结果。', false);
     }
     const requestId = requestIds.current;
     if (requestId === null) {
-      throw new ApiError('VALIDATION_ERROR', '当前没有待确认的结果。', false);
+      throw apiError('VALIDATION_ERROR', '当前没有待确认的结果。', false);
     }
     const order = await source.queryOrderResult(requestId);
     state.status = 'success';
