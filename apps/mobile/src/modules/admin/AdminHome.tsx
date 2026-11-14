@@ -8,9 +8,15 @@ import {
 } from '../../shared';
 import './admin.css';
 import './admin-s2.css';
+import './admin-s4.css';
+import './admin-s6.css';
 import SampleBanner from './components/SampleBanner';
 
-import { createAdminSource, type AdminSourceMode } from './data/source';
+import {
+  createAdminSource,
+  type AdminErrorSimulation,
+  type AdminSourceMode,
+} from './data/source';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrdersPage from './pages/OrdersPage';
 import OverviewPage from './pages/OverviewPage';
@@ -57,6 +63,7 @@ export default function AdminHome() {
   const [mode, setMode] = useState<AdminSourceMode>(() =>
     getSession()?.user.role === 'ADMIN' ? 'live' : 'sample',
   );
+  const [simulateError, setSimulateError] = useState<AdminErrorSimulation>('none');
 
   useEffect(() => {
     const onHashChange = () => setLocation(readLocation());
@@ -66,7 +73,10 @@ export default function AdminHome() {
 
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
 
-  const source = useMemo(() => createAdminSource({ mode }), [mode]);
+  const source = useMemo(
+    () => createAdminSource({ mode, simulateError: mode === 'sample' ? simulateError : 'none' }),
+    [mode, simulateError],
+  );
   const isAdmin = session?.user.role === 'ADMIN';
   const baseInfo = getApiBaseInfo();
   const activeNav = location.route === 'orderDetail' ? 'orders' : location.route;
@@ -77,9 +87,9 @@ export default function AdminHome() {
         <SampleBanner />
       ) : (
         <div className="admin-banner admin-banner--live" role="status">
-          <strong>真实服务 · 只读</strong>
+          <strong>真实服务 · 订单只读，配置可保存</strong>
           <span>
-            数据来自当前公共会话与服务地址；不会回退样例。查询失败时显示失败原因。
+            数据来自当前公共会话与服务地址；不会回退样例。查询或保存失败时显示失败原因。
           </span>
           <span className="admin-banner__tag">DRAFT v0.3 联调候选</span>
         </div>
@@ -87,7 +97,7 @@ export default function AdminHome() {
 
       <h2 id="admin-title">管理端 · 订单与配置</h2>
       <p className="admin-muted">
-        S2 提供订单状态筛选、分页、异常标记与只读详情；S3 提供对齐服务端 dining/crowd 结构的只读配置。
+        S2 提供订单状态筛选、分页、异常标记与只读详情；S3/S5 提供 dining/crowd 只读展示与真实保存；S6 提供 401/403/503 错误态与失败重试核对。
         管理端不改订单状态，也不显示取餐码或学生位置。
       </p>
 
@@ -96,7 +106,7 @@ export default function AdminHome() {
           当前会话：
           {session ? `${session.user.displayName} · ${roleLabel(session.user.role)}` : '未登录'}
         </span>
-        {mode === 'sample' && isAdmin ? (
+        {mode === 'sample' && session ? (
           <button type="button" className="admin-action" onClick={() => setMode('live')}>
             连接真实服务
           </button>
@@ -108,9 +118,31 @@ export default function AdminHome() {
         ) : null}
         {!session ? <a href="#/system-check">去公共自检页登录 →</a> : null}
         {session && !isAdmin ? (
-          <span className="admin-warn">当前账号不是管理员，真实查询会返回 403。</span>
+          <span className="admin-warn">
+            当前账号不是管理员；可连接真实服务核对 403 拒绝页，但不会渲染管理数据。
+          </span>
         ) : null}
       </div>
+
+      {mode === 'sample' ? (
+        <div className="admin-sim">
+          <label>
+            <span>错误态演习</span>
+            <select
+              value={simulateError}
+              onChange={(event) => setSimulateError(event.target.value as AdminErrorSimulation)}
+            >
+              <option value="none">正常样例数据</option>
+              <option value="401">模拟 401 身份失效</option>
+              <option value="403">模拟 403 无管理权限</option>
+              <option value="503">模拟 503 服务不可用</option>
+            </select>
+          </label>
+          <p className="admin-muted">
+            仅样例模式模拟，不请求服务端；用于核对 401/403/503 时页面不显示假数据。
+          </p>
+        </div>
+      ) : null}
 
       {mode === 'live' ? (
         <p className="admin-muted">

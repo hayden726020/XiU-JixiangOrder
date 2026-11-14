@@ -38,7 +38,7 @@ export default function OverviewPage({ mode, session }: OverviewPageProps) {
             </a>
             <a className="admin-link-card" href="#/admin/settings">
               <strong>营业与配置 →</strong>
-              <span>只读查看食堂范围 dining 与提醒阈值 crowd；档口营业时间暂无端点，保存与版本冲突在 S5 接入。</span>
+              <span>查看食堂范围 dining 与提醒阈值 crowd；S5 支持分别保存并处理版本冲突；S6 提供 401/403/503 错误态；档口营业时间暂无端点。</span>
             </a>
           </div>
 
@@ -49,6 +49,7 @@ export default function OverviewPage({ mode, session }: OverviewPageProps) {
                 以 <code>demo-order-001</code> 为三端指认单：堂食、待接单、11:30—12:00、1 份、1800 分、version 1。
               </li>
               <li>样例中另有 1 笔待处理取消申请和 1 笔已设置延迟，用于异常查询展示。</li>
+              <li>S6 错误演习可切到模拟 401/403/503；错误态不显示样例或服务端数据，也不提供切换管理员按钮。</li>
               <li>
                 配置以服务端 dining/crowd 两段为准：半径 {sampleSettings.dining.radiusMeters} 米、误差容忍{' '}
                 {sampleSettings.dining.accuracyToleranceMeters} 米、当前参考阈值 {sampleSettings.crowd.crowdedAt} 人，

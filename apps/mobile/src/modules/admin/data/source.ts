@@ -4,6 +4,8 @@ import { sampleOrders, sampleSettings } from './sample';
 
 export type AdminSourceMode = 'sample' | 'live';
 
+export type AdminErrorSimulation = 'none' | '401' | '403' | '503';
+
 export interface AdminOrderQuery {
   status: OrderStatus | 'ALL';
   page: number;
@@ -17,11 +19,49 @@ export interface AdminOrderPage {
   total: number;
 }
 
+export type AdminSettingsSection = 'dining' | 'crowd';
+
+export interface DiningUpdatePayload {
+  canteenId: string;
+  name: string;
+  center: { latitude: number; longitude: number };
+  radiusMeters: number;
+  accuracyToleranceMeters: number;
+  demo: boolean;
+}
+
+export interface CrowdUpdatePayload {
+  crowdedAt: number;
+  demo: boolean;
+}
+
+export interface SettingsUpdateRequestDining {
+  section: 'dining';
+  requestId: string;
+  expectedVersion: number;
+  value: DiningUpdatePayload;
+}
+
+export interface SettingsUpdateRequestCrowd {
+  section: 'crowd';
+  requestId: string;
+  expectedVersion: number;
+  value: CrowdUpdatePayload;
+}
+
+export type SettingsUpdateRequest = SettingsUpdateRequestDining | SettingsUpdateRequestCrowd;
+
+export interface SettingsUpdateResult {
+  section: AdminSettingsSection;
+  version: number;
+}
+
 export interface AdminSource {
   mode: AdminSourceMode;
   listOrders(query: AdminOrderQuery): Promise<AdminOrderPage>;
   getOrder(id: string): Promise<Order | null>;
   getSettings(): Promise<AdminSettings>;
+  updateSettings(request: SettingsUpdateRequest): Promise<SettingsUpdateResult>;
 }
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -127,6 +167,13 @@ function parseSettings(value: unknown): AdminSettings {
   };
 }
 
+function parseSettingsUpdate(value: unknown, section: AdminSettingsSection): SettingsUpdateResult {
+  if (!isRecord(value) || value.section !== section || typeof value.version !== 'number') {
+    throw invalidSettingsResponse();
+  }
+  return { section, version: value.version };
+}
+
 function samplePage(query: AdminOrderQuery): AdminOrderPage {
   const filtered =
     query.status === 'ALL'
@@ -141,7 +188,52 @@ function samplePage(query: AdminOrderQuery): AdminOrderPage {
   };
 }
 
-export function createAdminSource(options: { mode: AdminSourceMode }): AdminSource {
+function simulatedError(simulation: AdminErrorSimulation): ApiError | null {
+  switch (simulation) {
+    case '401':
+      return new ApiError({
+        code: 'UNAUTHENTICATED',
+        message: '身份已失效，请重新登录管理员演示身份。',
+        status: 401,
+        retryable: false,
+      });
+    case '403':
+      return new ApiError({
+        code: 'FORBIDDEN',
+        message: '当前身份无管理权限。',
+        status: 403,
+        retryable: false,
+      });
+    case '503':
+      return new ApiError({
+        code: 'SERVICE_UNAVAILABLE',
+        message: '服务暂不可用，查询未完成；保存结果可能未确定。',
+        status: 503,
+        retryable: true,
+      });
+    case 'none':
+      return null;
+  }
+}
+
+function applySimulation(source: AdminSource, simulation: AdminErrorSimulation): AdminSource {
+  if (simulation === 'none') {
+    return source;
+  }
+  const fail = (): Promise<never> => Promise.reject(simulatedError(simulation));
+  return {
+    ...source,
+    listOrders: fail,
+    getOrder: fail,
+    getSettings: fail,
+    updateSettings: fail,
+  };
+}
+
+export function createAdminSource(options: {
+  mode: AdminSourceMode;
+  simulateError?: AdminErrorSimulation;
+}): AdminSource {
   if (options.mode === 'live') {
     return {
       mode: 'live',
@@ -168,13 +260,34 @@ export function createAdminSource(options: { mode: AdminSourceMode }): AdminSour
         }
       },
       getSettings: async () => parseSettings(await apiRequest<unknown>('/admin/settings')),
+      updateSettings: async (request) => {
+        const data = await apiRequest<unknown>('/admin/settings', {
+          method: 'PUT',
+          body: {
+            requestId: request.requestId,
+            section: request.section,
+            expectedVersion: request.expectedVersion,
+            value: request.value,
+          },
+        });
+        return parseSettingsUpdate(data, request.section);
+      },
     };
   }
 
-  return {
+  const sample: AdminSource = {
     mode: 'sample',
     listOrders: async (query) => samplePage(query),
     getOrder: async (id) => sampleOrders.find((order) => order.id === id) ?? null,
     getSettings: async () => sampleSettings,
+    updateSettings: async () => {
+      throw new ApiError({
+        code: 'SAMPLE_MODE',
+        message: '样例模式不会写入服务端配置。',
+        status: 0,
+        retryable: false,
+      });
+    },
   };
+  return applySimulation(sample, options.simulateError ?? 'none');
 }
