@@ -23,6 +23,7 @@ export interface MenuPageProps {
   draft: OrderDraft;
   onProceed: () => void;
   onViewSampleOrder: () => void;
+  onOpenOrders: () => void;
 }
 
 export default function MenuPage({
@@ -30,6 +31,7 @@ export default function MenuPage({
   draft,
   onProceed,
   onViewSampleOrder,
+  onOpenOrders,
 }: MenuPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
@@ -92,6 +94,15 @@ export default function MenuPage({
             : '样例菜单可调整数量，全部数据来自模块内样例源。'}
         </p>
       </header>
+
+      {source.mode === 'real' ? (
+        <section className="student-order-entry" aria-label="我的订单入口">
+          <button type="button" className="student-secondary" onClick={onOpenOrders}>
+            我的订单
+          </button>
+          <p className="student-order-entry__hint">查看本人在公共服务的订单，只读</p>
+        </section>
+      ) : null}
 
       <div className="student-date-switch" role="group" aria-label="选择菜单日期">
         {snapshot.allowedDates.map((item, index) => (

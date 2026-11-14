@@ -1,7 +1,21 @@
-import { useEffect, useState } from 'react';
-import type { SourceError, StudentOrder, StudentSource } from '../types';
-import { isApiError, toSourceError } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import type { CrowdView } from '../utils/crowdView';
+import type { SourceError, StudentSource } from '../types';
+import { toSourceError } from '../types';
+import {
+  classifyRefreshFailure,
+  createReadGuard,
+  failInitialRead,
+  failRefresh,
+  initialDetailRead,
+  settleRead,
+  startInitialRead,
+  startRefresh,
+  type DetailReadState,
+} from '../state/orderRead';
+import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { toCrowdView } from '../utils/crowdView';
+import { deriveDetailReadView } from '../utils/detailReadView';
 import { toDetailErrorView } from '../utils/detailErrorView';
 import { CANCEL_RULES, CHANGE_DINING_NOTE } from '../utils/orderDetailTexts';
 import { toOrderStatusView } from '../utils/orderStatusView';
@@ -10,24 +24,27 @@ import LoginGuide from '../components/LoginGuide';
 import OrderCrowdNote from '../components/OrderCrowdNote';
 import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
-import { useStudentSessionGate } from '../state/useStudentSessionGate';
-import type { CrowdView } from '../utils/crowdView';
-
-type LoadStatus = 'loading' | 'ready' | 'error';
 
 export interface OrderDetailPageProps {
   source: StudentSource;
   orderId: string;
   onBack: () => void;
+  backLabel?: string;
 }
 
-export default function OrderDetailPage({ source, orderId, onBack }: OrderDetailPageProps) {
+export default function OrderDetailPage({
+  source,
+  orderId,
+  onBack,
+  backLabel = '← 返回菜单',
+}: OrderDetailPageProps) {
   const { gate, refresh } = useStudentSessionGate();
-  const [order, setOrder] = useState<StudentOrder | null>(null);
+  const [readState, setReadState] = useState<DetailReadState>(() => initialDetailRead());
   const [crowd, setCrowd] = useState<CrowdView | null>(null);
-  const [status, setStatus] = useState<LoadStatus>('loading');
-  const [loadError, setLoadError] = useState<SourceError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const guardRef = useRef(createReadGuard());
+  const stateRef = useRef<DetailReadState>(readState);
+  stateRef.current = readState;
 
   const realLoggedOut = source.mode === 'real' && !gate.usable;
 
@@ -35,52 +52,83 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
     if (realLoggedOut) {
       return;
     }
-    let cancelled = false;
-    setStatus('loading');
-    setLoadError(null);
+    const guard = guardRef.current;
+    const token = guard.next();
+    setReadState((current) => startInitialRead(current));
     setCrowd(null);
     source.getOrder(orderId).then(
       (data) => {
-        if (cancelled) {
+        if (!guard.isCurrent(token)) {
           return;
         }
-        setOrder(data);
-        setStatus('ready');
+        setReadState((current) => settleRead(current, data, new Date()));
         source.getCrowd(data.slotId).then(
           (reference) => {
-            if (!cancelled) {
+            if (guard.isCurrent(token)) {
               setCrowd(toCrowdView(reference));
             }
           },
           () => {
-            if (!cancelled) {
+            if (guard.isCurrent(token)) {
               setCrowd(null);
             }
           },
         );
       },
-      (error: unknown) => {
-        if (!cancelled) {
-          setOrder(null);
-          setStatus('error');
-          setLoadError(isApiError(error) ? toSourceError(error) : null);
+      (failure: unknown) => {
+        if (!guard.isCurrent(token)) {
+          return;
         }
+        setReadState((current) => failInitialRead(current, toSourceError(failure)));
       },
     );
     return () => {
-      cancelled = true;
+      guard.reset();
     };
-  }, [source, orderId, reloadToken, realLoggedOut]);
+  }, [source, orderId, realLoggedOut, reloadToken]);
 
-  const errorView = toDetailErrorView(loadError);
-  const view = order ? toOrderStatusView(order, { mode: source.mode }) : null;
+  function refreshOrder(): void {
+    if (source.mode !== 'real') {
+      return;
+    }
+    const current = stateRef.current;
+    if (current.phase !== 'ready' && current.phase !== 'refreshFailed') {
+      return;
+    }
+    const next = startRefresh(current);
+    if (next === current) {
+      return;
+    }
+    setReadState(next);
+    const guard = guardRef.current;
+    const token = guard.next();
+    source.getOrder(orderId).then(
+      (data) => {
+        if (guard.isCurrent(token)) {
+          setReadState((state) => settleRead(state, data, new Date()));
+        }
+      },
+      (failure: unknown) => {
+        if (!guard.isCurrent(token)) {
+          return;
+        }
+        const error: SourceError = toSourceError(failure);
+        setReadState((state) => failRefresh(state, error, classifyRefreshFailure(error)));
+      },
+    );
+  }
+
+  const errorView = toDetailErrorView(readState.error);
+  const readView = deriveDetailReadView(readState, source.mode);
+  const statusView =
+    readState.order !== null ? toOrderStatusView(readState.order, { mode: source.mode }) : null;
 
   if (realLoggedOut) {
     return (
       <section className="student-page" aria-labelledby="student-order-title">
         <RealModeNotice />
         <button type="button" className="student-secondary student-back" onClick={onBack}>
-          ← 返回菜单
+          {backLabel}
         </button>
         <header className="student-page__head">
           <p className="student-kicker">真实模式 · 只读订单</p>
@@ -96,7 +144,7 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
       {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <button type="button" className="student-secondary student-back" onClick={onBack}>
-        ← 返回菜单
+        {backLabel}
       </button>
 
       <header className="student-page__head">
@@ -115,9 +163,11 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
         <p className="student-session-note">当前登录：{gate.identityText}（仅用于核对）</p>
       ) : null}
 
-      {status === 'loading' ? <p className="student-loading">正在读取订单信息…</p> : null}
+      {readState.phase === 'reading' ? (
+        <p className="student-loading">正在读取订单信息…</p>
+      ) : null}
 
-      {status === 'error' && errorView && errorView.action !== 'login' ? (
+      {readState.phase === 'error' && errorView && errorView.action !== 'login' ? (
         <div className="student-error" role="alert">
           <p>{errorView.message}</p>
           <div className="student-error__actions">
@@ -136,18 +186,46 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
         </div>
       ) : null}
 
-      {status === 'ready' && view ? (
+      {readState.order !== null && statusView ? (
         <>
           <section className="student-order-head" aria-label="订单状态">
-            <span className="student-status-badge">{view.statusLabel}</span>
-            {view.demoLabel ? <span className="student-order-demo">{view.demoLabel}</span> : null}
-            <p className="student-order-id">订单号 {view.orderId}</p>
+            <span className="student-status-badge">{statusView.statusLabel}</span>
+            {statusView.demoLabel ? (
+              <span className="student-order-demo">{statusView.demoLabel}</span>
+            ) : null}
+            <p className="student-order-id">订单号 {statusView.orderId}</p>
           </section>
 
-          {view.status === 'CANCELLED' ? (
+          {readView.showRefreshEntry ? (
+            <section className="student-refresh" aria-label="刷新订单状态">
+              <button
+                type="button"
+                className="student-secondary"
+                disabled={!readView.canRefresh}
+                onClick={refreshOrder}
+              >
+                {readView.refreshButtonText}
+              </button>
+              <p className="student-order-note">
+                点击后会重新读取本单最新状态；不会改变订单。
+              </p>
+              {readView.refreshNoticeText ? (
+                <p className="student-error__inline" role="status">
+                  {readView.refreshNoticeText}
+                </p>
+              ) : null}
+              {readView.lastReadText ? (
+                <p className="student-order-note">{readView.lastReadText}</p>
+              ) : null}
+            </section>
+          ) : null}
+
+          {statusView.status === 'CANCELLED' ? (
             <section className="student-cancel-path" aria-label="取消路径">
               <p className="student-cancel-path__title">订单已取消</p>
-              <p className="student-cancel-path__reason">{view.cancelText || '未提供取消原因'}</p>
+              <p className="student-cancel-path__reason">
+                {statusView.cancelText || '未提供取消原因'}
+              </p>
             </section>
           ) : (
             <section aria-labelledby="student-timeline-title">
@@ -155,7 +233,7 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
                 订单进度
               </h3>
               <ol className="student-timeline">
-                {view.steps.map((step) => (
+                {statusView.steps.map((step) => (
                   <li
                     key={step.name}
                     className={`student-timeline__step${step.reached ? ' is-reached' : ''}${
@@ -167,8 +245,12 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
                   </li>
                 ))}
               </ol>
-              {view.delayText ? <p className="student-order-note">{view.delayText}</p> : null}
-              {view.pickedUpText ? <p className="student-order-note">{view.pickedUpText}</p> : null}
+              {statusView.delayText ? (
+                <p className="student-order-note">{statusView.delayText}</p>
+              ) : null}
+              {statusView.pickedUpText ? (
+                <p className="student-order-note">{statusView.pickedUpText}</p>
+              ) : null}
             </section>
           )}
 
@@ -177,7 +259,7 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
               菜品与金额
             </h3>
             <ul className="student-confirm__lines">
-              {view.items.map((item, index) => (
+              {statusView.items.map((item, index) => (
                 <li key={`${item.name}-${index}`} className="student-confirm__line">
                   <div>
                     <p className="student-confirm__name">
@@ -189,7 +271,7 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
                 </li>
               ))}
             </ul>
-            <p className="student-total">合计 {view.totalText}</p>
+            <p className="student-total">合计 {statusView.totalText}</p>
             <p className="student-total__note">
               金额为{source.mode === 'real' ? '服务端' : '样例服务端'}返回结果
             </p>
@@ -198,25 +280,35 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
           <section className="student-info" aria-label="预约与订单信息">
             <p className="student-info__row">
               <span>时段</span>
-              <span>{view.slotRangeText || '未提供'}</span>
+              <span>{statusView.slotRangeText || '未提供'}</span>
             </p>
             <p className="student-info__row">
               <span>用餐方式</span>
-              <span>{view.diningModeText}</span>
+              <span>{statusView.diningModeText}</span>
             </p>
             <p className="student-info__row">
               <span>创建时间</span>
-              <span>{view.createdText || '未提供'}</span>
+              <span>{statusView.createdText || '未提供'}</span>
             </p>
+            {source.mode === 'real' ? (
+              <p className="student-info__row">
+                <span>订单更新时间（服务端）</span>
+                <span>
+                  {statusView.updatedText
+                    ? `${statusView.updatedText}${readView.updatedLabelSuffix}`
+                    : '未提供'}
+                </span>
+              </p>
+            ) : null}
           </section>
 
           <section className="student-info" aria-label="取餐码">
             <p className="student-info__row">
               <span>取餐码</span>
-              <span>{view.pickupCodeText}</span>
+              <span>{statusView.pickupCodeText}</span>
             </p>
-            {view.pickupCodeNotice ? (
-              <p className="student-order-note">{view.pickupCodeNotice}</p>
+            {statusView.pickupCodeNotice ? (
+              <p className="student-order-note">{statusView.pickupCodeNotice}</p>
             ) : null}
           </section>
 
@@ -229,13 +321,13 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
 
           <section className="student-rule" aria-label="变更用餐方式">
             <h3 className="student-section-title">变更用餐方式</h3>
-            <p>{view.changeDiningRuleText}</p>
+            <p>{statusView.changeDiningRuleText}</p>
             <p>{CHANGE_DINING_NOTE}</p>
           </section>
 
           <section className="student-rule" aria-label="支付说明">
             <h3 className="student-section-title">支付说明</h3>
-            <p>{view.paymentText}</p>
+            <p>{statusView.paymentText}</p>
           </section>
 
           <OrderCrowdNote crowd={crowd} />

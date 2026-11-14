@@ -10,12 +10,15 @@ import {
 import ConfirmPage from './pages/ConfirmPage';
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
+import OrderListPage from './pages/OrderListPage';
 import SlotDiningPage from './pages/SlotDiningPage';
 import type { StudentSource } from './types';
 import { todayAndTomorrow } from './utils/dates';
 import './student.css';
 
-type StudentView = 'menu' | 'slot' | 'confirm' | 'order';
+type StudentView = 'menu' | 'slot' | 'confirm' | 'order' | 'orders';
+
+type DetailFrom = 'menu' | 'orders';
 
 export default function StudentHome() {
   const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
@@ -49,6 +52,7 @@ export default function StudentHome() {
   });
   const [view, setView] = useState<StudentView>('menu');
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
 
   function goTo(next: StudentView): void {
     setView(next);
@@ -58,6 +62,11 @@ export default function StudentHome() {
   function openOrder(id: string): void {
     setOrderId(id);
     goTo('order');
+  }
+
+  function openOrderFrom(from: DetailFrom, id: string): void {
+    setDetailFrom(from);
+    openOrder(id);
   }
 
   if (view === 'slot') {
@@ -78,13 +87,31 @@ export default function StudentHome() {
         draft={draft}
         onBack={() => goTo('slot')}
         onBackToMenu={() => goTo('menu')}
-        onSubmitted={openOrder}
+        onSubmitted={(id) => openOrderFrom('menu', id)}
+      />
+    );
+  }
+
+  if (view === 'orders') {
+    return (
+      <OrderListPage
+        source={source}
+        onBack={() => goTo('menu')}
+        onOpenOrder={(id) => openOrderFrom('orders', id)}
       />
     );
   }
 
   if (view === 'order' && orderId !== null) {
-    return <OrderDetailPage source={source} orderId={orderId} onBack={() => goTo('menu')} />;
+    const backTarget: StudentView = detailFrom === 'orders' ? 'orders' : 'menu';
+    return (
+      <OrderDetailPage
+        source={source}
+        orderId={orderId}
+        onBack={() => goTo(backTarget)}
+        backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
+      />
+    );
   }
 
   return (
@@ -92,7 +119,8 @@ export default function StudentHome() {
       source={source}
       draft={draft}
       onProceed={() => goTo('slot')}
-      onViewSampleOrder={() => openOrder('demo-order-001')}
+      onViewSampleOrder={() => openOrderFrom('menu', 'demo-order-001')}
+      onOpenOrders={() => goTo('orders')}
     />
   );
 }

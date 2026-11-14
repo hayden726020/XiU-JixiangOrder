@@ -398,3 +398,27 @@ export function mapOrderResponse(payload: unknown, options: MapOrderOptions): St
     demo: options.demo,
   };
 }
+export interface MapOrdersOptions {
+  where?: string;
+}
+
+/**
+ * 把学生订单列表响应映射为 StudentOrder[]，逐项复用 mapOrderResponse。
+ * 不排序、不去重、不截断；任一元素非法则整体按 INVALID_RESPONSE 失败。
+ */
+export function mapOrdersResponse(
+  payload: unknown,
+  options: MapOrdersOptions = {},
+): StudentOrder[] {
+  if (!isRecord(payload)) {
+    invalidResponse('订单列表响应不是对象。');
+  }
+  const where = options.where ?? '订单列表';
+  const orders = payload.orders;
+  if (!Array.isArray(orders)) {
+    invalidResponse(`${where} 缺少 orders 数组。`);
+  }
+  return orders.map((entry, index) =>
+    mapOrderResponse(entry, { demo: false, where: `${where} orders[${index}]` }),
+  );
+}

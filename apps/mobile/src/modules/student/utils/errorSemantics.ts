@@ -77,9 +77,35 @@ const DETAIL_RULES: Record<string, ErrorSemantics> = {
   INVALID_RESPONSE: { action: 'reload', message: '服务返回的数据格式不符合约定，请稍后重试。' },
 };
 
+const LIST_RULES: Record<string, ErrorSemantics> = {
+  UNAUTHENTICATED: { action: 'login', message: '请先在公共入口完成演示登录。' },
+  SESSION_EXPIRED: { action: 'login', message: '登录已过期，请重新登录。' },
+  FORBIDDEN: {
+    action: 'login',
+    message: '当前身份无法查看学生订单，请重新登录学生演示账号。',
+  },
+  SERVICE_UNAVAILABLE: { action: 'reload', message: '服务暂不可用，请稍后重新读取。' },
+  NETWORK_ERROR: { action: 'reload', message: '无法连接服务，请确认服务已启动后重新读取。' },
+  NETWORK_TIMEOUT: { action: 'reload', message: '读取超时，请稍后重新读取。' },
+  TIMEOUT: { action: 'reload', message: '读取超时，请稍后重新读取。' },
+  INVALID_RESPONSE: {
+    action: 'reload',
+    message: '服务返回的数据格式不符合约定，请稍后重试。',
+  },
+  VALIDATION_ERROR: {
+    action: 'reload',
+    message: '服务返回的数据格式不符合约定，请稍后重试。',
+  },
+  API_BASE_NOT_CONFIGURED: {
+    action: 'reload',
+    message: '尚未配置公共服务地址，请先在公共入口完成设置。',
+  },
+};
+
 const RAW_CODE_PATTERN = /\b[A-Z][A-Z0-9_]{3,}\b/;
 const FALLBACK_MESSAGE = '提交失败，请稍后重试。';
 const FALLBACK_DETAIL_MESSAGE = '订单信息读取失败，请重试。';
+const FALLBACK_LIST_MESSAGE = '订单列表读取失败，请稍后重新读取。';
 const NON_ACTIONABLE_MESSAGE = new RegExp(
   [['调整', '数量'].join(''), ['名', '额'].join(''), ['重新', '下单'].join('')].join('|'),
 );
@@ -106,4 +132,11 @@ export function resolveDetailSemantics(error: SourceError): ErrorSemantics {
     return rule;
   }
   return { action: 'reload', message: sanitizeMessage(error.message, FALLBACK_DETAIL_MESSAGE) };
+}
+export function resolveListSemantics(error: SourceError): ErrorSemantics {
+  const rule = LIST_RULES[error.code];
+  if (rule) {
+    return rule;
+  }
+  return { action: 'reload', message: sanitizeMessage(error.message, FALLBACK_LIST_MESSAGE) };
 }

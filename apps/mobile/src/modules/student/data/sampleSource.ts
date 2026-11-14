@@ -270,6 +270,13 @@ export function createStudentSource({
       return clone(order);
     },
 
+    async listOrders(): Promise<StudentOrder[]> {
+      return [...ordersById.values()]
+        .slice()
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map(clone);
+    },
+
     setScenario(next: DemoScenario): DemoScenario {
       if (!SCENARIOS.has(next)) {
         throw apiError('VALIDATION_ERROR', '未知的样例场景切换值。', false);
