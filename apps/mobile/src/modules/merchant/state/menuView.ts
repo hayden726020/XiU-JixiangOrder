@@ -42,3 +42,12 @@ export function menuDateOptions(
 export function resolveMenuDate(dates: ReadonlyArray<string>, today: string): string {
   return dates.includes(today) ? today : dates[0] ?? today;
 }
+export function addDaysIso(date: string, days: number): string {
+  const parsed = Date.parse(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed)) return date;
+  return new Date(parsed + days * DAY_MS).toISOString().slice(0, 10);
+}
+
+export function menuDatesFor(today: string): string[] {
+  return [today, addDaysIso(today, 1)];
+}
