@@ -11,6 +11,7 @@ import {
   type SlotPatch,
 } from '../state/menuEdit';
 import { formatClock } from '../state/orderView';
+import { dishTypeLabel } from '../state/onboarding';
 import { formatYuan } from '../utils/money';
 
 interface MenuPageProps {
@@ -192,6 +193,7 @@ export default function MenuPage({
                 >
                   <span className="menu-item__name">
                     {dish.name}
+                    {dish.type && <span className="merchant-readonly-tag">{dishTypeLabel(dish.type)}</span>}
                     {!dish.onSale && <span className="merchant-flag">已停售</span>}
                   </span>
                   <span className="menu-item__price">{formatYuan(dish.unitPriceFen)}</span>

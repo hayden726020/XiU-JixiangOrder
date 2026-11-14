@@ -15,6 +15,7 @@ import type {
   SourceResult,
 } from './data/types';
 import MenuPage from './pages/MenuPage';
+import OnboardingPage from './pages/OnboardingPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
 import {
@@ -41,7 +42,8 @@ const ORDERS_PAGE_SIZE = 20;
 type View =
   | { name: 'list' }
   | { name: 'detail'; orderId: string }
-  | { name: 'menu' };
+  | { name: 'menu' }
+  | { name: 'setup' };
 
 export default function MerchantHome() {
   const initialMode: DataMode = import.meta.env.DEV
@@ -74,6 +76,7 @@ export default function MerchantHome() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginHint, setLoginHint] = useState<string | null>(null);
+  const [dataVersion, setDataVersion] = useState(0);
   const autoLoginStarted = useRef(false);
   const listScrollTop = useRef(0);
   const restoreListScroll = useRef(false);
@@ -163,7 +166,7 @@ export default function MerchantHome() {
     return () => {
       alive = false;
     };
-  }, [source, menuDate, orderPage, session?.user.id, mode, merchantLoggedIn]);
+  }, [source, menuDate, orderPage, session?.user.id, mode, merchantLoggedIn, dataVersion]);
 
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
@@ -221,7 +224,14 @@ export default function MerchantHome() {
 
   function openMenu() {
     clearActionState();
+    setDataVersion((current) => current + 1);
     setView({ name: 'menu' });
+    setNotice(null);
+  }
+
+  function openSetup() {
+    clearActionState();
+    setView({ name: 'setup' });
     setNotice(null);
   }
 
@@ -467,6 +477,7 @@ export default function MerchantHome() {
           onPageChange={changeOrderPage}
           onOpenOrder={openOrder}
           onOpenMenu={openMenu}
+          onOpenSetup={openSetup}
         />
       )}
 
@@ -500,6 +511,16 @@ export default function MerchantHome() {
           slots={slots}
           onSaveDish={saveDish}
           onSaveSlot={saveSlot}
+          onBack={backToList}
+        />
+      )}
+
+      {view.name === 'setup' && (
+        <OnboardingPage
+          mode={mode}
+          session={session}
+          source={source}
+          onDataChanged={() => setDataVersion((current) => current + 1)}
           onBack={backToList}
         />
       )}

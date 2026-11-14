@@ -10,16 +10,16 @@ export const DEMO_SCENARIOS: ReadonlyArray<{ value: MerchantScenario; label: str
 
 const DISHES: Record<string, Dish[]> = {
   '2026-11-13': [
-    { dishId: 'demo-dish-01', name: '演示鸡肉饭', unitPriceFen: 1800, availableQuantity: 40, onSale: true, version: 1 },
-    { dishId: 'demo-dish-02', name: '演示番茄炒蛋', unitPriceFen: 900, availableQuantity: 35, onSale: true, version: 1 },
-    { dishId: 'demo-dish-03', name: '演示青椒肉丝', unitPriceFen: 1500, availableQuantity: 0, onSale: false, version: 1 },
-    { dishId: 'demo-dish-04', name: '演示紫菜蛋花汤', unitPriceFen: 500, availableQuantity: 50, onSale: true, version: 1 },
+    { dishId: 'demo-dish-01', type: 'STAPLE', name: '演示鸡肉饭', unitPriceFen: 1800, availableQuantity: 40, onSale: true, version: 1 },
+    { dishId: 'demo-dish-02', type: 'STAPLE', name: '演示番茄炒蛋', unitPriceFen: 900, availableQuantity: 35, onSale: true, version: 1 },
+    { dishId: 'demo-dish-03', type: 'STAPLE', name: '演示青椒肉丝', unitPriceFen: 1500, availableQuantity: 0, onSale: false, version: 1 },
+    { dishId: 'demo-dish-04', type: 'SNACK', name: '演示紫菜蛋花汤', unitPriceFen: 500, availableQuantity: 50, onSale: true, version: 1 },
   ],
   '2026-11-14': [
-    { dishId: 'demo-dish-01', name: '演示鸡肉饭', unitPriceFen: 1800, availableQuantity: 35, onSale: true, version: 1 },
-    { dishId: 'demo-dish-02', name: '演示番茄炒蛋', unitPriceFen: 900, availableQuantity: 30, onSale: true, version: 1 },
-    { dishId: 'demo-dish-03', name: '演示青椒肉丝', unitPriceFen: 1500, availableQuantity: 20, onSale: true, version: 1 },
-    { dishId: 'demo-dish-04', name: '演示紫菜蛋花汤', unitPriceFen: 500, availableQuantity: 45, onSale: true, version: 1 },
+    { dishId: 'demo-dish-01', type: 'STAPLE', name: '演示鸡肉饭', unitPriceFen: 1800, availableQuantity: 35, onSale: true, version: 1 },
+    { dishId: 'demo-dish-02', type: 'STAPLE', name: '演示番茄炒蛋', unitPriceFen: 900, availableQuantity: 30, onSale: true, version: 1 },
+    { dishId: 'demo-dish-03', type: 'STAPLE', name: '演示青椒肉丝', unitPriceFen: 1500, availableQuantity: 20, onSale: true, version: 1 },
+    { dishId: 'demo-dish-04', type: 'SNACK', name: '演示紫菜蛋花汤', unitPriceFen: 500, availableQuantity: 45, onSale: true, version: 1 },
   ],
 };
 

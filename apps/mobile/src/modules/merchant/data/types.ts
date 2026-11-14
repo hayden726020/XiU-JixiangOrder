@@ -8,6 +8,8 @@ export type CancelRequestStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export type MerchantScenario = 'normal' | 'empty' | 'pending-cancel';
 
+export type DishType = 'STAPLE' | 'SNACK' | 'DRINK' | 'SET';
+
 export interface OrderItem {
   dishId: string;
   name: string;
@@ -50,6 +52,7 @@ export interface MerchantOrder {
 
 export interface Dish {
   dishId: string;
+  type: DishType | null;
   name: string;
   unitPriceFen: number;
   availableQuantity: number;
@@ -156,6 +159,49 @@ export interface UpdateSlotInput {
   enabled: boolean;
 }
 
+export type OnboardingStep = 'NONE' | 'REGISTERED' | 'SHOP_CREATED';
+
+export interface MerchantProfile {
+  merchant: {
+    id: string;
+    name: string;
+    contactName: string | null;
+    contactPhone: string | null;
+    status: string;
+  } | null;
+  shop: {
+    id: string;
+    name: string;
+    location: string | null;
+    description: string | null;
+    version: number;
+  } | null;
+  onboardingStep: OnboardingStep;
+}
+
+export interface MerchantRegistrationInput {
+  requestId: string;
+  merchantName: string;
+  contactName: string;
+  contactPhone: string;
+}
+
+export interface CreateShopInput {
+  requestId: string;
+  shopName: string;
+  location: string;
+  description: string;
+}
+
+export interface CreateDishInput {
+  requestId: string;
+  type: DishType;
+  name: string;
+  priceFen: number;
+  availableQuantity: number;
+  onSale: boolean;
+}
+
 export interface MerchantSource {
   mode: 'sample' | 'real';
   scenario: MerchantScenario;
@@ -163,6 +209,10 @@ export interface MerchantSource {
   getOrder: (id: string) => Promise<SourceResult<MerchantOrder>>;
   getMenu: (date: string) => Promise<SourceResult<MenuDay>>;
   getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
+  getProfile: () => Promise<SourceResult<MerchantProfile>>;
+  registerMerchant: (input: MerchantRegistrationInput) => Promise<SourceResult<MerchantProfile>>;
+  createShop: (input: CreateShopInput) => Promise<SourceResult<MerchantProfile>>;
+  createDish: (input: CreateDishInput) => Promise<SourceResult<Dish>>;
   advanceOrder: (id: string, input: AdvanceOrderInput) => Promise<SourceResult<MerchantOrder>>;
   verifyOrder: (id: string, input: VerifyOrderInput) => Promise<SourceResult<MerchantOrder>>;
   decideCancellation: (id: string, input: CancelDecisionInput) => Promise<SourceResult<MerchantOrder>>;
