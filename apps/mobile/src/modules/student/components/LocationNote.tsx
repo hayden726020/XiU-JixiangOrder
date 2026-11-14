@@ -1,55 +1,35 @@
 import { useState } from 'react';
-import type { PresenceState } from '../state/locationController';
+import type { PresenceView } from '../utils/presenceView';
 import {
-  LOCATION_USAGE_ITEMS,
+  LOCATION_NO_PROMISE_TEXT,
+  LOCATION_SAMPLE_TEXT,
   LOCATION_USAGE_SUMMARY,
   PRESENCE_CLEAR_LABEL,
   PRESENCE_RETRY_LABEL,
-  PRESENCE_TEXT,
+  PRESENCE_RETRY_SYNC_LABEL,
+  locationUsageItems,
 } from './locationTexts';
 
 export interface LocationNoteProps {
-  state: PresenceState;
+  view: PresenceView;
   mode: 'sample' | 'real';
   onRetry: () => void;
+  onRetrySync: () => void;
   onClear: () => void;
 }
 
-function statusText(state: PresenceState): string {
-  if (state.phase === 'loading') {
-    return PRESENCE_TEXT.loading;
-  }
-  if (state.phase === 'sample') {
-    return PRESENCE_TEXT.sample;
-  }
-  if (state.phase === 'inside') {
-    return PRESENCE_TEXT.inside;
-  }
-  if (state.phase === 'outside') {
-    return PRESENCE_TEXT.outside;
-  }
-  if (state.messageKey === 'cleared') {
-    return PRESENCE_TEXT.cleared;
-  }
-  if (state.reason === 'PERMISSION_DENIED') {
-    return PRESENCE_TEXT.denied;
-  }
-  if (state.reason === 'PERMISSION_RESTRICTED') {
-    return PRESENCE_TEXT.restricted;
-  }
-  if (state.reason === 'CAPABILITY_UNAVAILABLE') {
-    return PRESENCE_TEXT.unavailable;
-  }
-  if (state.phase === 'unknown') {
-    return PRESENCE_TEXT.unknown;
-  }
-  return '';
-}
-
-export default function LocationNote({ state, mode, onRetry, onClear }: LocationNoteProps) {
+export default function LocationNote({
+  view,
+  mode,
+  onRetry,
+  onRetrySync,
+  onClear,
+}: LocationNoteProps) {
   const [open, setOpen] = useState(false);
-  const text = statusText(state);
   const realMode = mode === 'real';
+  const hints = [view.hintText, view.timingText, view.demoText, view.syncText, view.clearText].filter(
+    (text) => text !== '',
+  );
 
   return (
     <section className="student-location" aria-labelledby="student-location-title">
@@ -57,9 +37,13 @@ export default function LocationNote({ state, mode, onRetry, onClear }: Location
         <span id="student-location-title" className="student-location__title">
           关于位置信息
         </span>
-        {text ? (
-          <span className={`student-location__status is-${state.phase}`} role="status" aria-live="polite">
-            {text}
+        {view.statusText ? (
+          <span
+            className={`student-location__status is-${view.phase}`}
+            role="status"
+            aria-live="polite"
+          >
+            {view.statusText}
           </span>
         ) : null}
       </div>
@@ -79,30 +63,41 @@ export default function LocationNote({ state, mode, onRetry, onClear }: Location
       {open ? (
         <div id="student-location-body" className="student-location__body">
           <ul className="student-location__list">
-            {LOCATION_USAGE_ITEMS.map((item) => (
+            {locationUsageItems(mode).map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
+          <p className="student-location__hint">{LOCATION_NO_PROMISE_TEXT}</p>
+          {hints.map((text) => (
+            <p key={text} className="student-location__hint">
+              {text}
+            </p>
+          ))}
           <div className="student-location__actions">
             <button
               type="button"
               className="student-secondary"
-              disabled={!realMode || !state.canRetry}
+              disabled={!realMode || !view.canLocate}
               onClick={onRetry}
             >
               {PRESENCE_RETRY_LABEL}
             </button>
+            {view.canRetrySync ? (
+              <button type="button" className="student-secondary" onClick={onRetrySync}>
+                {PRESENCE_RETRY_SYNC_LABEL}
+              </button>
+            ) : null}
             <button
               type="button"
               className="student-secondary"
-              disabled={!realMode || !state.canClear}
+              disabled={!realMode || !view.canClear}
               onClick={onClear}
             >
               {PRESENCE_CLEAR_LABEL}
             </button>
           </div>
           {!realMode ? (
-            <p className="student-location__hint">样例模式不获取真实位置，也不产生可清除的位置记录。</p>
+            <p className="student-location__hint">{LOCATION_SAMPLE_TEXT}</p>
           ) : null}
         </div>
       ) : null}

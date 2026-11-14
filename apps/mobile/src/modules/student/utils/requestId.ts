@@ -46,6 +46,13 @@ export function buildDraftFingerprint(draft: DraftFingerprintInput): string {
   });
 }
 
+export function buildPresenceFingerprint(
+  presence: string,
+  checkedAt: string,
+): DraftFingerprintInput {
+  return { date: checkedAt, items: [], slotId: presence, diningMode: null };
+}
+
 export function createRequestIdKeeper({
   prefix = 'demo-req',
 }: RequestIdKeeperOptions = {}): RequestIdKeeper {

@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { createPresenceAdapter } from '../data/presenceAdapter';
-import type { OrderDraft } from '../state/orderDraft';
-import {
-  createPresenceController,
-  type PresenceState,
-} from '../state/locationController';
+import { getPresenceRuntime, type PresenceState } from '../state/presenceRuntime';
+import { derivePresenceView } from '../utils/presenceView';
 import { createSlotRequestGuard, type SlotGuardState } from '../state/slotGuard';
+import type { OrderDraft } from '../state/orderDraft';
 import type { DiningMode, MenuResponse, SlotDto, StudentSource } from '../types';
 import { EMPTY_SLOTS_TEXT } from '../utils/submitTexts';
 import { toSourceErrorView } from '../utils/sourceErrorView';
@@ -58,10 +55,10 @@ export default function SlotDiningPage({
     createSlotRequestGuard({ fetchCrowd: (slotId) => source.getCrowd(slotId) }),
   );
   const [crowd, setCrowd] = useState<SlotGuardState>(() => guard.getState());
-  const [presenceController] = useState(() =>
-    createPresenceController({ adapter: createPresenceAdapter({ mode: source.mode }) }),
+  const [presenceRuntime] = useState(() =>
+    getPresenceRuntime(source.mode === 'real' ? 'real' : 'sample'),
   );
-  const [presence, setPresence] = useState<PresenceState>(() => presenceController.getState());
+  const [presence, setPresence] = useState<PresenceState>(() => presenceRuntime.getState());
   const date = snapshot.date;
 
   async function requestCrowd(slotId: string): Promise<void> {
@@ -80,18 +77,14 @@ export default function SlotDiningPage({
     }
   }, []);
 
+  useEffect(() => presenceRuntime.subscribe(setPresence), [presenceRuntime]);
+
   useEffect(() => {
-    let active = true;
-    void presenceController.startAuto().then((next) => {
-      if (active) {
-        setPresence(next);
-      }
-    });
+    void presenceRuntime.enter();
     return () => {
-      active = false;
-      presenceController.dispose();
+      presenceRuntime.leave();
     };
-  }, [presenceController]);
+  }, [presenceRuntime]);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,11 +126,15 @@ export default function SlotDiningPage({
   }
 
   function retryPresence(): void {
-    void presenceController.retry().then(setPresence);
+    void presenceRuntime.locate();
+  }
+
+  function retryPresenceSync(): void {
+    void presenceRuntime.retrySync();
   }
 
   function clearPresenceRecord(): void {
-    void presenceController.clear().then(setPresence);
+    void presenceRuntime.clear();
   }
 
   const selectedNames = menu
@@ -272,9 +269,10 @@ export default function SlotDiningPage({
       />
 
       <LocationNote
-        state={presence}
+        view={derivePresenceView(presence, source.mode === 'real' ? 'real' : 'sample')}
         mode={source.mode === 'real' ? 'real' : 'sample'}
         onRetry={retryPresence}
+        onRetrySync={retryPresenceSync}
         onClear={clearPresenceRecord}
       />
 
