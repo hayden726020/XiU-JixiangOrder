@@ -28,7 +28,7 @@ import {
   reportLocation,
 } from './location.mjs';
 import { getAdminSettings, putAdminSettings } from './admin.mjs';
-import { createDish, createShop, getMerchantProfile, registerMerchant } from './merchant.mjs';
+import { createDish, createShop, getMerchantProfile, listMerchants, registerMerchant } from './merchant.mjs';
 
 function withAuth(roles, handler) {
   return async (ctx) => {
@@ -105,6 +105,7 @@ export function createApp({ db, clock, logger = () => {} }) {
 
     { method: 'GET', pattern: /^\/api\/v1\/dining\/config$/, handler: getDiningConfig },
     { method: 'GET', pattern: /^\/api\/v1\/menu$/, handler: (ctx) => listMenu({ ...ctx, query: queryOf(ctx.req) }) },
+    { method: 'GET', pattern: /^\/api\/v1\/merchants$/, handler: withAuth(null, listMerchants) },
     { method: 'GET', pattern: /^\/api\/v1\/crowd$/, handler: (ctx) => getCrowd({ ...ctx, query: queryOf(ctx.req) }) },
 
     { method: 'POST', pattern: /^\/api\/v1\/orders$/, handler: withBody(['STUDENT'], createOrder) },

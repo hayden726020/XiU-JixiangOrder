@@ -1,4 +1,5 @@
 import { conflict, forbidden, notFound, validationError } from './errors.mjs';
+import { readSetting } from './db.mjs';
 import { runIdempotent, transaction } from './orders.mjs';
 import {
   asRecord,
@@ -86,6 +87,29 @@ function profiledData(db, merchantId) {
     merchant: serializeMerchant(merchant),
     shop: shop ? serializeShop(shop) : null,
     onboardingStep: !registered ? 'UNREGISTERED' : shop ? 'SHOP_CREATED' : 'REGISTERED',
+  };
+}
+
+export function listMerchants({ db, clock }) {
+  const dining = readSetting(db, 'dining_config');
+  const canteenId = dining?.value?.canteenId ?? null;
+  const nowHm = toShanghaiIso(clock()).slice(11, 16);
+  const rows = db
+    .prepare('SELECT id, name, open_at, close_at, status FROM merchants ORDER BY rowid')
+    .all();
+  return {
+    status: 200,
+    body: {
+      data: {
+        merchants: rows.map((row, index) => ({
+          merchantId: row.id,
+          name: row.name,
+          canteenId,
+          orderable: row.status === 'ACTIVE' && nowHm >= row.open_at && nowHm < row.close_at,
+          sortOrder: index + 1,
+        })),
+      },
+    },
   };
 }
 

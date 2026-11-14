@@ -2,7 +2,7 @@
 
 DRAFT v0.3（联调冻结候选），仍待三人确认，不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径；三人确认前按“联调候选”使用，不宣称正式上线。
 
-**v0.4 增补（2026-11-14）**：在 v0.3 之上新增商家注册、创建店铺、新增菜品与 `GET /merchant/profile`，并给 `GET /menu` 的 `dishes[]` 增加 `type`。v0.4 增补已由 `services/api` 实现并通过自动测试（75/75），仍待三人确认；v0.3 既有端点口径不变。
+**v0.4 增补（2026-11-14）**：在 v0.3 之上新增商家注册、创建店铺、新增菜品、`GET /merchant/profile`、`GET /merchants`（学生店铺列表）与订单 `merchantId/merchantName`，并给 `GET /menu` 的 `dishes[]` 增加 `type`。v0.4 增补已由 `services/api` 实现并通过自动测试，仍待三人确认；v0.3 既有端点口径不变。
 
 ## 基础格式
 
@@ -31,7 +31,7 @@ DRAFT v0.3（联调冻结候选），仍待三人确认，不能作为正式发�
 
 ## 订单字段与状态
 
-订单至少包含 id、items（dishId/name/quantity/unitPriceFen）、slotId、slotStart、slotEnd、diningMode、diningModeReason（未修改为 null）、totalFen、status、paymentStatus、cancelRequest、cancellationReason（未取消为 null）、version、createdAt、updatedAt、pickedUpAt（未取为 null）、delay（无则 null）。学生订单按权限展示 pickupCode，仅 READY 且未取餐返回可用码，其他状态为 null；档口订单列表和详情、管理查询始终返回 `pickupCode: null`，档口核销时手工输入学生出示的码。
+订单至少包含 id、merchantId、merchantName、items（dishId/name/quantity/unitPriceFen）、slotId、slotStart、slotEnd、diningMode、diningModeReason（未修改为 null）、totalFen、status、paymentStatus、cancelRequest、cancellationReason（未取消为 null）、version、createdAt、updatedAt、pickedUpAt（未取为 null）、delay（无则 null）。`merchantName` 在下单时快照写入，店铺改名不影响历史订单；历史订单若缺失显示 null，客户端不得用样例名补齐。学生订单按权限展示 pickupCode，仅 READY 且未取餐返回可用码，其他状态为 null；档口订单列表和详情、管理查询始终返回 `pickupCode: null`，档口核销时手工输入学生出示的码。
 
 status：NEW → ACCEPTED → PREPARING → READY → COMPLETED。
 NEW/ACCEPTED/PREPARING/READY 可在规定权限下取消为 CANCELLED；COMPLETED/CANCELLED 是终态。
@@ -56,6 +56,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | GET /me | 当前会话身份 | 返回 user 与 canteenId；仅本人信息 |
 | POST /auth/logout | 无 | 204；删除服务端会话，不删除订单 |
 | GET /menu?date=YYYY-MM-DD | 今天或明天菜单及时段 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选 |
+| GET /merchants | 已登录会话读取店铺列表 | `{ merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] }`；只读，不返回联系方式 |
 | POST /orders | requestId, items[{dishId,quantity}], slotId, diningMode | 服务端计价并模拟付款后的订单；字段例子见 create-order.json |
 | GET /orders | 学生自己的订单列表 | 不返回其他学生订单 |
 | GET /orders/{id} | 获取有权限的订单 | 三端从同一订单来源读取，字段按角色过滤 |
@@ -108,7 +109,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 - 列表与详情均返回 `pickupCode: null`；管理端不得展示学生取餐码。
 - 详情复用 `GET /orders/{id}`，管理身份可读；不存在或不可见返回 404 ORDER_NOT_FOUND。
 - 当前只定义状态与分页；日期、档口、异常筛选参数尚未定义，页面不得自行猜测。异常（待处理取消申请、延迟）只在已加载结果中标记，不跨页推断。
-- 当前订单响应未返回 `merchantId`、`merchantName` 或学生信息；管理端无法按档口展示或筛选，需后续补字段或专用视图，页面不得用样例名称冒充真实档口。
+- 订单响应已返回 `merchantId`、`merchantName`（下单快照）；管理端可按档口展示或筛选，不得用样例名称冒充真实档口。学生信息仍未返回。
 - `GET /admin/settings` 返回 `{ data: { dining, crowd } }`：
   - `dining`：`canteenId,name,center{latitude,longitude},radiusMeters,accuracyToleranceMeters,updatedAt,version,demo`。
   - `crowd`：`crowdedAt,version,demo`；当前只有单一提醒阈值，预约需求阈值尚无字段。
@@ -140,6 +141,17 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 - 新增菜品为全局菜单，不按日期/时段上架；学生端 `GET /menu` 立即可见并可下单引用新 `dishId`。学生端按 `merchantId` 过滤展示，`type` 由前端展示。
 - 跨店访问按不存在处理：`MERCHANT_NOT_FOUND`/`SHOP_NOT_FOUND`/`DISH_NOT_FOUND`（404），不泄露其他商家是否存在。
 - 只支持今天和明天；其他日期返回 VALIDATION_ERROR。
+
+### 学生店铺列表与订单店铺字段（v0.4 增补）
+
+`GET /merchants`（已登录会话可读，未登录 401）返回 `{ data: { merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] } }`：
+
+- `merchantId` 与 `dishes[].merchantId`、订单 `merchantId` 同一取值空间；`name` 为展示名；`canteenId` 取当前食堂配置；`orderable` 由服务端按店铺状态与营业时间判断，客户端不用 `openAt/closeAt` 自行推断；`sortOrder` 从 1 递增。
+- 不返回联系人、电话等商家资料；跨店/未注册不在此接口暴露。
+- `dishes[].merchantId` 为必填非空字符串；缺失时学生端按 `INVALID_RESPONSE` 处理，不静默混店。
+- `GET /orders`、`GET /orders/{id}`、`POST /orders` 以及档口/管理端同源订单响应均返回 `merchantId` 与 `merchantName`（快照）；`merchantName` 缺失时为 null。
+- 错误码：店铺不存在沿用 `MERCHANT_NOT_FOUND`（404）；店铺不可下单的专用码（如 `MERCHANT_CLOSED`）尚未实现，客户端按未登记码兜底，正式登记前不得据此断言服务端行为。
+- 演示数据名称差异（学生样例 `demo-dish-02/03` 与当前服务端种子不一致）不改变接口语义；统一后由学生端同步 fixture。
 
 首版不增加学生在线申请变更用餐方式的流程。学生订单详情说明“如需更改堂食或外带，请联系档口，由档口确认”；学生线下提出后，档口使用 dining-mode 操作更新，`reason` 必填并持久化为响应的 `diningModeReason`。学生端只读回结果，不自行修改或假装已经提交变更申请。
 

@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   student_id TEXT NOT NULL,
   merchant_id TEXT NOT NULL,
+  merchant_name TEXT,
   slot_id TEXT NOT NULL REFERENCES slots(id),
   dining_mode TEXT NOT NULL CHECK (dining_mode IN ('DINE_IN', 'TAKEAWAY')),
   dining_mode_reason TEXT,
@@ -181,6 +182,9 @@ export function createDatabase(path = ':memory:') {
   }
   if (!orderColumns.some((column) => column.name === 'cancel_decision_reason')) {
     db.exec('ALTER TABLE orders ADD COLUMN cancel_decision_reason TEXT;');
+  }
+  if (!orderColumns.some((column) => column.name === 'merchant_name')) {
+    db.exec('ALTER TABLE orders ADD COLUMN merchant_name TEXT;');
   }
   const merchantColumns = db.prepare('PRAGMA table_info(merchants)').all();
   if (!merchantColumns.some((column) => column.name === 'contact_name')) {
