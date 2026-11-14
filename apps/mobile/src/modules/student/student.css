@@ -886,3 +886,45 @@
   font-size: 0.82rem;
   line-height: 1.55;
 }
+.student-session-note {
+  margin: 0 0 0.9rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  background: #eef6ff;
+  color: #1e4f7a;
+  font-size: 0.78rem;
+}
+
+.student-login-guide {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid #f1c27d;
+  border-radius: 0.8rem;
+  background: #fffaf0;
+}
+
+.student-login-guide__title {
+  margin: 0;
+  font-size: 1rem;
+  color: #92400e;
+}
+
+.student-login-guide__message {
+  margin: 0;
+  color: #7c2d12;
+  font-size: 0.9rem;
+}
+
+.student-login-guide__hint {
+  margin: 0;
+  color: #78350f;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.student-login-guide__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

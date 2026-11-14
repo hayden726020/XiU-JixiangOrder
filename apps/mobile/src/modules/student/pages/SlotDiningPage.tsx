@@ -102,6 +102,7 @@ export default function SlotDiningPage({
         if (!cancelled) {
           setMenu(data);
           setStatus('ready');
+          draft.applyDishCatalog(data.dishes);
         }
       },
       (error: unknown) => {

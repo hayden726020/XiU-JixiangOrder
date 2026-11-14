@@ -11,6 +11,7 @@ import { apiError, isApiError, toSourceError } from '../types';
 import { sumFen } from '../utils/money';
 import { DISH_LIMIT_TEXT, DISH_SHORTAGE_NOTICE } from '../utils/submitTexts';
 import { createRequestIdKeeper, requestIdPrefixOf, type RequestIdKeeper } from '../utils/requestId';
+import type { DraftSelection } from './draftSnapshot';
 
 const MODES = new Set<DiningMode>(['DINE_IN', 'TAKEAWAY']);
 const SAMPLE_DATE_LIST = ['2026-11-13', '2026-11-14'];
@@ -42,6 +43,7 @@ export interface OrderDraftOptions {
   requestIds?: RequestIdKeeper;
   allowedDates?: string[];
   initialDate?: string;
+  onChange?: (snapshot: DraftSnapshot) => void;
 }
 
 export interface OrderDraft {
@@ -51,6 +53,8 @@ export interface OrderDraft {
   getLimit(dishId: string): number;
   setSlot(slotId: string): void;
   setDiningMode(mode: DiningMode): void;
+  applyDishCatalog(dishes: DishDto[]): void;
+  restoreSelection(selection: DraftSelection): boolean;
   canProceedToSlot(): boolean;
   canConfirm(): boolean;
   buildInput(): CreateOrderInput;
@@ -65,6 +69,7 @@ export function createOrderDraft({
   requestIds = createRequestIdKeeper({ prefix: requestIdPrefixOf(source.mode) }),
   allowedDates,
   initialDate,
+  onChange,
 }: OrderDraftOptions): OrderDraft {
   const dateList = allowedDates && allowedDates.length > 0 ? allowedDates.slice() : SAMPLE_DATE_LIST.slice();
   const dateSet = new Set(dateList);
@@ -100,6 +105,12 @@ export function createOrderDraft({
     return sumFen(
       getItems().map((item) => ({ unitPriceFen: prices.get(item.dishId) ?? 0, quantity: item.quantity })),
     );
+  }
+
+  function notifyChange(): void {
+    if (onChange) {
+      onChange(snapshot());
+    }
   }
 
   function canProceedToSlot(): boolean {
@@ -142,6 +153,7 @@ export function createOrderDraft({
     state.notice = '已切换日期，请重新选择';
     submission = null;
     requestIds.complete();
+    notifyChange();
     return true;
   }
 
@@ -153,6 +165,7 @@ export function createOrderDraft({
     const wanted = Number.isInteger(quantity) ? quantity : 0;
     if (dish.onSale === true && limit === 0 && wanted > 0) {
       state.notice = DISH_SHORTAGE_NOTICE;
+      notifyChange();
       return quantities.get(dish.dishId) ?? 0;
     }
     const next = Math.max(0, Math.min(wanted, limit));
@@ -164,6 +177,7 @@ export function createOrderDraft({
       quantities.set(dish.dishId, next);
     }
     state.notice = limit > 0 && next === limit ? DISH_LIMIT_TEXT : null;
+    notifyChange();
     return next;
   }
 
@@ -176,6 +190,7 @@ export function createOrderDraft({
     state.status = 'idle';
     state.order = null;
     state.error = null;
+    notifyChange();
   }
 
   function setDiningMode(mode: DiningMode): void {
@@ -183,6 +198,73 @@ export function createOrderDraft({
       throw apiError('VALIDATION_ERROR', '请选择堂食或外带。', false);
     }
     state.diningMode = mode;
+    notifyChange();
+  }
+
+  function applyDishCatalog(dishes: DishDto[]): void {
+    const catalog = new Map(dishes.map((dish) => [dish.dishId, dish]));
+    let changed = false;
+    for (const [dishId, quantity] of [...quantities.entries()]) {
+      const dish = catalog.get(dishId);
+      if (!dish) {
+        changed = true;
+        continue;
+      }
+      const limit = dish.onSale === true ? Math.max(0, dish.availableQuantity ?? 0) : 0;
+      prices.set(dishId, dish.unitPriceFen ?? 0);
+      limits.set(dishId, limit);
+      if (limit === 0) {
+        changed = true;
+      } else if (quantity > limit) {
+        quantities.set(dishId, limit);
+      }
+    }
+    if (changed) {
+      state.notice = '部分菜品已变化，请重新确认';
+    }
+    notifyChange();
+  }
+
+  function restoreSelection(selection: DraftSelection): boolean {
+    if (!dateSet.has(selection.date)) {
+      return false;
+    }
+    if (!Array.isArray(selection.items) || selection.items.length === 0) {
+      return false;
+    }
+    const items = selection.items.filter(
+      (item) =>
+        typeof item?.dishId === 'string' &&
+        item.dishId.trim() !== '' &&
+        Number.isInteger(item?.quantity) &&
+        item.quantity >= 1 &&
+        item.quantity <= 99,
+    );
+    if (items.length !== selection.items.length) {
+      return false;
+    }
+
+    state.date = selection.date;
+    quantities.clear();
+    prices.clear();
+    limits.clear();
+    for (const item of items) {
+      quantities.set(item.dishId, item.quantity);
+    }
+    state.slotId =
+      typeof selection.slotId === 'string' && selection.slotId !== '' ? selection.slotId : null;
+    state.diningMode =
+      selection.diningMode !== null && MODES.has(selection.diningMode)
+        ? selection.diningMode
+        : null;
+    state.status = 'idle';
+    state.order = null;
+    state.error = null;
+    state.notice = '已恢复上次选择，请重新核对';
+    submission = null;
+    requestIds.complete();
+    notifyChange();
+    return true;
   }
 
   function buildInput(): CreateOrderInput {
@@ -276,6 +358,7 @@ export function createOrderDraft({
     state.status = 'idle';
     state.order = null;
     state.error = null;
+    notifyChange();
   }
 
   function startNewOrder(): void {
@@ -290,6 +373,7 @@ export function createOrderDraft({
     state.order = null;
     state.error = null;
     state.notice = null;
+    notifyChange();
   }
 
   return {
@@ -299,6 +383,8 @@ export function createOrderDraft({
     getLimit,
     setSlot,
     setDiningMode,
+    applyDishCatalog,
+    restoreSelection,
     canProceedToSlot,
     canConfirm,
     buildInput,
