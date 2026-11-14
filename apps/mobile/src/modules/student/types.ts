@@ -121,6 +121,7 @@ export interface StudentSource {
   createOrder(input: CreateOrderInput): Promise<StudentOrder>;
   queryOrderResult(input: QueryOrderResultInput | string): Promise<StudentOrder>;
   getOrder(id: string): Promise<StudentOrder>;
+  listOrders(): Promise<StudentOrder[]>;
   setScenario(next: DemoScenario): DemoScenario;
   getScenario(): DemoScenario;
 }

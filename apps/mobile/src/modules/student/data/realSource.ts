@@ -9,7 +9,7 @@ import type {
   StudentSource,
 } from '../types';
 import { apiError } from '../types';
-import { mapCrowdResponse, mapMenuResponse, mapOrderResponse } from './fieldMapping';
+import { mapCrowdResponse, mapMenuResponse, mapOrderResponse, mapOrdersResponse } from './fieldMapping';
 
 export type RealRequest = <T>(path: string, options?: ApiRequestOptions) => Promise<T>;
 
@@ -97,6 +97,11 @@ export function createRealStudentSource(options: RealSourceOptions = {}): Studen
     async getOrder(id: string): Promise<StudentOrder> {
       const payload = await request<unknown>(`/orders/${encodeURIComponent(id)}`);
       return mapOrderResponse(payload, { demo: false, where: '订单响应' });
+    },
+
+    async listOrders(): Promise<StudentOrder[]> {
+      const payload = await request<unknown>('/orders');
+      return mapOrdersResponse(payload, { where: '订单列表' });
     },
 
     setScenario(): DemoScenario {
