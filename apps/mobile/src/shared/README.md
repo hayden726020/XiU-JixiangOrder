@@ -66,7 +66,7 @@ const result = await checkPresenceOnce(config);
 // result = { presence: 'INSIDE' | 'OUTSIDE' | 'UNKNOWN', reason, permission, demoConfig }
 ```
 
-- 只在用户主动点击后请求权限，每次请求一次位置；不做持续追踪。
+- **定位触发口径 A（2026-11-14 已确认）**：学生端进入时段页时自动请求一次位置；每个页面最多一次，在途请求合并、不并发，离开再返回不叠加；单次定位 12 秒上限。不做持续追踪，页面必须同时展示用途说明；拒绝、失败、超时返回 `UNKNOWN`，不阻塞下单。
 - 范围与误差判断全部在设备内完成，返回给模块的只有 `presence`、`reason`、`permission`、`demoConfig`，不含经纬度。
 - 精度超过 `accuracyToleranceMeters`、边界不确定、权限拒绝、超时、系统关闭定位都返回 `UNKNOWN`，不阻塞下单。
 - `reportPresence(presence, requestId)` 只发送 `INSIDE` / `OUTSIDE` / `UNKNOWN`；`clearPresence()` 删除本人判断记录，不影响订单。
