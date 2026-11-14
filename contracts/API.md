@@ -98,7 +98,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 `GET /admin/orders?status=NEW&page=1&pageSize=20` 返回 `{ data: { orders, page, pageSize, total } }`：
 
 - 仅管理身份；未登录返回 401，学生/档口返回 403 FORBIDDEN。
-- `status` 可省略；取值同订单状态；`page` 默认 1，`pageSize` 默认 20、最大 100；按 `createdAt` 倒序。非法 `status` 应返回 VALIDATION_ERROR（当前服务端尚未校验，待补）。
+- `status` 可省略；取值同订单状态；`page` 默认 1，`pageSize` 默认 20、最大 100；按 `createdAt` 倒序。非法 `status` 返回 VALIDATION_ERROR（服务端已校验，D2-0 起由自动测试覆盖）。
 - 列表与详情均返回 `pickupCode: null`；管理端不得展示学生取餐码。
 - 详情复用 `GET /orders/{id}`，管理身份可读；不存在或不可见返回 404 ORDER_NOT_FOUND。
 - 当前只定义状态与分页；日期、档口、异常筛选参数尚未定义，页面不得自行猜测。异常（待处理取消申请、延迟）只在已加载结果中标记，不跨页推断。
@@ -174,7 +174,7 @@ v0.3 已补齐档口菜单、订单列表、分页、延迟、取消审批、用
 1. 首版时段数量：午餐固定 3 个时段（11:30—12:00、12:00—12:30、12:30—13:00），由档口于 2026-11-13 冻结；样例中 12:30—13:00 为已满，用于演示不可选。GET /menu 返回的 slots 数量与启停始终以服务端为准，客户端不得写死时段或数量。
 2. 样例与真实模式：公共层不提供全局“样例开关”。各模块在自身 data source 内选择 sample/real，首版默认 sample。切换 real 的前提是已配置服务地址且已登录；real 请求失败必须显示失败或结果待确认，不得回退样例，也不得把样例数据标成真实结果。
 3. 错误与 requestId 统一：模块复用 apps/mobile/src/shared 的 apiClient（ApiError 含 code/message/status/retryable）与 requestId 能力；不得另定义同名错误类并用 instanceof 判断 shared 错误，避免把真实失败降级为 UNKNOWN，也不得维护第二套 requestId 生成/复用逻辑。base URL 已包含 `/api/v1`，调用 `apiRequest` 时 path 只写 `/merchant/orders` 这类相对路径，不能再拼 `/api/v1`；下单 requestId 在内容不变时复用、内容变化时重生成、操作结束或开始新单后重置。
-4. 定位：模块只使用 shared/location 的一次性定位与范围判断，不直接引入 @capacitor/geolocation，不上传坐标。定位说明卡可先占位且不触发权限；接入真实定位时使用 shared/location 的现有方法。
+4. 定位（触发口径 A，2026-11-14 已确认）：模块只使用 shared/location 的一次性定位与范围判断，不直接引入 @capacitor/geolocation，不上传坐标。学生端进入时段页自动请求一次位置；每页最多一次，在途合并、不并发，切页返回不叠加，单次 12 秒上限；不做持续追踪。页面同时展示用途与演示范围说明；拒绝、失败、超时返回 UNKNOWN，不阻塞下单。
 5. 以上口径为 DRAFT v0.3 联调冻结候选，三人确认前仍不能宣称正式发布。
 
 ## 单 APK 客户端补充
