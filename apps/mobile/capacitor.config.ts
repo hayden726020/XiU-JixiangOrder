@@ -4,6 +4,9 @@ const config: CapacitorConfig = {
   appId: 'com.xiujixiang.order',
   appName: '吉祥点餐',
   webDir: 'dist',
+  android: {
+    allowMixedContent: true,
+  },
 };
 
 export default config;
