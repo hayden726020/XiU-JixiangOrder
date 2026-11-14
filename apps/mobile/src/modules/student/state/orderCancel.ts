@@ -62,7 +62,7 @@ export function reduceCancel(state: CancelState, event: CancelEvent): CancelStat
 }
 
 export function isCancelSubmitting(phase: CancelPhase): boolean {
-  return phase === 'submitting' || phase === 'conflict-read';
+  return phase === 'submitting';
 }
 
 export interface CancelReasonCheck {

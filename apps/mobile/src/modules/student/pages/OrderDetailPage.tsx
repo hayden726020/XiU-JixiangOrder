@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { clearSession } from '../../../shared/session';
 import type { CrowdView } from '../utils/crowdView';
 import type { SourceError, StudentOrder, StudentSource } from '../types';
 import { toSourceError } from '../types';
@@ -294,6 +295,7 @@ export default function OrderDetailPage({
           cancelSubmittingRef.current = false;
           const error = toSourceError(failure);
           if (isCancelAuthCode(error.code)) {
+            clearSession();
             setCancelState({
               phase: 'blocked-auth',
               message: '登录已失效，请重新登录后继续。',
