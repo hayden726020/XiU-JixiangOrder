@@ -5,10 +5,12 @@ import { createMerchantSource } from './data/source';
 import type {
   CancelDecision,
   DiningMode,
+  Dish,
   MenuDay,
   MerchantOrder,
   MerchantScenario,
   OrderAdvanceAction,
+  Slot,
   SlotDay,
   SourceResult,
 } from './data/types';
@@ -23,8 +25,9 @@ import {
   type ActionInput,
   type OrderAction,
 } from './state/actionMatrix';
-import { localInputToZonedIso, shortOrderId, statusView } from './state/orderView';
+import { formatClock, localInputToZonedIso, shortOrderId, statusView } from './state/orderView';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
+import { formatYuan } from './utils/money';
 import { demoLogin } from '../../shared/auth';
 import { getApiBaseInfo, saveStoredApiBaseUrl } from '../../shared/config';
 import { createRequestId } from '../../shared/requestId';
@@ -334,6 +337,54 @@ export default function MerchantHome() {
     }
   }
 
+  async function saveDish(
+    dish: Dish,
+    patch: { priceFen: number; availableQuantity: number; onSale: boolean },
+    requestId: string,
+  ) {
+    const result = await source.updateDish(menuDate, dish.dishId, {
+      requestId,
+      expectedVersion: dish.version,
+      ...patch,
+    });
+    if (result.ok) {
+      setMenu((current) => (current
+        ? {
+          ...current,
+          dishes: current.dishes.map((item) => (item.dishId === result.data.dishId ? result.data : item)),
+        }
+        : current));
+      setNotice(
+        `已保存菜品「${result.data.name}」：${formatYuan(result.data.unitPriceFen)}，可售 ${result.data.availableQuantity}，${result.data.onSale ? '在售' : '停售'}，版本 v${result.data.version ?? '未返回'}。`,
+      );
+    }
+    return result;
+  }
+
+  async function saveSlot(
+    slot: Slot,
+    patch: { capacity: number; enabled: boolean },
+    requestId: string,
+  ) {
+    const result = await source.updateSlot(menuDate, slot.slotId, {
+      requestId,
+      expectedVersion: slot.version,
+      ...patch,
+    });
+    if (result.ok) {
+      setSlots((current) => (current
+        ? {
+          ...current,
+          slots: current.slots.map((item) => (item.slotId === result.data.slotId ? result.data : item)),
+        }
+        : current));
+      setNotice(
+        `已保存时段 ${formatClock(result.data.slotStart)}—${formatClock(result.data.slotEnd)}：名额 ${result.data.capacity}，${result.data.enabled ? '开放' : '关闭'}，版本 v${result.data.version ?? '未返回'}。`,
+      );
+    }
+    return result;
+  }
+
   useEffect(() => () => {
     if (actionTimer.current !== null) {
       clearTimeout(actionTimer.current);
@@ -447,6 +498,8 @@ export default function MerchantHome() {
           onDateChange={setMenuDate}
           menu={menu}
           slots={slots}
+          onSaveDish={saveDish}
+          onSaveSlot={saveSlot}
           onBack={backToList}
         />
       )}
