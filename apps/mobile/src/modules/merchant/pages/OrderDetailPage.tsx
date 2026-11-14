@@ -245,16 +245,16 @@ export default function OrderDetailPage({
                 {busyLabel(rejectAction)}
               </button>
             </div>
-            {cancelError && (
-              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-                {cancelError}
-              </p>
-            )}
             <p className="hint">
               批准会取消订单并模拟退款；申请不等于已取消。
               {mode === 'real' ? '处理结果保存后学生端可读取同一订单。' : ''}
             </p>
           </>
+        )}
+        {cancelError && (
+          <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
+            {cancelError}
+          </p>
         )}
       </section>
 
