@@ -61,6 +61,10 @@ export function groupOrders(orders: MerchantOrder[]): OrderGroup[] {
 }
 
 export function shortOrderId(id: string): string {
+  const uuid = /^ord_([0-9a-f]{8})/i.exec(id);
+  if (uuid) {
+    return `#${uuid[1]}`;
+  }
   const digits = /(\d+)$/.exec(id);
   return digits ? `#${digits[1]}` : id;
 }
@@ -107,4 +111,10 @@ export function cancelRequestLabel(request: CancelRequest): string {
   if (request.status === 'APPROVED') return '取消申请已批准';
   if (request.status === 'REJECTED') return '取消申请已拒绝';
   return '无取消申请';
+}
+export function cancellationNote(order: MerchantOrder): string {
+  if (order.cancelRequest.status === 'APPROVED') {
+    return '学生申请取消';
+  }
+  return order.cancellationReason ?? '未填写原因';
 }
