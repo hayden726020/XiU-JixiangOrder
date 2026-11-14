@@ -37,9 +37,13 @@
 - 2026-11-14 D2-1 接入：合入学生 S10 `63d9a63`（登录守卫、真实下单与详情）与档口 `b7fd1c9`（取消理由展示修复）；升 APK 1.7 / versionCode 8；学生构建为真实模式，默认 API `http://192.168.110.42:8788/api/v1`。
 - D2-1 实际验证：服务端 `npm test` 58/58；`npm run typecheck` 退出码 0；默认构建 103 modules（CSS 35.07 kB、JS 413.32 kB）；APK 1.7 为 4,958,798 字节，SHA-256 `0bcfe7baa7740fa25ef3039a2c04a16509f9fb664500ebeacb27508699712ba3`，`aapt2` 确认 versionCode 8 / versionName 1.7 / targetSdk 36；包内 `assets/public` + 390×844 手机视口 + Android WebView UA 复验 10/10：学生真实模式与真实菜单、S10 登录守卫文案、管理入口收口、档口数据源切换与未登录提示、默认服务地址 8788；截图 `apk-1.7-sim-*.png`。未真机。
 
+- 2026-11-14 D2-2/D2-3 实测（真实服务 8788 + 浏览器页面模拟）：用 `services/api/.runtime/` 临时脚本（已被 .gitignore 排除，不入库）完成学生真实下单与同 requestId 幂等、档口 ACCEPT→PREPARING→READY→verify、错码/重复核销/版本冲突/取消审批/缺货/延迟/用餐方式、菜单/时段编辑；真实服务 API 43/43 通过。页面侧用无头 Edge + 390×844 手机视口 + Android WebView UA（浏览器模拟，非真机、非 APK 安装）跑通 20/20：学生登录并在明天时段真实下单、档口接单/制作/可取/核销、页面菜单与时段编辑 version+1、管理端查询同单。
+- D2-4 三端同单（2026-11-14 15:00，浏览器页面模拟，非真机）：同一订单 id `ord_7731268f-bb2a-49a3-b21f-de92eac92431`；学生页“待接单”“合计 ¥20.00”，档口页 NEW→READY→COMPLETED，管理页“已完成”20.00 元、version 5、无取餐码；三端金额 2000 分、时段 `slot-2026-11-15-lunch` 一致。截图 `team-context/backend/截图/day2-d2-4-*.png`。APK 1.7 仍未安装真机。
+- D2-2/D2-3/D2-4 已知缺口：学生订单详情无轮询，档口推进后学生页面仍显示“待接单”；学生页 READY 取餐码展示未验证（本次取餐码通过学生会话 API 读取后由档口页面核销）；管理端订单响应仍无档口名称字段，页面显示“服务端未返回档口字段”；8788 为内存库，重启清空。
+
 ## 当前尚未完成
 
-- 学生 S1—S6 已合入 main（并行合并 `7f40dfa`）；已用 APK 1.2（versionCode 3）在 A024 完成 S4—S6 真机验收：S4 三态与定位占位、S5 确认页/正常提交/订单详情/回跳同一笔、S6 时间轴与取餐码占位，截图见 `team-context/backend/截图/apk-1.2-*.png`；学生 S9 已在 main，S10 `63d9a63`（登录守卫、真实下单与详情）已由 D2-1 合入 main。档口 S1—S11 已在 main（S11 `7802dcd` 由 D2-0 合入），`b7fd1c9`（固定展示取消理由）已由 D2-1 合入；档口真实菜单/订单/接单/制作/可取/核销/取消审批/缺货/延迟/用餐方式/菜单编辑代码均已进主干。管理端 S2—S7 已提交推送并完成入口收口；档口营业时间端点、预约需求阈值字段未做。服务端 `status` 校验、READY 取消、取消申请 `reason`/`decisionReason` 分离已合入。
+- 学生 S1—S6 已合入 main（并行合并 `7f40dfa`）；已用 APK 1.2（versionCode 3）在 A024 完成 S4—S6 真机验收：S4 三态与定位占位、S5 确认页/正常提交/订单详情/回跳同一笔、S6 时间轴与取餐码占位，截图见 `team-context/backend/截图/apk-1.2-*.png`；学生 S9 已在 main，S10 `63d9a63`（登录守卫、真实下单与详情）已由 D2-1 合入 main。档口 S1—S11 已在 main（S11 `7802dcd` 由 D2-0 合入），`b7fd1c9`（固定展示取消理由）已由 D2-1 合入；档口真实菜单/订单/接单/制作/可取/核销/取消审批/缺货/延迟/用餐方式/菜单编辑代码均已进主干。管理端 S2—S7 已提交推送并完成入口收口；档口营业时间端点、预约需求阈值字段未做。服务端 `status` 校验、READY 取消、取消申请 `reason`/`decisionReason` 分离已合入。D2-2/D2-3/D2-4 已在 2026-11-14 用真实服务 8788 + 浏览器页面模拟完成（见本轮已完成），真机与 APK 安装仍未验证。
 - android/ 已生成；4.1 MB 旧包与 7.6 MB 新包均已在 A024（Android 16 / API 36）安装。APK 1.7（versionCode 8）已构建并完成包内资源电脑模拟复验，含档口 S2—S11、学生 S10、管理 S7；尚未安装真机。本机无 AVD/system-images，Android 模拟器与真机未验；两机联调与现场边界未做。
 - 学生端已在自己电脑完成克隆与 S0 验证，S1—S3 已提交并推送；S4 起的公共接入口径见 `team-context/backend/公共资料/学生端公共能力接入说明.md`。
 - 尚未建立两机联调与现场定位验收记录。
@@ -53,12 +57,14 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 
 ## 下一步
 
-1. D2-2/D2-3：用 8788 与 APK 1.7（或包内资源）跑学生真实下单（同 requestId 幂等）与档口真实接单/制作/可取/核销、菜单/时段编辑；D2-4 在 11/14 晚做三端同单。
-2. D2-5：主动定位、范围判断、拒绝仍堂食、清除位置；拥挤三态与详情轮询。
+1. D2-2/D2-3/D2-4 已完成（2026-11-14，真实服务 API 43/43、浏览器页面模拟 20/20）；但仍需真机/APK 安装复验，不得把浏览器模拟写成真机通过。
+2. D2-5：主动定位、范围判断、拒绝仍堂食、清除位置；拥挤三态与详情轮询（学生详情轮询是本次 D2-4 的已知缺口）。
 3. D2-6：完整流程验收（真机优先，无设备则电脑模拟并标注）；补 `status` 校验、营业时间端点与预约需求阈值；两机联调与现场边界放最后。
 
 ## 验证记录
 
+- D2-2/D2-3 真实服务 API 实测（2026-11-14，临时内存库 8788，脚本在 `.runtime/` 不入库）43/43：学生登录与明天时段真实下单、同 requestId 同内容重发返回同一单且订单数不增、同 requestId 不同内容 `REQUEST_CONFLICT`、未登录 401/档口下单 403、关闭时段 `SLOT_CLOSED`；档口 NEW→ACCEPTED→PREPARING→READY→COMPLETED、错码 `PICKUP_CODE_INVALID` 且仍 READY、同 requestId 重复核销返回首次结果、新 requestId `PICKUP_CODE_USED`、旧版本 `ORDER_VERSION_CONFLICT`、取消申请 PENDING/拒绝保留原状态/批准退款、NEW 直接取消、缺货取消、NEW 延迟 409、菜单/时段 PUT 成功 version+1 与旧版本 `MENU_VERSION_CONFLICT`、学生写菜单 403；管理端同单 `pickupCode=null`。
+- D2-4 三端页面同单（2026-11-14，无头 Edge + 390×844 + Android WebView UA，浏览器模拟，非真机）20/20：学生页登录并真实下单 `ord_7731268f-bb2a-49a3-b21f-de92eac92431`（待接单、合计 ¥20.00、无样例横幅）；档口页同一 id NEW→READY→COMPLETED 并用学生取餐码核销；管理页同一 id 已完成、20.00 元、version 5、无取餐码；档口页面菜品编辑 v12→v13、时段编辑 v11→v12。截图 `team-context/backend/截图/day2-d2-4-*.png`。学生页在档口推进后仍显示“待接单”，因 S10 详情无轮询，D2-5 处理。APK 1.7 未安装真机。
 - S0 骨架：在 apps/mobile 执行 npm install（成功，0 vulnerabilities）、npm run typecheck（退出码 0）、npm run build（成功，产出 dist/）、npm run preview（HTTP 200），并用无头 Edge dump-dom 确认首页角色入口和学生占位页已渲染；复核修复后再次通过。git push 返回退出码 0，远端 main 与本地 HEAD 均为 a4795a2fadc4。
 - debug APK：2026-11-13 20:02 构建 7.6 MB 新包（含 geolocation 与定位权限），20:22 在 A024 安装成功；包内资源文件名与 `dist/` 一致。
 - 真机定位：授权路径 ACCESS_FINE/COARSE_LOCATION granted，无服务端配置时使用演示范围（半径 150 米、误差容忍 60 米）得“范围外 · 判断完成 · 演示范围”；撤销权限后拒绝路径得“无法判断 · 定位权限被拒绝”，页面仍可用。
