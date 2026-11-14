@@ -30,11 +30,13 @@
 - 管理端 S5 实际验证：服务端 `npm test` 46/46；`npm run typecheck` 退出码 0；`npm run build` 成功（84 modules，CSS 29.65 kB、JS 353.69 kB、web chunk 2.08 kB）；无头 Edge + CDP 27/27：dining 150→420（version 2）、crowd 10→12（version 2）、刷新持久、外部改 430/version 3 后旧版本保存得冲突且输入保留、手动重读、样例不写入、半径 0 前端校验、服务端 400/401/403。以上不是真机或现场联调。
 - 2026-11-13 管理端 S6 接入：`data/source.ts` 增加样例错误演习（401/403/503，不请求服务端）；`AdminHome` 增加演习开关，并允许已登录的非管理员连接真实服务以核对 403；`OrdersPage`/`SettingsPage` 区分 401/403/503/超时标题与文案；`SettingsEditor` 对断网/503 显示“保存结果待确认”并复用同一 requestId；新增 `admin-s6.css`。
 - 管理端 S6 实际验证：服务端 `npm test` 46/46；`npm run typecheck` 退出码 0；`npm run build` 成功（85 modules，CSS 30.09 kB、JS 357.25 kB、web chunk 2.08 kB）；CDP 40/40：样例 401/403/503 订单与配置均不显示数据、关闭演习恢复、学生真实 403、无效令牌 401、断网保存显示结果待确认且 requestId 不变、恢复网络后同一 requestId 保存成功（410/version 2）；API 401/403 错误响应仅 `code/message/retryable`，无令牌/取餐码/坐标。以上不是真机或现场联调。
+- 2026-11-14 管理端 S7 接入：非管理员（学生或未登录）访问管理端只显示“需要管理员身份”与登录入口，不渲染导航、订单、配置或错误演习；管理员才渲染管理页面与演习开关。管理端入口完成按角色收口。
+- 管理端 S7 实际验证：`npm run typecheck` 退出码 0；`npm run build` 成功（85 modules，CSS 30.09 kB、JS 357.91 kB、web chunk 2.08 kB）；CDP 20/20：未登录/学生入口无管理数据与导航、管理员真实订单与配置可查询、401/403/503 错误态复核通过、4 张错误态截图不含取餐码或令牌；APK 1.6（versionCode 7，4,940,446 字节，SHA-256 `8324db67ad00fbcea67f90615d0bbc31b1a52de030859816d82412ce2a2bcbe3`）构建成功，但 `adb devices` 无设备，未安装、真机未验证。
 
 ## 当前尚未完成
 
-- 学生 S1—S6 已合入 main（并行合并 `7f40dfa`）；已用 APK 1.2（versionCode 3）在 A024 完成 S4—S6 真机验收：S4 三态与定位占位、S5 确认页/正常提交/订单详情/回跳同一笔、S6 时间轴与取餐码占位，截图见 `team-context/backend/截图/apk-1.2-*.png`；S7 仅自测文档，待复核。档口 S1 已合入 main。管理端 S2—S6 已提交推送；档口营业时间端点、预约需求阈值字段、服务端 `status` 校验未做；管理端入口已允许非管理员连接真实服务核对 403，但未按角色隐藏。
-- android/ 已生成；4.1 MB 旧包与 7.6 MB 新包均已在 A024（Android 16 / API 36）安装。新包完成自检页定位授权/拒绝检查与管理端 S1 概览、订单页复验；未做两机联调、真实服务联调或现场食堂边界校准。管理端 S2—S6 页面未重新打包（APK 1.5 仅升 versionCode，未含 S6 构建记录）。
+- 学生 S1—S6 已合入 main（并行合并 `7f40dfa`）；已用 APK 1.2（versionCode 3）在 A024 完成 S4—S6 真机验收：S4 三态与定位占位、S5 确认页/正常提交/订单详情/回跳同一笔、S6 时间轴与取餐码占位，截图见 `team-context/backend/截图/apk-1.2-*.png`；S7 仅自测文档，待复核。档口 S1 已合入 main。管理端 S2—S7 已提交推送；管理入口已在 S7 按角色收口；档口营业时间端点、预约需求阈值字段、服务端 `status` 校验未做。
+- android/ 已生成；4.1 MB 旧包与 7.6 MB 新包均已在 A024（Android 16 / API 36）安装。新包完成自检页定位授权/拒绝检查与管理端 S1 概览、订单页复验；未做两机联调、真实服务联调或现场食堂边界校准。APK 1.6（versionCode 7）已构建但 A024 当前未连接，管理端 S2—S7 尚未真机复验。
 - 学生端已在自己电脑完成克隆与 S0 验证，S1—S3 已提交并推送；S4 起的公共接入口径见 `team-context/backend/公共资料/学生端公共能力接入说明.md`。
 - 尚未建立两机联调与现场定位验收记录。
 - 公共层已有演示登录/会话、请求封装、服务地址配置与一次性定位代码（`src/shared/`），并通过首页“公共能力自检”进入 `#/system-check`；浏览器 CDP 已实际验证页面渲染、未配置服务的明确失败与登录失败不保存会话。`services/api/` 已合入 main（`00b4ae7`）并通过 46 项自动测试；本轮用临时内存库实测登录、下单、管理列表/详情、401/403 与管理配置结构。尚无长期服务地址、无真机联调。契约已升到 DRAFT v0.3，管理端 `GET /admin/orders` 与 `GET /admin/settings` 的 dining/crowd 字段已补并对齐；`PUT /admin/settings` 已由 S5 接入（单 section、保存后重读确认）；S6 已补 401/403/503 错误态与保存重试，无接口变更。
@@ -43,14 +45,14 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 
 ## 接口与资料状态
 
-接口为 DRAFT v0.3（联调冻结候选），未经三人确认，没有正式发布提交和长期可用服务。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由；管理端 `GET /admin/orders` 已补状态/分页与取餐码过滤说明，`GET /admin/settings` 的 dining/crowd 字段已补并由 S3 页面只读对齐；`PUT` 保存与版本冲突已由 S5 接入（单 section、保存后重读确认）；S6 只补页面错误态与重试，未改接口。资料包为 APK-v2 分发快照，以仓库中的规则与已确认契约为准；文档、JSON 示例和目录存在不代表功能实现。
+接口为 DRAFT v0.3（联调冻结候选），未经三人确认，没有正式发布提交和长期可用服务。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由；管理端 `GET /admin/orders` 已补状态/分页与取餐码过滤说明，`GET /admin/settings` 的 dining/crowd 字段已补并由 S3 页面只读对齐；`PUT` 保存与版本冲突已由 S5 接入（单 section、保存后重读确认）；S6/S7 只补页面错误态、重试与入口权限，未改接口。资料包为 APK-v2 分发快照，以仓库中的规则与已确认契约为准；文档、JSON 示例和目录存在不代表功能实现。
 
 ## 下一步
 
-1. 重新打包后在 A024 复验管理端 S2—S6 页面（当前真机只验过 S1 旧包）；学生 S4—S6 已用 APK 1.2 完成真机验收。
+1. A024 重新连接后安装 APK 1.6（versionCode 7）并复验管理端 S2—S7 页面；学生 S4—S6 已用 APK 1.2 完成真机验收。
 2. 补服务端 `status` 非法值校验；确认档口营业时间端点与预约需求阈值字段，再决定是否扩展配置页。
 3. 配置真机可访问服务地址与演示账号，用 `#/system-check` 联调登录、会话过期与位置上报/清除。
-4. 管理端 S7：交付检查、错误态与权限抽样复核、打包与真机；魈嘶复核 S7 文档；两机联调与现场食堂边界校准放最后。
+4. 管理端 S7 文档复核与交付；魈嘶复核 S7 文档；两机联调与现场食堂边界校准放最后。
 
 ## 验证记录
 
@@ -64,4 +66,5 @@ backend/.stfolder 已存在，可能来自用户已有同步设置，本轮保�
 - 管理端 S4：typecheck 退出码 0；build 成功（84 modules，CSS 29.65 kB、JS 349.94 kB、web chunk 2.08 kB）；CDP 23/23，含草稿编辑、requestId 重新生成、样例/真实均不发送 PUT、半径 0 校验、刷新恢复与真实订单回归。未打包、未真机。
 - 管理端 S5：服务端 `npm test` 46/46；typecheck 退出码 0；build 成功（84 modules，CSS 29.65 kB、JS 353.69 kB、web chunk 2.08 kB）；CDP 27/27：dining 保存 420/version 2、crowd 保存 12/version 2、重读一致、刷新持久、旧版本冲突保留输入且服务端未被覆盖、手动重读、样例不写入、前端与服务端校验、401/403。未打包、未真机。
 - 管理端 S6：服务端 `npm test` 46/46；typecheck 退出码 0；build 成功（85 modules，CSS 30.09 kB、JS 357.25 kB、web chunk 2.08 kB）；CDP 40/40：样例 401/403/503 订单与配置不显示数据、关闭演习恢复、学生 403、无效令牌 401、断网保存结果待确认且 requestId 不变、恢复网络同 requestId 保存成功、API 错误响应与日志不含令牌/取餐码/坐标。未打包、未真机。
+- 管理端 S7：typecheck 退出码 0；build 成功（85 modules，CSS 30.09 kB、JS 357.91 kB、web chunk 2.08 kB）；CDP 20/20：未登录/学生入口只显示身份提示、无管理数据与导航；管理员真实订单/配置可查；401/403/503 错误态复核；4 张截图见 `team-context/backend/截图/admin-s7-*.png`。APK 1.6（vc7，4,940,446 字节，SHA-256 `8324db67…`）构建成功，`adb devices` 无设备，未安装、真机未验。
 - 契约升为 DRAFT v0.3，管理端段已补；临时内存库已做管理查询实测（不等同真机联调）。此前提交 `f2670ef`（88 个文件）已推送 `origin/main`。2026-11-13 第七轮：合并学生分支后 `npm run typecheck` 退出码 0；`npm run build` 成功（55 modules，CSS 14.10 kB、JS 283.49 kB、web chunk 2.08 kB）；用 JDK 21 与 Android SDK 36 构建 APK 1.1 成功，`aapt2 dump badging` 确认 versionCode 2 / versionName 1.1 / targetSdk 36，包内 `capacitor.plugins.json` 含 geolocation，assets 含学生 S3 文案。APK 构建使用了工作区未提交的 `SystemCheck.tsx` 与 `AndroidManifest.xml`（cleartext）改动；已在 A024（Android 16 / API 36）通过 `adb install -r` 安装并完成学生 S3 页面真机点击验收（菜单→时段→堂食→返回保留→切日期清空），截图见 `team-context/backend/截图/apk-1.1-*.png`。长期服务、两机联调与档口页面仍未验证；管理端 S2 未打包。
