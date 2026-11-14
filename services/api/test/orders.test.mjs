@@ -226,4 +226,8 @@ test('档口订单列表支持状态筛选分页且不暴露取餐码', async ()
   const merchantView = await ctx.api('GET', `/orders/${current.id}`, { token: merchantToken });
   assert.equal(merchantView.status, 200);
   assert.equal(merchantView.body.data.pickupCode, null);
+
+  const invalidStatus = await ctx.api('GET', '/merchant/orders?status=INVALID', { token: merchantToken });
+  assert.equal(invalidStatus.status, 400);
+  assert.equal(invalidStatus.body.error.code, 'VALIDATION_ERROR');
 });

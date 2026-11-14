@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { DATES } from '../data/sampleData';
 import type { OrderDraft } from '../state/orderDraft';
+import { createSlotRequestGuard, type SlotGuardState } from '../state/slotGuard';
 import type { DiningMode, MenuResponse, SlotDto, StudentSource } from '../types';
 import { isApiError } from '../types';
+import CrowdHint from '../components/CrowdHint';
 import DemoModeNotice from '../components/DemoModeNotice';
+import LocationNote from '../components/LocationNote';
 import SampleBanner from '../components/SampleBanner';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -38,15 +41,41 @@ export interface SlotDiningPageProps {
   source: StudentSource;
   draft: OrderDraft;
   onBack: () => void;
+  onConfirm: () => void;
 }
 
-export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPageProps) {
+export default function SlotDiningPage({
+  source,
+  draft,
+  onBack,
+  onConfirm,
+}: SlotDiningPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [errorText, setErrorText] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
+  const [guard] = useState(() =>
+    createSlotRequestGuard({ fetchCrowd: (slotId) => source.getCrowd(slotId) }),
+  );
+  const [crowd, setCrowd] = useState<SlotGuardState>(() => guard.getState());
   const date = snapshot.date;
+
+  async function requestCrowd(slotId: string): Promise<void> {
+    const pending = guard.selectSlot(slotId);
+    setCrowd(guard.getState());
+    const result = await pending;
+    if (!result.discarded) {
+      setCrowd(guard.getState());
+    }
+  }
+
+  useEffect(() => {
+    const restoredSlotId = draft.getState().slotId;
+    if (restoredSlotId !== null) {
+      void requestCrowd(restoredSlotId);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +107,7 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
     }
     draft.setSlot(slot.slotId);
     setSnapshot(draft.getState());
+    void requestCrowd(slot.slotId);
   }
 
   function selectMode(mode: DiningMode): void {
@@ -104,7 +134,7 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
       ? '请选择时段'
       : snapshot.diningMode === null
         ? '请选择堂食或外带'
-        : '确认页在 S5 接入；当前选择会保留。';
+        : '进入确认页核对后再提交。';
 
   return (
     <section className="student-page" aria-labelledby="student-slot-title">
@@ -115,7 +145,7 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
       </button>
 
       <header className="student-page__head">
-        <p className="student-kicker">S3 · 时段与用餐方式（确认页下一步开放）</p>
+        <p className="student-kicker">S5 · 时段与用餐方式（可进入确认页）</p>
         <h2 id="student-slot-title">选择时段与用餐方式</h2>
         <p className="student-page__lead">已选菜品会保留；时段与用餐方式必须显式选择。</p>
       </header>
@@ -202,6 +232,13 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
         </div>
       </section>
 
+      <CrowdHint
+        slotRange={selectedSlot ? slotRange(selectedSlot) : null}
+        state={crowd}
+      />
+
+      <LocationNote />
+
       <footer className="student-summary">
         <p className="student-summary__main">
           {selectedSlot ? `时段 ${slotRange(selectedSlot)}` : '尚未选择时段'}
@@ -209,7 +246,12 @@ export default function SlotDiningPage({ source, draft, onBack }: SlotDiningPage
         <p className="student-summary__note">
           {snapshot.diningMode ? `用餐方式：${MODE_TEXT[snapshot.diningMode]}` : '用餐方式：未选择'}
         </p>
-        <button type="button" className="student-primary" disabled>
+        <button
+          type="button"
+          className="student-primary"
+          disabled={!snapshot.canConfirm}
+          onClick={onConfirm}
+        >
           去确认
         </button>
         <p className="student-summary__hint">{hint}</p>

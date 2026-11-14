@@ -2,7 +2,7 @@
   "_meta": {
     "contractVersion": "DRAFT v0.3",
     "fictional": true,
-    "implemented": false,
+    "implemented": true,
     "note": "字段按 DRAFT v0.3 联调候选更新；ID、时间和菜品均为虚构样例，不是实际服务返回或真实学生数据。"
   },
   "request": {
@@ -37,7 +37,8 @@
         "paymentStatus": "SIMULATED_REFUNDED",
         "cancelRequest": {
           "status": "NONE",
-          "reason": null
+          "reason": null,
+          "decisionReason": null
         },
         "cancellationReason": "演示缺货",
         "version": 2,

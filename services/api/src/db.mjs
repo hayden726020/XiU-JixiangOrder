@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS orders (
   cancellation_reason TEXT,
   cancel_status TEXT NOT NULL DEFAULT 'NONE',
   cancel_reason TEXT,
+  cancel_decision_reason TEXT,
   delay_reason TEXT,
   delay_expected_ready_at TEXT,
   created_at INTEGER NOT NULL,
@@ -161,6 +162,9 @@ export function createDatabase(path = ':memory:') {
   const orderColumns = db.prepare('PRAGMA table_info(orders)').all();
   if (!orderColumns.some((column) => column.name === 'dining_mode_reason')) {
     db.exec('ALTER TABLE orders ADD COLUMN dining_mode_reason TEXT;');
+  }
+  if (!orderColumns.some((column) => column.name === 'cancel_decision_reason')) {
+    db.exec('ALTER TABLE orders ADD COLUMN cancel_decision_reason TEXT;');
   }
   return db;
 }

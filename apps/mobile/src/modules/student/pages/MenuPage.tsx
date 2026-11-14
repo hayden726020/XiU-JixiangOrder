@@ -20,9 +20,15 @@ export interface MenuPageProps {
   source: StudentSource;
   draft: OrderDraft;
   onProceed: () => void;
+  onViewSampleOrder: () => void;
 }
 
-export default function MenuPage({ source, draft, onProceed }: MenuPageProps) {
+export default function MenuPage({
+  source,
+  draft,
+  onProceed,
+  onViewSampleOrder,
+}: MenuPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
@@ -73,7 +79,7 @@ export default function MenuPage({ source, draft, onProceed }: MenuPageProps) {
       <SampleBanner />
 
       <header className="student-page__head">
-        <p className="student-kicker">S3 · 样例菜单与数量（可进入时段页）</p>
+        <p className="student-kicker">S5 · 样例菜单与数量（可进入确认页）</p>
         <h2 id="student-menu-title">学生点餐</h2>
         <p className="student-page__lead">样例菜单可调整数量，全部数据来自模块内样例源。</p>
       </header>
@@ -182,6 +188,16 @@ export default function MenuPage({ source, draft, onProceed }: MenuPageProps) {
           {snapshot.canProceedToSlot ? '已选内容会带入时段页。' : '请先选择菜品'}
         </p>
       </footer>
+
+      {source.mode === 'sample' ? (
+        <button
+          type="button"
+          className="student-secondary student-sample-order"
+          onClick={onViewSampleOrder}
+        >
+          查看样例订单
+        </button>
+      ) : null}
 
       <DemoModeNotice />
     </section>

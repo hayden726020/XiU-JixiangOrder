@@ -25,7 +25,7 @@ DRAFT v0.3（联调冻结候选），仍待三人确认，不能作为正式发�
 - 会话过期返回 401 SESSION_EXPIRED；未登录或令牌无效返回 401 UNAUTHENTICATED；两者都引导重新登录，不泄露账号是否存在。
 - 示例见 auth-demo-login.json 与 me.json，均为虚构数据。
 
-修改请求带 requestId；同一身份、同一操作、同一 requestId 重试返回首次结果，同键不同内容返回 REQUEST_CONFLICT。requestId 去重不能只在进程内保存。已有订单操作另带 expectedVersion，匹配后原子更新并递增 version；版本冲突返回 ORDER_VERSION_CONFLICT，页面刷新再确认。完全相同的重试先识别原操作，不因首次成功已增加 version 而错误再次执行。
+修改请求带 requestId；仅成功的写操作按身份、操作和 requestId 持久化首次结果，重试返回该结果；失败事务不缓存，可用同一 requestId 重试并重新判定；同键不同内容返回 REQUEST_CONFLICT。requestId 去重不能只在进程内保存。已有订单操作另带 expectedVersion，匹配后原子更新并递增 version；版本冲突返回 ORDER_VERSION_CONFLICT，页面刷新再确认。完全相同的重试先识别原操作，不因首次成功已增加 version 而错误再次执行。
 
 ## 订单字段与状态
 
@@ -34,8 +34,8 @@ DRAFT v0.3（联调冻结候选），仍待三人确认，不能作为正式发�
 status：NEW → ACCEPTED → PREPARING → READY → COMPLETED。
 NEW/ACCEPTED/PREPARING/READY 可在规定权限下取消为 CANCELLED；COMPLETED/CANCELLED 是终态。
 paymentStatus：SIMULATED_PAID 或 SIMULATED_REFUNDED；未取消的正常订单为前者，取消成功与模拟退款完成一起变为后者。
-cancelRequest 为 { status: NONE | PENDING | APPROVED | REJECTED, reason: string | null }，独立于订单状态。申请取消不自动停止原订单流程，档口应优先处理；终态不得再批准取消。
-订单在申请待处理时完成取餐，必须在同一操作中把申请改为 REJECTED 并注明“订单已取餐”；档口主动取消或批准申请导致订单取消时，把已有 PENDING 申请改为 APPROVED 并记录处理原因。终态订单不能残留 PENDING。
+cancelRequest 为 { status: NONE | PENDING | APPROVED | REJECTED, reason: string | null, decisionReason: string | null }，独立于订单状态。reason 保留学生申请理由；decisionReason 保存档口批准、拒绝或取餐时结束申请的处理理由，未处理为 null。申请取消不自动停止原订单流程，档口应优先处理；终态不得再批准取消。
+订单在申请待处理时完成取餐，必须在同一操作中把申请改为 REJECTED 并写 decisionReason=“订单已取餐”，保留原 reason；档口主动取消或批准申请导致订单取消时，把已有 PENDING 申请改为 APPROVED 并写 decisionReason。终态订单不能残留 PENDING。
 delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPARING/READY 可设置延迟；NEW 尚未接单，不允许填延迟。ACCEPTED/PREPARING/READY 均可按权限主动缺货取消或批准已有 PENDING 申请，COMPLETED/CANCELLED 不可再改变。
 
 订单创建与模拟付款：POST /orders 一次完成，成功即 NEW + SIMULATED_PAID。无单独待付款订单或支付按钮二次确认接口。失败不能遗留已扣库存或“已付款但无订单”。
@@ -61,7 +61,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | GET /merchant/orders | 本档口订单列表，query=status,page,pageSize | 受档口身份约束；返回 {orders,page,pageSize,total}，取餐码始终为 null；默认 page=1、pageSize=20，最大 100，按 createdAt 倒序 |
 | POST /merchant/orders/{id}/advance | requestId, expectedVersion, action=ACCEPT/START_PREPARING/MARK_READY | 仅允许合法的下一状态，不支持跳到 COMPLETED |
 | POST /merchant/orders/{id}/verify | requestId, expectedVersion, pickupCode | 仅 READY 且码正确、未用过时完成；示例见 verify-order.json |
-| POST /merchant/orders/{id}/cancel-decision | requestId, expectedVersion, decision=APPROVE/REJECT, reason | 仅处理 PENDING 且非终态订单；批准后取消并模拟退款；拒绝保留原状态 |
+| POST /merchant/orders/{id}/cancel-decision | requestId, expectedVersion, decision=APPROVE/REJECT, reason | 仅处理 PENDING 且非终态订单；reason 写入 cancelRequest.decisionReason；批准后取消并模拟退款；拒绝保留原状态和原申请理由 |
 | POST /merchant/orders/{id}/cancel | requestId, expectedVersion, reason | 缺货等主动取消；NEW/ACCEPTED/PREPARING/READY 才允许；见 cancel-refund.json |
 | POST /merchant/orders/{id}/delay | requestId, expectedVersion, reason, expectedReadyAt | 仅 ACCEPTED/PREPARING/READY 允许；保存延迟信息，主状态不变，学生能查看 |
 | PATCH /merchant/orders/{id}/dining-mode | requestId, expectedVersion, diningMode, reason | 档口确认后更改未结束订单；reason 必填并持久化为 diningModeReason，三端及统计更新 |
@@ -71,7 +71,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | PUT /me/location | requestId, presence=INSIDE/OUTSIDE/UNKNOWN | 按会话身份保存判断，返回服务端 observedAt 和 expiresAt；拒绝多余坐标字段 |
 | DELETE /me/location | 清除本人位置判断 | 重复删除仍成功，不删除订单、不阻碍继续下单 |
 | GET /crowd?slotId=... | 所选预约时段的堂食参考 | 见 crowd-reference.json；未来时段不返回当前参考 |
-| GET /admin/orders | 必要的订单和异常查询 | 仅管理身份 |
+| GET /admin/orders | query=status,page,pageSize | 仅管理身份；返回 {orders,page,pageSize,total}，取餐码恒为 null；不支持日期/档口/异常查询参数 |
 | GET/PUT /admin/settings | 档口营业、范围与提醒条件 | 修改含 requestId/expectedVersion；仅管理身份 |
 
 ### 档口读取响应（v0.3 联调冻结候选）
@@ -92,6 +92,22 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 - `status` 可省略；传入时只接受 NEW/ACCEPTED/PREPARING/READY/COMPLETED/CANCELLED，不合法返回 VALIDATION_ERROR。
 - 当前只支持状态筛选和分页，不承诺日期筛选；页面不得自行猜测未定义查询参数。
 - 列表和详情都按档口身份过滤，取餐码为 `null`。
+
+### 管理端读取响应（v0.3 联调候选）
+
+`GET /admin/orders?status=NEW&page=1&pageSize=20` 返回 `{ data: { orders, page, pageSize, total } }`：
+
+- 仅管理身份；未登录返回 401，学生/档口返回 403 FORBIDDEN。
+- `status` 可省略；取值同订单状态；`page` 默认 1，`pageSize` 默认 20、最大 100；按 `createdAt` 倒序。非法 `status` 应返回 VALIDATION_ERROR（当前服务端尚未校验，待补）。
+- 列表与详情均返回 `pickupCode: null`；管理端不得展示学生取餐码。
+- 详情复用 `GET /orders/{id}`，管理身份可读；不存在或不可见返回 404 ORDER_NOT_FOUND。
+- 当前只定义状态与分页；日期、档口、异常筛选参数尚未定义，页面不得自行猜测。异常（待处理取消申请、延迟）只在已加载结果中标记，不跨页推断。
+- 当前订单响应未返回 `merchantId`、`merchantName` 或学生信息；管理端无法按档口展示或筛选，需后续补字段或专用视图，页面不得用样例名称冒充真实档口。
+- `GET /admin/settings` 返回 `{ data: { dining, crowd } }`：
+  - `dining`：`canteenId,name,center{latitude,longitude},radiusMeters,accuracyToleranceMeters,updatedAt,version,demo`。
+  - `crowd`：`crowdedAt,version,demo`；当前只有单一提醒阈值，预约需求阈值尚无字段。
+  - 当前没有档口营业时间、启用状态或档口名称字段；管理端真实模式不得用样例值填充。
+  - 管理端 S3 已按此结构只读展示，S5 已接入 `PUT /admin/settings`：每次只提交一个 `section`，`value` 只含该段白名单字段；成功返回 `{ section, ...该段配置, version }`，以返回的 `version` 为准；保存后页面重新 `GET /admin/settings` 确认；`SETTING_VERSION_CONFLICT`（409）时保留输入、不自动覆盖，需用户重新读取最新配置。
 
 `GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
 
@@ -156,7 +172,7 @@ v0.3 已补齐档口菜单、订单列表、分页、延迟、取消审批、用
 
 1. 首版时段数量：午餐固定 3 个时段（11:30—12:00、12:00—12:30、12:30—13:00），由档口于 2026-11-13 冻结；样例中 12:30—13:00 为已满，用于演示不可选。GET /menu 返回的 slots 数量与启停始终以服务端为准，客户端不得写死时段或数量。
 2. 样例与真实模式：公共层不提供全局“样例开关”。各模块在自身 data source 内选择 sample/real，首版默认 sample。切换 real 的前提是已配置服务地址且已登录；real 请求失败必须显示失败或结果待确认，不得回退样例，也不得把样例数据标成真实结果。
-3. 错误与 requestId 统一：模块复用 apps/mobile/src/shared 的 apiClient（ApiError 含 code/message/status/retryable）与 requestId 能力；不得另定义同名错误类并用 instanceof 判断 shared 错误，避免把真实失败降级为 UNKNOWN，也不得维护第二套 requestId 生成/复用逻辑。下单 requestId 在内容不变时复用、内容变化时重生成、操作结束或开始新单后重置。
+3. 错误与 requestId 统一：模块复用 apps/mobile/src/shared 的 apiClient（ApiError 含 code/message/status/retryable）与 requestId 能力；不得另定义同名错误类并用 instanceof 判断 shared 错误，避免把真实失败降级为 UNKNOWN，也不得维护第二套 requestId 生成/复用逻辑。base URL 已包含 `/api/v1`，调用 `apiRequest` 时 path 只写 `/merchant/orders` 这类相对路径，不能再拼 `/api/v1`；下单 requestId 在内容不变时复用、内容变化时重生成、操作结束或开始新单后重置。
 4. 定位：模块只使用 shared/location 的一次性定位与范围判断，不直接引入 @capacitor/geolocation，不上传坐标。定位说明卡可先占位且不触发权限；接入真实定位时使用 shared/location 的现有方法。
 5. 以上口径为 DRAFT v0.3 联调冻结候选，三人确认前仍不能宣称正式发布。
 

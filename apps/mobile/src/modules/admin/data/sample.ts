@@ -1,15 +1,16 @@
-import type { AdminSettings, Order } from '../types';
+import type { AdminSettings, Order, StallSettings } from '../types';
 
 export const sampleOrders: Order[] = [
   {
     id: 'demo-order-001',
-    stallId: 'stall-01',
-    stallName: '一食堂 · 家常档',
-    items: [{ dishId: 'dish-001', name: '演示鸡肉饭', quantity: 1, unitPriceFen: 1800 }],
+    merchantId: 'demo-merchant-01',
+    merchantName: '一食堂 · 家常档',
+    items: [{ dishId: 'demo-dish-01', name: '演示鸡肉饭', quantity: 1, unitPriceFen: 1800 }],
     slotId: 'slot-20261113-1130',
     slotStart: '2026-11-13T11:30:00+08:00',
     slotEnd: '2026-11-13T12:00:00+08:00',
     diningMode: 'DINE_IN',
+    diningModeReason: null,
     totalFen: 1800,
     status: 'NEW',
     paymentStatus: 'SIMULATED_PAID',
@@ -24,14 +25,15 @@ export const sampleOrders: Order[] = [
   },
   {
     id: 'demo-order-002',
-    stallId: 'stall-02',
-    stallName: '一食堂 · 面档',
-    items: [{ dishId: 'dish-002', name: '演示牛肉面', quantity: 1, unitPriceFen: 2200 }],
+    merchantId: 'demo-merchant-02',
+    merchantName: '一食堂 · 面档',
+    items: [{ dishId: 'demo-dish-02', name: '演示素面', quantity: 1, unitPriceFen: 1600 }],
     slotId: 'slot-20261113-1200',
     slotStart: '2026-11-13T12:00:00+08:00',
     slotEnd: '2026-11-13T12:30:00+08:00',
     diningMode: 'TAKEAWAY',
-    totalFen: 2200,
+    diningModeReason: null,
+    totalFen: 1600,
     status: 'ACCEPTED',
     paymentStatus: 'SIMULATED_PAID',
     cancelRequest: { status: 'NONE', reason: null },
@@ -45,14 +47,15 @@ export const sampleOrders: Order[] = [
   },
   {
     id: 'demo-order-003',
-    stallId: 'stall-01',
-    stallName: '一食堂 · 家常档',
-    items: [{ dishId: 'dish-003', name: '演示青椒肉丝饭', quantity: 1, unitPriceFen: 2000 }],
+    merchantId: 'demo-merchant-01',
+    merchantName: '一食堂 · 家常档',
+    items: [{ dishId: 'demo-dish-03', name: '演示套餐', quantity: 1, unitPriceFen: 2200 }],
     slotId: 'slot-20261113-1230',
     slotStart: '2026-11-13T12:30:00+08:00',
     slotEnd: '2026-11-13T13:00:00+08:00',
     diningMode: 'DINE_IN',
-    totalFen: 2000,
+    diningModeReason: null,
+    totalFen: 2200,
     status: 'READY',
     paymentStatus: 'SIMULATED_PAID',
     cancelRequest: { status: 'PENDING', reason: '临时有课，希望取消' },
@@ -66,14 +69,15 @@ export const sampleOrders: Order[] = [
   },
   {
     id: 'demo-order-004',
-    stallId: 'stall-02',
-    stallName: '一食堂 · 面档',
-    items: [{ dishId: 'dish-004', name: '演示素面', quantity: 1, unitPriceFen: 1600 }],
+    merchantId: 'demo-merchant-02',
+    merchantName: '一食堂 · 面档',
+    items: [{ dishId: 'demo-dish-02', name: '演示素面', quantity: 2, unitPriceFen: 1600 }],
     slotId: 'slot-20261113-1130',
     slotStart: '2026-11-13T11:30:00+08:00',
     slotEnd: '2026-11-13T12:00:00+08:00',
     diningMode: 'TAKEAWAY',
-    totalFen: 1600,
+    diningModeReason: null,
+    totalFen: 3200,
     status: 'COMPLETED',
     paymentStatus: 'SIMULATED_PAID',
     cancelRequest: { status: 'NONE', reason: null },
@@ -87,34 +91,38 @@ export const sampleOrders: Order[] = [
   },
 ];
 
-export const sampleSettings: AdminSettings = {
-  canteenId: 'canteen-demo-01',
-  canteenName: '演示第一食堂',
-  centerLabel: '演示点：第一食堂东门（非学生位置）',
-  radiusMeters: 300,
-  accuracyToleranceMeters: 80,
-  stalls: [
-    {
-      stallId: 'stall-01',
-      name: '一食堂 · 家常档',
-      businessHours: [{ start: '10:30', end: '13:30' }],
-      enabled: true,
-    },
-    {
-      stallId: 'stall-02',
-      name: '一食堂 · 面档',
-      businessHours: [
-        { start: '10:30', end: '13:30' },
-        { start: '16:30', end: '19:00' },
-      ],
-      enabled: true,
-    },
-  ],
-  alerts: {
-    reservedDineInThreshold: 40,
-    currentReferenceThreshold: 25,
+export const sampleStalls: StallSettings[] = [
+  {
+    stallId: 'demo-merchant-01',
+    name: '一食堂 · 家常档',
+    businessHours: [{ start: '10:30', end: '13:30' }],
+    enabled: true,
   },
-  version: 3,
-  updatedAt: '2026-11-13T10:00:00+08:00',
-  demo: true,
+  {
+    stallId: 'demo-merchant-02',
+    name: '一食堂 · 面档',
+    businessHours: [
+      { start: '10:30', end: '13:30' },
+      { start: '16:30', end: '19:00' },
+    ],
+    enabled: true,
+  },
+];
+
+export const sampleSettings: AdminSettings = {
+  dining: {
+    canteenId: 'canteen-demo-01',
+    name: '演示第一食堂',
+    center: { latitude: 30, longitude: 120 },
+    radiusMeters: 300,
+    accuracyToleranceMeters: 80,
+    updatedAt: '2026-11-13T10:00:00+08:00',
+    demo: true,
+    version: 3,
+  },
+  crowd: {
+    crowdedAt: 25,
+    demo: true,
+    version: 2,
+  },
 };
