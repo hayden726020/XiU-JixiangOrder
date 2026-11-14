@@ -5,6 +5,7 @@ import { isApiError } from '../types';
 import { formatYuan } from '../utils/money';
 import { toSubmitErrorView } from '../utils/orderSubmitView';
 import DemoModeNotice from '../components/DemoModeNotice';
+import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -16,8 +17,8 @@ const MODE_TEXT = {
 
 const SCENARIO_OPTIONS: Array<{ value: DemoScenario; label: string; hint: string }> = [
   { value: 'normal', label: '正常提交', hint: '按样例规则返回订单' },
-  { value: 'slot-full', label: '时段已满', hint: '提交返回名额已满' },
-  { value: 'out-of-stock', label: '菜品不足', hint: '提交返回数量不足' },
+  { value: 'slot-full', label: '时段不可用', hint: '提交返回时段不可用' },
+  { value: 'out-of-stock', label: '菜品不足', hint: '提交返回菜品不足' },
   { value: 'timeout', label: '提交超时', hint: '提交超时，结果待确认' },
 ];
 
@@ -159,7 +160,7 @@ export default function ConfirmPage({
 
   return (
     <section className="student-page" aria-labelledby="student-confirm-title">
-      <SampleBanner />
+      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <button type="button" className="student-secondary student-back" onClick={onBack}>
         ← 返回时段
@@ -309,7 +310,7 @@ export default function ConfirmPage({
         ) : null}
       </footer>
 
-      <DemoModeNotice />
+      {source.mode === 'sample' ? <DemoModeNotice /> : null}
     </section>
   );
 }

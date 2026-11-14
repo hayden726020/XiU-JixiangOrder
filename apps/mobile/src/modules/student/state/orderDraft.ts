@@ -7,9 +7,10 @@ import type {
   StudentOrder,
   StudentSource,
 } from '../types';
-import { ApiError, apiError, toSourceError } from '../types';
+import { apiError, isApiError, toSourceError } from '../types';
 import { sumFen } from '../utils/money';
-import { createRequestIdKeeper, type RequestIdKeeper } from '../utils/requestId';
+import { DISH_LIMIT_TEXT, DISH_SHORTAGE_NOTICE } from '../utils/submitTexts';
+import { createRequestIdKeeper, requestIdPrefixOf, type RequestIdKeeper } from '../utils/requestId';
 
 const MODES = new Set<DiningMode>(['DINE_IN', 'TAKEAWAY']);
 const SAMPLE_DATES = new Set(['2026-11-13', '2026-11-14']);
@@ -58,7 +59,7 @@ export interface OrderDraft {
 
 export function createOrderDraft({
   source,
-  requestIds = createRequestIdKeeper(),
+  requestIds = createRequestIdKeeper({ prefix: requestIdPrefixOf(source.mode) }),
 }: OrderDraftOptions): OrderDraft {
   const quantities = new Map<string, number>();
   const prices = new Map<string, number>();
@@ -73,6 +74,7 @@ export function createOrderDraft({
     notice: null,
   };
   let inFlight: Promise<StudentOrder | null> | null = null;
+  let submission: CreateOrderInput | null = null;
 
   function getItems(): DraftItemInput[] {
     return [...quantities.entries()]
@@ -128,6 +130,7 @@ export function createOrderDraft({
     state.order = null;
     state.error = null;
     state.notice = '已切换日期，请重新选择';
+    submission = null;
     requestIds.complete();
     return true;
   }
@@ -138,6 +141,10 @@ export function createOrderDraft({
     }
     const limit = dish.onSale === true ? Math.max(0, dish.availableQuantity ?? 0) : 0;
     const wanted = Number.isInteger(quantity) ? quantity : 0;
+    if (dish.onSale === true && limit === 0 && wanted > 0) {
+      state.notice = DISH_SHORTAGE_NOTICE;
+      return quantities.get(dish.dishId) ?? 0;
+    }
     const next = Math.max(0, Math.min(wanted, limit));
     prices.set(dish.dishId, dish.unitPriceFen ?? 0);
     limits.set(dish.dishId, limit);
@@ -146,7 +153,7 @@ export function createOrderDraft({
     } else {
       quantities.set(dish.dishId, next);
     }
-    state.notice = limit > 0 && next === limit ? '已达可售数量' : null;
+    state.notice = limit > 0 && next === limit ? DISH_LIMIT_TEXT : null;
     return next;
   }
 
@@ -194,16 +201,25 @@ export function createOrderDraft({
     state.status = 'submitting';
     state.error = null;
     const input = buildInput();
+    submission = {
+      requestId: input.requestId,
+      items: input.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
+      slotId: input.slotId,
+      diningMode: input.diningMode,
+    };
 
     inFlight = (async () => {
       try {
         const order = await source.createOrder(input);
         state.status = 'success';
         state.order = order;
+        submission = null;
         requestIds.complete();
         return order;
       } catch (error) {
-        state.status = error instanceof ApiError && error.code === 'TIMEOUT' ? 'timeout' : 'error';
+        const code = isApiError(error) ? error.code : '';
+        const pendingResult = code === 'TIMEOUT' || code === 'NETWORK_TIMEOUT' || code === 'INVALID_RESPONSE';
+        state.status = pendingResult ? 'timeout' : 'error';
         state.order = null;
         state.error = toSourceError(error);
         return null;
@@ -219,19 +235,34 @@ export function createOrderDraft({
     if (state.status !== 'timeout') {
       throw apiError('VALIDATION_ERROR', '当前没有待确认的结果。', false);
     }
-    const requestId = requestIds.current;
+    const requestId = submission?.requestId ?? requestIds.current;
     if (requestId === null) {
       throw apiError('VALIDATION_ERROR', '当前没有待确认的结果。', false);
     }
-    const order = await source.queryOrderResult(requestId);
-    state.status = 'success';
-    state.order = order;
-    requestIds.complete();
-    return order;
+    const input = submission
+      ? {
+          requestId,
+          items: submission.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
+          slotId: submission.slotId,
+          diningMode: submission.diningMode,
+        }
+      : { requestId };
+    try {
+      const order = await source.queryOrderResult(input);
+      state.status = 'success';
+      state.order = order;
+      submission = null;
+      requestIds.complete();
+      return order;
+    } catch (error) {
+      state.error = toSourceError(error);
+      throw error;
+    }
   }
 
   function resetSubmission(): void {
     requestIds.complete();
+    submission = null;
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -239,6 +270,7 @@ export function createOrderDraft({
 
   function startNewOrder(): void {
     requestIds.complete();
+    submission = null;
     quantities.clear();
     prices.clear();
     limits.clear();

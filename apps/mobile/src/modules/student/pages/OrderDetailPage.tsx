@@ -7,6 +7,7 @@ import { CANCEL_RULES, CHANGE_DINING_NOTE } from '../utils/orderDetailTexts';
 import { toOrderStatusView } from '../utils/orderStatusView';
 import DemoModeNotice from '../components/DemoModeNotice';
 import OrderCrowdNote from '../components/OrderCrowdNote';
+import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -70,7 +71,7 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
 
   return (
     <section className="student-page" aria-labelledby="student-order-title">
-      <SampleBanner />
+      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <button type="button" className="student-secondary student-back" onClick={onBack}>
         ← 返回菜单
@@ -203,7 +204,7 @@ export default function OrderDetailPage({ source, orderId, onBack }: OrderDetail
         </>
       ) : null}
 
-      <DemoModeNotice />
+      {source.mode === 'sample' ? <DemoModeNotice /> : null}
     </section>
   );
 }

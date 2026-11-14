@@ -3,8 +3,11 @@ import { DATES } from '../data/sampleData';
 import type { OrderDraft } from '../state/orderDraft';
 import type { DishDto, MenuResponse, StudentSource } from '../types';
 import { isApiError } from '../types';
+import { toDishView } from '../utils/dishView';
 import { formatYuan } from '../utils/money';
+import { DISH_LIMIT_TEXT } from '../utils/submitTexts';
 import DemoModeNotice from '../components/DemoModeNotice';
+import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -76,7 +79,7 @@ export default function MenuPage({
 
   return (
     <section className="student-page" aria-labelledby="student-menu-title">
-      <SampleBanner />
+      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <header className="student-page__head">
         <p className="student-kicker">S5 · 样例菜单与数量（可进入确认页）</p>
@@ -123,21 +126,35 @@ export default function MenuPage({
         <ul className="student-dish-list" aria-label={`${formatMonthDay(menu.date)} 样例菜品`}>
           {menu.dishes.map((dish) => {
             const quantity = snapshot.items.find((item) => item.dishId === dish.dishId)?.quantity ?? 0;
-            const limit = dish.onSale ? dish.availableQuantity : 0;
+            const view = toDishView(dish);
+            const limit = dish.onSale === true ? Math.max(0, dish.availableQuantity ?? 0) : 0;
+            const atLimit = view.kind === 'ON_SALE' && quantity >= limit;
             return (
-              <li key={dish.dishId} className={`student-dish${dish.onSale ? '' : ' is-off'}`}>
+              <li
+                key={dish.dishId}
+                className={`student-dish${
+                  view.kind === 'OFF_SALE' ? ' is-off' : view.kind === 'SHORTAGE' ? ' is-shortage' : ''
+                }`}
+              >
                 <div className="student-dish__body">
                   <p className="student-dish__name">{dish.name}</p>
-                  <p className="student-dish__meta">
-                    {dish.onSale ? `可售 ${dish.availableQuantity} 份` : '今日已停售'}
-                  </p>
-                  {dish.onSale && limit > 0 && quantity >= limit ? (
-                    <p className="student-dish__limit">已达可售数量</p>
-                  ) : null}
+                  {view.kind === 'SHORTAGE' ? (
+                    <button
+                      type="button"
+                      className="student-dish__shortage"
+                      aria-label={`${dish.name} ${view.metaText}，查看提示`}
+                      onClick={() => updateQuantity(dish, 1)}
+                    >
+                      {view.metaText}
+                    </button>
+                  ) : (
+                    <p className="student-dish__meta">{view.metaText}</p>
+                  )}
+                  {atLimit ? <p className="student-dish__limit">{DISH_LIMIT_TEXT}</p> : null}
                 </div>
                 <div className="student-dish__aside">
                   <span className="student-dish__price">{formatYuan(dish.unitPriceFen)}</span>
-                  {dish.onSale ? (
+                  {view.stepperVisible ? (
                     <div className="student-stepper" role="group" aria-label={`${dish.name} 数量`}>
                       <button
                         type="button"
@@ -155,7 +172,7 @@ export default function MenuPage({
                         type="button"
                         className="student-stepper__button"
                         aria-label={`增加 ${dish.name}`}
-                        disabled={quantity >= limit}
+                        disabled={atLimit}
                         onClick={() => updateQuantity(dish, quantity + 1)}
                       >
                         +
@@ -199,7 +216,7 @@ export default function MenuPage({
         </button>
       ) : null}
 
-      <DemoModeNotice />
+      {source.mode === 'sample' ? <DemoModeNotice /> : null}
     </section>
   );
 }

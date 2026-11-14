@@ -1,5 +1,15 @@
 import { createRequestId } from '../../../shared/requestId';
-import type { DiningMode, DraftItemInput } from '../types';
+import type { DiningMode, DraftItemInput, StudentMode } from '../types';
+
+const SAMPLE_PREFIX = 'demo-req';
+const REAL_PREFIX = 'stu-req';
+
+/**
+ * 实际 id 只由 shared createRequestId 生成；本函数只决定前缀。
+ */
+export function requestIdPrefixOf(mode: StudentMode): string {
+  return mode === 'real' ? REAL_PREFIX : SAMPLE_PREFIX;
+}
 
 export interface DraftFingerprintInput {
   date: string | null;
