@@ -335,6 +335,9 @@ export function createOrderPollingScheduler({
       if (disposed) {
         return;
       }
+      if (!visible) {
+        clearTimer();
+      }
       const next = reducePolling(state, { type: 'visibility', visible, now: now() });
       const resumed = next.phase === 'active' && next.inFlight;
       emit(next);
