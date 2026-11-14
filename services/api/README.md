@@ -60,7 +60,7 @@ cd services/api
 npm test
 ```
 
-2026-11-13 实际结果：**46 项通过、0 失败**（5 个测试文件，约 3.1 秒）。覆盖：
+2026-11-13 实际结果：**47 项通过、0 失败**（5 个测试文件，约 3.4 秒）。覆盖：
 
 - 未登录、错误密码、会话过期、退出登录；
 - 学生/档口/管理员角色边界与对象归属；
@@ -68,9 +68,10 @@ npm test
 - 同 requestId 重试、同键不同内容、库存/容量并发；
 - 状态跳步、版本冲突、核销一次性、重复核销；
 - 取消恢复规则（未制作恢复、已制作不恢复、重复取消不重复恢复）；
-- 取消申请批准/拒绝、取餐时结束待办申请；
+- 取消申请批准/拒绝、取餐时结束待办申请；学生申请理由与档口处理理由分字段保存；
+- READY 仍可缺货取消，不恢复已制作订单的库存/名额；
 - NEW 不允许延迟，接单后延迟可用；用餐方式修改理由持久化；
-- 档口订单列表状态筛选、分页且始终不暴露取餐码；
+- 档口订单列表状态筛选、非法状态拒绝、分页且始终不暴露取餐码；
 - 位置字段白名单（拒绝坐标）、10 分钟过期、24 小时清理、同 requestId 不延长；
 - 人数去重、外带/取消排除、未来隔离、OUTSIDE 排除、PICKUP 依据；
 - 管理端只读查询、配置版本冲突与阈值调整。
@@ -106,8 +107,9 @@ npm test
 完整字段和档口 6 条口径见 `contracts/API.md`。本实现与契约一致的关键点：
 
 - `GET /menu` 返回 `{ date, slots:[{id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled}], dishes:[{id,merchantId,name,priceFen,availableQuantity,onSale}] }`。
-- `GET /merchant/orders` 返回 `{ orders, page, pageSize, total }`，支持 `status`、`page`、`pageSize`；档口列表和详情的 `pickupCode` 始终为 null。
+- `GET /merchant/orders` 返回 `{ orders, page, pageSize, total }`，支持 `status`、`page`、`pageSize`；非法 status 返回 VALIDATION_ERROR；档口列表和详情的 `pickupCode` 始终为 null。
 - 订单新增 `diningModeReason`；PATCH dining-mode 的 reason 必填并持久化。
+- `cancelRequest` 含 `reason`（学生申请理由）与 `decisionReason`（档口处理理由）；拒绝或取餐结束申请不覆盖原申请理由。
 - NEW 不允许设置延迟；ACCEPTED/PREPARING/READY 才允许。
 - `GET /crowd` 的 `updatedAt/expiresAt` 为 +08:00 时间；`basis` 顺序为 `RESERVATION, LOCATION, PICKUP`。
 - `GET /admin/settings` 返回 `{ dining:{...,version}, crowd:{...,version} }`。
@@ -126,6 +128,6 @@ npm test
 
 ## 当前验证状态
 
-- 2026-11-13：`npm test` 46/46 通过（含 NEW 延迟拒绝、用餐方式理由持久化、档口列表分页与取餐码过滤）。
+- 2026-11-13：`npm test` 47/47 通过（含 NEW 延迟拒绝、用餐方式理由持久化、档口列表分页与取餐码过滤、READY 取消和取消处理理由分离）。
 - 2026-11-13：浏览器 `#/system-check` 实际保存 `http://127.0.0.1:8790/api/v1`、登录 `demo-student`、读取服务端食堂配置、定位无法判断时上报 UNKNOWN 成功（服务端返回 observedAt/expiresAt）。
 - 未完成：Android 真机 S2 联调（设备在联调前断开），两机下单/接单/核销，现场食堂边界校准。

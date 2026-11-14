@@ -2,7 +2,7 @@
   "_meta": {
     "contractVersion": "DRAFT v0.3",
     "fictional": true,
-    "implemented": false,
+    "implemented": true,
     "note": "字段按 DRAFT v0.3 联调候选更新；DEMO-572913 是跨端样例码，实际演示服务会生成 6 位数字并由学生在订单详情出示。"
   },
   "precondition": {
@@ -43,7 +43,8 @@
         "paymentStatus": "SIMULATED_PAID",
         "cancelRequest": {
           "status": "NONE",
-          "reason": null
+          "reason": null,
+          "decisionReason": null
         },
         "cancellationReason": null,
         "version": 5,
@@ -72,8 +73,8 @@
     }
   ],
   "pendingCancellationVariant": {
-    "before": { "status": "READY", "cancelRequest": { "status": "PENDING", "reason": "演示申请取消" } },
-    "afterSuccessfulVerification": { "status": "COMPLETED", "cancelRequest": { "status": "REJECTED", "reason": "订单已取餐" } },
+    "before": { "status": "READY", "cancelRequest": { "status": "PENDING", "reason": "演示申请取消", "decisionReason": null } },
+    "afterSuccessfulVerification": { "status": "COMPLETED", "cancelRequest": { "status": "REJECTED", "reason": "演示申请取消", "decisionReason": "订单已取餐" } },
     "note": "取餐完成与结束待处理申请必须在同一次操作内保存；此处只是预期示例。"
   }
 }
