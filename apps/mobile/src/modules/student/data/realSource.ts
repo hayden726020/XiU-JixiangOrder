@@ -5,11 +5,18 @@ import type {
   DemoScenario,
   MenuResponse,
   QueryOrderResultInput,
+  ShopSummary,
   StudentOrder,
   StudentSource,
 } from '../types';
-import { apiError } from '../types';
-import { mapCrowdResponse, mapMenuResponse, mapOrderResponse } from './fieldMapping';
+import { apiError, isApiError } from '../types';
+import {
+  mapCrowdResponse,
+  mapMenuResponse,
+  mapOrderResponse,
+  mapOrdersResponse,
+  mapShopListResponse,
+} from './fieldMapping';
 
 export type RealRequest = <T>(path: string, options?: ApiRequestOptions) => Promise<T>;
 
@@ -19,6 +26,11 @@ export interface RealSourceOptions {
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** 契约未定义 /menu 的 merchantId 过滤参数，确认前不加查询参数，客户端过滤。 */
+export const SHOP_FILTER_QUERY_ENABLED = false;
+
+const SHOP_LIST_UNAVAILABLE_CODES = new Set([404, 405, 501]);
 
 function defaultRequest<T>(path: string, options?: ApiRequestOptions): Promise<T> {
   return apiRequest<T>(path, options);
@@ -50,6 +62,18 @@ export function createRealStudentSource(options: RealSourceOptions = {}): Studen
 
   return {
     mode: 'real',
+
+    async listShops(): Promise<ShopSummary[]> {
+      try {
+        const payload = await request<unknown>('/merchants');
+        return mapShopListResponse(payload, { demo: false });
+      } catch (error) {
+        if (isApiError(error) && SHOP_LIST_UNAVAILABLE_CODES.has(error.status)) {
+          throw apiError('SHOP_LIST_UNAVAILABLE', '服务端未提供店铺列表。', true);
+        }
+        throw error;
+      }
+    },
 
     async getMenu(date: string): Promise<MenuResponse> {
       if (typeof date !== 'string' || !DATE_PATTERN.test(date)) {
@@ -97,6 +121,11 @@ export function createRealStudentSource(options: RealSourceOptions = {}): Studen
     async getOrder(id: string): Promise<StudentOrder> {
       const payload = await request<unknown>(`/orders/${encodeURIComponent(id)}`);
       return mapOrderResponse(payload, { demo: false, where: '订单响应' });
+    },
+
+    async listOrders(): Promise<StudentOrder[]> {
+      const payload = await request<unknown>('/orders');
+      return mapOrdersResponse(payload, { where: '订单列表' });
     },
 
     setScenario(): DemoScenario {

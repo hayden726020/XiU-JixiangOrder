@@ -11,6 +11,7 @@ import type {
   OrderItem,
   OrderStatus,
   PaymentStatus,
+  ShopSummary,
   SlotDto,
   StudentOrder,
 } from '../types';
@@ -26,6 +27,7 @@ import type {
  * | slots[].remainingCapacity | SlotDto.remainingCapacity（原样） |
  * | slots[].enabled | SlotDto.enabled（原样） |
  * | dishes[].id | DishDto.dishId |
+ * | dishes[].merchantId | DishDto.merchantId（必填） |
  * | dishes[].priceFen | DishDto.unitPriceFen |
  * | dishes[].name | DishDto.name（原样） |
  * | dishes[].availableQuantity | DishDto.availableQuantity（原样） |
@@ -44,6 +46,7 @@ export const MENU_FIELD_MAPPING = {
   },
   dishes: {
     id: 'dishId',
+    merchantId: 'merchantId',
     priceFen: 'unitPriceFen',
     name: 'name',
     availableQuantity: 'availableQuantity',
@@ -138,8 +141,13 @@ export function mapMenuResponse(payload: unknown): MenuResponse {
       invalidResponse(`菜单响应 dishes[${index}] 不是对象。`);
     }
     const where = `菜单响应 dishes[${index}]`;
+    const merchantId = entry.merchantId;
+    if (typeof merchantId !== 'string' || merchantId.trim() === '') {
+      invalidResponse('服务端未提供菜品所属店铺，无法按店铺展示。');
+    }
     return {
       dishId: requireText(entry, 'id', where),
+      merchantId,
       name: requireText(entry, 'name', where),
       unitPriceFen: requireCount(entry, 'priceFen', where),
       availableQuantity: requireCount(entry, 'availableQuantity', where),
@@ -169,6 +177,58 @@ export function mapMenuResponse(payload: unknown): MenuResponse {
     slots,
   };
 }
+export interface MapShopListOptions {
+  demo: boolean;
+}
+
+function readNullableText(record: Record<string, unknown>, field: string): string | null {
+  const value = record[field];
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+function readNullableBoolean(record: Record<string, unknown>, field: string): boolean | null {
+  const value = record[field];
+  return typeof value === 'boolean' ? value : null;
+}
+
+function readNullableInteger(record: Record<string, unknown>, field: string): number | null {
+  const value = record[field];
+  return typeof value === 'number' && Number.isInteger(value) ? value : null;
+}
+
+/**
+ * 店铺列表响应映射。契约 DRAFT v0.3 尚未定义该接口，形状为建议值，
+ * 兼容 { data: { merchants: [] } } 与 { merchants: [] }；契约确认后只改此处。
+ */
+export function mapShopListResponse(payload: unknown, { demo }: MapShopListOptions): ShopSummary[] {
+  if (!isRecord(payload)) {
+    invalidResponse('店铺列表响应不是对象。');
+  }
+  const container = isRecord(payload.data) ? payload.data : payload;
+  const merchants = container.merchants;
+  if (!Array.isArray(merchants)) {
+    invalidResponse('店铺列表响应缺少 merchants 数组。');
+  }
+  return merchants.map((entry, index): ShopSummary => {
+    if (!isRecord(entry)) {
+      invalidResponse(`店铺列表响应 merchants[${index}] 不是对象。`);
+    }
+    const where = `店铺列表响应 merchants[${index}]`;
+    return {
+      merchantId: requireText(entry, 'merchantId', where),
+      name: requireText(entry, 'name', where),
+      canteenId: readNullableText(entry, 'canteenId'),
+      orderable: readNullableBoolean(entry, 'orderable'),
+      demo,
+      sortOrder: readNullableInteger(entry, 'sortOrder'),
+    };
+  });
+}
+
 export const CROWD_FIELD_MAPPING = {
   direct: [
     'canteenId',
@@ -267,9 +327,13 @@ export const ORDER_RESPONSE_FIELDS = {
     'pickupCode',
   ],
   itemRequired: ['dishId', 'name', 'quantity', 'unitPriceFen'],
-  ignored: ['demo', 'diningModeReason', 'merchantId'],
-  note: '服务端订单响应无 demo 字段，demo 按数据来源注入；额外字段忽略不报错。',
+  ignored: ['demo', 'diningModeReason'],
+  optionalShop: ['merchantId', 'merchantName'],
+  note: '服务端订单响应无 demo 字段，demo 按数据来源注入；店铺字段过渡期可选解析，额外字段忽略不报错。',
 } as const;
+
+/** 契约确认订单店铺字段为必填后改为 true，并把读取改为 requireText。 */
+export const ORDER_SHOP_STRICT = false;
 
 const ORDER_STATUSES: OrderStatus[] = [
   'NEW',
@@ -376,6 +440,8 @@ export function mapOrderResponse(payload: unknown, options: MapOrderOptions): St
 
   return {
     id: requireText(payload, 'id', where),
+    merchantId: readNullableText(payload, 'merchantId'),
+    merchantName: readNullableText(payload, 'merchantName'),
     items,
     slotId: requireText(payload, 'slotId', where),
     slotStart: requireText(payload, 'slotStart', where),
@@ -397,4 +463,28 @@ export function mapOrderResponse(payload: unknown, options: MapOrderOptions): St
     pickupCode: requireNullableText(payload, 'pickupCode', where),
     demo: options.demo,
   };
+}
+export interface MapOrdersOptions {
+  where?: string;
+}
+
+/**
+ * 把学生订单列表响应映射为 StudentOrder[]，逐项复用 mapOrderResponse。
+ * 不排序、不去重、不截断；任一元素非法则整体按 INVALID_RESPONSE 失败。
+ */
+export function mapOrdersResponse(
+  payload: unknown,
+  options: MapOrdersOptions = {},
+): StudentOrder[] {
+  if (!isRecord(payload)) {
+    invalidResponse('订单列表响应不是对象。');
+  }
+  const where = options.where ?? '订单列表';
+  const orders = payload.orders;
+  if (!Array.isArray(orders)) {
+    invalidResponse(`${where} 缺少 orders 数组。`);
+  }
+  return orders.map((entry, index) =>
+    mapOrderResponse(entry, { demo: false, where: `${where} orders[${index}]` }),
+  );
 }

@@ -7,6 +7,7 @@ import type {
   StudentOrder,
 } from '../types';
 import { formatYuan } from './money';
+import { toOrderShopView, type OrderShopView } from './orderShopView';
 
 const STEPS = ['已下单', '已接单', '制作中', '可取餐', '已完成'];
 
@@ -57,12 +58,14 @@ export interface OrderStatusView {
   activeIndex: number;
   steps: TimelineStepView[];
   orderId: string;
+  shop: OrderShopView;
   items: OrderItemView[];
   totalText: string;
   slotRangeText: string;
   diningMode: DiningMode;
   diningModeText: string;
   createdText: string;
+  updatedText: string;
   pickedUpText: string;
   cancelText: string;
   delayText: string;
@@ -138,6 +141,7 @@ export function toOrderStatusView(
   }));
 
   const createdAt = parseShanghai(order.createdAt);
+  const updatedAt = parseShanghai(order.updatedAt);
   const pickedUp = parseShanghai(order.pickedUpAt);
   const expectedReadyAt = parseShanghai(order.delay?.expectedReadyAt);
   const delay =
@@ -151,6 +155,7 @@ export function toOrderStatusView(
     activeIndex,
     steps,
     orderId: order.id,
+    shop: toOrderShopView(order, mode),
     items: (order.items ?? []).map((item: OrderItem) => ({
       name: item.name,
       quantity: item.quantity,
@@ -162,6 +167,7 @@ export function toOrderStatusView(
     diningMode: order.diningMode,
     diningModeText: DINING_MODE_TEXT[order.diningMode] ?? '',
     createdText: createdAt ? `${createdAt.month}月${createdAt.day}日 ${createdAt.time}` : '',
+    updatedText: updatedAt ? `${updatedAt.month}月${updatedAt.day}日 ${updatedAt.time}` : '',
     pickedUpText: pickedUp ? `取餐时间：${pickedUp.month}月${pickedUp.day}日 ${pickedUp.time}` : '',
     cancelText: cancelled ? `已取消：${order.cancellationReason ?? '未提供原因'}` : '',
     delayText: delay,

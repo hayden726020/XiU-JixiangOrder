@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 
-import { createPresenceAdapter } from '../data/presenceAdapter';
-import type { OrderDraft } from '../state/orderDraft';
-import {
-  createPresenceController,
-  type PresenceState,
-} from '../state/locationController';
+import { getPresenceRuntime, type PresenceState } from '../state/presenceRuntime';
+import { derivePresenceView } from '../utils/presenceView';
 import { createSlotRequestGuard, type SlotGuardState } from '../state/slotGuard';
-import type { DiningMode, MenuResponse, SlotDto, StudentSource } from '../types';
+import type { OrderDraft } from '../state/orderDraft';
+import type { DiningMode, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
 import { EMPTY_SLOTS_TEXT } from '../utils/submitTexts';
+import { filterDishesByShop } from '../utils/dishShopFilter';
+import { CURRENT_SHOP_PREFIX, DEMO_DATA_LABEL } from '../utils/shopTexts';
 import { toSourceErrorView } from '../utils/sourceErrorView';
 import { formatSlotRange, toSlotView } from '../utils/slotView';
 import CrowdHint from '../components/CrowdHint';
@@ -39,6 +38,7 @@ function dateLabel(date: string, dates: string[]): string {
 export interface SlotDiningPageProps {
   source: StudentSource;
   draft: OrderDraft;
+  shop: ShopSummary;
   onBack: () => void;
   onConfirm: () => void;
 }
@@ -46,6 +46,7 @@ export interface SlotDiningPageProps {
 export default function SlotDiningPage({
   source,
   draft,
+  shop,
   onBack,
   onConfirm,
 }: SlotDiningPageProps) {
@@ -58,10 +59,10 @@ export default function SlotDiningPage({
     createSlotRequestGuard({ fetchCrowd: (slotId) => source.getCrowd(slotId) }),
   );
   const [crowd, setCrowd] = useState<SlotGuardState>(() => guard.getState());
-  const [presenceController] = useState(() =>
-    createPresenceController({ adapter: createPresenceAdapter({ mode: source.mode }) }),
+  const [presenceRuntime] = useState(() =>
+    getPresenceRuntime(source.mode === 'real' ? 'real' : 'sample'),
   );
-  const [presence, setPresence] = useState<PresenceState>(() => presenceController.getState());
+  const [presence, setPresence] = useState<PresenceState>(() => presenceRuntime.getState());
   const date = snapshot.date;
 
   async function requestCrowd(slotId: string): Promise<void> {
@@ -80,33 +81,30 @@ export default function SlotDiningPage({
     }
   }, []);
 
+  useEffect(() => presenceRuntime.subscribe(setPresence), [presenceRuntime]);
+
   useEffect(() => {
-    let active = true;
-    void presenceController.startAuto().then((next) => {
-      if (active) {
-        setPresence(next);
-      }
-    });
+    void presenceRuntime.enter();
     return () => {
-      active = false;
-      presenceController.dispose();
+      presenceRuntime.leave();
     };
-  }, [presenceController]);
+  }, [presenceRuntime]);
 
   useEffect(() => {
     let cancelled = false;
+    const token = draft.beginMenuRead();
     setStatus('loading');
     setErrorText('');
     source.getMenu(date).then(
       (data) => {
-        if (!cancelled) {
+        if (!cancelled && draft.isMenuReadCurrent(token)) {
           setMenu(data);
           setStatus('ready');
-          draft.applyDishCatalog(data.dishes);
+          draft.applyDishCatalog(filterDishesByShop(data.dishes, shop.merchantId));
         }
       },
       (error: unknown) => {
-        if (!cancelled) {
+        if (!cancelled && draft.isMenuReadCurrent(token)) {
           setMenu(null);
           setStatus('error');
           setErrorText(toSourceErrorView(error));
@@ -116,7 +114,7 @@ export default function SlotDiningPage({
     return () => {
       cancelled = true;
     };
-  }, [source, date, reloadToken]);
+  }, [source, draft, shop.merchantId, date, reloadToken]);
 
   function selectSlot(slot: SlotDto): void {
     if (!toSlotView(slot).selectable) {
@@ -133,11 +131,15 @@ export default function SlotDiningPage({
   }
 
   function retryPresence(): void {
-    void presenceController.retry().then(setPresence);
+    void presenceRuntime.locate();
+  }
+
+  function retryPresenceSync(): void {
+    void presenceRuntime.retrySync();
   }
 
   function clearPresenceRecord(): void {
-    void presenceController.clear().then(setPresence);
+    void presenceRuntime.clear();
   }
 
   const selectedNames = menu
@@ -170,6 +172,14 @@ export default function SlotDiningPage({
       <button type="button" className="student-secondary student-back" onClick={onBack}>
         ← 返回菜单
       </button>
+
+      <p
+        className="student-shop-title"
+        data-shop-demo={source.mode === 'sample' ? 'true' : 'false'}
+      >
+        {CURRENT_SHOP_PREFIX}：{shop.name}
+        {source.mode === 'sample' ? ` · ${DEMO_DATA_LABEL}` : ''}
+      </p>
 
       <header className="student-page__head">
         <p className="student-kicker">
@@ -272,9 +282,10 @@ export default function SlotDiningPage({
       />
 
       <LocationNote
-        state={presence}
+        view={derivePresenceView(presence, source.mode === 'real' ? 'real' : 'sample')}
         mode={source.mode === 'real' ? 'real' : 'sample'}
         onRetry={retryPresence}
+        onRetrySync={retryPresenceSync}
         onClear={clearPresenceRecord}
       />
 

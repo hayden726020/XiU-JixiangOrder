@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react';
 import type { OrderDraft } from '../state/orderDraft';
-import type { DishDto, MenuResponse, StudentSource } from '../types';
+import type { DishDto, MenuResponse, ShopSummary, StudentSource } from '../types';
+import { SAMPLE_ONLY_DISH_IDS } from '../data/sampleData';
+import { filterDishesByShop } from '../utils/dishShopFilter';
 import { toDishView } from '../utils/dishView';
 import { formatYuan } from '../utils/money';
 import { toSourceErrorView } from '../utils/sourceErrorView';
 import { DISH_LIMIT_TEXT } from '../utils/submitTexts';
+import {
+  CURRENT_SHOP_PREFIX,
+  DEMO_DATA_LABEL,
+  EMPTY_SHOP_MENU,
+  SAMPLE_ONLY_LABEL,
+  SHOP_SWITCH_BUSY,
+} from '../utils/shopTexts';
 import DemoModeNotice from '../components/DemoModeNotice';
 import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
@@ -21,15 +30,21 @@ function formatMonthDay(date: string): string {
 export interface MenuPageProps {
   source: StudentSource;
   draft: OrderDraft;
+  shop: ShopSummary;
+  onBackToShops: () => void;
   onProceed: () => void;
   onViewSampleOrder: () => void;
+  onOpenOrders: () => void;
 }
 
 export default function MenuPage({
   source,
   draft,
+  shop,
+  onBackToShops,
   onProceed,
   onViewSampleOrder,
+  onOpenOrders,
 }: MenuPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
@@ -37,31 +52,35 @@ export default function MenuPage({
   const [errorText, setErrorText] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const date = snapshot.date;
+  const shopRole = source.mode === 'sample' ? DEMO_DATA_LABEL : '公共服务';
 
   useEffect(() => {
     let cancelled = false;
+    const token = draft.beginMenuRead();
     setStatus('loading');
     setErrorText('');
     source.getMenu(date).then(
       (data) => {
-        if (!cancelled) {
-          setMenu(data);
-          setStatus('ready');
-          draft.applyDishCatalog(data.dishes);
+        if (cancelled || !draft.isMenuReadCurrent(token)) {
+          return;
         }
+        setMenu(data);
+        setStatus('ready');
+        draft.applyDishCatalog(filterDishesByShop(data.dishes, shop.merchantId));
       },
       (error: unknown) => {
-        if (!cancelled) {
-          setMenu(null);
-          setStatus('error');
-          setErrorText(toSourceErrorView(error));
+        if (cancelled || !draft.isMenuReadCurrent(token)) {
+          return;
         }
+        setMenu(null);
+        setStatus('error');
+        setErrorText(toSourceErrorView(error));
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [source, date, reloadToken]);
+  }, [source, draft, shop.merchantId, date, reloadToken]);
 
   function changeDate(next: string): void {
     if (!draft.setDate(next)) {
@@ -77,9 +96,35 @@ export default function MenuPage({
     setSnapshot(draft.getState());
   }
 
+  const canSwitchShop = draft.canSetShop();
+  const shopDishes = menu ? filterDishesByShop(menu.dishes, shop.merchantId) : [];
+  const canProceed = snapshot.canProceedToSlot;
+
   return (
     <section className="student-page" aria-labelledby="student-menu-title">
       {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
+
+      <button
+        type="button"
+        className="student-secondary student-back"
+        disabled={!canSwitchShop}
+        onClick={onBackToShops}
+      >
+        ← 返回店铺选择
+      </button>
+      {!canSwitchShop ? (
+        <p className="student-order-note" role="status">
+          {SHOP_SWITCH_BUSY}
+        </p>
+      ) : null}
+
+      <p
+        className="student-shop-title"
+        data-shop-demo={source.mode === 'sample' ? 'true' : 'false'}
+      >
+        {CURRENT_SHOP_PREFIX}：{shop.name}
+        {source.mode === 'sample' ? ` · ${DEMO_DATA_LABEL}` : ''}
+      </p>
 
       <header className="student-page__head">
         <p className="student-kicker">
@@ -88,10 +133,19 @@ export default function MenuPage({
         <h2 id="student-menu-title">学生点餐</h2>
         <p className="student-page__lead">
           {source.mode === 'real'
-            ? '菜品、价格与可售数量来自公共服务；金额以下单结果为准。'
-            : '样例菜单可调整数量，全部数据来自模块内样例源。'}
+            ? `菜品、价格与可售数量来自${shopRole}；金额以下单结果为准。`
+            : `样例菜单可调整数量，全部数据来自模块内样例源；当前只显示${shop.name}的菜。`}
         </p>
       </header>
+
+      {source.mode === 'real' ? (
+        <section className="student-order-entry" aria-label="我的订单入口">
+          <button type="button" className="student-secondary" onClick={onOpenOrders}>
+            我的订单
+          </button>
+          <p className="student-order-entry__hint">查看本人在公共服务的订单，只读</p>
+        </section>
+      ) : null}
 
       <div className="student-date-switch" role="group" aria-label="选择菜单日期">
         {snapshot.allowedDates.map((item, index) => (
@@ -132,25 +186,39 @@ export default function MenuPage({
         <p className="student-loading">暂无菜单信息，请稍后重试</p>
       ) : null}
 
-      {status === 'ready' && menu && menu.dishes.length > 0 ? (
+      {status === 'ready' && menu && menu.dishes.length > 0 && shopDishes.length === 0 ? (
+        <p className="student-loading">{EMPTY_SHOP_MENU}</p>
+      ) : null}
+
+      {status === 'ready' && shopDishes.length > 0 ? (
         <ul
           className="student-dish-list"
-          aria-label={`${formatMonthDay(menu.date)} ${source.mode === 'real' ? '菜品' : '样例菜品'}`}
+          aria-label={`${formatMonthDay(menu?.date ?? date)} ${
+            source.mode === 'real' ? '菜品' : '样例菜品'
+          }`}
         >
-          {menu.dishes.map((dish) => {
+          {shopDishes.map((dish) => {
             const quantity = snapshot.items.find((item) => item.dishId === dish.dishId)?.quantity ?? 0;
             const view = toDishView(dish);
             const limit = dish.onSale === true ? Math.max(0, dish.availableQuantity ?? 0) : 0;
             const atLimit = view.kind === 'ON_SALE' && quantity >= limit;
+            const sampleOnly = source.mode === 'sample' && SAMPLE_ONLY_DISH_IDS.includes(dish.dishId);
             return (
               <li
                 key={dish.dishId}
+                data-dish-id={dish.dishId}
+                data-merchant-id={dish.merchantId}
                 className={`student-dish${
                   view.kind === 'OFF_SALE' ? ' is-off' : view.kind === 'SHORTAGE' ? ' is-shortage' : ''
                 }`}
               >
                 <div className="student-dish__body">
-                  <p className="student-dish__name">{dish.name}</p>
+                  <p className="student-dish__name">
+                    {dish.name}
+                    {sampleOnly ? (
+                      <span className="student-sample-only">{SAMPLE_ONLY_LABEL}</span>
+                    ) : null}
+                  </p>
                   {view.kind === 'SHORTAGE' ? (
                     <button
                       type="button"
@@ -209,13 +277,13 @@ export default function MenuPage({
         <button
           type="button"
           className="student-primary"
-          disabled={!snapshot.canProceedToSlot}
+          disabled={!canProceed}
           onClick={onProceed}
         >
           下一步：选择时段
         </button>
         <p className="student-summary__hint">
-          {snapshot.canProceedToSlot ? '已选内容会带入时段页。' : '请先选择菜品'}
+          {canProceed ? '已选内容会带入时段页。' : '请先选择菜品'}
         </p>
       </footer>
 

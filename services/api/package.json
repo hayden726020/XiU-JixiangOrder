@@ -9,6 +9,6 @@
   "scripts": {
     "start": "node src/server.mjs",
     "dev": "node --watch src/server.mjs",
-    "test": "node --test test/auth.test.mjs test/orders.test.mjs test/menu.test.mjs test/flow.test.mjs test/location.test.mjs test/admin.test.mjs"
+    "test": "node --test test/auth.test.mjs test/orders.test.mjs test/menu.test.mjs test/flow.test.mjs test/location.test.mjs test/admin.test.mjs test/onboarding.test.mjs test/merchants.test.mjs"
   }
 }

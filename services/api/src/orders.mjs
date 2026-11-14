@@ -88,6 +88,8 @@ export function serializeOrder(db, row, user) {
     row.picked_up_at === null;
   return {
     id: row.id,
+    merchantId: row.merchant_id,
+    merchantName: row.merchant_name ?? null,
     items,
     slotId: row.slot_id,
     slotStart: toShanghaiIso(db.prepare('SELECT start_at FROM slots WHERE id = ?').get(row.slot_id).start_at),
@@ -263,13 +265,14 @@ export function createOrder({ db, clock, user, body }) {
 
       const totalFen = dishes.reduce((sum, { dish, quantity }) => sum + dish.price_fen * quantity, 0);
       const orderId = newId('ord');
+      const merchant = db.prepare('SELECT name FROM merchants WHERE id = ?').get(merchantId);
       db.prepare(
         `INSERT INTO orders
-         (id, student_id, merchant_id, slot_id, dining_mode, total_fen, status, payment_status, version,
+         (id, student_id, merchant_id, merchant_name, slot_id, dining_mode, total_fen, status, payment_status, version,
           pickup_code, picked_up_at, cancellation_reason, cancel_status, cancel_reason,
           delay_reason, delay_expected_ready_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'NEW', 'SIMULATED_PAID', 1, NULL, NULL, NULL, 'NONE', NULL, NULL, NULL, ?, ?)`,
-      ).run(orderId, user.id, merchantId, slot.id, diningMode, totalFen, now, now);
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'NEW', 'SIMULATED_PAID', 1, NULL, NULL, NULL, 'NONE', NULL, NULL, NULL, ?, ?)`,
+      ).run(orderId, user.id, merchantId, merchant?.name ?? null, slot.id, diningMode, totalFen, now, now);
 
       const insertItem = db.prepare(
         `INSERT INTO order_items (order_id, dish_id, name, quantity, unit_price_fen, merchant_id)
@@ -688,6 +691,7 @@ export function listMenu({ db, clock, query }) {
     .map((dish) => ({
       id: dish.id,
       merchantId: dish.merchant_id,
+      type: dish.type,
       name: dish.name,
       priceFen: dish.price_fen,
       availableQuantity: dish.available_quantity,

@@ -31,9 +31,9 @@ export const DEMO_MERCHANTS = [
 ];
 
 export const DEMO_DISHES = [
-  { id: 'demo-dish-01', merchantId: 'demo-merchant-01', name: '演示鸡肉饭', priceFen: 1800, quantity: 20 },
-  { id: 'demo-dish-02', merchantId: 'demo-merchant-02', name: '演示素面', priceFen: 1200, quantity: 15 },
-  { id: 'demo-dish-03', merchantId: 'demo-merchant-01', name: '演示套餐', priceFen: 2200, quantity: 8 },
+  { id: 'demo-dish-01', merchantId: 'demo-merchant-01', type: 'STAPLE', name: '演示鸡肉饭', priceFen: 1800, quantity: 20 },
+  { id: 'demo-dish-02', merchantId: 'demo-merchant-02', type: 'STAPLE', name: '演示素面', priceFen: 1200, quantity: 15 },
+  { id: 'demo-dish-03', merchantId: 'demo-merchant-01', type: 'SET', name: '演示套餐', priceFen: 2200, quantity: 8 },
 ];
 
 // 契约 2026-11-13 冻结：午餐固定 3 个时段，12:30—13:00 样例为已满。
@@ -68,12 +68,28 @@ CREATE TABLE IF NOT EXISTS merchants (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   open_at TEXT NOT NULL,
-  close_at TEXT NOT NULL
+  close_at TEXT NOT NULL,
+  contact_name TEXT,
+  contact_phone TEXT,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'DISABLED')),
+  created_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS shops (
+  id TEXT PRIMARY KEY,
+  merchant_id TEXT NOT NULL UNIQUE REFERENCES merchants(id),
+  name TEXT NOT NULL,
+  location TEXT NOT NULL,
+  description TEXT,
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS dishes (
   id TEXT PRIMARY KEY,
   merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  type TEXT NOT NULL DEFAULT 'STAPLE' CHECK (type IN ('STAPLE', 'SNACK', 'DRINK', 'SET')),
   name TEXT NOT NULL,
   price_fen INTEGER NOT NULL CHECK (price_fen >= 0),
   available_quantity INTEGER NOT NULL CHECK (available_quantity >= 0),
@@ -96,6 +112,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   student_id TEXT NOT NULL,
   merchant_id TEXT NOT NULL,
+  merchant_name TEXT,
   slot_id TEXT NOT NULL REFERENCES slots(id),
   dining_mode TEXT NOT NULL CHECK (dining_mode IN ('DINE_IN', 'TAKEAWAY')),
   dining_mode_reason TEXT,
@@ -166,6 +183,26 @@ export function createDatabase(path = ':memory:') {
   if (!orderColumns.some((column) => column.name === 'cancel_decision_reason')) {
     db.exec('ALTER TABLE orders ADD COLUMN cancel_decision_reason TEXT;');
   }
+  if (!orderColumns.some((column) => column.name === 'merchant_name')) {
+    db.exec('ALTER TABLE orders ADD COLUMN merchant_name TEXT;');
+  }
+  const merchantColumns = db.prepare('PRAGMA table_info(merchants)').all();
+  if (!merchantColumns.some((column) => column.name === 'contact_name')) {
+    db.exec('ALTER TABLE merchants ADD COLUMN contact_name TEXT;');
+  }
+  if (!merchantColumns.some((column) => column.name === 'contact_phone')) {
+    db.exec('ALTER TABLE merchants ADD COLUMN contact_phone TEXT;');
+  }
+  if (!merchantColumns.some((column) => column.name === 'status')) {
+    db.exec("ALTER TABLE merchants ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE';");
+  }
+  if (!merchantColumns.some((column) => column.name === 'created_at')) {
+    db.exec('ALTER TABLE merchants ADD COLUMN created_at INTEGER;');
+  }
+  const dishColumns = db.prepare('PRAGMA table_info(dishes)').all();
+  if (!dishColumns.some((column) => column.name === 'type')) {
+    db.exec("ALTER TABLE dishes ADD COLUMN type TEXT NOT NULL DEFAULT 'STAPLE';");
+  }
   return db;
 }
 
@@ -220,11 +257,11 @@ export function seedDemoData(db, { now, passwords }) {
 
   const insertDish = db.prepare(
     `INSERT OR IGNORE INTO dishes
-     (id, merchant_id, name, price_fen, available_quantity, on_sale, version)
-     VALUES (?, ?, ?, ?, ?, 1, 1)`,
+     (id, merchant_id, type, name, price_fen, available_quantity, on_sale, version)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1)`,
   );
   for (const dish of DEMO_DISHES) {
-    insertDish.run(dish.id, dish.merchantId, dish.name, dish.priceFen, dish.quantity);
+    insertDish.run(dish.id, dish.merchantId, dish.type, dish.name, dish.priceFen, dish.quantity);
   }
 
   const insertSlot = db.prepare(
