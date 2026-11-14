@@ -2,11 +2,13 @@ import { ApiError, apiRequest } from '../../../shared/apiClient';
 import { getSession } from '../../../shared/session';
 import { sampleMenu, sampleOrders, sampleSlots } from './sampleData';
 import type {
+  Dish,
   MenuDay,
   MerchantOrder,
   MerchantScenario,
   MerchantSource,
   OrderPage,
+  Slot,
   SlotDay,
   SourceResult,
 } from './types';
@@ -18,6 +20,7 @@ interface ApiDish {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  version?: number;
 }
 
 interface ApiSlot {
@@ -29,6 +32,7 @@ interface ApiSlot {
   booked: number;
   remainingCapacity: number;
   enabled: boolean;
+  version?: number;
 }
 
 interface ApiMenu {
@@ -101,27 +105,23 @@ function normalizePageSize(pageSize?: number): number {
   return Math.min(MAX_PAGE_SIZE, Math.trunc(pageSize));
 }
 
-function mapMenu(payload: ApiMenu, merchantId: string): SourceResult<MenuDay> {
-  if (!Array.isArray(payload.dishes) || !Array.isArray(payload.slots) || typeof payload.date !== 'string') {
-    return fail('INVALID_RESPONSE', '菜单响应缺少 date/slots/dishes。');
-  }
-  const dishes = payload.dishes
-    .filter((dish) => dish.merchantId === merchantId)
-    .map((dish) => ({
-      dishId: dish.id,
-      name: dish.name,
-      unitPriceFen: dish.priceFen,
-      availableQuantity: dish.availableQuantity,
-      onSale: dish.onSale,
-    }));
-  return { ok: true, data: { date: payload.date, demo: false, dishes } };
+function apiVersion(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function mapSlots(payload: ApiMenu): SourceResult<SlotDay> {
-  if (!Array.isArray(payload.slots) || typeof payload.date !== 'string') {
-    return fail('INVALID_RESPONSE', '菜单响应缺少 date/slots。');
-  }
-  const slots = payload.slots.map((slot) => ({
+function mapDish(dish: ApiDish): Dish {
+  return {
+    dishId: dish.id,
+    name: dish.name,
+    unitPriceFen: dish.priceFen,
+    availableQuantity: dish.availableQuantity,
+    onSale: dish.onSale,
+    version: apiVersion(dish.version),
+  };
+}
+
+function mapSlot(slot: ApiSlot): Slot {
+  return {
     slotId: slot.id,
     slotStart: slot.startAt,
     slotEnd: slot.endAt,
@@ -130,8 +130,25 @@ function mapSlots(payload: ApiMenu): SourceResult<SlotDay> {
     remaining: slot.remainingCapacity,
     enabled: slot.enabled,
     full: slot.remainingCapacity <= 0,
-  }));
-  return { ok: true, data: { date: payload.date, demo: false, slots } };
+    version: apiVersion(slot.version),
+  };
+}
+
+function mapMenu(payload: ApiMenu, merchantId: string): SourceResult<MenuDay> {
+  if (!Array.isArray(payload.dishes) || !Array.isArray(payload.slots) || typeof payload.date !== 'string') {
+    return fail('INVALID_RESPONSE', '菜单响应缺少 date/slots/dishes。');
+  }
+  const dishes = payload.dishes
+    .filter((dish) => dish.merchantId === merchantId)
+    .map((dish) => mapDish(dish));
+  return { ok: true, data: { date: payload.date, demo: false, dishes } };
+}
+
+function mapSlots(payload: ApiMenu): SourceResult<SlotDay> {
+  if (!Array.isArray(payload.slots) || typeof payload.date !== 'string') {
+    return fail('INVALID_RESPONSE', '菜单响应缺少 date/slots。');
+  }
+  return { ok: true, data: { date: payload.date, demo: false, slots: payload.slots.map((slot) => mapSlot(slot)) } };
 }
 
 function mapOrder(order: ApiOrder): MerchantOrder {
@@ -334,6 +351,63 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         'PATCH',
       );
     },
+    updateDish: async (_date, dishId, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      if (input.expectedVersion === null || !Number.isFinite(input.expectedVersion)) {
+        return fail(
+          'MENU_VERSION_MISSING',
+          '服务端 GET /menu 未返回菜品 version，暂不能安全保存；已记录给后端补字段。',
+        );
+      }
+      try {
+        const data = await apiRequest<ApiDish>(`/merchant/menu/${encodeURIComponent(dishId)}`, {
+          method: 'PUT',
+          body: {
+            requestId: input.requestId,
+            expectedVersion: input.expectedVersion,
+            priceFen: input.priceFen,
+            availableQuantity: input.availableQuantity,
+            onSale: input.onSale,
+          },
+        });
+        if (typeof data.id !== 'string') {
+          return fail('INVALID_RESPONSE', '菜品保存响应缺少 id。');
+        }
+        return { ok: true, data: mapDish(data) };
+      } catch (error) {
+        return toFailure(error, '菜品保存失败，请重新读取菜单后重试。');
+      }
+    },
+    updateSlot: async (_date, slotId, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
+      }
+      if (input.expectedVersion === null || !Number.isFinite(input.expectedVersion)) {
+        return fail(
+          'MENU_VERSION_MISSING',
+          '服务端 GET /menu 未返回时段 version，暂不能安全保存；已记录给后端补字段。',
+        );
+      }
+      try {
+        const data = await apiRequest<ApiSlot>(`/merchant/slots/${encodeURIComponent(slotId)}`, {
+          method: 'PUT',
+          body: {
+            requestId: input.requestId,
+            expectedVersion: input.expectedVersion,
+            capacity: input.capacity,
+            enabled: input.enabled,
+          },
+        });
+        if (typeof data.id !== 'string' || typeof data.startAt !== 'string') {
+          return fail('INVALID_RESPONSE', '时段保存响应缺少 id 或 startAt。');
+        }
+        return { ok: true, data: mapSlot(data) };
+      } catch (error) {
+        return toFailure(error, '时段保存失败，请重新读取菜单后重试。');
+      }
+    },
   };
 }
 
@@ -349,6 +423,8 @@ export function createMerchantSource(options: {
   }
 
   const orders = sampleOrders(scenario);
+  const dishWrites = new Map<string, { priceFen: number; availableQuantity: number; onSale: boolean; version: number }>();
+  const slotWrites = new Map<string, { capacity: number; enabled: boolean; version: number }>();
 
   return {
     mode: 'sample',
@@ -375,12 +451,27 @@ export function createMerchantSource(options: {
     getMenu: async (date: string): Promise<SourceResult<MenuDay>> => {
       const menu = sampleMenu(date);
       if (!menu) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
-      return { ok: true, data: menu };
+      const dishes = menu.dishes.map((dish) => {
+        const override = dishWrites.get(`${date}:${dish.dishId}`);
+        if (!override) return dish;
+        return {
+          ...dish,
+          unitPriceFen: override.priceFen,
+          availableQuantity: override.availableQuantity,
+          onSale: override.onSale,
+          version: override.version,
+        };
+      });
+      return { ok: true, data: { ...menu, dishes } };
     },
     getSlots: async (date: string): Promise<SourceResult<SlotDay>> => {
-      const slots = sampleSlots(date);
-      if (!slots) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
-      return { ok: true, data: slots };
+      const day = sampleSlots(date);
+      if (!day) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
+      const slots = day.slots.map((slot) => {
+        const override = slotWrites.get(slot.slotId);
+        return override ? { ...slot, ...override } : slot;
+      });
+      return { ok: true, data: { ...day, slots } };
     },
     advanceOrder: async (): Promise<SourceResult<MerchantOrder>> => (
       fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
@@ -400,5 +491,67 @@ export function createMerchantSource(options: {
     changeDiningMode: async (): Promise<SourceResult<MerchantOrder>> => (
       fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
     ),
+    updateDish: async (date, dishId, input): Promise<SourceResult<Dish>> => {
+      const menu = sampleMenu(date);
+      const base = menu?.dishes.find((dish) => dish.dishId === dishId);
+      if (!base) return fail('DISH_NOT_FOUND', '菜品不存在或不属于当前样例日期。');
+      const key = `${date}:${dishId}`;
+      const override = dishWrites.get(key);
+      const current: Dish = override
+        ? {
+          ...base,
+          unitPriceFen: override.priceFen,
+          availableQuantity: override.availableQuantity,
+          onSale: override.onSale,
+          version: override.version,
+        }
+        : base;
+      const version = current.version ?? 1;
+      if (input.expectedVersion === null || input.expectedVersion !== version) {
+        return fail('ORDER_VERSION_CONFLICT', '菜品已在其他操作中更新，请重新读取菜单后再保存。');
+      }
+      const updated: Dish = {
+        ...current,
+        unitPriceFen: input.priceFen,
+        availableQuantity: input.availableQuantity,
+        onSale: input.onSale,
+        version: version + 1,
+      };
+      dishWrites.set(key, {
+        priceFen: updated.unitPriceFen,
+        availableQuantity: updated.availableQuantity,
+        onSale: updated.onSale,
+        version: updated.version ?? version + 1,
+      });
+      return { ok: true, data: updated };
+    },
+    updateSlot: async (date, slotId, input): Promise<SourceResult<Slot>> => {
+      const day = sampleSlots(date);
+      const base = day?.slots.find((slot) => slot.slotId === slotId);
+      if (!base) return fail('SLOT_NOT_FOUND', '时段不存在或不属于当前样例日期。');
+      const current = { ...base, ...(slotWrites.get(slotId) ?? {}) };
+      const version = current.version ?? 1;
+      if (input.expectedVersion === null || input.expectedVersion !== version) {
+        return fail('ORDER_VERSION_CONFLICT', '时段已在其他操作中更新，请重新读取菜单后再保存。');
+      }
+      if (input.capacity < current.occupied) {
+        return fail('INVALID_ORDER_STATE', '容量不能低于已占用名额。');
+      }
+      const remaining = Math.max(input.capacity - current.occupied, 0);
+      const updated: Slot = {
+        ...current,
+        capacity: input.capacity,
+        enabled: input.enabled,
+        remaining,
+        full: remaining <= 0,
+        version: version + 1,
+      };
+      slotWrites.set(slotId, {
+        capacity: updated.capacity,
+        enabled: updated.enabled,
+        version: updated.version ?? version + 1,
+      });
+      return { ok: true, data: updated };
+    },
   };
 }

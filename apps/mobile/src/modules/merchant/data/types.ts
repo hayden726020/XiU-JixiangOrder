@@ -54,6 +54,7 @@ export interface Dish {
   unitPriceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  version: number | null;
 }
 
 export interface MenuDay {
@@ -71,6 +72,7 @@ export interface Slot {
   remaining: number;
   enabled: boolean;
   full: boolean;
+  version: number | null;
 }
 
 export interface SlotDay {
@@ -139,6 +141,21 @@ export interface ChangeDiningModeInput {
   requestId: string;
 }
 
+export interface UpdateDishInput {
+  requestId: string;
+  expectedVersion: number | null;
+  priceFen: number;
+  availableQuantity: number;
+  onSale: boolean;
+}
+
+export interface UpdateSlotInput {
+  requestId: string;
+  expectedVersion: number | null;
+  capacity: number;
+  enabled: boolean;
+}
+
 export interface MerchantSource {
   mode: 'sample' | 'real';
   scenario: MerchantScenario;
@@ -152,4 +169,6 @@ export interface MerchantSource {
   cancelOrder: (id: string, input: MerchantCancelOrderInput) => Promise<SourceResult<MerchantOrder>>;
   setDelay: (id: string, input: SetDelayInput) => Promise<SourceResult<MerchantOrder>>;
   changeDiningMode: (id: string, input: ChangeDiningModeInput) => Promise<SourceResult<MerchantOrder>>;
+  updateDish: (date: string, dishId: string, input: UpdateDishInput) => Promise<SourceResult<Dish>>;
+  updateSlot: (date: string, slotId: string, input: UpdateSlotInput) => Promise<SourceResult<Slot>>;
 }
