@@ -9,7 +9,7 @@
 | 分支 | `frontend/admin-redesign-2026-11-16` |
 | 基线父提交 | `integration/student-visual-1.14 @ 320aa0f` |
 | 分支前序提交 | `8faaa5d`（概览/订单页）、`bd59ffb`（首版 HANDOFF/提示词） |
-| 本轮提交 | 营业与配置页（`#/admin/settings`）——以本目录 `git log -1 --oneline` 为准 |
+| 本轮提交 | `ba7c659`（营业与配置页 `#/admin/settings` + 交接文档） |
 | 远端 | `https://github.com/hayden726020/XiU-JixiangOrder.git` |
 | 稀疏检出范围 | 仅 `frontend/`；本机 worktree 检出完整仓库树，但只提交 `frontend/` 下本任务文件 |
 
