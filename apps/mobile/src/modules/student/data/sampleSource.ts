@@ -20,6 +20,10 @@ import {
   CROWD_REFERENCE,
   DATES,
   DEMO_ORDER_001,
+  DEMO_ORDER_CANCEL_PENDING,
+  DEMO_ORDER_READY_001,
+  DEMO_ORDER_PREPARING_002,
+  DEMO_ORDER_COMPLETED_003,
   DEMO_SHOPS,
   DISH_SHOP,
   DISHES,
@@ -91,7 +95,13 @@ export function createStudentSource({
   let localSeq = 2;
   const createdByRequest = new Map<string, { fingerprint: string; order: StudentOrder }>();
   const pendingByRequest = new Map<string, StudentOrder>();
-  const ordersById = new Map<string, StudentOrder>([[DEMO_ORDER_001.id, clone(DEMO_ORDER_001)]]);
+  const ordersById = new Map<string, StudentOrder>([
+    [DEMO_ORDER_READY_001.id, clone(DEMO_ORDER_READY_001)],
+    [DEMO_ORDER_PREPARING_002.id, clone(DEMO_ORDER_PREPARING_002)],
+    [DEMO_ORDER_COMPLETED_003.id, clone(DEMO_ORDER_COMPLETED_003)],
+    [DEMO_ORDER_001.id, clone(DEMO_ORDER_001)],
+    [DEMO_ORDER_CANCEL_PENDING.id, clone(DEMO_ORDER_CANCEL_PENDING)],
+  ]);
 
   function assertInput(input: CreateOrderInput): void {
     if (!input || typeof input !== 'object') {

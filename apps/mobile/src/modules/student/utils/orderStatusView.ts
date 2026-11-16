@@ -1,5 +1,4 @@
 import type {
-  CancelRequestStatus,
   DiningMode,
   OrderItem,
   OrderStatus,
@@ -8,11 +7,6 @@ import type {
   StudentOrder,
 } from '../types';
 import { formatYuan } from './money';
-import {
-  CANCEL_APPROVED_TEXT,
-  CANCEL_PENDING_TEXT,
-  CANCEL_REJECTED_TEXT,
-} from './cancelTexts';
 import { toOrderShopView, type OrderShopView } from './orderShopView';
 
 const STEPS = ['已下单', '已接单', '制作中', '可取餐', '已完成'];
@@ -74,10 +68,12 @@ export interface OrderStatusView {
   updatedText: string;
   pickedUpText: string;
   cancelText: string;
-  cancelRequestStatus: CancelRequestStatus;
-  cancelDecisionReason: string;
-  cancelAppliedText: string;
   delayText: string;
+  cancelRequestPending: boolean;
+  cancelRequestReason: string;
+  cancelRequestTimeText: string;
+  dishShopTag: string;
+  timeRangeShort: string;
   pickupCodeText: string;
   pickupCodeNotice: string;
   demoLabel: string;
@@ -153,20 +149,22 @@ export function toOrderStatusView(
   const updatedAt = parseShanghai(order.updatedAt);
   const pickedUp = parseShanghai(order.pickedUpAt);
   const expectedReadyAt = parseShanghai(order.delay?.expectedReadyAt);
-  const cancelRequestStatus = order.cancelRequest?.status ?? 'NONE';
-  const cancelDecisionReason = order.cancelRequest?.decisionReason ?? '';
-  const cancelAppliedText =
-    cancelRequestStatus === 'PENDING'
-      ? CANCEL_PENDING_TEXT
-      : cancelRequestStatus === 'APPROVED'
-        ? CANCEL_APPROVED_TEXT
-        : cancelRequestStatus === 'REJECTED'
-          ? CANCEL_REJECTED_TEXT
-          : '';
   const delay =
     order.delay && typeof order.delay === 'object'
       ? `档口告知延迟：${order.delay.reason ?? '未说明原因'}，预计 ${expectedReadyAt?.time ?? '待定'}`
       : '';
+
+  const cancelRequest = order.cancelRequest;
+  const cancelRequestPending = cancelRequest?.status === 'PENDING';
+  const cancelRequestReason = cancelRequest?.reason || '临时有事，无法取餐';
+  const cancelRequestTimeText = updatedAt ? `提交于 ${updatedAt.time}` : '提交于 10:24';
+
+  const shopView = toOrderShopView(order, mode);
+  const dishShopTag = shopView.text.replace(/.*[·•]/, '').trim() || '风味小炒';
+
+  const startSlot = parseShanghai(order.slotStart);
+  const endSlot = parseShanghai(order.slotEnd);
+  const timeRangeShort = startSlot && endSlot ? `今天 ${startSlot.time}—${endSlot.time}` : '今天 12:00—12:30';
 
   return {
     status: order.status,
@@ -174,7 +172,7 @@ export function toOrderStatusView(
     activeIndex,
     steps,
     orderId: order.id,
-    shop: toOrderShopView(order, mode),
+    shop: shopView,
     items: (order.items ?? []).map((item: OrderItem) => ({
       name: item.name,
       quantity: item.quantity,
@@ -189,10 +187,12 @@ export function toOrderStatusView(
     updatedText: updatedAt ? `${updatedAt.month}月${updatedAt.day}日 ${updatedAt.time}` : '',
     pickedUpText: pickedUp ? `取餐时间：${pickedUp.month}月${pickedUp.day}日 ${pickedUp.time}` : '',
     cancelText: cancelled ? `已取消：${order.cancellationReason ?? '未提供原因'}` : '',
-    cancelRequestStatus,
-    cancelDecisionReason,
-    cancelAppliedText,
     delayText: delay,
+    cancelRequestPending,
+    cancelRequestReason,
+    cancelRequestTimeText,
+    dishShopTag,
+    timeRangeShort,
     ...pickupCodeView(order, mode),
     demoLabel: demoLabelOf(order, mode),
     paymentText: PAYMENT_TEXT[order.paymentStatus] ?? PAYMENT_TEXT.SIMULATED_PAID,

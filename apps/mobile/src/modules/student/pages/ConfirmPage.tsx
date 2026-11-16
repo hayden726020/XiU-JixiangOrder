@@ -11,6 +11,7 @@ import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
 import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
+import '../booking.css';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
@@ -25,6 +26,32 @@ const SCENARIO_OPTIONS: Array<{ value: DemoScenario; label: string; hint: string
   { value: 'out-of-stock', label: '菜品不足', hint: '提交返回菜品不足' },
   { value: 'timeout', label: '提交超时', hint: '提交超时，结果待确认' },
 ];
+
+function ChevronLeftIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15 5l-7 7 7 7" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 7.5v.5" />
+    </svg>
+  );
+}
+
+function PaperclipIcon() {
+  return (
+    <svg className="confirm-paperclip" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
 
 function parseSlot(slot: SlotDto): { date: string; time: string } {
   const matched = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(slot.slotStart);
@@ -41,6 +68,12 @@ function slotLabel(slot: SlotDto): string {
   const start = parseSlot(slot);
   const end = /T(\d{2}:\d{2})/.exec(slot.slotEnd);
   return `${start.date} ${start.time}—${end ? end[1] : ''}`.trim();
+}
+
+function slotTimeRange(slot: SlotDto): string {
+  const start = parseSlot(slot);
+  const end = /T(\d{2}:\d{2})/.exec(slot.slotEnd);
+  return `${start.time}—${end ? end[1] : ''}`.trim();
 }
 
 export interface ConfirmPageProps {
@@ -209,193 +242,247 @@ export default function ConfirmPage({
 
   if (realLoggedOut) {
     return (
-      <section className="student-page" aria-labelledby="student-confirm-title">
+      <section className="student-booking student-booking--confirm" aria-labelledby="student-confirm-title">
         <RealModeNotice />
-        <button type="button" className="student-secondary student-back" onClick={onBack}>
-          ← 返回时段
-        </button>
-        <header className="student-page__head">
-          <p className="student-kicker">真实模式 · 以服务端结果为准</p>
-          <h2 id="student-confirm-title">确认订单</h2>
-        </header>
-        <LoginGuide gate={gate} onRecheck={refresh} onBack={onBackToMenu} />
+        <div className="booking-hero">
+          <div className="booking-nav">
+            <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={onBack}>
+              <ChevronLeftIcon />
+            </button>
+            <h2 id="student-confirm-title" className="booking-nav__title">确认订单</h2>
+            <span className="booking-nav__mode">真实接口</span>
+          </div>
+        </div>
+        <div className="booking-body" style={{ marginTop: '0.8rem' }}>
+          <LoginGuide gate={gate} onRecheck={refresh} onBack={onBackToMenu} />
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="student-page" aria-labelledby="student-confirm-title">
+    <section className="student-booking student-booking--confirm" aria-labelledby="student-confirm-title">
       {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
-      <button type="button" className="student-secondary student-back" onClick={onBack}>
-        ← 返回时段
-      </button>
+      <div className="booking-hero">
+        <div className="booking-nav">
+          <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={onBack}>
+            <ChevronLeftIcon />
+          </button>
+          <h2 id="student-confirm-title" className="booking-nav__title">确认订单</h2>
+          <span className="booking-nav__mode">{source.mode === 'sample' ? '样例数据' : '真实接口'}</span>
+        </div>
+        <div className="confirm-bubble">
+          <span className="confirm-bubble__spark" aria-hidden="true">✦</span>
+          <span>核对一下，就可以啦</span>
+        </div>
+      </div>
 
-      <p
-        className="student-shop-title"
-        data-shop-demo={source.mode === 'sample' ? 'true' : 'false'}
-      >
-        {CURRENT_SHOP_PREFIX}：{shop.name}
-        {source.mode === 'sample' ? ` · ${DEMO_DATA_LABEL}` : ''}
-      </p>
+      <div className="booking-body">
+        {source.mode === 'real' && gate.usable ? (
+          <p className="student-session-note">当前登录：{gate.identityText}（仅用于核对）</p>
+        ) : null}
 
-      <header className="student-page__head">
-        <p className="student-kicker">
-          {source.mode === 'real' ? '真实模式 · 以服务端结果为准' : 'S5 · 确认下单与样例订单'}
-        </p>
-        <h2 id="student-confirm-title">确认订单</h2>
-        <p className="student-page__lead">
-          {source.mode === 'real'
-            ? '核对菜品、时段与用餐方式；金额与订单结果以服务端返回为准。'
-            : '核对菜品、时段与用餐方式；提交即模拟付款，不发生资金交易。'}
-        </p>
-      </header>
+        {menuStatus === 'loading' ? (
+          <p className="booking-notice">正在读取确认信息…</p>
+        ) : null}
 
-      {source.mode === 'real' && gate.usable ? (
-        <p className="student-session-note">当前登录：{gate.identityText}（仅用于核对）</p>
-      ) : null}
-
-      {menuStatus === 'loading' ? <p className="student-loading">正在读取确认信息…</p> : null}
-
-      {menuStatus === 'error' ? (
-        <div className="student-error" role="alert">
-          <p>确认信息读取失败，请返回时段页重试。</p>
-          <div className="student-error__actions">
-            <button type="button" className="student-secondary" onClick={onBack}>
+        {menuStatus === 'error' ? (
+          <div className="booking-error" role="alert">
+            <p>确认信息读取失败，请返回时段页重试。</p>
+            <button type="button" onClick={onBack}>
               返回时段页
             </button>
           </div>
-        </div>
-      ) : null}
-
-      {menuStatus === 'ready' && menu ? (
-        <>
-          <section className="student-confirm" aria-labelledby="student-confirm-summary-title">
-            <h3 id="student-confirm-summary-title" className="student-section-title">
-              订单摘要
-            </h3>
-            <ul className="student-confirm__lines">
-              {lines.map((line) => (
-                <li key={line.dishId} className="student-confirm__line">
-                  <div>
-                    <p className="student-confirm__name">
-                      {line.name} × {line.quantity}
-                    </p>
-                    <p className="student-confirm__meta">单价 {formatYuan(line.unitPriceFen)}</p>
-                  </div>
-                  <span className="student-confirm__amount">{formatYuan(line.subtotalFen)}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="student-total">合计 {formatYuan(snapshot.previewFen)}</p>
-            <p className="student-total__note">金额以服务端返回为准，本地预估仅用于预览</p>
-          </section>
-
-          <section className="student-info" aria-label="预约信息">
-            <p className="student-info__row">
-              <span>时段</span>
-              <span>{selectedSlot ? slotLabel(selectedSlot) : '未选择'}</span>
-            </p>
-            <p className="student-info__row">
-              <span>用餐方式</span>
-              <span>{snapshot.diningMode ? MODE_TEXT[snapshot.diningMode] : '未选择'}</span>
-            </p>
-          </section>
-
-          <section className="student-rule" aria-label="下单规则说明">
-            <p>取消规则：接单前可直接取消；接单后需提交申请，由档口处理。</p>
-            <p>支付说明：{source.mode === 'real' ? '当前不发生真实资金交易。' : '模拟付款，不发生资金交易。'}</p>
-          </section>
-        </>
-      ) : null}
-
-      {timedOut ? (
-        <div className="student-error student-timeout" role="alert">
-          <p className="student-error__title">结果待确认</p>
-          <p>网络超时，订单可能已创建。请先查询结果，不要重复下单。</p>
-          <div className="student-error__actions">
-            <button type="button" className="student-primary" disabled={busy} onClick={queryResult}>
-              查询结果
-            </button>
-            <button type="button" className="student-secondary" disabled={busy} onClick={runSubmit}>
-              重试同一请求
-            </button>
-          </div>
-          {queryError ? <p className="student-error__note">{queryError}</p> : null}
-        </div>
-      ) : null}
-
-      {!timedOut && snapshot.status === 'error' && errorView && errorView.action !== 'login' ? (
-        <div className="student-error" role="alert">
-          <p>{errorView.message}</p>
-          <div className="student-error__actions">
-            {errorView.action === 'retry' ? (
-              <button type="button" className="student-secondary" disabled={busy} onClick={runSubmit}>
-                {errorView.actionLabel}
-              </button>
-            ) : errorView.action === 'reconfirm' ? (
-              <button type="button" className="student-secondary" onClick={endRequest}>
-                {errorView.actionLabel}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="student-secondary"
-                onClick={errorView.action === 'back-to-slot' ? onBack : onBackToMenu}
-              >
-                {errorView.actionLabel}
-              </button>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {source.mode === 'sample' ? (
-        <section className="student-scenario" aria-labelledby="student-scenario-title">
-          <h3 id="student-scenario-title" className="student-section-title">
-            样例场景（仅演示）
-          </h3>
-          <div className="student-scenario__options" role="group" aria-label="选择样例提交场景">
-            {SCENARIO_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={`student-scenario__item${scenario === option.value ? ' is-active' : ''}`}
-                aria-pressed={scenario === option.value}
-                disabled={busy}
-                onClick={() => changeScenario(option.value)}
-              >
-                <span className="student-scenario__label">{option.label}</span>
-                <span className="student-scenario__hint">{option.hint}</span>
-              </button>
-            ))}
-          </div>
-          <p className="student-scenario__note">切换场景只影响下一次提交。</p>
-        </section>
-      ) : null}
-
-      <footer className="student-summary">
-        <button
-          type="button"
-          className="student-primary"
-          disabled={!canSubmit}
-          onClick={runSubmit}
-        >
-          {busy ? '提交中…' : source.mode === 'real' ? '确认下单' : '确认下单（模拟付款）'}
-        </button>
-        {busy ? (
-          <p className="student-progress" role="status">
-            正在提交，请稍候…
-          </p>
         ) : null}
+
+        {menuStatus === 'ready' && menu ? (
+          <>
+            {/* 档口与菜品卡片 */}
+            <section
+              className="confirm-stall-card"
+              aria-labelledby="student-confirm-summary-title"
+              data-shop-demo={source.mode === 'sample' ? 'true' : 'false'}
+            >
+              <PaperclipIcon />
+              <div className="confirm-stall-header">
+                <span className="confirm-stall-header__badge">
+                  {CURRENT_SHOP_PREFIX}：{shop.name}
+                  {source.mode === 'sample' ? ` · ${DEMO_DATA_LABEL}` : ''}
+                </span>
+              </div>
+
+              <h3 id="student-confirm-summary-title" className="booking-section-title" style={{ fontSize: '1.02rem', margin: '0 0 0.85rem' }}>
+                订单摘要
+              </h3>
+
+              <ul className="confirm-dish-list">
+                {lines.map((line) => (
+                  <li key={line.dishId} className="confirm-dish-item">
+                    <span className="confirm-dish-thumb" role="img" aria-label={`菜品图：${line.name}`} />
+                    <div className="confirm-dish-info">
+                      <p className="confirm-dish-name">{line.name} × {line.quantity}</p>
+                      <p className="confirm-dish-qty">单价 {formatYuan(line.unitPriceFen)}</p>
+                    </div>
+                    <span className="confirm-dish-amount">{formatYuan(line.subtotalFen)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="confirm-stall-total">
+                <span className="confirm-stall-total__label">商品合计</span>
+                <span className="confirm-stall-total__amount">合计 {formatYuan(snapshot.previewFen)}</span>
+              </div>
+              <p className="confirm-amount-note">金额以服务端返回为准，本地预估仅用于预览</p>
+            </section>
+
+            {/* 预约信息卡片 */}
+            <section aria-labelledby="confirm-info-title">
+              <div className="confirm-section-head">
+                <h3 id="confirm-info-title" className="booking-section-title" style={{ margin: 0 }}>
+                  预约信息
+                </h3>
+                <span className="confirm-sparkle" aria-hidden="true">✦</span>
+              </div>
+
+              <div className="confirm-info-table" aria-label="预约信息">
+                <div className="confirm-info-row">
+                  <span>取餐日期</span>
+                  <span>今天</span>
+                </div>
+                <div className="confirm-info-row">
+                  <span>取餐时段</span>
+                  <span>{selectedSlot ? (slotTimeRange(selectedSlot) || slotLabel(selectedSlot)) : '未选择'}</span>
+                </div>
+                <div className="confirm-info-row">
+                  <span>用餐方式</span>
+                  <span>{snapshot.diningMode ? MODE_TEXT[snapshot.diningMode] : '未选择'}</span>
+                </div>
+                {selectedSlot ? (
+                  <p className="confirm-info-note">时段核对：{slotLabel(selectedSlot)}</p>
+                ) : null}
+              </div>
+            </section>
+
+            {/* 取消说明 */}
+            <section className="confirm-rule-card" aria-label="取消说明">
+              <div className="confirm-rule-head">
+                <InfoIcon />
+                <span>取消说明</span>
+              </div>
+              <ul>
+                <li>接单前可直接取消</li>
+                <li>接单后需由档口处理申请</li>
+              </ul>
+            </section>
+
+            {/* 模拟付款/支付说明 */}
+            <div className="confirm-pay-tape">
+              {source.mode === 'real'
+                ? '当前不发生真实资金交易。'
+                : '模拟付款，不发生资金交易。'}
+            </div>
+          </>
+        ) : null}
+
+        {/* 超时错误 */}
         {timedOut ? (
-          <p className="student-summary__hint">请先查询结果或重试同一请求，不要重复下单。</p>
-        ) : disabledReason ? (
-          <p className="student-summary__hint">{disabledReason}</p>
+          <div className="booking-error" role="alert">
+            <p style={{ fontWeight: 800 }}>结果待确认</p>
+            <p>网络超时，订单可能已创建。请先查询结果，不要重复下单。</p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+              <button type="button" className="student-primary" disabled={busy} onClick={queryResult}>
+                查询结果
+              </button>
+              <button type="button" disabled={busy} onClick={runSubmit}>
+                重试同一请求
+              </button>
+            </div>
+            {queryError ? <p style={{ fontSize: '0.75rem', marginTop: '0.3rem' }}>{queryError}</p> : null}
+          </div>
         ) : null}
-      </footer>
 
-      {source.mode === 'sample' ? <DemoModeNotice /> : null}
+        {/* 业务错误 */}
+        {!timedOut && snapshot.status === 'error' && errorView && errorView.action !== 'login' ? (
+          <div className="booking-error" role="alert">
+            <p>{errorView.message}</p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+              {errorView.action === 'retry' ? (
+                <button type="button" disabled={busy} onClick={runSubmit}>
+                  {errorView.actionLabel}
+                </button>
+              ) : errorView.action === 'reconfirm' ? (
+                <button type="button" onClick={endRequest}>
+                  {errorView.actionLabel}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={errorView.action === 'back-to-slot' ? onBack : onBackToMenu}
+                >
+                  {errorView.actionLabel}
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* 样例场景选择（仅样例模式，便于自测与评审） */}
+        {source.mode === 'sample' ? (
+          <section className="confirm-scenario-box" aria-labelledby="student-scenario-title">
+            <p id="student-scenario-title" className="student-section-title">
+              样例场景（仅演示）
+            </p>
+            <div className="confirm-scenario-grid" role="group" aria-label="选择样例提交场景">
+              {SCENARIO_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`confirm-scenario-btn${scenario === option.value ? ' is-active' : ''}`}
+                  aria-pressed={scenario === option.value}
+                  disabled={busy}
+                  onClick={() => changeScenario(option.value)}
+                >
+                  <span>{option.label}</span>
+                  <span className="confirm-scenario-btn__hint">{option.hint}</span>
+                </button>
+              ))}
+            </div>
+            <p style={{ margin: '0.4rem 0 0', color: '#6b7688', fontSize: '0.68rem', textAlign: 'center' }}>
+              切换场景只影响下一次提交。
+            </p>
+          </section>
+        ) : null}
+
+        {source.mode === 'sample' ? <DemoModeNotice /> : null}
+      </div>
+
+      {/* 底部固定结算条 */}
+      <footer className="confirm-bottom-bar">
+        <div className="confirm-bottom-bar__left">
+          <span className="confirm-bottom-bar__label">合计</span>
+          <span className="confirm-bottom-bar__total">{formatYuan(snapshot.previewFen)}</span>
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', maxWidth: '14rem' }}>
+          <button
+            type="button"
+            className="booking-submit student-primary"
+            disabled={!canSubmit}
+            onClick={runSubmit}
+          >
+            {busy ? '提交中…' : source.mode === 'real' ? '确认下单' : '确认下单（模拟付款）'}
+          </button>
+          {busy ? (
+            <span style={{ fontSize: '0.66rem', color: '#5d6c85', marginTop: '0.2rem' }}>
+              正在提交，请稍候…
+            </span>
+          ) : disabledReason ? (
+            <span style={{ fontSize: '0.66rem', color: '#7f1d1d', marginTop: '0.2rem', textAlign: 'right' }}>
+              {disabledReason}
+            </span>
+          ) : null}
+        </div>
+      </footer>
     </section>
   );
 }
