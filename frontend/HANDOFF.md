@@ -8,8 +8,8 @@
 | Git 基线目录 | `D:\吉祥社代码\workspace\campus-meal-admin-baseline`（**2026-11-16 晚由 `campus-meal` 仓库 worktree 建立**，共享同一 `.git`；旧克隆已不存在时按此路径重新 `git fetch` + `git worktree add`） |
 | 分支 | `frontend/admin-redesign-2026-11-16` |
 | 基线父提交 | `integration/student-visual-1.14 @ 320aa0f` |
-| 分支前序提交 | `8faaa5d`（概览/订单页）、`bd59ffb`（首版 HANDOFF/提示词） |
-| 本轮提交 | `ba7c659`（营业与配置页 `#/admin/settings` + 交接文档） |
+| 分支前序提交 | `8faaa5d`（概览/订单页）、`bd59ffb`（首版交接）、`ba7c659`（营业与配置页）、`deadc6e`（记录提交号） |
+| 本轮提交 | 订单查询空状态按设计稿重做（见 `git log -1 --oneline`） |
 | 远端 | `https://github.com/hayden726020/XiU-JixiangOrder.git` |
 | 稀疏检出范围 | 仅 `frontend/`；本机 worktree 检出完整仓库树，但只提交 `frontend/` 下本任务文件 |
 
@@ -21,8 +21,8 @@
 | --- | --- | --- | --- |
 | 管理端概览 | `#/admin` | `pages/OverviewPage.tsx`、`admin-overview.css` | 已按设计稿实现 |
 | 订单与异常查询 | `#/admin/orders` | `pages/OrdersPage.tsx`、`admin-orders.css` | 已按设计稿实现 |
-| 订单查询空状态 | `#/admin/orders` | 同上 | 已按设计稿实现 |
-| **营业与食堂配置** | `#/admin/settings` | `pages/SettingsPage.tsx`、`admin-settings.css`、`components/SettingsEditor.tsx` | **本轮完成（查看态 + 编辑态展开）** |
+| 订单查询空状态 | `#/admin/orders` | `pages/OrdersPage.tsx`、`admin-orders.css` | **本轮按独立设计稿重做**（浅米绿底 `#F4F6F3`、空餐盒线稿图标、胶囊刷新、页码右下） |
+| 营业与食堂配置 | `#/admin/settings` | `pages/SettingsPage.tsx`、`admin-settings.css`、`components/SettingsEditor.tsx` | 已按设计稿实现（查看态 + 编辑态展开为过渡实现） |
 
 参考图来源：`frontend/photo/backhand/管理端*.png`（旧记录写作 `设计系列\管理端*.png`）。只实现右侧手机应用界面，不实现左侧设计说明卡、展示稿页眉或画布网格背景。
 
@@ -41,15 +41,22 @@
 - 四行订单信息：单号与状态、档口与时段、用餐方式/份数/金额、创建时间与 version。
 - 延迟预计时间和取消申请原因使用红色异常行。
 - 保留订单卡进入只读详情。
-- 空状态下保留筛选，隐藏摘要和订单卡，居中显示图标、标题、说明和绿色描边刷新按钮。
-- 空状态分页只在右下角显示“第 N 页”。
 
-### 营业与食堂配置（本轮）
+### 订单查询空状态（本轮）
 
-- 精简外壳：`AdminHome` 新增 `admin-panel--settings`，隐藏页头、页脚、返回链接、联调横幅与后台导航；背景 `#F4F6F3`。
+- 空状态时容器加 `admin-orders--empty`，整页背景改为浅米绿 `#F4F6F3`（非空列表仍为纯白）。
+- 筛选区保留，摘要与订单卡隐藏。
+- 图标换成极简线稿“带盖空餐盒”（约 70px，深绿 `#2F5E4B`，位于筛选区下方居中偏上）。
+- 文案：主标题「当前条件下没有订单」、副文案「可切换状态或刷新重试」；`异常（当前页）` 非全部时副文案显示「可切换状态、调整异常筛选或刷新重试」。
+- 刷新按钮：白底、深绿 1px 描边、全圆角胶囊、深绿文字。
+- 页码只在右下角显示「第 N 页」，浅灰小字，不显示上一页/下一页。
+
+### 营业与食堂配置
+
+- 精简外壳：`AdminHome` 的 `admin-panel--settings`，隐藏页头、页脚、返回链接、联调横幅与后台导航；背景 `#F4F6F3`。
 - 页面结构：小标题「管理端」→ 主标题「营业与食堂配置」→ 副标题「查看食堂范围与提醒阈值，可分别编辑保存」→ 食堂范围（食堂 / 中心点 / 范围半径 / 误差容忍 / 配置版本 / 更新时间，6 行键值右对齐）→ 注释（演示值 + 中心点隐私口径）→ 提醒条件（当前参考阈值 / 预约需求阈值）→ 档口营业时间（样例模式两张并排卡：名称 + 「营业中」浅绿标签 + 时钟线框图标 + 时段换行；真实模式为浅绿缺口提示条）→ 底部通栏主按钮「编辑配置」。
 - 配色：主色深绿 `#1F4A33`、背景 `#F4F6F3`、白卡圆角约 14px 浅阴影；正文 `#2A362D`，辅助 `#7B857E`/`#939A94`。
-- 交互：点「编辑配置」在页尾展开编辑卡，分「食堂范围」「提醒条件」两组，各自主按钮保存；取消编辑收起。
+- 交互：点「编辑配置」在页尾展开编辑卡，分「食堂范围」「提醒条件」两组，各自主按钮保存；取消编辑收起。编辑态尚未按 `管理端配置编辑表单.png` 精修。
 - 编辑语义保留：`dining`/`crowd` 分别保存、每次一个 section、`requestId` 变更后重发、`expectedVersion`、`SETTING_VERSION_CONFLICT` 保留输入并提示重新读取、保存成功后重读确认版本、401/403/503/超时文案、样例模式拒绝写。
 - 数据边界：真实模式读 `GET /admin/settings`；服务端无档口营业时间端点，真实模式不展示样例档口，改用缺口提示，不伪造管理员会话。
 
@@ -67,7 +74,7 @@
 `AdminHome.tsx` 目前对概览、订单列表、营业与配置使用精简外壳。以下仍沿用旧外壳和旧视觉：
 
 - 订单详情 `#/admin/orders/{id}`
-- 非管理员身份提示
+- 非管理员身份提示（`管理端需管理员身份.png` 设计稿未实现）
 
 新对话不要把“概览/订单/配置已完成”误认为整个管理端都已完成。修改共享外壳时必须回归概览、订单、详情、配置和非管理员入口。
 
@@ -79,10 +86,11 @@
 2. `管理端订单详情已取消.png`
 3. `管理端详情兜底两态.png`
 4. `管理端订单错误三态.png`
-5. ~~`管理端营业与配置.png`~~（本轮完成）
-6. `管理端配置编辑表单.png`（**下一张**；当前编辑态为过渡实现，未按图精修）
-7. `管理端配置保存反馈三态.png`
-8. `管理端需管理员身份.png`
+5. ~~`管理端营业与配置.png`~~（已完成）
+6. ~~`管理端订单空状态.png`~~（本轮完成）
+7. `管理端配置编辑表单.png`（**下一张**；当前编辑态为过渡实现，未按图精修）
+8. `管理端配置保存反馈三态.png`
+9. `管理端需管理员身份.png`
 
 每张图可能包含多个状态，需分别实现并保留真实错误、权限和版本冲突语义。
 
@@ -110,16 +118,20 @@ cd D:\吉祥社代码\workspace\team-context\frontend
 1. 后台启动 `campus-meal/services/api`（8787，首次生成 `.runtime/demo-accounts.json`，密码不打印、不入文档）。
 2. 浏览器默认 API 为相对 `/api/v1`，需在 localStorage 写 `xiu.mobile.apiBaseUrl.v1 = http://127.0.0.1:8787/api/v1`。
 3. 用 `demo-admin` 调 `/auth/demo-login` 取会话，写入 `sessionStorage['xiu.mobile.session.v1']` 后**整页刷新**（会话是模块级变量）。
-4. 打开 `http://127.0.0.1:5173/#/admin/settings`。
+4. 打开目标路由，如 `http://127.0.0.1:5173/#/admin/orders`（空库时即为空状态）。
 
-CDP 截图脚本（headless Edge，390×844）：`frontend/.runtime/admin-settings-shot.mjs`，生成查看态、编辑态、档口两卡样式三张图到 `.runtime/`。核对完只停本次启动的 8787，5173 dev server 保留。
+CDP 截图脚本（headless Edge，390×844）：
+
+- `frontend/.runtime/admin-settings-shot.mjs`：营业与配置页查看态、编辑态、档口两卡样式。
+- `frontend/.runtime/admin-orders-empty-shot.mjs`：订单空状态（自动等待空状态；非空时把状态筛选置为 CANCELLED）。
+- 输出在 `frontend/.runtime/`。核对完只停本次启动的 8787，5173 dev server 保留。
 
 本轮结果：
 
 - `npx tsc --noEmit` 中 `modules/admin` 错误数 **0**。
 - `npx vite build` 通过（约 200 ms）。
 - 全量 `npm run build` 可能被并行会话未完成的 `src/modules/merchant/pages/OnboardingPage.tsx`（`DISH_TYPE_OPTIONS` 未定义）阻塞，属队友改动，不要代改或回退。
-- 已用 CDP 截图做视觉复核；未做逐像素比对、真机安装或 APK 包内复验。
+- 订单空状态截图核对：容器背景 `rgb(244,246,243)`、图标 70.39px、筛选保留、页码右下；未做逐像素比对、真机安装或 APK 包内复验。
 
 ## 7 Git 推送环境
 
@@ -136,4 +148,4 @@ HTTPS_PROXY=http://127.0.0.1:7892 HTTP_PROXY=http://127.0.0.1:7892 git fetch ori
 
 ## 8 新对话开场
 
-将 `frontend/NEXT-CONVERSATION-PROMPT.md` 全文提交给新对话，并附上下一张参考图 `frontend/photo/backhand/管理端配置编辑表单.png`。
+将 `frontend/NEXT-CONVERSATION-PROMPT.md` 全文提交给新对话，并附上下一张参考图 `frontend/photo/backhand/管理端配置编辑表单.png`（若用户附其他图，以附图为准）。

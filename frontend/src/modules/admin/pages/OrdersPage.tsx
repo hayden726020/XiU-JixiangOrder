@@ -138,9 +138,10 @@ export default function OrdersPage({ source }: OrdersPageProps) {
   const hasPrev = page > 1;
   const hasNext = page * PAGE_SIZE < total;
   const refresh = () => setAttempt((value) => value + 1);
+  const isEmpty = !loading && !error && result !== null && visibleOrders.length === 0;
 
   return (
-    <div className="admin-orders" aria-busy={loading}>
+    <div className={`admin-orders${isEmpty ? ' admin-orders--empty' : ''}`} aria-busy={loading}>
       <header className="admin-orders__header">
         <a href="#/admin" aria-label="返回管理端概览">管理端</a>
         <h2 className="admin-orders__title" id="admin-title">订单与异常查询</h2>
@@ -205,11 +206,25 @@ export default function OrdersPage({ source }: OrdersPageProps) {
           <>
             <div className="admin-orders__empty-state" role="status">
               <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
-                <path d="M13 8.5h17l7 7v24H13z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-                <path d="M30 8.5v7h7" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-                <path d="M18.5 24h11M18.5 29h7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                <circle cx="32.5" cy="34" r="5" stroke="currentColor" strokeWidth="1.5" />
-                <path d="m36.2 37.7 2.8 2.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path
+                  d="M19.5 16.4v-2.7a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v2.7"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M10.5 16.4h27v6.7h-27z"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M12.6 23.1v13.4a2 2 0 0 0 2 2h18.8a2 2 0 0 0 2-2V23.1"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                />
+                <path d="M17.6 30.6h12.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
               <h3>当前条件下没有订单</h3>
               <p>

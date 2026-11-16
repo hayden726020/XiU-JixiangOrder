@@ -371,3 +371,56 @@
     transition: none;
   }
 }
+.admin-orders--empty {
+  background: #f4f6f3;
+}
+
+.app-shell:has(.admin-orders--empty) {
+  background: #f4f6f3;
+}
+
+.admin-orders--empty .admin-orders__empty-state {
+  flex: 1 0 auto;
+  justify-content: flex-start;
+  padding: clamp(3rem, 15vh, 7.5rem) 1rem 1.5rem;
+}
+
+.admin-orders--empty .admin-orders__empty-state svg {
+  width: 4.4rem;
+  height: 4.4rem;
+  color: #2f5e4b;
+  opacity: 1;
+}
+
+.admin-orders--empty .admin-orders__empty-state h3 {
+  margin-top: 1.4rem;
+  color: #1a1a1a;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.admin-orders--empty .admin-orders__empty-state p {
+  margin-top: 0.5rem;
+  color: #8c8c8c;
+  font-size: 0.78rem;
+}
+
+.admin-orders--empty .admin-orders__empty-refresh {
+  min-height: 2.5rem;
+  margin-top: 1.55rem;
+  padding: 0.55rem 1.65rem;
+  border: 1px solid #2f5e4b;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2f5e4b;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.admin-orders--empty .admin-orders__empty-pager {
+  margin-top: auto;
+  padding: 0 0.1rem 0.4rem;
+  justify-content: flex-end;
+  color: #9aa09b;
+  font-size: 0.72rem;
+}
