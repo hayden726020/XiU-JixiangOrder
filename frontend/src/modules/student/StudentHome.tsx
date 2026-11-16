@@ -8,6 +8,7 @@ import {
   saveDraftSnapshot,
   type DraftSelection,
 } from './state/draftSnapshot';
+import LoginPage from './pages/LoginPage';
 import ConfirmPage from './pages/ConfirmPage';
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
@@ -15,6 +16,7 @@ import OrderListPage from './pages/OrderListPage';
 import ShopSelectPage from './pages/ShopSelectPage';
 import SlotDiningPage from './pages/SlotDiningPage';
 import ProfilePage from './pages/ProfilePage';
+import { useStudentSessionGate } from './state/useStudentSessionGate';
 import type { ShopSummary, StudentSource } from './types';
 import { SHOP_SWITCH_BUSY } from './utils/shopTexts';
 import { todayAndTomorrow } from './utils/dates';
@@ -27,6 +29,16 @@ type DetailFrom = 'menu' | 'orders';
 type OrdersBackTo = 'shop' | 'menu';
 
 export default function StudentHome() {
+  const { gate } = useStudentSessionGate();
+
+  if (!gate.usable) {
+    return <LoginPage gate={gate} />;
+  }
+
+  return <StudentHomeApp />;
+}
+
+function StudentHomeApp() {
   const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
     if (source.mode === 'real') {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../../../shared';
+import '../admin-orders.css';
 import type { AdminOrderPage, AdminSource } from '../data/source';
 import type { ExceptionFilter, Order, OrderStatus } from '../types';
 import {
@@ -80,6 +81,19 @@ function describeError(error: unknown): OrdersError {
   };
 }
 
+function exceptionDetail(order: Order): string | null {
+  const details: string[] = [];
+  if (order.delay) {
+    details.push(`已设置延迟，预计 ${formatTime(order.delay.expectedReadyAt)} 可取`);
+  }
+  if (order.cancelRequest.status === 'PENDING') {
+    details.push(
+      `待处理取消申请${order.cancelRequest.reason ? ` · ${order.cancelRequest.reason}` : ''}`,
+    );
+  }
+  return details.length > 0 ? details.join('；') : null;
+}
+
 interface OrdersPageProps {
   source: AdminSource;
 }
@@ -123,18 +137,16 @@ export default function OrdersPage({ source }: OrdersPageProps) {
   const total = result?.total ?? 0;
   const hasPrev = page > 1;
   const hasNext = page * PAGE_SIZE < total;
+  const refresh = () => setAttempt((value) => value + 1);
 
   return (
-    <div className="admin-section">
-      <h3>订单与异常查询</h3>
-      <p className="admin-muted">
-        {source.mode === 'live'
-          ? '真实服务只读查询，数据来自 GET /admin/orders。'
-          : '样例只读查询，不会请求服务端。'}
-        状态筛选与分页由服务端处理；异常筛选只作用于当前页已加载订单。
-      </p>
+    <div className="admin-orders" aria-busy={loading}>
+      <header className="admin-orders__header">
+        <a href="#/admin" aria-label="返回管理端概览">管理端</a>
+        <h2 className="admin-orders__title" id="admin-title">订单与异常查询</h2>
+      </header>
 
-      <div className="admin-filters">
+      <div className="admin-orders__filters">
         <label>
           <span>状态</span>
           <select
@@ -164,19 +176,24 @@ export default function OrdersPage({ source }: OrdersPageProps) {
             ))}
           </select>
         </label>
-        <button type="button" className="admin-action" onClick={() => setAttempt((value) => value + 1)}>
-          刷新
+        <button
+          type="button"
+          className="admin-action admin-orders__refresh"
+          disabled={loading}
+          onClick={refresh}
+        >
+          {loading ? '刷新中…' : '刷新'}
         </button>
       </div>
 
-      {loading ? <p className="admin-muted">正在读取订单…</p> : null}
+      {loading ? <p className="admin-orders__loading" role="status">正在读取订单…</p> : null}
 
       {error ? (
-        <div className="notice admin-error" role="alert">
+        <div className="notice admin-error admin-orders__error" role="alert">
           <strong>{error.title}</strong>
           <p>{error.detail}</p>
-          <p>未显示样例数据。请检查登录状态、管理员权限与服务地址后重试。</p>
-          <button type="button" className="admin-action" onClick={() => setAttempt((value) => value + 1)}>
+          <p>请检查登录状态、管理员权限与服务地址后重试。</p>
+          <button type="button" className="admin-action" onClick={refresh}>
             重试
           </button>
           {error.canRelogin ? <a href="#/system-check">去公共自检页重新登录或检查服务 →</a> : null}
@@ -184,28 +201,51 @@ export default function OrdersPage({ source }: OrdersPageProps) {
       ) : null}
 
       {!loading && !error && result ? (
-        <>
-          <p className="admin-muted">
-            服务端共 {total} 笔；当前第 {page} 页，每页 {PAGE_SIZE} 笔。当前页 {loadedOrders.length} 笔，
-            其中异常标记 {exceptionCount} 笔
-            {exception !== 'ALL' ? `，异常筛选后显示 ${visibleOrders.length} 笔` : ''}。
-          </p>
-
-          {visibleOrders.length === 0 ? (
-            <p className="notice">
-              {exception === 'ALL'
-                ? '当前条件下没有订单。可切换状态或检查样例/真实模式。'
-                : '当前页没有符合条件的异常订单；异常筛选不跨页。'}
+        visibleOrders.length === 0 ? (
+          <>
+            <div className="admin-orders__empty-state" role="status">
+              <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <path d="M13 8.5h17l7 7v24H13z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M30 8.5v7h7" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M18.5 24h11M18.5 29h7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="32.5" cy="34" r="5" stroke="currentColor" strokeWidth="1.5" />
+                <path d="m36.2 37.7 2.8 2.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <h3>当前条件下没有订单</h3>
+              <p>
+                {exception === 'ALL'
+                  ? '可切换状态或刷新重试'
+                  : '可切换状态、调整异常筛选或刷新重试'}
+              </p>
+              <button
+                type="button"
+                className="admin-action admin-orders__empty-refresh"
+                onClick={refresh}
+              >
+                刷新
+              </button>
+            </div>
+            <div className="admin-pager admin-orders__empty-pager" aria-label="订单分页">
+              <span>第 {page} 页</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="admin-orders__summary">
+              {source.mode === 'live' ? '服务端' : '样例'}共 {total} 笔，当前第 {page} 页，每页 {PAGE_SIZE} 笔，
+              当前页 {loadedOrders.length} 笔，其中异常标记 {exceptionCount} 笔
+              {exception !== 'ALL' ? `，异常筛选后显示 ${visibleOrders.length} 笔` : ''}。
             </p>
-          ) : (
-            <ul className="admin-order-list">
+
+            <ul className="admin-order-list" aria-label="订单列表">
               {visibleOrders.map((order) => {
-                const exceptionLabel = exceptionText(order);
+                const exceptionLabel = exceptionDetail(order);
                 return (
                   <li key={order.id}>
                     <a
                       className="admin-order admin-order--link"
                       href={`#/admin/orders/${encodeURIComponent(order.id)}`}
+                      aria-label={`查看订单 ${order.id} 的只读详情`}
                     >
                       <div className="admin-order__head">
                         <code className="admin-order__id">{order.id}</code>
@@ -215,14 +255,13 @@ export default function OrdersPage({ source }: OrdersPageProps) {
                       </div>
                       <div className="admin-order__meta">
                         <span>
-                          <strong>{order.merchantName ?? order.merchantId ?? '档口字段未返回'}</strong> ·{' '}
-                          {formatTime(order.slotStart)}—{formatTime(order.slotEnd)}
+                          <strong>{order.merchantName ?? order.merchantId ?? '档口字段未返回'}</strong>
+                          {' · '}{formatTime(order.slotStart)}–{formatTime(order.slotEnd)}
                         </span>
                         <span>
-                          {diningModeText[order.diningMode]} · {itemQuantity(order)} 份 ·{' '}
-                          {formatFen(order.totalFen)}
+                          {diningModeText[order.diningMode]} · {itemQuantity(order)} 份 · {formatFen(order.totalFen)}
                         </span>
-                        <span>
+                        <span className="admin-orders__created">
                           创建 {formatDateTime(order.createdAt)} · version {order.version}
                         </span>
                       </div>
@@ -234,34 +273,29 @@ export default function OrdersPage({ source }: OrdersPageProps) {
                 );
               })}
             </ul>
-          )}
 
-          <div className="admin-pager">
-            <button
-              type="button"
-              className="admin-action"
-              disabled={!hasPrev || loading}
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
-            >
-              ← 上一页
-            </button>
-            <span>第 {page} 页</span>
-            <button
-              type="button"
-              className="admin-action"
-              disabled={!hasNext || loading}
-              onClick={() => setPage((value) => value + 1)}
-            >
-              下一页 →
-            </button>
-          </div>
-        </>
+            <div className="admin-pager" aria-label="订单分页">
+              <button
+                type="button"
+                className="admin-action"
+                disabled={!hasPrev || loading}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                ← 上一页
+              </button>
+              <span>第 {page} 页</span>
+              <button
+                type="button"
+                className="admin-action"
+                disabled={!hasNext || loading}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                下一页 →
+              </button>
+            </div>
+          </>
+        )
       ) : null}
-
-      <p className="hint">
-        真实接口当前只定义 <code>status</code>、<code>page</code>、<code>pageSize</code>；
-        日期、档口与异常参数尚未定义，页面不发送这些参数。真实订单响应暂未返回档口名称，列表可能显示档口 ID 或“档口字段未返回”。管理查询恒不返回取餐码。
-      </p>
     </div>
   );
 }

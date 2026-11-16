@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>点餐页面 (选择店铺) · 视觉预览与交互对照</title>
+<link rel="stylesheet" href="../src/modules/student/student-home.css" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 2rem;
+    background: #dbe4ee;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  }
+  button { font: inherit; }
+
+  /* 顶部工具栏 */
+  .preview-control-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 0.75rem 1.25rem;
+    background: rgba(7, 22, 56, 0.94);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  }
+  .preview-control-bar__title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #ffd525;
+    margin-right: 0.5rem;
+  }
+  .preview-tabs {
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .preview-tab {
+    padding: 0.4rem 0.95rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .preview-tab.is-active {
+    background: #ffd525;
+    color: #071638;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .preview-toggle {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .preview-toggle.is-active {
+    background: #1b6bd6;
+    border-color: #1b6bd6;
+  }
+
+  /* 预览容器 */
+  .preview-wrapper {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 1.5rem auto 0;
+    padding: 0 1rem;
+    max-width: 980px;
+  }
+  .preview-phone {
+    width: 412px;
+    height: 890px;
+    flex: none;
+    background: #edf2f9;
+    border-radius: 36px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: 0 20px 48px rgba(7, 22, 56, 0.22), 0 0 0 2px #b5c7d8;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .preview-reference {
+    width: 412px;
+    height: 890px;
+    flex: none;
+    border-radius: 36px;
+    overflow: hidden;
+    box-shadow: 0 20px 48px rgba(7, 22, 56, 0.22), 0 0 0 2px #f59e0b;
+    position: relative;
+    background: #000;
+    display: none;
+  }
+  .preview-reference.is-visible {
+    display: block;
+  }
+  .preview-reference img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .preview-reference-tag {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    z-index: 10;
+    background: rgba(245, 158, 11, 0.95);
+    color: #071638;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+</style>
+</head>
+<body>
+
+<header class="preview-control-bar">
+  <span class="preview-control-bar__title">🍱 点餐页面 (选择店铺) 视觉与交互预览</span>
+  <div class="preview-tabs">
+    <button type="button" class="preview-tab is-active" id="tabOrder" onclick="switchView('order')">点餐页面 (参考图)</button>
+    <button type="button" class="preview-tab" id="tabHome" onclick="switchView('home')">首页视图 (M1 轮播)</button>
+    <button type="button" class="preview-tab" id="tabMine" onclick="switchView('mine')">我的视图</button>
+  </div>
+  <button type="button" class="preview-toggle" id="btnDual" onclick="toggleDual()">并列对照原设计稿</button>
+</header>
+
+<main class="preview-wrapper">
+  <!-- 手机渲染视口 -->
+  <div class="preview-phone" id="phoneContainer">
+    <!-- 内容动态挂载在 iframe 或直接嵌入 -->
+    <iframe src="http://127.0.0.1:4173/#/student" id="appFrame" style="width: 100%; height: 100%; border: 0;" title="前端页面渲染"></iframe>
+  </div>
+
+  <!-- 原设计稿对照视口 -->
+  <div class="preview-reference" id="refContainer">
+    <span class="preview-reference-tag">设计稿原图 (photo/点餐页面.png)</span>
+    <img src="../photo/点餐页面.png" alt="点餐页面设计稿" />
+  </div>
+</main>
+
+<script>
+  function switchView(tab) {
+    document.querySelectorAll('.preview-tab').forEach(b => b.classList.remove('is-active'));
+    if (tab === 'order') document.getElementById('tabOrder').classList.add('is-active');
+    if (tab === 'home') document.getElementById('tabHome').classList.add('is-active');
+    if (tab === 'mine') document.getElementById('tabMine').classList.add('is-active');
+
+    const iframe = document.getElementById('appFrame');
+    try {
+      const doc = iframe.contentWindow.document;
+      const navButtons = doc.querySelectorAll('.student-home__nav button');
+      if (tab === 'order' && navButtons[1]) navButtons[1].click();
+      if (tab === 'home' && navButtons[0]) navButtons[0].click();
+      if (tab === 'mine' && navButtons[3]) navButtons[3].click();
+    } catch(e) {}
+  }
+
+  function toggleDual() {
+    const btn = document.getElementById('btnDual');
+    const ref = document.getElementById('refContainer');
+    btn.classList.toggle('is-active');
+    ref.classList.toggle('is-visible');
+  }
+</script>
+
+</body>
+</html>

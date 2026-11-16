@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>吉祥点餐 · 纯机内按键全量页面交互预�?/title>
+<link rel="stylesheet" href="../src/modules/student/student-home.css" />
+<link rel="stylesheet" href="../src/modules/student/booking.css" />
+<link rel="stylesheet" href="../src/modules/student/order-detail.css" />
+<link rel="stylesheet" href="../src/modules/student/profile.css" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 2rem;
+    background: #c5d3e5;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  button { font: inherit; }
+
+  /* 顶部极简说明 */
+  .preview-top-tip {
+    margin: 0.9rem 0 0.4rem;
+    background: rgba(7, 22, 56, 0.88);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    padding: 0.4rem 1.1rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    box-shadow: 0 4px 14px rgba(7, 22, 56, 0.15);
+  }
+  .preview-top-tip span.spark {
+    color: #ffd525;
+    font-weight: 800;
+  }
+
+  .ref-toggle-bar {
+    margin-bottom: 0.3rem;
+  }
+  .ref-toggle-btn {
+    border: 1px solid rgba(7, 22, 56, 0.2);
+    background: rgba(255, 255, 255, 0.85);
+    color: #071638;
+    padding: 0.32rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+  .ref-toggle-btn:hover { background: #fff; }
+
+  /* 居中的高仿真手机外壳 412 x 870 */
+  .preview-stage {
+    margin: 0.4rem auto 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 2rem;
+    padding: 0 1rem;
+  }
+
+  .phone-mockup {
+    width: 412px;
+    height: 870px;
+    background: #edf2f9;
+    border-radius: 42px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: 0 24px 60px rgba(7, 22, 56, 0.28), 0 0 0 11px #1e293b, 0 0 0 13px #94a3b8;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    scroll-behavior: smooth;
+  }
+
+  .phone-mockup::-webkit-scrollbar {
+    width: 4px;
+  }
+  .phone-mockup::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 4px;
+  }
+
+  /* 手机顶部原生状态栏 */
+  .phone-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.4rem 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 750;
+    color: #0f172a;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: rgba(233, 242, 251, 0.96);
+    backdrop-filter: blur(8px);
+  }
+  .phone-status-bar.is-transparent {
+    background: transparent;
+  }
+  .status-icons {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  /* 页面容器淡入 */
+  .screen-page {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    min-height: 100%;
+    animation: fadeIn 0.16s ease-out;
+  }
+  .screen-page.is-active {
+    display: flex;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0.88; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 屏幕内原生吸�?TabBar：全页面统一吸底，纯屏幕内原生按�?*/
+  .native-tabbar {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(7, 22, 56, 0.08);
+    box-shadow: 0 -4px 16px rgba(7, 22, 56, 0.05);
+    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
+  }
+  .native-tabbar button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    padding: 0.4rem 0 0.3rem;
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 650;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s ease;
+  }
+  .native-tabbar button svg {
+    width: 1.35rem;
+    height: 1.35rem;
+    stroke-width: 2;
+    transition: transform 0.15s ease;
+  }
+  .native-tabbar button:active svg {
+    transform: scale(0.9);
+  }
+  .native-tabbar button.is-active {
+    color: #071638;
+    font-weight: 850;
+  }
+  .native-tabbar button.is-active svg {
+    stroke-width: 2.4;
+  }
+
+  /* 手绘不规则黄色激活椭圆底衬（还原设计图样式） */
+  .native-tabbar .nav-blob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    background: #ffd525;
+    border-radius: 46% 54% 50% 50% / 52% 48% 52% 48%;
+    z-index: -1;
+    box-shadow: 0 3px 8px rgba(255, 213, 37, 0.35);
+  }
+
+  /* 屏幕�?Toast */
+  .in-screen-toast {
+    position: absolute;
+    top: 3.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    background: rgba(7, 22, 56, 0.92);
+    color: #fff;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 750;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    pointer-events: none;
+    animation: toastPop 0.18s ease-out;
+  }
+  @keyframes toastPop {
+    from { opacity: 0; transform: translate(-50%, -8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  .reference-box {
+    width: 412px;
+    height: 870px;
+    border-radius: 42px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(7, 22, 56, 0.22), 0 0 0 9px #ffd525;
+    background: #fff;
+    display: none;
+  }
+  .reference-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* 首页轮播卡片专有展示优化 */
+  .carousel-slide-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+</style>
+</head>
+<body>
+
+<div class="preview-top-tip">
+  <span class="spark">�?纯机内原生按键交�?/span>
+  <span>首页 (轮播推荐) · 点餐 (档口选择) · 订单 (取消状�? · 我的 (个人中心)</span>
+</div>
+
+<div class="ref-toggle-bar">
+  <button type="button" class="ref-toggle-btn" id="refBtn" onclick="toggleRef()">对照设计稿原�?(photo/04)</button>
+</div>
+
+<main class="preview-stage">
+  <div class="phone-mockup" id="phoneBody">
+
+    <!-- 手机状态栏 -->
+    <div class="phone-status-bar" id="topStatusBar">
+      <span>10:24</span>
+      <div class="status-icons">
+        <span>5G</span>
+        <span>100%</span>
+      </div>
+    </div>
+
+    <!-- 屏幕�?Toast -->
+    <div id="screenToast" class="in-screen-toast" style="display: none;"></div>
+
+    <!-- =====================================================================
+         页面 1：【首页】�?店铺拍立得轮播与推荐 (对齐此前做好�?M1 首页视图，修复此前将点餐页误当首页的问题)
+         ===================================================================== -->
+    <div class="screen-page is-active" id="page-home">
+      <div class="student-home" style="min-height: auto; padding-bottom: 2rem;">
+        <!-- 校园绿景 Hero 头部 -->
+        <header class="student-home__hero" style="margin-top: -1.8rem;">
+          <div class="student-home__hero-content">
+            <p class="student-home__brand">校园食堂 <span>�?/span></p>
+            <div class="student-home__hero-note">
+              <h2 style="margin:0;font-size:1.22rem;font-weight:900;">今天想吃什么？</h2>
+              <p style="margin:0.2rem 0 0;font-size:0.82rem;color:#64748b;">好好吃饭，从这里开�?/p>
+            </div>
+          </div>
+        </header>
+
+        <div class="student-home__paper" style="padding-bottom: 1.5rem;">
+          <div class="student-home__mode" role="note">
+            样例数据 · 不代表真实供应与现场人数
+          </div>
+
+          <!-- 选择店铺 · 拍立得轮播区�?-->
+          <section id="student-home-shops" class="student-home__section" aria-labelledby="student-home-shops-title" style="margin-top: 1rem;">
+            <div class="student-home__heading">
+              <h3 id="student-home-shops-title" class="student-home__section-title">
+                选择店铺<span class="student-home__spark" aria-hidden="true">�?/span>
+              </h3>
+              <span class="student-home__section-aside">选一家喜欢的，开始点�?/span>
+            </div>
+
+            <!-- 轮播展示卡片 -->
+            <div class="student-home__carousel" role="region" aria-label="店铺图片轮播">
+              <ul class="student-home__shop-list" aria-label="店铺列表">
+                <!-- 轮播卡片 1：一食堂·家常�?(大众窗口) -->
+                <li class="student-home__shop-slide carousel-slide-item is-center" id="slide-0">
+                  <div class="student-shop-card student-home__shop-card">
+                    <div class="student-home__shop-photo student-home__shop-photo--counter" aria-hidden="true"></div>
+                    <div class="student-home__shop-body">
+                      <div class="student-shop-card__head">
+                        <p class="student-shop-card__name">一食堂·家常�?/p>
+                        <span class="student-shop-card__demo">大众热菜</span>
+                      </div>
+                      <p class="student-home__shop-meta">可选堂�?外带 · 经济实惠下饭�?/p>
+                      <button type="button" class="student-primary student-shop-card__enter student-home__shop-enter" onclick="navTo('order')">
+                        <span>进店点餐</span> �?                      </button>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- 轮播卡片 2：一食堂·风味小炒 (有取消中订单) -->
+                <li class="student-home__shop-slide carousel-slide-item is-right" id="slide-1">
+                  <div class="student-shop-card student-home__shop-card is-current">
+                    <div class="student-home__shop-photo student-home__shop-photo--wok" aria-hidden="true"></div>
+                    <div class="student-home__shop-body">
+                      <div class="student-shop-card__head">
+                        <p class="student-shop-card__name">一食堂·风味小炒</p>
+                        <span class="student-shop-card__demo" style="background:#fef3c7;color:#92400e;">进行�?/span>
+                      </div>
+                      <p class="student-home__shop-meta">现做小炒 · 黑椒鸡腿饭申请取消中</p>
+                      <button type="button" class="student-primary student-shop-card__enter student-home__shop-enter" onclick="navTo('order-detail')">
+                        <span>查看订单</span> �?                      </button>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- 轮播卡片 3：一食堂·面档 -->
+                <li class="student-home__shop-slide carousel-slide-item is-left" id="slide-2">
+                  <div class="student-shop-card student-home__shop-card">
+                    <div class="student-home__shop-photo student-home__shop-photo--noodles" aria-hidden="true"></div>
+                    <div class="student-home__shop-body">
+                      <div class="student-shop-card__head">
+                        <p class="student-shop-card__name">一食堂·面档</p>
+                        <span class="student-shop-card__demo">面食水饺</span>
+                      </div>
+                      <p class="student-home__shop-meta">手工拉面 · 暖胃汤面现点现煮</p>
+                      <button type="button" class="student-primary student-shop-card__enter student-home__shop-enter" onclick="navTo('order')">
+                        <span>进店点餐</span> �?                      </button>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+
+              <!-- 轮播切换按键与指示点 -->
+              <div class="student-home__carousel-controls">
+                <button type="button" class="student-home__carousel-arrow" aria-label="上一�? onclick="stepSlide(-1)">�?/button>
+                <div class="student-home__carousel-dots">
+                  <button type="button" class="is-active" id="dot-0" onclick="setSlide(0)"></button>
+                  <button type="button" id="dot-1" onclick="setSlide(1)"></button>
+                  <button type="button" id="dot-2" onclick="setSlide(2)"></button>
+                </div>
+                <button type="button" class="student-home__carousel-arrow" aria-label="下一�? onclick="stepSlide(1)">�?/button>
+              </div>
+              <p class="student-home__swipe-hint">点击箭头或小圆点切换档口</p>
+            </div>
+          </section>
+
+          <!-- 今日推荐菜品 -->
+          <section class="student-home__section student-home__recommend" aria-labelledby="student-home-recommend-title" style="margin-top: 1.2rem;">
+            <div class="student-home__heading">
+              <h3 id="student-home-recommend-title" class="student-home__section-title">
+                今日推荐<span class="student-home__spark" aria-hidden="true">�?/span>
+              </h3>
+              <span class="student-home__section-aside">精选实惠菜�?/span>
+            </div>
+
+            <div class="student-home__dishes">
+              <!-- 推荐�?1：黑椒鸡腿饭 (点击可直通订单详�? -->
+              <button type="button" class="student-home__dish student-home__dish--featured" onclick="navTo('order-detail')">
+                <img src="../src/modules/student/assets/dish-chicken-rice.png" alt="黑椒鸡腿�? style="width:72px;height:72px;object-fit:cover;border-radius:10px;flex:none;" />
+                <span class="student-home__dish-info">
+                  <strong>黑椒鸡腿�?/strong>
+                  <small>一食堂·风味小炒 (点击查订�?</small>
+                  <span class="student-home__dish-price">¥14.00</span>
+                </span>
+              </button>
+
+              <!-- 推荐�?2：演示番茄炒�?-->
+              <button type="button" class="student-home__dish" onclick="navTo('order')">
+                <span class="student-home__dish-photo student-home__dish-photo--egg" aria-hidden="true"></span>
+                <span class="student-home__dish-info">
+                  <strong>番茄炒蛋</strong>
+                  <small>一食堂·家常�?/small>
+                  <span class="student-home__dish-price">¥9.00</span>
+                </span>
+              </button>
+
+              <!-- 推荐�?3：演示青椒肉�?-->
+              <button type="button" class="student-home__dish" onclick="navTo('order')">
+                <span class="student-home__dish-photo student-home__dish-photo--meat" aria-hidden="true"></span>
+                <span class="student-home__dish-info">
+                  <strong>青椒肉丝</strong>
+                  <small>一食堂·风味小炒</small>
+                  <span class="student-home__dish-price">¥15.00</span>
+                </span>
+              </button>
+            </div>
+
+            <div class="student-home__meal-time">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.05rem;height:1.05rem;"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+              <span>午餐时段请在店内选择 · 取消申请请至订单页查�?/span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- =====================================================================
+         页面 2：【点餐】�?选择店铺 (采用之前做好的三大档口撕纸卡片页面，对齐 photo/点餐页面.png)
+         ===================================================================== -->
+    <div class="screen-page" id="page-order">
+      <section class="student-order-view" aria-labelledby="student-order-title" style="min-height: auto; padding-bottom: 2rem;">
+        <!-- 校园天际线与垂挂绿叶 Hero -->
+        <header class="student-order-hero" aria-labelledby="student-order-title">
+          <div class="student-order-hero__content">
+            <div class="student-order-hero__title-wrap">
+              <h2 id="student-order-title" class="student-order-hero__title">
+                选择店铺
+                <svg class="student-order-hero__sunburst" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+                  <path d="M4 22L1 25" stroke="#FFD525" stroke-width="3.2" stroke-linecap="round" />
+                  <path d="M14 14L23 8" stroke="#FFD525" stroke-width="3.2" stroke-linecap="round" />
+                  <path d="M16 22L26 21" stroke="#FFD525" stroke-width="3.2" stroke-linecap="round" />
+                </svg>
+              </h2>
+              <svg class="student-order-hero__underline" viewBox="0 0 170 16" fill="none" aria-hidden="true">
+                <path d="M4 11C55 2 115 3 166 12" stroke="#FFD525" stroke-width="4.2" stroke-linecap="round" />
+              </svg>
+            </div>
+
+            <div class="student-order-hero__banner-wrap">
+              <img
+                src="../src/modules/student/assets/hero-note-banner.png"
+                alt="今天，去哪家吃？"
+                className="student-order-hero__banner-img"
+              />
+            </div>
+          </div>
+        </header>
+
+        <div class="student-order-body">
+          <div class="student-order-mode-wrap">
+            <div class="student-home__mode" role="note">
+              样例数据 · 不代表真实供应与现场人数
+            </div>
+          </div>
+
+          <div class="student-order-cards" role="list" aria-label="档口列表">
+            <!-- 档口 1：大众窗�?-->
+            <article class="student-order-card" role="listitem" onclick="showToast('已选择大众窗口')">
+              <div class="student-order-card__photo-box">
+                <img
+                  src="../src/modules/student/assets/stall-dazhong.png"
+                  alt="大众窗口热菜"
+                  class="student-order-card__photo"
+                />
+              </div>
+              <div class="student-order-card__info">
+                <h3 class="student-order-card__title">大众窗口 · 家常热菜</h3>
+                <span class="student-order-card__badge">家常热菜</span>
+                <button type="button" class="student-order-card__action" aria-label="进入大众窗口看看">
+                  <div class="student-order-card__action-row">
+                    <span class="student-order-card__action-text">进店看看</span>
+                    <span class="student-order-card__action-arrow" aria-hidden="true">�?/span>
+                  </div>
+                  <svg class="student-order-card__action-underline" viewBox="0 0 76 10" fill="none" aria-hidden="true">
+                    <path d="M2 5.5C20 9 52 2.5 74 6.5" stroke="#FFD525" stroke-width="3.4" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </article>
+
+            <!-- 档口 2：风味小�?(点击进入可查看黑椒鸡腿饭取消状态订�? -->
+            <article class="student-order-card is-current" role="listitem" onclick="navTo('order-detail')">
+              <div class="student-order-card__photo-box">
+                <img
+                  src="../src/modules/student/assets/stall-fengwei.png"
+                  alt="风味小炒现场制作"
+                  class="student-order-card__photo"
+                />
+              </div>
+              <div class="student-order-card__info">
+                <h3 class="student-order-card__title">风味小炒 · 现做小炒</h3>
+                <span class="student-order-card__badge" style="background:#fef3c7;color:#92400e;">取消待处�?/span>
+                <button type="button" class="student-order-card__action" aria-label="进入风味小炒看看">
+                  <div class="student-order-card__action-row">
+                    <span class="student-order-card__action-text">进店看看</span>
+                    <span class="student-order-card__action-arrow" aria-hidden="true">�?/span>
+                  </div>
+                  <svg class="student-order-card__action-underline" viewBox="0 0 76 10" fill="none" aria-hidden="true">
+                    <path d="M2 5.5C20 9 52 2.5 74 6.5" stroke="#FFD525" stroke-width="3.4" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </article>
+
+            <!-- 档口 3：面食档 -->
+            <article class="student-order-card" role="listitem" onclick="showToast('已选择面食�?)">
+              <div class="student-order-card__photo-box">
+                <img
+                  src="../src/modules/student/assets/stall-mianshi.png"
+                  alt="面食档各种面条饺�?
+                  class="student-order-card__photo"
+                />
+              </div>
+              <div class="student-order-card__info">
+                <h3 class="student-order-card__title">面食�?· 面食水饺</h3>
+                <span class="student-order-card__badge">面食水饺</span>
+                <button type="button" class="student-order-card__action" aria-label="进入面食档看�?>
+                  <div class="student-order-card__action-row">
+                    <span class="student-order-card__action-text">进店看看</span>
+                    <span class="student-order-card__action-arrow" aria-hidden="true">�?/span>
+                  </div>
+                  <svg class="student-order-card__action-underline" viewBox="0 0 76 10" fill="none" aria-hidden="true">
+                    <path d="M2 5.5C20 9 52 2.5 74 6.5" stroke="#FFD525" stroke-width="3.4" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </div>
+
+
+    <!-- =====================================================================
+         页面 3：【订单】�?订单详情 (高保真还�?photo/04-取消状态与我的页建�?png 左侧)
+         ===================================================================== -->
+    <div class="screen-page" id="page-order-detail">
+      <main class="student-order-detail" style="min-height: auto; padding-bottom: 2rem;">
+        <nav class="order-nav">
+          <button type="button" class="order-nav__back" aria-label="返回" onclick="navTo('profile')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:1.25rem;height:1.25rem;">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <h1 class="order-nav__title">订单详情</h1>
+          <div class="order-nav__placeholder"></div>
+        </nav>
+
+        <div class="order-detail-content">
+          <!-- 状态便�?-->
+          <section class="order-status-card" aria-label="订单进度与状�?>
+            <div class="order-status-card__header">
+              <div class="order-status-card__title-wrap">
+                <h2 class="order-status-card__title">制作�?/h2>
+                <span class="order-status-card__sparkles">�?/span>
+              </div>
+              <div class="order-status-card__tape-tag">取消申请待处�?/div>
+            </div>
+
+            <p class="order-status-card__lead">已提交申请，等待档口确认</p>
+            <p class="order-status-card__sublead">申请中不代表订单已取�?/p>
+
+            <!-- 五步横向进度�?-->
+            <div class="order-steps-bar">
+              <div class="order-steps-bar__line-bg"></div>
+              <div class="order-steps-bar__line-active" style="width: calc(50% * 0.82);"></div>
+              
+              <div class="order-step-node is-reached">
+                <div class="order-step-node__circle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="width:0.85rem;height:0.85rem;"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <span class="order-step-node__name">已下�?/span>
+              </div>
+
+              <div class="order-step-node is-reached">
+                <div class="order-step-node__circle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="width:0.85rem;height:0.85rem;"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <span class="order-step-node__name">已接�?/span>
+              </div>
+
+              <div class="order-step-node is-reached is-current">
+                <div class="order-step-node__circle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="width:0.85rem;height:0.85rem;"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <span class="order-step-node__name">制作�?/span>
+              </div>
+
+              <div class="order-step-node">
+                <div class="order-step-node__circle"></div>
+                <span class="order-step-node__name">可取�?/span>
+              </div>
+
+              <div class="order-step-node">
+                <div class="order-step-node__circle"></div>
+                <span class="order-step-node__name">已完�?/span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 菜品信息拍立得回形针卡片 -->
+          <section class="order-dish-polaroid" aria-label="订单商品明细">
+            <svg class="order-dish-polaroid__clip" viewBox="0 0 24 48" fill="none" stroke="#64748b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 4 C6 4, 3 8, 3 16 L3 36 C3 42, 7 46, 12 46 C17 46, 21 42, 21 36 L21 12 C21 7, 18 4, 13 4 C8 4, 6 7, 6 12 L6 34 C6 37, 8 40, 12 40 C16 40, 18 37, 18 34 L18 14" />
+            </svg>
+            <div class="order-dish-polaroid__photo-frame">
+              <img src="../src/modules/student/assets/dish-chicken-rice.png" alt="黑椒鸡腿�? />
+            </div>
+            <div class="order-dish-polaroid__info">
+              <h3 class="order-dish-polaroid__title">黑椒鸡腿�?×1</h3>
+              <span class="order-dish-polaroid__tag">风味小炒</span>
+              <div class="order-dish-polaroid__price-row">
+                <span class="order-dish-polaroid__price">¥14</span>
+              </div>
+              <p class="order-dish-polaroid__slot">今天 12:00�?2:30 · 堂食</p>
+            </div>
+          </section>
+
+          <!-- 取消申请便签卡片 -->
+          <section class="order-cancel-note" aria-label="取消申请信息">
+            <div class="order-cancel-note__header">
+              <h3 class="order-cancel-note__title">取消申请</h3>
+              <span class="order-cancel-note__time">提交�?10:24</span>
+            </div>
+            <div class="order-cancel-note__body">
+              <svg class="order-cancel-note__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12 7 12 12 15 14" />
+              </svg>
+              <p class="order-cancel-note__reason">申请原因：临时有事，无法取餐</p>
+            </div>
+          </section>
+
+          <!-- 付款状态卡�?-->
+          <section class="order-payment-card" aria-label="付款状态信�?>
+            <div class="order-payment-card__left">
+              <h3 class="order-payment-card__title">付款状�?/h3>
+            </div>
+            <div class="order-payment-card__right">
+              <span class="order-payment-card__status">已模拟付�?/span>
+              <p class="order-payment-card__note">取消成功后将同步模拟退�?/p>
+              <p class="order-payment-card__note">不发生真实资金交�?/p>
+            </div>
+          </section>
+
+          <!-- 取餐码提示条 -->
+          <section class="order-pickup-hint-bar" aria-label="取餐码提�?>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.05rem;height:1.05rem;">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <span>可取餐后显示取餐�?/span>
+          </section>
+
+          <!-- 原生主按钮与文字返回 -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.6rem; margin-top:0.4rem;">
+            <button type="button" class="order-bottom-actions__btn" id="refreshBtnInPage" onclick="triggerRefresh()">
+              刷新处理结果
+            </button>
+            <button type="button" class="order-bottom-actions__link" onclick="navTo('profile')">
+              返回订单列表
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+
+    <!-- =====================================================================
+         页面 4：【我的】�?个人中心 (高保真还�?photo/04-取消状态与我的页建�?png 右侧)
+         ===================================================================== -->
+    <div class="screen-page" id="page-profile">
+      <div class="student-profile" style="min-height: auto; padding-bottom: 2rem;">
+        <header class="profile-hero" style="margin-top: -1.8rem;">
+          <div class="profile-hero__topbar" style="height: 1.2rem;"></div>
+          <div class="profile-hero__title-wrap">
+            <h1 class="profile-hero__title">我的</h1>
+            <span class="profile-hero__sparkles">�?/span>
+          </div>
+        </header>
+
+        <main class="profile-content">
+          <section class="profile-user-card" aria-label="学生个人档案">
+            <div class="profile-user-card__tape"></div>
+            <div class="profile-user-card__avatar-frame">
+              <img src="../src/modules/student/assets/student-avatar.png" alt="学生卡通头�? />
+            </div>
+            <div class="profile-user-card__info">
+              <div class="profile-user-card__name-row">
+                <h2 class="profile-user-card__name">同学，你�?/h2>
+                <span class="profile-user-card__badge">学生账号</span>
+              </div>
+              <p class="profile-user-card__motto">好好吃饭，元气满�?/p>
+            </div>
+          </section>
+
+          <section class="profile-menu-card" aria-label="功能菜单">
+            <button type="button" class="profile-menu-item" onclick="navTo('order-detail')">
+              <div class="profile-menu-item__left">
+                <div class="profile-menu-item__icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    <path d="M9 12h6M9 16h6" />
+                  </svg>
+                </div>
+                <span class="profile-menu-item__label">我的订单 (含取消申请单)</span>
+              </div>
+              <span class="profile-menu-item__arrow">�?/span>
+            </button>
+
+            <button type="button" class="profile-menu-item" onclick="openModal('location')">
+              <div class="profile-menu-item__left">
+                <div class="profile-menu-item__icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                </div>
+                <span class="profile-menu-item__label">位置信息与隐�?/span>
+              </div>
+              <span class="profile-menu-item__arrow">�?/span>
+            </button>
+
+            <button type="button" class="profile-menu-item" onclick="openModal('dining')">
+              <div class="profile-menu-item__left">
+                <div class="profile-menu-item__icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                </div>
+                <span class="profile-menu-item__label">用餐说明</span>
+              </div>
+              <span class="profile-menu-item__arrow">�?/span>
+            </button>
+
+            <button type="button" class="profile-menu-item" onclick="showToast('已退出当前账�?)">
+              <div class="profile-menu-item__left">
+                <div class="profile-menu-item__icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                </div>
+                <span class="profile-menu-item__label">退出登�?/span>
+              </div>
+              <span class="profile-menu-item__arrow">�?/span>
+            </button>
+          </section>
+
+          <section class="profile-location-card" aria-label="位置信息参考与隐私">
+            <div class="profile-location-card__head">
+              <div class="profile-location-card__pin-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span class="profile-location-card__spark">�?/span>
+              </div>
+              <div class="profile-location-card__text">
+                <h3 class="profile-location-card__title">仅用于堂食参�?/h3>
+                <p class="profile-location-card__desc">不持续跟踪，拒绝不影响下�?/p>
+              </div>
+            </div>
+            <button type="button" class="profile-location-card__btn" onclick="showToast('已清除位置判断记录（不会删除订单�?)">
+              清除位置判断记录
+            </button>
+            <p class="profile-location-card__subnote">不会删除订单</p>
+          </section>
+
+          <footer class="profile-footer">
+            吉祥点餐 · 校园预约取餐
+          </footer>
+        </main>
+      </div>
+    </div>
+
+
+    <!-- =====================================================================
+         屏幕内原生吸�?TabBar：在手机最底端常驻�? 个按键自由切�?         ===================================================================== -->
+    <nav class="native-tabbar" aria-label="学生端原生底部导�?>
+      <button type="button" class="is-active" id="tabBtnShop" onclick="navTo('home')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10H3zM9 21v-7h6v7" /></svg>
+        <span>首页</span>
+        <div class="nav-blob"></div>
+      </button>
+
+      <button type="button" id="tabBtnMenu" onclick="navTo('order')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18a9 9 0 0 1-18 0ZM5 21h14" /><path d="M9 8c0-2 2-2 2-4m4 5c0-2 2-2 2-4" /></svg>
+        <span>点餐</span>
+        <div class="nav-blob" style="display:none;"></div>
+      </button>
+
+      <button type="button" id="tabBtnOrder" onclick="navTo('order-detail')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h4" /></svg>
+        <span>订单</span>
+        <div class="nav-blob" style="display:none;"></div>
+      </button>
+
+      <button type="button" id="tabBtnProfile" onclick="navTo('profile')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" /></svg>
+        <span>我的</span>
+        <div class="nav-blob" style="display:none;"></div>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- 原设计稿对比视口 (默认收起) -->
+  <div class="reference-box" id="refBox">
+    <img src="../photo/04-取消状态与我的页建�?png" alt="设计图参�? />
+  </div>
+</main>
+
+<script>
+  let activePage = 'home';
+  let curSlide = 0;
+
+  function navTo(pageKey) {
+    activePage = pageKey;
+
+    // 1. 切换屏幕内对应页面容�?    ['home', 'order', 'order-detail', 'profile'].forEach(k => {
+      const pageEl = document.getElementById('page-' + k);
+      if (pageEl) {
+        pageEl.classList.toggle('is-active', k === pageKey);
+      }
+    });
+
+    // 2. 手机滚动条复位到顶部
+    const phone = document.getElementById('phoneBody');
+    if (phone) phone.scrollTop = 0;
+
+    // 3. 更新底栏 4 �?Tab 按钮的高亮状态与黄色手绘椭圆激活块
+    const tabs = {
+      home: document.getElementById('tabBtnShop'),
+      order: document.getElementById('tabBtnMenu'),
+      'order-detail': document.getElementById('tabBtnOrder'),
+      profile: document.getElementById('tabBtnProfile')
+    };
+
+    Object.entries(tabs).forEach(([k, btn]) => {
+      if (!btn) return;
+      const isTarget = (k === pageKey);
+      btn.classList.toggle('is-active', isTarget);
+      const blob = btn.querySelector('.nav-blob');
+      if (blob) blob.style.display = isTarget ? 'block' : 'none';
+    });
+  }
+
+  // 首页拍立得轮播切换函�?  function setSlide(index) {
+    curSlide = (index + 3) % 3;
+    const slides = [
+      document.getElementById('slide-0'),
+      document.getElementById('slide-1'),
+      document.getElementById('slide-2')
+    ];
+    const dots = [
+      document.getElementById('dot-0'),
+      document.getElementById('dot-1'),
+      document.getElementById('dot-2')
+    ];
+
+    slides.forEach((sl, idx) => {
+      if (!sl) return;
+      sl.classList.remove('is-center', 'is-left', 'is-right');
+      const pos = idx === curSlide ? 'is-center' : (idx - curSlide + 3) % 3 === 1 ? 'is-right' : 'is-left';
+      sl.classList.add(pos);
+    });
+
+    dots.forEach((dot, idx) => {
+      if (!dot) return;
+      dot.classList.toggle('is-active', idx === curSlide);
+    });
+  }
+
+  function stepSlide(dir) {
+    setSlide(curSlide + dir);
+  }
+
+  function showToast(text) {
+    const toast = document.getElementById('screenToast');
+    toast.innerText = text;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 2200);
+  }
+
+  function triggerRefresh() {
+    const btn = document.getElementById('refreshBtnInPage');
+    btn.innerText = '正在刷新�?;
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.innerText = '刷新处理结果';
+      btn.disabled = false;
+      showToast('已获取最新状态：制作�?· 取消申请待处�?);
+    }, 500);
+  }
+
+  function openModal(type) {
+    if (type === 'location') {
+      alert('【位置信息与隐私说明】\n\n1. 仅用于堂食拥挤参考，选择堂食时辅助测算热度。\n2. 绝不持续后台跟踪。\n3. 拒绝授权依然可以正常下单。\n4. 随时清除记录，绝不影响或删除订单�?);
+    } else {
+      alert('【校园预约用餐说明】\n\n1. 请在预约的时段前往档口取餐。\n2. 餐品制作完成后展示取餐码，出示给档口阿姨核销。\n3. 接单前可直接取消，制作中需提交申请并等待档口确认。\n4. 饭后请将餐盘送回餐盘回收处�?);
+    }
+  }
+
+  function toggleRef() {
+    const box = document.getElementById('refBox');
+    const btn = document.getElementById('refBtn');
+    if (box.style.display === 'block') {
+      box.style.display = 'none';
+      btn.innerText = '对照设计稿原�?(photo/04)';
+    } else {
+      box.style.display = 'block';
+      btn.innerText = '隐藏设计稿原�?;
+    }
+  }
+
+  // 默认首屏进入真正做好的首�?(店铺轮播与推�?
+  navTo('home');
+</script>
+
+</body>
+</html>
+

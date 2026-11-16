@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>订单列表与取餐码 · 双屏并列高保真预览</title>
+<link rel="stylesheet" href="../src/modules/student/order-list.css" />
+<link rel="stylesheet" href="../src/modules/student/order-detail.css" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 2.5rem;
+    background: #cdd9e8;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  }
+  button { font: inherit; }
+
+  /* 顶部控制栏 */
+  .preview-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    padding: 0.75rem 1.25rem;
+    background: rgba(7, 22, 56, 0.95);
+    backdrop-filter: blur(12px);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  }
+  .preview-bar__title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #ffd525;
+    margin-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .preview-tabs {
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .preview-tab {
+    padding: 0.4rem 1rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .preview-tab.is-active {
+    background: #ffd525;
+    color: #071638;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .preview-btn {
+    padding: 0.4rem 0.95rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .preview-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .preview-btn.is-active {
+    background: #1971e2;
+    border-color: #1971e2;
+  }
+
+  /* 视口舞台 */
+  .preview-stage {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 2.8rem;
+    margin: 1.8rem auto 0;
+    padding: 0 1rem;
+    max-width: 1540px;
+    transition: all 0.25s ease;
+  }
+
+  .screen-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+  }
+
+  /* 页面标题手账贴纸 */
+  .screen-tag {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%) rotate(-4deg);
+    z-index: 50;
+    background: #fde047;
+    color: #071638;
+    font-size: 0.9rem;
+    font-weight: 900;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    border: 1.5px dashed rgba(7, 22, 56, 0.2);
+    pointer-events: none;
+    line-height: 1.35;
+    text-align: center;
+  }
+  .screen-col:first-child .screen-tag {
+    left: -100px;
+  }
+  .screen-col:nth-child(2) .screen-tag {
+    right: -110px;
+    transform: translateY(-50%) rotate(4deg);
+  }
+
+  /* 手机模型 */
+  .phone-mockup {
+    width: 395px;
+    height: 855px;
+    background: #edf5fd;
+    border-radius: 44px;
+    box-shadow: 0 25px 60px rgba(7, 22, 56, 0.26), 0 0 0 10px #1e293b, 0 0 0 12px #94a3b8;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: none;
+  }
+  .phone-mockup::-webkit-scrollbar { display: none; }
+
+  /* 状态栏 */
+  .phone-status-bar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 22px 4px;
+    color: #071638;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    pointer-events: none;
+  }
+  .status-bar-icons {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8rem;
+  }
+  .status-bar-icons svg {
+    width: 15px;
+    height: 15px;
+    fill: currentColor;
+  }
+
+  /* 原设计稿对照卡片 */
+  .ref-mockup {
+    width: 395px;
+    height: 855px;
+    border-radius: 44px;
+    box-shadow: 0 25px 60px rgba(7, 22, 56, 0.26), 0 0 0 8px #f59e0b;
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+    display: none;
+    flex-direction: column;
+  }
+  .ref-mockup.is-visible {
+    display: flex;
+  }
+  .ref-mockup img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .ref-mockup__badge {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    background: #f59e0b;
+    color: #071638;
+    font-size: 0.76rem;
+    font-weight: 900;
+    padding: 4px 12px;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    z-index: 10;
+  }
+
+  /* 底部标语 */
+  .preview-footer-note {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #475569;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<header class="preview-bar">
+  <div class="preview-bar__title">
+    <span>🍱</span>
+    <span>订单列表与取餐码 · 视觉全景对比</span>
+  </div>
+  <div class="preview-tabs">
+    <button type="button" class="preview-tab is-active" id="tabDual" onclick="setMode('dual')">双屏并列</button>
+    <button type="button" class="preview-tab" id="tabList" onclick="setMode('list')">仅订单列表</button>
+    <button type="button" class="preview-tab" id="tabPickup" onclick="setMode('pickup')">仅取餐码详情</button>
+  </div>
+  <button type="button" class="preview-btn" id="btnToggleRef" onclick="toggleRef()">并列参考设计稿 (03-订单列表与取餐码.png)</button>
+</header>
+
+<main class="preview-stage" id="previewStage">
+
+  <!-- =========================================================================
+       左屏：页面：我的订单 (OrderListPage)
+       ========================================================================= -->
+  <div class="screen-col" id="colList">
+    <div class="screen-tag">
+      页面：<br/><strong>我的订单</strong>
+    </div>
+
+    <div class="phone-mockup">
+      <!-- 手机顶部状态栏 -->
+      <div class="phone-status-bar">
+        <span>10:24</span>
+        <div class="status-bar-icons">
+          <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M2 17h20v2H2zm1.15-4.05L4 11.92l4.8 2.05-4.8 2.05-.85-1.02zm17.7 0l-.85 1.02-4.8-2.05 4.8-2.05.85 1.02z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M17 4h-3V2h-4v2H7v18h10V4zm-2 16H9V6h6v14z"/></svg>
+        </div>
+      </div>
+
+      <!-- 订单列表组件完整结构 -->
+      <div class="student-order-list-page">
+        <!-- 顶部艺术手绘 Banner（包含我的订单手绘字、每一餐都安排好了撕纸便签、记得准时取餐回形针便签） -->
+        <header class="order-list-header-banner-wrap">
+          <img class="order-list-header-banner" src="../src/modules/student/assets/order-header-banner.png" alt="我的订单：每一餐，都安排好了。记得准时取餐" />
+          <h1 class="sr-only">我的订单</h1>
+        </header>
+
+        <!-- 三大卡片列表 -->
+        <div class="order-list-cards">
+          <!-- 卡片 1：风味小炒 · 可取餐 -->
+          <article class="order-card">
+            <div class="order-card__photo-frame">
+              <img class="order-card__photo-img" src="../src/modules/student/assets/card-polaroid-fengwei.png" alt="风味小炒" />
+            </div>
+            <div class="order-card__info">
+              <div class="order-card__row-head">
+                <h2 class="order-card__shop-name">风味小炒</h2>
+                <span class="order-status-capsule is-ready">可取餐</span>
+              </div>
+              <div class="order-card__row-dish">
+                <span class="order-card__dish-title">黑椒鸡腿饭 × 1</span>
+                <span class="order-card__dish-price">¥14</span>
+              </div>
+              <div class="order-card__row-meta">
+                <svg class="order-card__meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/><path d="M15 11v11"/><path d="M5 2v8a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V2"/><path d="M8 13v9"/></svg>
+                <span>今天 12:00—12:30 · </span>
+                <span class="order-card__dining-mode">堂食</span>
+              </div>
+              <div class="order-card__row-action">
+                <button type="button" class="order-card__btn-primary" onclick="setMode('pickup')">查看取餐码</button>
+              </div>
+            </div>
+          </article>
+
+          <!-- 卡片 2：面食档 · 制作中 -->
+          <article class="order-card">
+            <div class="order-card__photo-frame">
+              <img class="order-card__photo-img" src="../src/modules/student/assets/card-polaroid-mianshi.png" alt="面食档" />
+            </div>
+            <div class="order-card__info">
+              <div class="order-card__row-head">
+                <h2 class="order-card__shop-name">面食档</h2>
+                <span class="order-status-capsule is-preparing">制作中</span>
+              </div>
+              <div class="order-card__row-dish">
+                <span class="order-card__dish-title">红烧牛肉面 × 1</span>
+                <span class="order-card__dish-price">¥16</span>
+              </div>
+              <div class="order-card__row-meta">
+                <svg class="order-card__meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                <span>今天 12:30—13:00 · </span>
+                <span class="order-card__dining-mode">外带</span>
+              </div>
+              <div class="order-card__row-action">
+                <button type="button" class="order-card__btn-outline">查看详情</button>
+              </div>
+            </div>
+          </article>
+
+          <!-- 卡片 3：大众窗口 · 已完成 -->
+          <article class="order-card">
+            <div class="order-card__photo-frame">
+              <img class="order-card__photo-img" src="../src/modules/student/assets/card-polaroid-dazhong.png" alt="大众窗口" />
+            </div>
+            <div class="order-card__info">
+              <div class="order-card__row-head">
+                <h2 class="order-card__shop-name">大众窗口</h2>
+                <span class="order-status-capsule is-completed">已完成</span>
+              </div>
+              <div class="order-card__row-dish">
+                <span class="order-card__dish-title">番茄炒蛋饭 × 1</span>
+                <span class="order-card__dish-price">¥12</span>
+              </div>
+              <div class="order-card__row-meta">
+                <svg class="order-card__meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/><path d="M15 11v11"/><path d="M5 2v8a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V2"/><path d="M8 13v9"/></svg>
+                <span>昨天 11:30—12:00 · </span>
+                <span class="order-card__dining-mode">堂食</span>
+              </div>
+              <div class="order-card__row-action">
+                <button type="button" class="order-card__btn-outline">查看详情</button>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- 底部 TabBar -->
+        <nav class="student-tabbar" aria-label="底部导航">
+          <button type="button" class="student-tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>首页</span>
+          </button>
+          <button type="button" class="student-tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            <span>点餐</span>
+          </button>
+          <button type="button" class="student-tab-item is-active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>订单</span>
+          </button>
+          <button type="button" class="student-tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>我的</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       右屏：页面：订单详情 · 可取餐 (OrderDetailPage)
+       ========================================================================= -->
+  <div class="screen-col" id="colPickup">
+    <div class="screen-tag">
+      页面：<br/><strong>订单详情 · 可取餐</strong>
+    </div>
+
+    <div class="phone-mockup">
+      <!-- 手机顶部状态栏 -->
+      <div class="phone-status-bar">
+        <span>10:24</span>
+        <div class="status-bar-icons">
+          <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M2 17h20v2H2zm1.15-4.05L4 11.92l4.8 2.05-4.8 2.05-.85-1.02zm17.7 0l-.85 1.02-4.8-2.05 4.8-2.05.85 1.02z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M17 4h-3V2h-4v2H7v18h10V4zm-2 16H9V6h6v14z"/></svg>
+        </div>
+      </div>
+
+      <!-- 订单详情组件完整结构 -->
+      <main class="student-order-detail" style="background: linear-gradient(180deg, #cae4fc 0%, #dff0fe 22%, #edf5fd 50%, #edf5fd 100%);">
+        <!-- 导航栏 -->
+        <nav class="order-nav">
+          <button type="button" class="order-nav__back" onclick="setMode('list')" aria-label="返回">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <h1 class="order-nav__title">订单详情</h1>
+          <div class="order-nav__placeholder"></div>
+        </nav>
+
+        <div class="order-detail-content" style="gap: 0.85rem;">
+          <!-- 1. 顶部撕纸气泡横幅 -->
+          <section class="order-ready-banner">
+            <div class="order-ready-banner__title-wrap">
+              <h2 class="order-ready-banner__title">做好啦，来取餐吧！</h2>
+              <span class="order-ready-banner__sparkle" aria-hidden="true">✨</span>
+            </div>
+            <p class="order-ready-banner__sub">风味小炒 · 可取餐</p>
+          </section>
+
+          <!-- 2. 横向五步进度条 -->
+          <div class="order-steps-bar" style="background: #ffffff; border-radius: 16px; padding: 1.15rem 0.6rem 0.95rem; box-shadow: 0 4px 14px rgba(7, 22, 56, 0.05);">
+            <div class="order-steps-bar__line-bg" aria-hidden="true" style="top: 1.7rem; left: 1.5rem; right: 1.5rem;"></div>
+            <div class="order-steps-bar__line-active" aria-hidden="true" style="top: 1.7rem; left: 1.5rem; width: calc(75% * 0.95);"></div>
+            
+            <div class="order-step-node is-reached">
+              <div class="order-step-node__circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              </div>
+              <span class="order-step-node__name">已下单</span>
+            </div>
+            <div class="order-step-node is-reached">
+              <div class="order-step-node__circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              </div>
+              <span class="order-step-node__name">已接单</span>
+            </div>
+            <div class="order-step-node is-reached">
+              <div class="order-step-node__circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              </div>
+              <span class="order-step-node__name">制作中</span>
+            </div>
+            <div class="order-step-node is-reached is-current">
+              <div class="order-step-node__circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              </div>
+              <span class="order-step-node__name" style="font-weight: 800; color: #071638;">可取餐</span>
+            </div>
+            <div class="order-step-node">
+              <div class="order-step-node__circle"></div>
+              <span class="order-step-node__name">已完成</span>
+            </div>
+          </div>
+
+          <!-- 3. 核心：电影票/小票风格取餐码卡片 -->
+          <section class="pickup-ticket-card">
+            <!-- 顶部明黄色手绘纸胶带 -->
+            <div class="pickup-ticket-card__tape" aria-hidden="true"></div>
+            <!-- 左右半圆撕票凹孔 -->
+            <div class="pickup-ticket-card__notch-left" aria-hidden="true"></div>
+            <div class="pickup-ticket-card__notch-right" aria-hidden="true"></div>
+
+            <div class="pickup-ticket-card__title-box">
+              <span class="pickup-ticket-card__ray" aria-hidden="true">///</span>
+              <h3 class="pickup-ticket-card__title">取餐码</h3>
+              <span class="pickup-ticket-card__ray" aria-hidden="true">\\\</span>
+            </div>
+
+            <!-- 超大字号取餐码：绝对单行居中 -->
+            <div class="pickup-ticket-card__code">
+              <span>A</span>
+              <span>2</span>
+              <span>6</span>
+              <span>8</span>
+            </div>
+
+            <p class="pickup-ticket-card__hint">向档口出示取餐码</p>
+            <p class="pickup-ticket-card__subhint">示例取餐码 · 不可核销</p>
+
+            <!-- 水平虚线撕拉线 -->
+            <div class="pickup-ticket-card__divider" aria-hidden="true"></div>
+
+            <div class="pickup-ticket-card__footer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/><path d="M15 11v11"/><path d="M5 2v8a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V2"/><path d="M8 13v9"/></svg>
+              <span>12:00—12:30</span>
+              <span style="color: #cbd5e1;">|</span>
+              <span class="pickup-ticket-card__dining-tag">堂食</span>
+            </div>
+          </section>
+
+          <!-- 4. 菜品信息小卡片 -->
+          <section class="order-dish-mini-card">
+            <img class="order-dish-mini-card__thumb" src="../src/modules/student/assets/detail-dish-chicken.png" alt="黑椒鸡腿饭" />
+            <div class="order-dish-mini-card__info">
+              <div class="order-dish-mini-card__row">
+                <h4 class="order-dish-mini-card__name">黑椒鸡腿饭 × 1</h4>
+                <span class="order-dish-mini-card__price">¥14</span>
+              </div>
+              <p class="order-dish-mini-card__sim-note">模拟付款，不发生资金交易</p>
+            </div>
+          </section>
+
+          <!-- 5. 提示文案 -->
+          <p class="order-change-dining-hint">
+            如需更改堂食或外带，请联系档口
+          </p>
+
+          <!-- 6. 底部双操作按钮 -->
+          <div class="order-actions-dual-row">
+            <button type="button" class="order-btn-refresh-main" onclick="alert('订单状态已刷新，当前最新状态：可取餐')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+              <span>刷新订单</span>
+            </button>
+            <button type="button" class="order-btn-cancel-sub" onclick="alert('当前餐品已就绪，如需取消请联系档口工作人员。')">
+              申请取消
+            </button>
+          </div>
+        </div>
+
+        <!-- 底部 TabBar -->
+        <nav class="student-tabbar" aria-label="底部导航">
+          <button type="button" class="student-tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>首页</span>
+          </button>
+          <button type="button" class="student-tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            <span>点餐</span>
+          </button>
+          <button type="button" class="student-tab-item is-active" onclick="setMode('list')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>订单</span>
+          </button>
+          <button type="button" class="student-tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>我的</span>
+          </button>
+        </nav>
+      </main>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       设计稿原图对照视口
+       ========================================================================= -->
+  <div class="screen-col" id="colRef" style="display: none;">
+    <div class="ref-mockup is-visible">
+      <span class="ref-mockup__badge">设计稿原图 (03-订单列表与取餐码.png)</span>
+      <img src="../photo/03-订单列表与取餐码.png" alt="设计稿参考图" />
+    </div>
+  </div>
+
+</main>
+
+<div class="preview-footer-note">
+  吉祥点餐 · 学生端视觉参考 · 示例内容
+</div>
+
+<script>
+  function setMode(mode) {
+    document.querySelectorAll('.preview-tab').forEach(b => b.classList.remove('is-active'));
+    const colList = document.getElementById('colList');
+    const colPickup = document.getElementById('colPickup');
+
+    if (mode === 'dual') {
+      document.getElementById('tabDual').classList.add('is-active');
+      colList.style.display = 'flex';
+      colPickup.style.display = 'flex';
+    } else if (mode === 'list') {
+      document.getElementById('tabList').classList.add('is-active');
+      colList.style.display = 'flex';
+      colPickup.style.display = 'none';
+    } else if (mode === 'pickup') {
+      document.getElementById('tabPickup').classList.add('is-active');
+      colList.style.display = 'none';
+      colPickup.style.display = 'flex';
+    }
+  }
+
+  function toggleRef() {
+    const btn = document.getElementById('btnToggleRef');
+    const colRef = document.getElementById('colRef');
+    const isShowing = colRef.style.display === 'flex';
+    if (isShowing) {
+      colRef.style.display = 'none';
+      btn.classList.remove('is-active');
+    } else {
+      colRef.style.display = 'flex';
+      btn.classList.add('is-active');
+    }
+  }
+</script>
+
+</body>
+</html>

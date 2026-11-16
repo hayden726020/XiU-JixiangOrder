@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.stfolder/
+.codeartsdoer/
+.runtime/
+preview/.edge-profile*/
+*.sync-conflict-*

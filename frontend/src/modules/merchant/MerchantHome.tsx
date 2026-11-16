@@ -38,12 +38,22 @@ import './merchant.css';
 type DataMode = 'sample' | 'real';
 
 const ORDERS_PAGE_SIZE = 20;
+const MERCHANT_ROUTE = '/merchant';
+const MENU_ROUTE = `${MERCHANT_ROUTE}/menu`;
 
 type View =
   | { name: 'list' }
   | { name: 'detail'; orderId: string }
   | { name: 'menu' }
   | { name: 'setup' };
+
+function merchantRoute(): string {
+  return window.location.hash.replace(/^#/, '').replace(/\/+$/, '') || '/';
+}
+
+function viewFromRoute(): View {
+  return merchantRoute() === MENU_ROUTE ? { name: 'menu' } : { name: 'list' };
+}
 
 export default function MerchantHome() {
   const initialMode: DataMode = import.meta.env.DEV
@@ -52,7 +62,7 @@ export default function MerchantHome() {
     : 'sample';
   const [mode, setMode] = useState<DataMode>(initialMode);
   const [scenario, setScenario] = useState<MerchantScenario>('normal');
-  const [view, setView] = useState<View>({ name: 'list' });
+  const [view, setView] = useState<View>(viewFromRoute);
   const today = useMemo(() => todayIso(), []);
   const dates = useMemo(
     () => (mode === 'sample' ? [...SAMPLE_DATES] : menuDatesFor(today)),
@@ -93,6 +103,21 @@ export default function MerchantHome() {
     : undefined;
 
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const route = merchantRoute();
+      if (route === MENU_ROUTE) {
+        setView({ name: 'menu' });
+        setNotice(null);
+      } else if (route === MERCHANT_ROUTE) {
+        setView((current) => (current.name === 'menu' ? { name: 'list' } : current));
+        setNotice(null);
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   async function loginDemo() {
     if (!devPassword) return;
@@ -185,6 +210,9 @@ export default function MerchantHome() {
   function changeMode(next: DataMode) {
     if (next === mode) return;
     clearActionState();
+    if (merchantRoute() === MENU_ROUTE) {
+      window.location.hash = MERCHANT_ROUTE;
+    }
     setMode(next);
     setView({ name: 'list' });
     setNotice(null);
@@ -217,6 +245,9 @@ export default function MerchantHome() {
 
   function backToList() {
     clearActionState();
+    if (merchantRoute() === MENU_ROUTE) {
+      window.location.hash = MERCHANT_ROUTE;
+    }
     restoreListScroll.current = true;
     setView({ name: 'list' });
     setNotice(null);
@@ -225,6 +256,7 @@ export default function MerchantHome() {
   function openMenu() {
     clearActionState();
     setDataVersion((current) => current + 1);
+    window.location.hash = MENU_ROUTE;
     setView({ name: 'menu' });
     setNotice(null);
   }
@@ -410,7 +442,7 @@ export default function MerchantHome() {
   }, [view.name]);
 
   return (
-    <section className="module-panel merchant-panel">
+    <section className={`module-panel merchant-panel${view.name === 'list' ? ' merchant-panel--order-list' : ''}${view.name === 'detail' && activeOrder?.status === 'NEW' ? ' merchant-panel--new-order-detail' : ''}${view.name === 'menu' && mode === 'sample' ? ' merchant-panel--sample-menu' : ''}`}>
       <div className="merchant-source">
         <span className="merchant-source__label">数据源</span>
         <button

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   getApiBaseInfo,
   getSession,
+  logout,
   roleLabel,
   subscribeSession,
   type Session,
@@ -64,6 +65,8 @@ export default function AdminHome() {
     getSession()?.user.role === 'ADMIN' ? 'live' : 'sample',
   );
   const [simulateError, setSimulateError] = useState<AdminErrorSimulation>('none');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   useEffect(() => {
     const onHashChange = () => setLocation(readLocation());
@@ -78,8 +81,26 @@ export default function AdminHome() {
     [mode, simulateError],
   );
   const isAdmin = session?.user.role === 'ADMIN';
+  const isOverview = location.route === 'overview';
+  const isOrders = location.route === 'orders';
+  const isFocusedPage = isOverview || isOrders;
   const baseInfo = getApiBaseInfo();
   const activeNav = location.route === 'orderDetail' ? 'orders' : location.route;
+
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+    setIsLoggingOut(true);
+    setLogoutError(null);
+    try {
+      await logout();
+    } catch {
+      setLogoutError('服务端退出请求失败，本地会话已清除。');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -95,86 +116,96 @@ export default function AdminHome() {
           </span>
           <a href="#/system-check">去公共自检页登录管理员 →</a>
         </div>
+        {logoutError ? <p className="admin-warn" role="alert">{logoutError}</p> : null}
         <p className="hint">本页仅展示身份提示，不含订单、配置、取餐码或学生位置。</p>
       </section>
     );
   }
 
   return (
-    <section className="module-panel admin-panel" aria-labelledby="admin-title">
-      {mode === 'sample' ? (
-        <SampleBanner />
-      ) : (
-        <div className="admin-banner admin-banner--live" role="status">
-          <strong>真实服务 · 订单只读，配置可保存</strong>
-          <span>
-            数据来自当前公共会话与服务地址；不会回退样例。查询或保存失败时显示失败原因。
-          </span>
-          <span className="admin-banner__tag">DRAFT v0.3 联调候选</span>
-        </div>
-      )}
+    <section
+      className={`module-panel admin-panel${isOverview ? ' admin-panel--overview' : ''}${isOrders ? ' admin-panel--orders' : ''}`}
+      aria-labelledby="admin-title"
+    >
+      {!isFocusedPage ? (
+        <>
+          {mode === 'sample' ? (
+            <SampleBanner />
+          ) : (
+            <div className="admin-banner admin-banner--live" role="status">
+              <strong>真实服务 · 订单只读，配置可保存</strong>
+              <span>
+                数据来自当前公共会话与服务地址；不会回退样例。查询或保存失败时显示失败原因。
+              </span>
+              <span className="admin-banner__tag">DRAFT v0.3 联调候选</span>
+            </div>
+          )}
 
-      <h2 id="admin-title">管理端 · 订单与配置</h2>
-      <p className="admin-muted">
-        S2 提供订单状态筛选、分页、异常标记与只读详情；S3/S5 提供 dining/crowd 只读展示与真实保存；S6/S7 提供 401/403/503 错误态、失败重试与管理员入口收口。
-        管理端不改订单状态，也不显示取餐码或学生位置。
-      </p>
-
-      <div className="admin-session">
-        <span>
-          当前会话：
-          {session ? `${session.user.displayName} · ${roleLabel(session.user.role)}` : '未登录'}
-        </span>
-        {mode === 'sample' ? (
-          <button type="button" className="admin-action" onClick={() => setMode('live')}>
-            连接真实服务
-          </button>
-        ) : null}
-        {mode === 'live' ? (
-          <button type="button" className="admin-action" onClick={() => setMode('sample')}>
-            查看样例数据
-          </button>
-        ) : null}
-        {!session ? <a href="#/system-check">去公共自检页登录 →</a> : null}
-      </div>
-
-      {mode === 'sample' ? (
-        <div className="admin-sim">
-          <label>
-            <span>错误态演习</span>
-            <select
-              value={simulateError}
-              onChange={(event) => setSimulateError(event.target.value as AdminErrorSimulation)}
-            >
-              <option value="none">正常样例数据</option>
-              <option value="401">模拟 401 身份失效</option>
-              <option value="403">模拟 403 无管理权限</option>
-              <option value="503">模拟 503 服务不可用</option>
-            </select>
-          </label>
+          <h2 id="admin-title">管理端 · 订单与配置</h2>
           <p className="admin-muted">
-            仅样例模式模拟，不请求服务端；用于核对 401/403/503 时页面不显示假数据。
+            S2 提供订单状态筛选、分页、异常标记与只读详情；S3/S5 提供 dining/crowd 只读展示与真实保存；S6/S7 提供 401/403/503 错误态、失败重试与管理员入口收口。
+            管理端不改订单状态，也不显示取餐码或学生位置。
           </p>
-        </div>
+
+          <div className="admin-session">
+            <span>
+              当前会话：
+              {session ? `${session.user.displayName} · ${roleLabel(session.user.role)}` : '未登录'}
+            </span>
+            {mode === 'sample' ? (
+              <button type="button" className="admin-action" onClick={() => setMode('live')}>
+                连接真实服务
+              </button>
+            ) : null}
+            {mode === 'live' ? (
+              <button type="button" className="admin-action" onClick={() => setMode('sample')}>
+                查看样例数据
+              </button>
+            ) : null}
+            {!session ? <a href="#/system-check">去公共自检页登录 →</a> : null}
+          </div>
+
+          {mode === 'sample' ? (
+            <div className="admin-sim">
+              <label>
+                <span>错误态演习</span>
+                <select
+                  value={simulateError}
+                  onChange={(event) => setSimulateError(event.target.value as AdminErrorSimulation)}
+                >
+                  <option value="none">正常样例数据</option>
+                  <option value="401">模拟 401 身份失效</option>
+                  <option value="403">模拟 403 无管理权限</option>
+                  <option value="503">模拟 503 服务不可用</option>
+                </select>
+              </label>
+              <p className="admin-muted">
+                仅样例模式模拟，不请求服务端；用于核对 401/403/503 时页面不显示假数据。
+              </p>
+            </div>
+          ) : null}
+
+          {mode === 'live' ? (
+            <p className="admin-muted">
+              服务地址：{baseInfo.baseUrl ?? '未配置'}。真机需在公共自检页配置手机可访问的地址，不能使用 localhost。
+            </p>
+          ) : null}
+        </>
       ) : null}
 
-      {mode === 'live' ? (
-        <p className="admin-muted">
-          服务地址：{baseInfo.baseUrl ?? '未配置'}。真机需在公共自检页配置手机可访问的地址，不能使用 localhost。
-        </p>
+      {!isFocusedPage ? (
+        <nav className="admin-nav" aria-label="管理端页面">
+          {navItems.map((item) => (
+            <a
+              key={item.route}
+              href={item.href}
+              aria-current={activeNav === item.route ? 'page' : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
       ) : null}
-
-      <nav className="admin-nav" aria-label="管理端页面">
-        {navItems.map((item) => (
-          <a
-            key={item.route}
-            href={item.href}
-            aria-current={activeNav === item.route ? 'page' : undefined}
-          >
-            {item.label}
-          </a>
-        ))}
-      </nav>
 
       {location.route === 'orderDetail' && location.orderId ? (
         <OrderDetailPage source={source} orderId={location.orderId} />
@@ -183,7 +214,12 @@ export default function AdminHome() {
       ) : location.route === 'settings' ? (
         <SettingsPage source={source} />
       ) : (
-        <OverviewPage mode={mode} session={session} />
+        <OverviewPage
+          mode={mode}
+          session={session}
+          isLoggingOut={isLoggingOut}
+          onLogout={handleLogout}
+        />
       )}
     </section>
   );
