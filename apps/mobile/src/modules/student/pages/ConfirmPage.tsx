@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { runAfterBackPress } from '../../../shared/backPress';
 import type { OrderDraft } from '../state/orderDraft';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import type { DemoScenario, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
@@ -244,7 +245,7 @@ export default function ConfirmPage({
       <section className="student-booking student-booking--confirm" aria-labelledby="student-confirm-title">
         <div className="booking-hero">
           <div className="booking-nav">
-            <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={onBack}>
+            <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
               <ChevronLeftIcon />
             </button>
             <h2 id="student-confirm-title" className="booking-nav__title">确认订单</h2>
@@ -264,7 +265,7 @@ export default function ConfirmPage({
 
       <div className="booking-hero">
         <div className="booking-nav">
-          <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={onBack}>
+          <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
             <ChevronLeftIcon />
           </button>
           <h2 id="student-confirm-title" className="booking-nav__title">确认订单</h2>
@@ -288,7 +289,7 @@ export default function ConfirmPage({
         {menuStatus === 'error' ? (
           <div className="booking-error" role="alert">
             <p>确认信息读取失败，请返回时段页重试。</p>
-            <button type="button" onClick={onBack}>
+            <button type="button" className="student-back" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
               返回时段页
             </button>
           </div>

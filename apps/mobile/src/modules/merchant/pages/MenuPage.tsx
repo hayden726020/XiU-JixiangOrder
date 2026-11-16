@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Dish, MenuDay, Slot, SlotDay, SourceResult } from '../data/types';
 import { createRequestId } from '../../../shared/requestId';
+import { runAfterBackPress } from '../../../shared/backPress';
 import { menuDateOptions } from '../state/menuView';
 import {
   canEditVersion,
@@ -134,7 +135,7 @@ export default function MenuPage({
 
   return (
     <div className="merchant-view">
-      <button type="button" className="back-link" onClick={onBack}>← 返回订单列表</button>
+      <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>← 返回订单列表</button>
       <header className="merchant-view__header">
         <div>
           <h2>

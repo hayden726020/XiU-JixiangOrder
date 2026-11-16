@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { runAfterBackPress } from '../../../shared/backPress';
 import type { CrowdView } from '../utils/crowdView';
 import type { SourceError, StudentSource } from '../types';
 import { toSourceError } from '../types';
@@ -281,7 +282,7 @@ export default function OrderDetailPage({
     return (
       <main className="student-order-detail" aria-labelledby="student-order-title">
         <nav className="order-nav">
-          <button type="button" className="order-nav__back" onClick={onBack} aria-label={backLabel}>
+          <button type="button" className="order-nav__back" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)} aria-label={backLabel}>
             <ChevronLeftIcon />
           </button>
           <h1 id="student-order-title" className="order-nav__title">订单详情</h1>
@@ -329,7 +330,7 @@ export default function OrderDetailPage({
 
       {/* 顶部导航栏 */}
       <nav className="order-nav">
-        <button type="button" className="order-nav__back" onClick={onBack} aria-label={backLabel}>
+        <button type="button" className="order-nav__back" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)} aria-label={backLabel}>
           <ChevronLeftIcon />
         </button>
         <h1 id="student-order-title" className="order-nav__title">订单详情</h1>

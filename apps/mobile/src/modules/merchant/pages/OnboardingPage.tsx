@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createRequestId } from '../../../shared/requestId';
+import { runAfterBackPress } from '../../../shared/backPress';
 import type { Session } from '../../../shared/session';
 import type { MerchantSource } from '../data/types';
 import {
@@ -223,7 +224,7 @@ export default function OnboardingPage({
   if (!allowed) {
     return (
       <div className="merchant-view" data-onboarding-blocked="true">
-        <button type="button" className="back-link" onClick={onBack} data-onboarding-back>← 返回角色入口</button>
+        <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)} data-onboarding-back>← 返回角色入口</button>
         <header className="merchant-view__header">
           <div>
             <h2>商家注册与开店</h2>
@@ -355,7 +356,7 @@ export default function OnboardingPage({
             <button
               type="button"
               className="action-button onboarding-cancel"
-              onClick={onBack}
+              onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}
               disabled={saving !== null}
               data-action="cancel-onboarding"
             >

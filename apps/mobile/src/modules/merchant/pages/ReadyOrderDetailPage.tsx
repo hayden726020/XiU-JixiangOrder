@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { runAfterBackPress } from '../../../shared/backPress';
 import type { DiningMode, MerchantOrder } from '../data/types';
 import {
   getOrderActions,
@@ -79,7 +80,7 @@ export default function ReadyOrderDetailPage({
       data-order-id={order.id}
       data-order-status={order.status}
     >
-      <button type="button" className="back-link merchant-order-detail__back" onClick={onBack}>
+      <button type="button" className="back-link merchant-order-detail__back" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
         ← 返回订单列表
       </button>
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { runAfterBackPress } from '../../../shared/backPress';
 
 import { getPresenceRuntime, type PresenceState } from '../state/presenceRuntime';
 import { derivePresenceView, type PresenceView } from '../utils/presenceView';
@@ -391,7 +392,7 @@ export default function SlotDiningPage({
     <section className="student-booking" aria-labelledby="student-slot-title">
       <div className="booking-hero">
         <div className="booking-nav">
-          <button type="button" className="booking-nav__back" aria-label="返回菜单" onClick={onBack}>
+          <button type="button" className="booking-nav__back student-back" aria-label="返回菜单" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
             <ChevronLeftIcon />
           </button>
           <h2 id="student-slot-title" className="booking-nav__title">预约取餐</h2>

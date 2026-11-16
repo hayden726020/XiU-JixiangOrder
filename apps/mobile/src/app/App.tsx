@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { runAfterBackPress } from '../shared/backPress';
 import { mobileModules } from './moduleRegistry';
 import SystemCheck from './SystemCheck';
 
@@ -50,7 +51,7 @@ function NotFound() {
     <section className="module-panel" aria-labelledby="not-found-title">
       <h2 id="not-found-title">未找到该入口</h2>
       <p className="lead">当前地址没有对应的角色模块，请返回角色入口重新选择。</p>
-      <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
+      <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, () => navigate(HOME_ROUTE))}>
         ← 返回角色入口
       </button>
     </section>
@@ -85,14 +86,14 @@ export default function App() {
       <main className="app-main">
         {route === CHECK_ROUTE ? (
           <>
-            <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
+            <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, () => navigate(HOME_ROUTE))}>
               ← 返回角色入口
             </button>
             <SystemCheck />
           </>
         ) : ActiveComponent ? (
           <>
-            <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
+            <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, () => navigate(HOME_ROUTE))}>
               ← 返回角色入口
             </button>
             <ActiveComponent />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { runAfterBackPress } from '../../../shared/backPress';
 import type { SourceError, StudentOrder, StudentSource } from '../types';
 import { toSourceError } from '../types';
 import { deriveOrderListView, toOrderListErrorView } from '../utils/orderListView';
@@ -136,7 +137,7 @@ export default function OrderListPage({
         {source.mode === 'sample' ? <SampleBanner /> : null}
         <OrderListHero />
         <div style={{ padding: '1rem', position: 'relative', zIndex: 10 }}>
-          <button type="button" className="student-secondary student-back" onClick={onBack}>
+          <button type="button" className="student-secondary student-back" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
             {backLabel}
           </button>
           <LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} />
@@ -182,7 +183,7 @@ export default function OrderListPage({
                   >
                     去公共入口登录
                   </button>
-                  <button type="button" className="student-secondary" onClick={onBack}>
+                  <button type="button" className="student-secondary student-back" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
                     返回
                   </button>
                 </>

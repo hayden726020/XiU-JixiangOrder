@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { runAfterBackPress } from '../../../shared/backPress';
 import ActionBar from '../components/ActionBar';
 import type { DiningMode, MerchantOrder } from '../data/types';
 import {
@@ -95,7 +96,7 @@ function OrderDetailContent({
 
   return (
     <div className="merchant-view" data-order-id={order.id} data-order-status={order.status}>
-      <button type="button" className="back-link" onClick={onBack}>← 返回订单列表</button>
+      <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>← 返回订单列表</button>
 
       <header className="detail-header">
         <p className="badge">
