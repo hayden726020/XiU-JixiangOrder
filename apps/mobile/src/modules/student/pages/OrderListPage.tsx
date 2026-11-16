@@ -7,7 +7,7 @@ import LoginGuide from '../components/LoginGuide';
 import SampleBanner from '../components/SampleBanner';
 import StudentTabBar from '../components/StudentTabBar';
 
-import orderHeaderBanner from '../assets/order-header-banner.png';
+import campusHero from '../assets/campus-hero.webp';
 import cardPolaroidFengwei from '../assets/card-polaroid-fengwei.png';
 import cardPolaroidMianshi from '../assets/card-polaroid-mianshi.png';
 import cardPolaroidDazhong from '../assets/card-polaroid-dazhong.png';
@@ -45,6 +45,33 @@ function ShoppingBagIcon() {
       <line x1="3" y1="6" x2="21" y2="6" />
       <path d="M16 10a4 4 0 0 1-8 0" />
     </svg>
+  );
+}
+
+function OrderListHero() {
+  return (
+    <header className="order-list-hero" aria-labelledby="student-order-list-title">
+      <svg className="order-list-hero__leaves" viewBox="0 0 150 76" fill="none" aria-hidden="true">
+        <path d="M3 65C41 46 69 28 112 5" stroke="#537b32" strokeWidth="3" strokeLinecap="round" />
+        <path d="M25 51C10 46 5 35 9 25c12 0 22 7 24 18M48 39C37 26 39 15 48 8c10 8 13 19 7 28M73 25C68 12 73 4 83 1c7 10 6 20-2 28M45 43c7-15 17-19 28-15-1 13-9 22-24 22M79 24c9-11 20-12 29-5-4 12-14 18-27 14" fill="#91ad57" stroke="#537b32" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+      <div className="order-list-hero__heading">
+        <p className="order-list-hero__eyebrow">食麦呼 · 校园取餐</p>
+        <h1 id="student-order-list-title">我的订单<span aria-hidden="true">✳</span></h1>
+        <span className="order-list-hero__underline" aria-hidden="true" />
+      </div>
+      <figure className="order-list-hero__campus">
+        <img src={campusHero} alt="校园食堂与学生取餐场景" />
+        <figcaption>今天的好味道，已经为你安排好</figcaption>
+      </figure>
+      <p className="order-list-hero__pickup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+        </svg>
+        记得准时取餐
+      </p>
+      <p className="order-list-hero__note">每一餐，都安排好了</p>
+    </header>
   );
 }
 
@@ -107,20 +134,11 @@ export default function OrderListPage({
     return (
       <section className="student-order-list-page" aria-labelledby="student-order-list-title">
         {source.mode === 'sample' ? <SampleBanner /> : null}
-        <header className="order-list-header-banner-wrap">
-          <img
-            className="order-list-header-banner"
-            src={orderHeaderBanner}
-            alt="我的订单"
-          />
-        </header>
+        <OrderListHero />
         <div style={{ padding: '1rem', position: 'relative', zIndex: 10 }}>
           <button type="button" className="student-secondary student-back" onClick={onBack}>
             {backLabel}
           </button>
-          <header style={{ margin: '1rem 0' }}>
-            <h2 id="student-order-list-title" className="order-card__shop-name">我的订单</h2>
-          </header>
           <LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} />
         </div>
         <StudentTabBar
@@ -139,15 +157,7 @@ export default function OrderListPage({
       {/* 顶部指示条 */}
       {source.mode === 'sample' ? <SampleBanner /> : null}
 
-      {/* 顶部完整艺术手绘横幅：我的订单 · 每一餐都安排好了 · 记得准时取餐 */}
-      <header className="order-list-header-banner-wrap">
-        <img
-          className="order-list-header-banner"
-          src={orderHeaderBanner}
-          alt="我的订单：每一餐，都安排好了。记得准时取餐"
-        />
-        <h1 id="student-order-list-title" className="sr-only">我的订单</h1>
-      </header>
+      <OrderListHero />
 
       {/* 加载与错误提示 */}
       <div style={{ padding: '0 1rem' }}>
