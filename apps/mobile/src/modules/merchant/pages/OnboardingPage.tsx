@@ -223,7 +223,7 @@ export default function OnboardingPage({
   if (!allowed) {
     return (
       <div className="merchant-view" data-onboarding-blocked="true">
-        <button type="button" className="back-link" onClick={onBack} data-onboarding-back>← 返回订单列表</button>
+        <button type="button" className="back-link" onClick={onBack} data-onboarding-back>← 返回角色入口</button>
         <header className="merchant-view__header">
           <div>
             <h2>商家注册与开店</h2>

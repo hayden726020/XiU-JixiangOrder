@@ -67,8 +67,7 @@ function orderIdFromRoute(route: string): string | null {
 
 function viewFromRoute(): View {
   const route = merchantRoute();
-  if (route === SETUP_ROUTE) return { name: 'setup' };
-  if (route === MERCHANT_ROUTE) return { name: 'list' };
+  if (route === SETUP_ROUTE || route === MERCHANT_ROUTE) return { name: 'setup' };
   if (route === MENU_ROUTE) return { name: 'menu' };
   if (route === ORDERS_ROUTE) return { name: 'list' };
   const orderId = orderIdFromRoute(route);
@@ -136,11 +135,8 @@ export default function MerchantHome() {
       } else if (route === MENU_ROUTE) {
         setView({ name: 'menu' });
         setNotice(null);
-      } else if (route === SETUP_ROUTE) {
+      } else if (route === SETUP_ROUTE || route === MERCHANT_ROUTE) {
         setView({ name: 'setup' });
-        setNotice(null);
-      } else if (route === MERCHANT_ROUTE) {
-        setView({ name: 'list' });
         setNotice(null);
       } else if (route === ORDERS_ROUTE) {
         setView({ name: 'list' });
@@ -284,6 +280,11 @@ export default function MerchantHome() {
     restoreListScroll.current = true;
     setView({ name: 'list' });
     setNotice(null);
+  }
+
+  function cancelOnboarding() {
+    clearActionState();
+    window.location.hash = '/';
   }
 
   function openMenu() {
@@ -587,7 +588,7 @@ export default function MerchantHome() {
           session={session}
           source={source}
 
-          onBack={backToList}
+          onBack={cancelOnboarding}
         />
       )}
     </section>
