@@ -142,13 +142,28 @@ export interface StallVisualMeta {
 export function resolveStallVisual(card: ShopCardView, index: number): StallVisualMeta {
   const name = card.title;
   if (/大众|家常/.test(name) || index === 0) {
-    return { title: '大众窗口', tag: '家常热菜', photoKey: 'dazhong', photoAlt: '大众窗口·家常热菜档口' };
+    return {
+      title: '大众窗口',
+      tag: '家常热菜',
+      photoKey: 'dazhong',
+      photoAlt: '大众窗口·家常热菜档口',
+    };
   }
   if (/小炒|风味/.test(name) || index === 1) {
-    return { title: '风味小炒', tag: '现做小炒', photoKey: 'fengwei', photoAlt: '风味小炒·现做小炒档口' };
+    return {
+      title: '风味小炒',
+      tag: '现做小炒',
+      photoKey: 'fengwei',
+      photoAlt: '风味小炒·现做小炒档口',
+    };
   }
   if (/面|饺/.test(name) || index === 2) {
-    return { title: '面食档', tag: '面食 · 饺子', photoKey: 'mianshi', photoAlt: '面食档·面食饺子档口' };
+    return {
+      title: '面食档',
+      tag: '面食 · 饺子',
+      photoKey: 'mianshi',
+      photoAlt: '面食档·面食饺子档口',
+    };
   }
   return {
     title: name,

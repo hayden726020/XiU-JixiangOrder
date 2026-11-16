@@ -1,0 +1,158 @@
+/* Student pages provide their own branded header and navigation. */
+.app-shell:has(.app-main [class*="student-"]) > .app-header,
+.app-shell:has(.app-main [class*="student-"]) > .app-footer,
+.app-main:has([class*="student-"]) > .back-link {
+  display: none;
+}
+
+.app-main:has([class*="student-"]) {
+  padding: 0;
+}
+
+/* Keep the four student destinations consistent across all page layouts. */
+.student-home__nav,
+.student-tabbar,
+.student-menu-tabbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  justify-content: stretch;
+  height: auto;
+  min-height: 4.15rem;
+  padding: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(7, 22, 56, 0.06);
+  border-radius: 1.25rem 1.25rem 0 0;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 -4px 18px rgba(7, 22, 56, 0.09);
+  backdrop-filter: blur(14px);
+}
+
+.student-home__nav button,
+.student-tabbar .student-tab-item,
+.student-menu-tabbar button {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 3.3rem;
+  align-content: center;
+  justify-items: center;
+  gap: 0.08rem;
+  padding: 0.25rem 0.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8490a3;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.student-home__nav button > svg,
+.student-tabbar .student-tab-item > svg,
+.student-menu-tabbar button > svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  stroke: currentColor;
+}
+
+.student-home__nav button > span:not(.nav-pill-blob),
+.student-tabbar .student-tab-item > span,
+.student-menu-tabbar button > span {
+  position: relative;
+  z-index: 1;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.student-home__nav button.is-active-tab,
+.student-tabbar .student-tab-item.is-active,
+.student-menu-tabbar button.is-active {
+  color: #071638;
+  font-weight: 800;
+}
+
+.student-home__nav button.is-active-tab::before,
+.student-tabbar .student-tab-item.is-active::before,
+.student-menu-tabbar button.is-active::before {
+  position: absolute;
+  top: 0.08rem;
+  left: 50%;
+  width: 2.8rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: #ffd525;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.student-home__nav .nav-pill-blob {
+  display: none;
+}
+
+.student-home__nav button:focus-visible,
+.student-tabbar .student-tab-item:focus-visible,
+.student-menu-tabbar button:focus-visible {
+  outline: 3px solid #2874d8;
+  outline-offset: 2px;
+}
+
+.student-primary,
+.student-secondary,
+.student-back {
+  min-height: 2.8rem;
+  border-radius: 0.85rem;
+  font-family: inherit;
+  font-weight: 700;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.student-primary {
+  border: 1px solid #071638;
+  background: #1971e2;
+  color: #fff;
+}
+
+.student-secondary,
+.student-back {
+  border: 1px solid #c7d5e7;
+  background: rgba(255, 255, 255, 0.96);
+  color: #071638;
+}
+
+.student-primary:focus-visible,
+.student-secondary:focus-visible,
+.student-back:focus-visible {
+  outline: 3px solid #ffd525;
+  outline-offset: 2px;
+}
+
+.student-primary:active:not(:disabled),
+.student-secondary:active:not(:disabled),
+.student-back:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.student-primary:disabled {
+  border-color: #d6deea;
+  background: #e6ebf2;
+  color: #7b8797;
+}
+
+@media (min-width: 600px) {
+  .student-home__nav,
+  .student-tabbar,
+  .student-menu-tabbar {
+    right: auto;
+    left: 50%;
+    width: min(100%, 42rem);
+    transform: translateX(-50%);
+  }
+}

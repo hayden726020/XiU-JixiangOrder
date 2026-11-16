@@ -1,0 +1,488 @@
+@import url("https://miaoda.feishu.cn/fonts/css2?family=Ma+Shan+Zheng&display=swap");
+
+.app-shell:has(.student-login-screen) {
+  background: #fbf7ea;
+}
+
+.app-shell:has(.student-login-screen) > .app-header,
+.app-shell:has(.student-login-screen) > .app-footer,
+.app-main:has(.student-login-screen) > .back-link {
+  display: none;
+}
+
+.app-main:has(.student-login-screen) {
+  padding: 0;
+}
+
+.student-login-screen {
+  --login-navy: #14243f;
+  --login-ink: #123b4e;
+  --login-yellow: #ffd525;
+  --login-poster-yellow: #e5c95c;
+  --login-calligraphy: "Ma Shan Zheng", "FZShuti", "方正舒体", "STXingkai", "华文行楷", "STKaiti", "KaiTi", "Kaiti SC", serif;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: 0 0 calc(1.1rem + env(safe-area-inset-bottom));
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 100, 60, 0.028) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120, 100, 60, 0.02) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 16% 6%, rgba(255, 213, 37, 0.3), transparent 42%),
+    radial-gradient(circle at 92% 30%, rgba(255, 246, 221, 0.9), transparent 46%),
+    linear-gradient(180deg, #fdf8e9 0%, #fbf5e6 55%, #f7f1df 100%);
+  color: var(--login-navy);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  overflow-x: clip;
+}
+
+/* ---------- 标题区（纸底） ---------- */
+
+.student-login-brand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: calc(2.1rem + env(safe-area-inset-top)) calc(1.35rem + env(safe-area-inset-right)) 0
+    calc(1.35rem + env(safe-area-inset-left));
+}
+
+.student-login-brand__row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.student-login-brand__name {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--login-ink);
+  font-family: var(--login-calligraphy);
+  font-size: 1.95rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+}
+
+.student-login-brand__spark {
+  position: absolute;
+  top: -0.6rem;
+  right: -1.55rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  transform: rotate(8deg);
+}
+
+.student-login-brand__tag {
+  margin: 0;
+  padding: 0.1rem 0.5rem;
+  border-radius: 3px;
+  background: rgba(255, 252, 240, 0.72);
+  color: #5c6a5a;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.student-login-brand__subtitle {
+  margin: 0.35rem 0 0;
+  color: #687067;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+}
+
+.student-login-brand__title-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  margin-top: 0.7rem;
+}
+
+.student-login-brand__title {
+  margin: 0;
+  color: var(--login-ink);
+  font-family: var(--login-calligraphy);
+  font-size: clamp(2.7rem, 12.8vw, 3.85rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.12;
+  text-shadow: 0 2px 12px rgba(255, 255, 255, 0.9);
+}
+
+.student-login-brand__underline {
+  width: clamp(190px, 70vw, 300px);
+  height: 15px;
+  margin: -0.2rem 0 0 0.15rem;
+}
+
+.student-login-brand__swirl {
+  position: absolute;
+  right: -1.5rem;
+  bottom: -0.2rem;
+  width: 3rem;
+  height: 1.5rem;
+  opacity: 0.92;
+}
+
+.student-login-brand__stars {
+  position: absolute;
+  top: -1.5rem;
+  right: -1.2rem;
+  width: 3.1rem;
+  height: 2.4rem;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+/* ---------- 照片墙：两排拍立得反向滚动 ---------- */
+
+.student-login-wall {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.75rem;
+  padding: 0.95rem 0 0.5rem;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+}
+
+.student-login-wall__row {
+  display: flex;
+  gap: 0.7rem;
+  width: max-content;
+  will-change: transform;
+}
+
+.student-login-wall__row--top {
+  animation: login-wall-drift-left 46s linear infinite;
+}
+
+.student-login-wall__row--bottom {
+  margin-top: 0.1rem;
+  animation: login-wall-drift-right 58s linear infinite;
+}
+
+.student-login-wall:hover .student-login-wall__row {
+  animation-play-state: paused;
+}
+
+.student-login-wall__frame {
+  flex: none;
+  width: 6.3rem;
+  padding: 0.28rem 0.28rem 0.52rem;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 6px 16px rgba(20, 36, 63, 0.16);
+}
+
+.student-login-wall__frame:nth-child(4n + 1) {
+  transform: rotate(-3.6deg);
+}
+
+.student-login-wall__frame:nth-child(4n + 2) {
+  transform: rotate(2.4deg) translateY(4px);
+}
+
+.student-login-wall__frame:nth-child(4n + 3) {
+  transform: rotate(-1.4deg) translateY(-3px);
+}
+
+.student-login-wall__frame:nth-child(4n) {
+  transform: rotate(3.6deg) translateY(2px);
+}
+
+.student-login-wall__image {
+  height: 5rem;
+  border-radius: 2px;
+  background-position: center 38%;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.student-login-wall__frame--cafeteria .student-login-wall__image {
+  background-image: url("./assets/login-cafeteria.png");
+}
+
+.student-login-wall__frame--noodle .student-login-wall__image {
+  background-image: url("./assets/login-food-noodle.jpg");
+}
+
+.student-login-wall__frame--table .student-login-wall__image {
+  background-image: url("./assets/login-table.jpg");
+}
+
+.student-login-wall__frame--rice .student-login-wall__image {
+  background-image: url("./assets/login-food-rice.jpg");
+}
+
+.student-login-wall__frame--trays .student-login-wall__image {
+  background-image: url("./assets/login-trays.jpg");
+}
+
+@keyframes login-wall-drift-left {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes login-wall-drift-right {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* ---------- 登录纸卡 ---------- */
+
+.student-login-card {
+  position: relative;
+  z-index: 2;
+  margin: 1.35rem 1.1rem 0;
+  padding: 1.45rem 1.25rem 1.2rem;
+  background: #fffdf7;
+  border-radius: 20px 20px 16px 16px;
+  box-shadow: 0 16px 38px rgba(20, 36, 63, 0.13), 0 0 0 1px rgba(228, 220, 198, 0.62);
+}
+
+.student-login-card__title {
+  margin: 0 0 1.3rem;
+  color: #141414;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+}
+
+.student-login-card__title::after {
+  content: "";
+  display: block;
+  width: 76px;
+  height: 4px;
+  margin-top: 7px;
+  border-radius: 3px;
+  background: #e8d24b;
+  transform: rotate(-0.6deg);
+}
+
+.student-login-card__gate {
+  margin: 0 0 0.85rem;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid #f1b73d;
+  border-radius: 0.4rem;
+  background: #fff8e3;
+  color: #7c5513;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.student-login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.student-login-field {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  height: 52px;
+  margin-bottom: 0.9rem;
+  padding: 0 0.9rem;
+  border: 1.5px solid #dddcd2;
+  border-radius: 10px;
+  background: #ffffff;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.student-login-field:focus-within {
+  border-color: #2f7a2c;
+  box-shadow: 0 0 0 3px rgba(47, 122, 44, 0.12);
+}
+
+.student-login-field__icon {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: #3a3a3a;
+}
+
+.student-login-field label {
+  flex: none;
+  width: 4em;
+  color: #222222;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.student-login-field__divider {
+  flex: none;
+  align-self: center;
+  width: 1px;
+  height: 1.2rem;
+  background: #e5e4cb;
+}
+
+.student-login-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--login-navy);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.student-login-field input::placeholder {
+  color: #8f907f;
+}
+
+.student-login-field input:focus-visible {
+  outline: none;
+}
+
+.student-login-field:has(input:disabled) {
+  background: #f4f2e9;
+}
+
+.student-login-field input:disabled {
+  color: #8a8f85;
+}
+
+.student-login-card__error {
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid #d98324;
+  border-radius: 0.45rem;
+  background: #fff5e6;
+  color: #96460f;
+  font-size: 0.79rem;
+  line-height: 1.5;
+}
+
+.student-login-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: 54px;
+  margin-top: 0.4rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 13px;
+  background: #2f7a2c;
+  color: #ffffff;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(47, 122, 44, 0.22);
+  transition: background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.student-login-submit__arrow {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.student-login-submit:hover:not(:disabled),
+.student-login-submit:focus-visible:not(:disabled) {
+  background: #276a24;
+  box-shadow: 0 10px 22px rgba(47, 122, 44, 0.28);
+  outline: none;
+}
+
+.student-login-submit:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.student-login-submit:disabled {
+  background: #2f7a2c;
+  color: #ffffff;
+  opacity: 0.6;
+  box-shadow: none;
+  cursor: progress;
+}
+
+.student-login-card__hint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.95rem 0 0;
+  color: #7d8567;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.student-login-card__hint span {
+  flex: 1;
+  height: 1px;
+  background: #dcd9bd;
+}
+
+/* ---------- 页脚与零散装饰 ---------- */
+
+.student-login-foot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.28rem;
+  margin-top: auto;
+  padding: 1.15rem 1.1rem 0;
+  text-align: center;
+  color: #7c857b;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.student-login-foot p {
+  margin: 0;
+}
+
+.student-login-foot__brand {
+  margin-top: 0.4rem !important;
+  color: #14532d;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.student-login-bottombranch {
+  position: absolute;
+  right: -0.6rem;
+  bottom: 0.1rem;
+  width: 7.6rem;
+  height: 5.6rem;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-login-submit {
+    transition: none;
+  }
+
+  .student-login-wall__row {
+    animation: none;
+  }
+}

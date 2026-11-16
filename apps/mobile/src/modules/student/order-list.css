@@ -3,33 +3,6 @@
    对齐设计稿：photo/03-订单列表与取餐码.png (左侧页面：我的订单)
    ========================================================================== */
 
-.app-shell:has(.student-order-list-page) > .app-header,
-.app-shell:has(.student-order-list-page) > .app-footer,
-.app-main:has(.student-order-list-page) > .back-link {
-  display: none;
-}
-
-.app-main:has(.student-order-list-page) {
-  padding: 0;
-}
-
-.order-list-mode-note {
-  position: absolute;
-  z-index: 5;
-  top: calc(0.6rem + env(safe-area-inset-top));
-  right: 1rem;
-  max-width: 72%;
-  margin: 0;
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(255, 238, 178, 0.95);
-  color: #634300;
-  font-size: 0.68rem;
-  font-weight: 800;
-  line-height: 1.3;
-  text-align: center;
-}
-
 .student-order-list-page {
   --ol-navy: #071638;
   --ol-yellow: #ffd525;
@@ -41,7 +14,6 @@
 
   position: relative;
   min-height: 100dvh;
-  padding-top: env(safe-area-inset-top);
   background: linear-gradient(180deg, #cae4fc 0%, #dff0fe 18%, #edf5fd 42%, #f4f8fc 100%);
   color: var(--ol-text-main);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;

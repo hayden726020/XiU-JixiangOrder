@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { StudentSource } from '../types';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { clearSession } from '../../../shared/session';
 import { clearPresence } from '../../../shared/location';
+import SampleBanner from '../components/SampleBanner';
 import studentAvatar from '../assets/student-avatar.png';
 import '../profile.css';
 
@@ -106,51 +107,6 @@ export default function ProfilePage({
   const [modal, setModal] = useState<ModalType>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!modal) {
-      previousFocusRef.current?.focus();
-      previousFocusRef.current = null;
-      return;
-    }
-
-    closeButtonRef.current?.focus();
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setModal(null);
-        return;
-      }
-      if (event.key !== 'Tab' || !modalRef.current) return;
-      const focusable = Array.from(modalRef.current.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ));
-      if (focusable.length === 0) {
-        event.preventDefault();
-        modalRef.current.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !modalRef.current.contains(document.activeElement))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !modalRef.current.contains(document.activeElement))) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [modal]);
-
-  function openModal(next: Exclude<ModalType, null>, opener: HTMLElement): void {
-    previousFocusRef.current = opener;
-    setModal(next);
-  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -159,17 +115,12 @@ export default function ProfilePage({
 
   async function handleClearLocation() {
     if (clearing) return;
-    if (source.mode === 'real' && !gate.usable) {
-      showToast('请先登录学生账号，再清除位置判断记录');
-      return;
-    }
     setClearing(true);
     try {
       if (source.mode === 'real') {
         await clearPresence();
       } else {
-        showToast('样例模式：未请求云端位置服务');
-        return;
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
       showToast('已清除位置判断记录');
     } catch {
@@ -182,7 +133,7 @@ export default function ProfilePage({
   function handleLogout() {
     clearSession();
     refresh();
-    showToast('已在本机退出当前账号');
+    showToast('已退出当前账号');
   }
 
   // 昵称与身份
@@ -191,14 +142,12 @@ export default function ProfilePage({
   return (
     <div className="student-profile" aria-labelledby="profile-title">
       {/* 顶部指示条 */}
-      <p className="profile-mode-note" role="note">
-        {source.mode === 'sample' ? '样例数据 · 不代表真实供应与现场人数' : '真实接口 · 订单与位置记录来自公共服务'}
-      </p>
+      {source.mode === 'sample' ? <SampleBanner /> : null}
 
       {/* 顶部封面背景与大标题 */}
       <header className="profile-hero">
         <div className="profile-hero__topbar">
-          <span className="profile-hero__time">{new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+          <span className="profile-hero__time">10:24</span>
         </div>
         <div className="profile-hero__title-wrap">
           <h1 id="profile-title" className="profile-hero__title">我的</h1>
@@ -237,7 +186,7 @@ export default function ProfilePage({
             </span>
           </button>
 
-          <button type="button" className="profile-menu-item" onClick={(event) => openModal('location', event.currentTarget)}>
+          <button type="button" className="profile-menu-item" onClick={() => setModal('location')}>
             <div className="profile-menu-item__left">
               <div className="profile-menu-item__icon">
                 <PinIcon />
@@ -249,7 +198,7 @@ export default function ProfilePage({
             </span>
           </button>
 
-          <button type="button" className="profile-menu-item" onClick={(event) => openModal('dining', event.currentTarget)}>
+          <button type="button" className="profile-menu-item" onClick={() => setModal('dining')}>
             <div className="profile-menu-item__left">
               <div className="profile-menu-item__icon">
                 <BookIcon />
@@ -261,12 +210,12 @@ export default function ProfilePage({
             </span>
           </button>
 
-          <button type="button" className="profile-menu-item" onClick={gate.usable ? handleLogout : () => { window.location.hash = '/system-check'; }}>
+          <button type="button" className="profile-menu-item" onClick={handleLogout}>
             <div className="profile-menu-item__left">
               <div className="profile-menu-item__icon">
                 <LogoutIcon />
               </div>
-              <span className="profile-menu-item__label">{gate.usable ? '退出登录' : '去登录'}</span>
+              <span className="profile-menu-item__label">退出登录</span>
             </div>
             <span className="profile-menu-item__arrow">
               <ChevronRightIcon />
@@ -289,12 +238,11 @@ export default function ProfilePage({
           <button
             type="button"
             className="profile-location-card__btn"
-            disabled={clearing || (source.mode === 'real' && !gate.usable)}
+            disabled={clearing}
             onClick={handleClearLocation}
           >
             {clearing ? '正在清除…' : '清除位置判断记录'}
           </button>
-          {source.mode === 'real' && !gate.usable ? <p className="profile-location-card__subnote">登录学生账号后可清除本人在服务端的位置判断记录</p> : null}
           <p className="profile-location-card__subnote">不会删除订单</p>
         </section>
 
@@ -344,16 +292,16 @@ export default function ProfilePage({
       {/* 弹窗 1：位置信息与隐私 */}
       {modal === 'location' ? (
         <div className="profile-modal-backdrop" onClick={() => setModal(null)}>
-          <div ref={modalRef} className="profile-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="loc-modal-title" tabIndex={-1}>
+          <div className="profile-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="loc-modal-title">
             <div className="profile-modal__head">
               <h3 id="loc-modal-title" className="profile-modal__title">位置信息与隐私说明</h3>
-              <button ref={closeButtonRef} type="button" className="profile-modal__close" onClick={() => setModal(null)} aria-label="关闭">×</button>
+              <button type="button" className="profile-modal__close" onClick={() => setModal(null)} aria-label="关闭">×</button>
             </div>
             <div className="profile-modal__body">
               <p>1. <strong>仅用于堂食拥挤参考</strong>：在您选择堂食并授权定位时，仅用于判断是否已到达食堂区域，辅助测算堂食座位热度。</p>
               <p>2. <strong>不持续后台跟踪</strong>：平台不会在后台持续获取您的位置，每次判断仅在取餐预约界面一次性执行并设定过期时间。</p>
               <p>3. <strong>拒绝不影响下单</strong>：即使您拒绝授权定位或关闭定位服务，您依然可以正常下单并自选堂食或外带。</p>
-              <p>4. <strong>随时自主清除</strong>：真实模式可清除本人在服务端的位置判断记录，且不会影响订单；样例模式不会请求云端。</p>
+              <p>4. <strong>随时自主清除</strong>：您可随时点击“清除位置判断记录”注销云端记录，且该操作绝不会影响或删除您已提交的订单。</p>
             </div>
           </div>
         </div>
@@ -362,10 +310,10 @@ export default function ProfilePage({
       {/* 弹窗 2：用餐说明 */}
       {modal === 'dining' ? (
         <div className="profile-modal-backdrop" onClick={() => setModal(null)}>
-          <div ref={modalRef} className="profile-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="din-modal-title" tabIndex={-1}>
+          <div className="profile-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="din-modal-title">
             <div className="profile-modal__head">
               <h3 id="din-modal-title" className="profile-modal__title">校园预约用餐说明</h3>
-              <button ref={closeButtonRef} type="button" className="profile-modal__close" onClick={() => setModal(null)} aria-label="关闭">×</button>
+              <button type="button" className="profile-modal__close" onClick={() => setModal(null)} aria-label="关闭">×</button>
             </div>
             <div className="profile-modal__body">
               <p>1. <strong>预约时段取餐</strong>：请在预约的时段前往所选档口出示取餐码取餐，避免错峰拥堵与长时间排队。</p>

@@ -4,6 +4,7 @@ import { toSourceError } from '../types';
 import { deriveOrderListView, toOrderListErrorView } from '../utils/orderListView';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import LoginGuide from '../components/LoginGuide';
+import SampleBanner from '../components/SampleBanner';
 
 import orderHeaderBanner from '../assets/order-header-banner.png';
 import cardPolaroidFengwei from '../assets/card-polaroid-fengwei.png';
@@ -104,7 +105,7 @@ export default function OrderListPage({
   if (realLoggedOut) {
     return (
       <section className="student-order-list-page" aria-labelledby="student-order-list-title">
-        <p className="order-list-mode-note" role="note">{source.mode === 'sample' ? '样例数据 · 不代表真实订单' : '真实接口 · 订单由公共服务返回'}</p>
+        {source.mode === 'sample' ? <SampleBanner /> : null}
         <header className="order-list-header-banner-wrap">
           <img
             className="order-list-header-banner"
@@ -121,6 +122,12 @@ export default function OrderListPage({
           </header>
           <LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} />
         </div>
+        <nav className="student-tabbar" aria-label="底部导航">
+          <button type="button" className="student-tab-item" onClick={onGoToHome || onGoToShop}><span>首页</span></button>
+          <button type="button" className="student-tab-item" onClick={onGoToShop}><span>点餐</span></button>
+          <button type="button" className="student-tab-item is-active" aria-current="page"><span>订单</span></button>
+          <button type="button" className="student-tab-item" onClick={onGoToProfile}><span>我的</span></button>
+        </nav>
       </section>
     );
   }
@@ -128,7 +135,7 @@ export default function OrderListPage({
   return (
     <section className="student-order-list-page" aria-labelledby="student-order-list-title">
       {/* 顶部指示条 */}
-      <p className="order-list-mode-note" role="note">{source.mode === 'sample' ? '样例数据 · 不代表真实订单' : '真实接口 · 订单由公共服务返回'}</p>
+      {source.mode === 'sample' ? <SampleBanner /> : null}
 
       {/* 顶部完整艺术手绘横幅：我的订单 · 每一餐都安排好了 · 记得准时取餐 */}
       <header className="order-list-header-banner-wrap">
@@ -194,12 +201,9 @@ export default function OrderListPage({
       {status === 'ready' ? (
         <main className="order-list-cards" aria-label="订单列表">
           {listView.cards.map((card) => {
-            const isReady = /可取|READY/i.test(card.statusLabel);
-            const isPreparing = /制作|准备|PREPAR/i.test(card.statusLabel);
-            const isCompleted = /完成|COMPLET/i.test(card.statusLabel);
-            const shopName = card.shopText ?? '校园档口';
-            const dishSummary = card.dishSummary || '菜品信息见订单详情';
-            const actionText = card.cancelled ? '查看订单' : '查看详情';
+            const isReady = card.statusType === 'ready';
+            const isPreparing = card.statusType === 'preparing';
+            const isCompleted = card.statusType === 'completed';
 
             return (
               <article key={card.id} className="order-card">
@@ -207,8 +211,8 @@ export default function OrderListPage({
                 <div className="order-card__photo-frame">
                   <img
                     className="order-card__photo-img"
-                    src={getCardPolaroidImg(shopName)}
-                    alt={shopName}
+                    src={getCardPolaroidImg(card.polaroidKey)}
+                    alt={card.shopName}
                   />
                 </div>
 
@@ -216,7 +220,7 @@ export default function OrderListPage({
                 <div className="order-card__info">
                   {/* 第一行：档口名与状态徽章 */}
                   <div className="order-card__row-head">
-                    <h2 className="order-card__shop-name">{shopName}</h2>
+                    <h2 className="order-card__shop-name">{card.shopName}</h2>
                     <span
                       className={`order-status-capsule ${
                         isReady
@@ -235,15 +239,15 @@ export default function OrderListPage({
                   {/* 第二行：菜品与价格 */}
                   <div className="order-card__row-dish">
                     <span className="order-card__dish-title">
-                      {dishSummary}
+                      {card.primaryDishName} × {card.primaryQuantity}
                     </span>
                     <span className="order-card__dish-price">{card.totalText}</span>
                   </div>
 
                   {/* 第三行：就餐方式与时段 */}
                   <div className="order-card__row-meta">
-                    {card.diningModeText.includes('外带') ? <ShoppingBagIcon /> : <ForkKnifeIcon />}
-                    <span>{card.slotRangeText || card.createdText} · </span>
+                    {card.diningMode === 'TAKEAWAY' ? <ShoppingBagIcon /> : <ForkKnifeIcon />}
+                    <span>{card.timeDiningText.split('·')[0]}·</span>
                     <span className="order-card__dining-mode">
                       {card.diningModeText}
                     </span>
@@ -253,10 +257,10 @@ export default function OrderListPage({
                   <div className="order-card__row-action">
                     <button
                       type="button"
-                      className={isReady ? 'order-card__btn-primary' : 'order-card__btn-outline'}
+                      className={card.actionType === 'primary' ? 'order-card__btn-primary' : 'order-card__btn-outline'}
                       onClick={() => onOpenOrder(card.id)}
                     >
-                      {actionText}
+                      {card.actionText}
                     </button>
                   </div>
                 </div>

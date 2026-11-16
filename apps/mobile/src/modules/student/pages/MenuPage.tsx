@@ -9,14 +9,12 @@ import { toSourceErrorView } from '../utils/sourceErrorView';
 import { DISH_LIMIT_TEXT } from '../utils/submitTexts';
 import {
   CURRENT_SHOP_PREFIX,
-  DEMO_DATA_LABEL,
   EMPTY_SHOP_MENU,
   SAMPLE_ONLY_LABEL,
   SHOP_SWITCH_BUSY,
 } from '../utils/shopTexts';
-import DemoModeNotice from '../components/DemoModeNotice';
-import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
+import '../menu-page.css';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
@@ -33,8 +31,8 @@ export interface MenuPageProps {
   shop: ShopSummary;
   onBackToShops: () => void;
   onProceed: () => void;
-  onViewSampleOrder: () => void;
   onOpenOrders: () => void;
+  onOpenProfile: () => void;
 }
 
 export default function MenuPage({
@@ -43,8 +41,8 @@ export default function MenuPage({
   shop,
   onBackToShops,
   onProceed,
-  onViewSampleOrder,
   onOpenOrders,
+  onOpenProfile,
 }: MenuPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
@@ -52,7 +50,6 @@ export default function MenuPage({
   const [errorText, setErrorText] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const date = snapshot.date;
-  const shopRole = source.mode === 'sample' ? DEMO_DATA_LABEL : '公共服务';
 
   useEffect(() => {
     let cancelled = false;
@@ -101,8 +98,8 @@ export default function MenuPage({
   const canProceed = snapshot.canProceedToSlot;
 
   return (
-    <section className="student-page" aria-labelledby="student-menu-title">
-      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
+      <section className="student-menu-page student-page" aria-labelledby="student-menu-title">
+      {source.mode === 'sample' ? <SampleBanner /> : null}
 
       <button
         type="button"
@@ -123,18 +120,15 @@ export default function MenuPage({
         data-shop-demo={source.mode === 'sample' ? 'true' : 'false'}
       >
         {CURRENT_SHOP_PREFIX}：{shop.name}
-        {source.mode === 'sample' ? ` · ${DEMO_DATA_LABEL}` : ''}
       </p>
 
       <header className="student-page__head">
         <p className="student-kicker">
-          {source.mode === 'real' ? 'S9 · 真实菜单与数量（只读）' : 'S5 · 样例菜单与数量（可进入确认页）'}
+          {source.mode === 'real' ? '好味道，今天也安排上' : '挑选喜欢的菜品'}
         </p>
         <h2 id="student-menu-title">学生点餐</h2>
         <p className="student-page__lead">
-          {source.mode === 'real'
-            ? `菜品、价格与可售数量来自${shopRole}；金额以下单结果为准。`
-            : `样例菜单可调整数量，全部数据来自模块内样例源；当前只显示${shop.name}的菜。`}
+          挑选喜欢的菜品，开启今天的好胃口。
         </p>
       </header>
 
@@ -143,7 +137,6 @@ export default function MenuPage({
           <button type="button" className="student-secondary" onClick={onOpenOrders}>
             我的订单
           </button>
-          <p className="student-order-entry__hint">查看本人在公共服务的订单，只读</p>
         </section>
       ) : null}
 
@@ -270,34 +263,29 @@ export default function MenuPage({
       <footer className="student-summary">
         <p className="student-summary__main">
           {snapshot.totalQuantity > 0
-            ? `已选 ${snapshot.totalQuantity} 份 · 预估 ${formatYuan(snapshot.previewFen)}`
-            : '尚未选择菜品'}
+            ? `共 ${snapshot.totalQuantity} 份 · 合计 ${formatYuan(snapshot.previewFen)}`
+            : '共 0 份 · 合计 ¥0.00'}
         </p>
-        <p className="student-summary__note">预估仅用于预览，金额以服务端返回为准</p>
+        <p className="student-summary__note">最终金额以确认订单为准</p>
         <button
           type="button"
           className="student-primary"
           disabled={!canProceed}
           onClick={onProceed}
         >
-          下一步：选择时段
+          选时段 ›
         </button>
         <p className="student-summary__hint">
           {canProceed ? '已选内容会带入时段页。' : '请先选择菜品'}
         </p>
       </footer>
 
-      {source.mode === 'sample' ? (
-        <button
-          type="button"
-          className="student-secondary student-sample-order"
-          onClick={onViewSampleOrder}
-        >
-          查看样例订单
-        </button>
-      ) : null}
-
-      {source.mode === 'sample' ? <DemoModeNotice /> : null}
+      <nav className="student-menu-tabbar" aria-label="学生端底部导航">
+        <button type="button" onClick={onBackToShops}><span aria-hidden="true">⌂</span>首页</button>
+        <button type="button" className="is-active" aria-current="page"><span aria-hidden="true">♨</span>点餐</button>
+        <button type="button" onClick={onOpenOrders}><span aria-hidden="true">▤</span>订单</button>
+        <button type="button" onClick={onOpenProfile}><span aria-hidden="true">♙</span>我的</button>
+      </nav>
     </section>
   );
 }

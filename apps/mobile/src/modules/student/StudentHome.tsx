@@ -14,18 +14,32 @@ import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
 import ShopSelectPage from './pages/ShopSelectPage';
 import SlotDiningPage from './pages/SlotDiningPage';
+import ProfilePage from './pages/ProfilePage';
+import LoginPage from './pages/LoginPage';
+import { useStudentSessionGate } from './state/useStudentSessionGate';
 import type { ShopSummary, StudentSource } from './types';
 import { SHOP_SWITCH_BUSY } from './utils/shopTexts';
 import { todayAndTomorrow } from './utils/dates';
 import './student.css';
+import './student-global.css';
 
-type StudentView = 'shop' | 'menu' | 'slot' | 'confirm' | 'order' | 'orders';
+type StudentView = 'shop' | 'menu' | 'slot' | 'confirm' | 'order' | 'orders' | 'profile';
 
 type DetailFrom = 'menu' | 'orders';
 
 type OrdersBackTo = 'shop' | 'menu';
 
 export default function StudentHome() {
+  const { gate } = useStudentSessionGate();
+
+  if (!gate.usable) {
+    return <LoginPage gate={gate} />;
+  }
+
+  return <StudentHomeApp />;
+}
+
+function StudentHomeApp() {
   const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
     if (source.mode === 'real') {
@@ -67,7 +81,6 @@ export default function StudentHome() {
   const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
   const [shopNotice, setShopNotice] = useState('');
-  const [shopInitialTab, setShopInitialTab] = useState<'home' | 'order' | 'mine'>('home');
 
   function goTo(next: StudentView): void {
     setView(next);
@@ -117,9 +130,9 @@ export default function StudentHome() {
         onBack={() => goTo('shop')}
         backLabel="← 返回店铺选择"
         onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => { setShopInitialTab('home'); goTo('shop'); }}
-        onGoToShop={() => { setShopInitialTab('order'); goTo('shop'); }}
-        onGoToProfile={() => { setShopInitialTab('mine'); goTo('shop'); }}
+        onGoToHome={() => goTo('shop')}
+        onGoToShop={() => goTo('shop')}
+        onGoToProfile={() => goTo('profile')}
       />
     );
   }
@@ -131,6 +144,30 @@ export default function StudentHome() {
         orderId={orderId}
         onBack={() => goTo('orders')}
         backLabel="← 返回我的订单"
+        onGoToHome={() => goTo('shop')}
+        onGoToShop={() => goTo('shop')}
+        onGoToOrders={() => goTo('orders')}
+        onGoToProfile={() => goTo('profile')}
+      />
+    );
+  }
+
+  if (view === 'profile') {
+    return (
+      <ProfilePage
+        source={source}
+        onOpenOrders={() => openOrders('shop')}
+        onGoToShop={() => goTo('shop')}
+        onGoToMenu={() => {
+          if (currentShop) {
+            goTo('menu');
+          } else {
+            source.listShops().then((shops) => {
+              if (shops.length > 0) enterShop(shops[0]);
+              else goTo('shop');
+            });
+          }
+        }}
       />
     );
   }
@@ -144,8 +181,7 @@ export default function StudentHome() {
         notice={shopNotice || draft.getState().notice || ''}
         onEnterShop={enterShop}
         onOpenOrders={() => openOrders('shop')}
-        initialTab={shopInitialTab}
-        onActiveTabChange={setShopInitialTab}
+        onOpenProfile={() => goTo('profile')}
       />
     );
   }
@@ -183,9 +219,9 @@ export default function StudentHome() {
         onBack={() => goTo(backToShops ? 'shop' : 'menu')}
         backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => { setShopInitialTab('home'); goTo('shop'); }}
-        onGoToShop={() => { setShopInitialTab('order'); goTo('shop'); }}
-        onGoToProfile={() => { setShopInitialTab('mine'); goTo('shop'); }}
+        onGoToHome={() => goTo('shop')}
+        onGoToShop={() => goTo('shop')}
+        onGoToProfile={() => goTo('profile')}
       />
     );
   }
@@ -198,6 +234,10 @@ export default function StudentHome() {
         orderId={orderId}
         onBack={() => goTo(backTarget)}
         backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
+        onGoToHome={() => goTo('shop')}
+        onGoToShop={() => goTo('shop')}
+        onGoToOrders={() => goTo('orders')}
+        onGoToProfile={() => goTo('profile')}
       />
     );
   }
@@ -209,8 +249,8 @@ export default function StudentHome() {
       shop={currentShop}
       onBackToShops={() => goTo('shop')}
       onProceed={() => goTo('slot')}
-      onViewSampleOrder={() => openOrderFrom('menu', 'demo-order-001')}
       onOpenOrders={() => openOrders('menu')}
+      onOpenProfile={() => goTo('profile')}
     />
   );
 }

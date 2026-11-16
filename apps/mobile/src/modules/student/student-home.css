@@ -1,5 +1,5 @@
 .app-shell:has(.student-home, .student-order-view) {
-  background: #f4f6f8;
+  background: #edf2f9;
 }
 
 .app-shell:has(.student-home, .student-order-view) > .app-header,
@@ -355,43 +355,17 @@
   line-height: 1;
   cursor: pointer;
 }
-.student-home__carousel-pause {
-  min-height: 2rem;
-  padding: .25rem .45rem;
-  border: 1px solid #cbd1db;
-  border-radius: .35rem;
-  background: #fff;
-  color: var(--home-navy);
-  font-size: .66rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.student-home__carousel-pause:focus-visible,
-.student-home__carousel-arrow:focus-visible,
-.student-home__carousel-dots button:focus-visible {
-  outline: 3px solid #005fcc;
-  outline-offset: 2px;
-}
-.student-home__carousel-dots { display: flex; align-items: center; gap: .1rem; }
+.student-home__carousel-dots { display: flex; align-items: center; gap: .55rem; }
 .student-home__carousel-dots button {
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: .55rem;
+  height: .55rem;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: transparent;
+  background: #c7c9cb;
   cursor: pointer;
 }
-.student-home__carousel-dots button::before {
-  width: .55rem;
-  height: .55rem;
-  border-radius: 50%;
-  background: #c7c9cb;
-  content: '';
-}
-.student-home__carousel-dots button.is-active::before { background: var(--home-navy); transform: scale(1.25); }
+.student-home__carousel-dots button.is-active { background: var(--home-navy); transform: scale(1.25); }
 .student-home__swipe-hint { margin: .3rem 0 0; color: #677084; text-align: center; font-size: .72rem; letter-spacing: .08em; }
 .student-home__more-shops { margin: .45rem .2rem 0; }
 .student-home__more-toggle {
@@ -581,16 +555,11 @@
 .student-home__nav button.is-active span { padding: .02rem .45rem; border-radius: 50%; background: #ffe469; color: var(--home-navy); }
 .student-home button:focus-visible { outline: 3px solid #0864e9; outline-offset: 3px; }
 
-@media (prefers-reduced-motion: reduce) {
-  .student-home__shop-slide { transition: none; }
-}
 /* ============================================================
    点餐页面专属样式 (依据 photo/点餐页面.png 高保真还原)
    ============================================================ */
 
 .student-order-view {
-  --home-navy: #071638;
-  --home-yellow: #ffd525;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;

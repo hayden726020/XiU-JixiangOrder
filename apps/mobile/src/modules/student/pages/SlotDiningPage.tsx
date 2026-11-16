@@ -376,13 +376,7 @@ export default function SlotDiningPage({
     },
   ];
 
-  const slotsToDisplay = menu
-    ? menu.slots.length > 0
-      ? menu.slots
-      : source.mode === 'sample'
-        ? fallbackSlots
-        : []
-    : [];
+  const slotsToDisplay = menu && menu.slots.length > 0 ? menu.slots : fallbackSlots;
   const selectedSlot = slotsToDisplay.find((slot) => slot.slotId === snapshot.slotId) ?? null;
   const allSlotsClosed =
     menu !== null && menu.slots.length > 0 && menu.slots.every((slot) => slot.enabled !== true);
@@ -401,7 +395,7 @@ export default function SlotDiningPage({
             <ChevronLeftIcon />
           </button>
           <h2 id="student-slot-title" className="booking-nav__title">预约取餐</h2>
-          <span className="booking-nav__mode">{source.mode === 'sample' ? '样例数据' : '真实接口'}</span>
+          {source.mode === 'sample' ? <span className="booking-nav__mode">样例数据</span> : <span />}
         </div>
         <div className="booking-dish">
           <span className="booking-dish__photo">

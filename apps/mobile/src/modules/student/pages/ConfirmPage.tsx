@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { OrderDraft } from '../state/orderDraft';
-import type { StudentSessionGate } from '../state/sessionGate';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import type { DemoScenario, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
 import { sanitizeMessage } from '../utils/errorSemantics';
@@ -10,7 +9,6 @@ import { formatYuan } from '../utils/money';
 import { toSubmitErrorView } from '../utils/orderSubmitView';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
-import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
 import '../booking.css';
 
@@ -77,30 +75,6 @@ function slotTimeRange(slot: SlotDto): string {
   return `${start.time}—${end ? end[1] : ''}`.trim();
 }
 
-function slotDateLabel(slot: SlotDto, allowedDates: string[]): string {
-  const date = slot.slotStart.slice(0, 10);
-  const relativeDay = allowedDates.indexOf(date);
-  if (relativeDay === 0) return '今天';
-  if (relativeDay === 1) return '明天';
-  const [, month, day] = date.split('-');
-  return month && day ? `${Number(month)}月${Number(day)}日` : '未选择';
-}
-
-function isLoginError(code: string | undefined): boolean {
-  return code === 'UNAUTHENTICATED' || code === 'SESSION_EXPIRED' || code === 'FORBIDDEN';
-}
-
-function loginGateForError(gate: StudentSessionGate, code: string): StudentSessionGate {
-  if (!gate.usable) return gate;
-  const kind = code === 'FORBIDDEN' ? 'wrong-role' : code === 'SESSION_EXPIRED' ? 'expired' : 'missing';
-  const message = code === 'FORBIDDEN'
-    ? '当前账号没有学生下单权限，请切换到学生演示账号。'
-    : code === 'SESSION_EXPIRED'
-      ? '登录已过期，请重新登录学生账号。'
-      : '请先在公共入口完成学生账号登录。';
-  return { ...gate, kind, usable: false, message, identityText: '', roleLabel: '' };
-}
-
 export interface ConfirmPageProps {
   source: StudentSource;
   draft: OrderDraft;
@@ -125,7 +99,6 @@ export default function ConfirmPage({
   const [scenario, setScenario] = useState<DemoScenario>(() => source.getScenario());
   const [busy, setBusy] = useState(false);
   const [queryError, setQueryError] = useState('');
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   useEffect(() => {
     if (draft.getState().status === 'success') {
@@ -158,28 +131,21 @@ export default function ConfirmPage({
     };
   }, [source, draft, shop.merchantId, snapshot.date]);
 
-  useEffect(() => {
-    if (!gate.usable) return;
-    setLoginPromptOpen(false);
-    clearLoginErrorPreservingTimeout();
-  }, [gate.usable]);
+  const realLoggedOut = source.mode === 'real' && !gate.usable;
 
   async function runSubmit(): Promise<void> {
     if (busy) {
       return;
     }
     if (source.mode === 'real' && !gate.usable) {
-      setLoginPromptOpen(true);
+      refresh();
       return;
     }
-    setLoginPromptOpen(false);
     setBusy(true);
     setQueryError('');
     try {
       const order = await draft.submit();
-      const nextSnapshot = draft.getState();
-      setSnapshot(nextSnapshot);
-      if (isLoginError(nextSnapshot.error?.code)) setLoginPromptOpen(true);
+      setSnapshot(draft.getState());
       if (order) {
         onSubmitted(order.id);
       }
@@ -194,7 +160,7 @@ export default function ConfirmPage({
       return;
     }
     if (source.mode === 'real' && !gate.usable) {
-      setLoginPromptOpen(true);
+      refresh();
       return;
     }
     setBusy(true);
@@ -202,13 +168,10 @@ export default function ConfirmPage({
     try {
       const order = await draft.queryResult();
       setSnapshot(draft.getState());
-      if (isLoginError(draft.getState().error?.code)) setLoginPromptOpen(true);
       onSubmitted(order.id);
     } catch (error) {
-      const nextSnapshot = draft.getState();
       setQueryError(sanitizeMessage(error instanceof Error ? error.message : '', '查询失败，请稍后重试。'));
-      setSnapshot(nextSnapshot);
-      if (isLoginError(nextSnapshot.error?.code)) setLoginPromptOpen(true);
+      setSnapshot(draft.getState());
     } finally {
       setBusy(false);
     }
@@ -218,20 +181,6 @@ export default function ConfirmPage({
     draft.resetSubmission();
     setSnapshot(draft.getState());
     setQueryError('');
-  }
-
-  function recheckLogin(): void {
-    refresh();
-    if (!gate.usable) return;
-    clearLoginErrorPreservingTimeout();
-    setLoginPromptOpen(false);
-  }
-
-  function clearLoginErrorPreservingTimeout(): void {
-    const current = draft.getState();
-    if (!isLoginError(current.error?.code) || current.status === 'timeout') return;
-    draft.resetSubmission();
-    setSnapshot(draft.getState());
   }
 
   function changeScenario(next: DemoScenario): void {
@@ -278,21 +227,40 @@ export default function ConfirmPage({
     slotReady &&
     snapshot.canConfirm &&
     !timedOut &&
-    !busy;
-  const disabledReason = !menuReady
+    !busy &&
+    (source.mode === 'sample' || gate.usable);
+  const disabledReason = realLoggedOut
+    ? ''
+    : !menuReady
       ? '确认信息尚未就绪。'
       : !itemsReady
         ? '部分菜品已变化，请返回菜单重新确认。'
         : !slotReady
           ? '所选时段已失效，请返回时段页重新选择。'
           : '';
-  const authErrorCode = snapshot.error && isLoginError(snapshot.error.code) ? snapshot.error.code : '';
-  const showLoginGuide = loginPromptOpen || (authErrorCode !== '' && !gate.usable);
-  const loginGuideGate = authErrorCode !== '' ? loginGateForError(gate, authErrorCode) : gate;
+
+  if (realLoggedOut) {
+    return (
+      <section className="student-booking student-booking--confirm" aria-labelledby="student-confirm-title">
+        <div className="booking-hero">
+          <div className="booking-nav">
+            <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={onBack}>
+              <ChevronLeftIcon />
+            </button>
+            <h2 id="student-confirm-title" className="booking-nav__title">确认订单</h2>
+            <span />
+          </div>
+        </div>
+        <div className="booking-body" style={{ marginTop: '0.8rem' }}>
+          <LoginGuide gate={gate} onRecheck={refresh} onBack={onBackToMenu} />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="student-booking student-booking--confirm" aria-labelledby="student-confirm-title">
-      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
+      {source.mode === 'sample' ? <SampleBanner /> : null}
 
       <div className="booking-hero">
         <div className="booking-nav">
@@ -300,7 +268,7 @@ export default function ConfirmPage({
             <ChevronLeftIcon />
           </button>
           <h2 id="student-confirm-title" className="booking-nav__title">确认订单</h2>
-          <span className="booking-nav__mode">{source.mode === 'sample' ? '样例数据' : '真实接口'}</span>
+          {source.mode === 'sample' ? <span className="booking-nav__mode">样例数据</span> : <span />}
         </div>
         <div className="confirm-bubble">
           <span className="confirm-bubble__spark" aria-hidden="true">✦</span>
@@ -312,8 +280,6 @@ export default function ConfirmPage({
         {source.mode === 'real' && gate.usable ? (
           <p className="student-session-note">当前登录：{gate.identityText}（仅用于核对）</p>
         ) : null}
-
-        {showLoginGuide ? <LoginGuide gate={loginGuideGate} onRecheck={recheckLogin} onBack={onBackToMenu} /> : null}
 
         {menuStatus === 'loading' ? (
           <p className="booking-notice">正在读取确认信息…</p>
@@ -380,7 +346,7 @@ export default function ConfirmPage({
               <div className="confirm-info-table" aria-label="预约信息">
                 <div className="confirm-info-row">
                   <span>取餐日期</span>
-                  <span>{selectedSlot ? slotDateLabel(selectedSlot, snapshot.allowedDates) : '未选择'}</span>
+                  <span>今天</span>
                 </div>
                 <div className="confirm-info-row">
                   <span>取餐时段</span>

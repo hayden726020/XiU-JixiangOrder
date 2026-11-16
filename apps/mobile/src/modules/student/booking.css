@@ -313,7 +313,7 @@
 
 .booking-slot-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.55rem;
   margin: 0;
   padding: 0;
@@ -324,18 +324,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.15rem;
   width: 100%;
-  min-height: 48px;
-  padding: 0.5rem 0.3rem;
+  min-height: 42px;
+  padding: 0.55rem 0.2rem;
   border: 1.5px solid #d5dfec;
   border-radius: 11px;
   background: #fff;
   color: var(--booking-navy);
   font-size: 0.78rem;
   font-weight: 700;
-  white-space: normal;
+  white-space: nowrap;
   cursor: pointer;
   box-sizing: border-box;
   transition: all 0.15s ease;
@@ -381,8 +379,8 @@
 }
 
 .booking-slot__meta {
-  margin-left: 0;
-  font-size: 0.62rem;
+  margin-left: 3px;
+  font-size: 0.66rem;
   font-weight: 400;
 }
 
@@ -681,20 +679,10 @@
 }
 
 .student-booking--confirm .booking-hero {
-  padding-top: 0.9rem;
   padding-bottom: 2.2rem;
   background:
     linear-gradient(180deg, rgba(233, 242, 251, 0) 55%, rgba(233, 242, 251, 0.95) 100%),
     url("./assets/campus-hero.webp") center 40% / cover no-repeat;
-}
-
-.student-booking--confirm > .student-real-banner {
-  padding: calc(0.3rem + env(safe-area-inset-top)) 1rem 0.3rem;
-  background: rgba(255, 253, 247, 0.94);
-  color: #5c4700;
-  font-size: 0.7rem;
-  line-height: 1.35;
-  text-align: center;
 }
 
 .confirm-bubble {
