@@ -51,16 +51,33 @@ function isExpired(session: Session, now: number = Date.now()): boolean {
 function readStoredSession(): Session | null {
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return null;
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (!isSession(parsed) || isExpired(parsed)) {
+        window.sessionStorage.removeItem(STORAGE_KEY);
+      } else if (parsed.user.role === 'STUDENT') {
+        // Migrate an existing student session to persistent storage.
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          window.sessionStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // Retain a valid session for this run if migration is unavailable.
+        }
+        return parsed;
+      } else {
+        return parsed;
+      }
     }
+  } catch {
+    // Continue with persistent storage when sessionStorage is unavailable.
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    if (!isSession(parsed)) {
-      window.sessionStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-    if (isExpired(parsed)) {
-      window.sessionStorage.removeItem(STORAGE_KEY);
+    if (!isSession(parsed) || parsed.user.role !== 'STUDENT' || isExpired(parsed)) {
+      window.localStorage.removeItem(STORAGE_KEY);
       return null;
     }
     return parsed;
@@ -92,10 +109,29 @@ export function subscribeSession(listener: () => void): () => void {
 
 export function saveSession(session: Session): void {
   currentSession = session;
-  try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-  } catch {
-    // 存储不可用时仍保留内存会话，刷新后需要重新登录。
+  const serialized = JSON.stringify(session);
+  if (session.user.role === 'STUDENT') {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, serialized);
+      window.sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+      try {
+        window.sessionStorage.setItem(STORAGE_KEY, serialized);
+      } catch {
+        // Storage unavailable: keep the session in memory for this app run.
+      }
+    }
+  } else {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // A non-student session still uses sessionStorage when persistent storage is unavailable.
+    }
+    try {
+      window.sessionStorage.setItem(STORAGE_KEY, serialized);
+    } catch {
+      // Storage unavailable: keep the session in memory for this app run.
+    }
   }
   notify();
 }
@@ -105,7 +141,12 @@ export function clearSession(): void {
   try {
     window.sessionStorage.removeItem(STORAGE_KEY);
   } catch {
-    // 忽略存储清理失败，内存会话已清除。
+    // Session storage may be unavailable.
+  }
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Persistent storage may be unavailable; the in-memory session is already cleared.
   }
   notify();
 }

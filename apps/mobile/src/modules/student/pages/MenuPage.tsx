@@ -14,6 +14,7 @@ import {
   SHOP_SWITCH_BUSY,
 } from '../utils/shopTexts';
 import SampleBanner from '../components/SampleBanner';
+import StudentTabBar from '../components/StudentTabBar';
 import '../menu-page.css';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -98,7 +99,7 @@ export default function MenuPage({
   const canProceed = snapshot.canProceedToSlot;
 
   return (
-      <section className="student-menu-page student-page" aria-labelledby="student-menu-title">
+    <section className="student-menu-page student-page" aria-labelledby="student-menu-title">
       {source.mode === 'sample' ? <SampleBanner /> : null}
 
       <button
@@ -127,18 +128,17 @@ export default function MenuPage({
           {source.mode === 'real' ? '好味道，今天也安排上' : '挑选喜欢的菜品'}
         </p>
         <h2 id="student-menu-title">学生点餐</h2>
+        {source.mode === 'real' ? (
+          <section className="student-order-entry" aria-label="我的订单入口">
+            <button type="button" className="student-secondary" onClick={onOpenOrders}>
+              我的订单
+            </button>
+          </section>
+        ) : null}
         <p className="student-page__lead">
           挑选喜欢的菜品，开启今天的好胃口。
         </p>
       </header>
-
-      {source.mode === 'real' ? (
-        <section className="student-order-entry" aria-label="我的订单入口">
-          <button type="button" className="student-secondary" onClick={onOpenOrders}>
-            我的订单
-          </button>
-        </section>
-      ) : null}
 
       <div className="student-date-switch" role="group" aria-label="选择菜单日期">
         {snapshot.allowedDates.map((item, index) => (
@@ -280,12 +280,13 @@ export default function MenuPage({
         </p>
       </footer>
 
-      <nav className="student-menu-tabbar" aria-label="学生端底部导航">
-        <button type="button" onClick={onBackToShops}><span aria-hidden="true">⌂</span>首页</button>
-        <button type="button" className="is-active" aria-current="page"><span aria-hidden="true">♨</span>点餐</button>
-        <button type="button" onClick={onOpenOrders}><span aria-hidden="true">▤</span>订单</button>
-        <button type="button" onClick={onOpenProfile}><span aria-hidden="true">♙</span>我的</button>
-      </nav>
+      <StudentTabBar
+        active="order"
+        onGoHome={onBackToShops}
+        onGoOrder={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onOpenOrders={onOpenOrders}
+        onOpenProfile={onOpenProfile}
+      />
     </section>
   );
 }

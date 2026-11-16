@@ -76,6 +76,7 @@ function StudentHomeApp() {
     return createOrderDraft({ source });
   });
   const [view, setView] = useState<StudentView>('shop');
+  const [shopLandingTab, setShopLandingTab] = useState<'home' | 'order'>('home');
   const [currentShop, setCurrentShop] = useState<ShopSummary | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
@@ -85,6 +86,11 @@ function StudentHomeApp() {
   function goTo(next: StudentView): void {
     setView(next);
     window.scrollTo(0, 0);
+  }
+
+  function goToShop(tab: 'home' | 'order' = 'home'): void {
+    setShopLandingTab(tab);
+    goTo('shop');
   }
 
   function openOrder(id: string): void {
@@ -127,11 +133,11 @@ function StudentHomeApp() {
     return (
       <OrderListPage
         source={source}
-        onBack={() => goTo('shop')}
+        onBack={() => goToShop('home')}
         backLabel="← 返回店铺选择"
         onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => goTo('shop')}
-        onGoToShop={() => goTo('shop')}
+        onGoToHome={() => goToShop('home')}
+        onGoToShop={() => goToShop('order')}
         onGoToProfile={() => goTo('profile')}
       />
     );
@@ -144,8 +150,8 @@ function StudentHomeApp() {
         orderId={orderId}
         onBack={() => goTo('orders')}
         backLabel="← 返回我的订单"
-        onGoToHome={() => goTo('shop')}
-        onGoToShop={() => goTo('shop')}
+        onGoToHome={() => goToShop('home')}
+        onGoToShop={() => goToShop('order')}
         onGoToOrders={() => goTo('orders')}
         onGoToProfile={() => goTo('profile')}
       />
@@ -157,14 +163,14 @@ function StudentHomeApp() {
       <ProfilePage
         source={source}
         onOpenOrders={() => openOrders('shop')}
-        onGoToShop={() => goTo('shop')}
+        onGoToShop={() => goToShop('home')}
         onGoToMenu={() => {
           if (currentShop) {
             goTo('menu');
           } else {
             source.listShops().then((shops) => {
               if (shops.length > 0) enterShop(shops[0]);
-              else goTo('shop');
+              else goToShop('home');
             });
           }
         }}
@@ -179,6 +185,7 @@ function StudentHomeApp() {
         draft={draft}
         currentShop={currentShop}
         notice={shopNotice || draft.getState().notice || ''}
+        initialTab={shopLandingTab}
         onEnterShop={enterShop}
         onOpenOrders={() => openOrders('shop')}
         onOpenProfile={() => goTo('profile')}
@@ -219,8 +226,8 @@ function StudentHomeApp() {
         onBack={() => goTo(backToShops ? 'shop' : 'menu')}
         backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => goTo('shop')}
-        onGoToShop={() => goTo('shop')}
+        onGoToHome={() => goToShop('home')}
+        onGoToShop={() => goToShop('order')}
         onGoToProfile={() => goTo('profile')}
       />
     );
@@ -234,8 +241,8 @@ function StudentHomeApp() {
         orderId={orderId}
         onBack={() => goTo(backTarget)}
         backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
-        onGoToHome={() => goTo('shop')}
-        onGoToShop={() => goTo('shop')}
+        onGoToHome={() => goToShop('home')}
+        onGoToShop={() => goToShop('order')}
         onGoToOrders={() => goTo('orders')}
         onGoToProfile={() => goTo('profile')}
       />
@@ -247,7 +254,7 @@ function StudentHomeApp() {
       source={source}
       draft={draft}
       shop={currentShop}
-      onBackToShops={() => goTo('shop')}
+      onBackToShops={() => goToShop('home')}
       onProceed={() => goTo('slot')}
       onOpenOrders={() => openOrders('menu')}
       onOpenProfile={() => goTo('profile')}

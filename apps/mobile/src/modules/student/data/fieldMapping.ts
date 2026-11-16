@@ -222,6 +222,7 @@ export function mapShopListResponse(payload: unknown, { demo }: MapShopListOptio
       merchantId: requireText(entry, 'merchantId', where),
       name: requireText(entry, 'name', where),
       canteenId: readNullableText(entry, 'canteenId'),
+      active: readNullableBoolean(entry, 'active'),
       orderable: readNullableBoolean(entry, 'orderable'),
       demo,
       sortOrder: readNullableInteger(entry, 'sortOrder'),

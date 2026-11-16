@@ -102,14 +102,24 @@ test('只剩一个名额时并发下单最多成功一笔', async () => {
   assert.equal(slot.booked_count, 1);
 });
 
-test('已结束时段不能下单', async () => {
+test('已结束但仍启用且有名额的时段仍可下单', async () => {
   const token = await ctx.login('student');
   ctx.setNow(Date.parse('2026-11-13T12:05:00+08:00'));
-  const response = await placeOrder(token, 'closed-slot-1');
+  const menu = await ctx.api('GET', '/menu?date=2026-11-13', { token });
+  const slot = menu.body.data.slots.find((item) => item.id === SLOT_TODAY);
+  assert.equal(slot.enabled, true);
+
+  const response = await placeOrder(token, 'ended-slot-1');
+  assert.equal(response.status, 201);
+  assert.equal(ctx.db.prepare('SELECT COUNT(*) AS count FROM orders').get().count, 1);
+});
+
+test('服务端停用的时段仍不可下单', async () => {
+  const token = await ctx.login('student');
+  ctx.db.prepare('UPDATE slots SET enabled = 0 WHERE id = ?').run(SLOT_TODAY);
+  const response = await placeOrder(token, 'disabled-slot-1');
   assert.equal(response.status, 409);
   assert.equal(response.body.error.code, 'SLOT_CLOSED');
-  const count = ctx.db.prepare('SELECT COUNT(*) AS count FROM orders').get().count;
-  assert.equal(count, 0);
 });
 
 test('跨档口菜品不能组成同一订单', async () => {

@@ -19,6 +19,7 @@ import {
 import { formatYuan } from '../utils/money';
 import { todayAndTomorrow } from '../utils/dates';
 import DemoModeNotice from '../components/DemoModeNotice';
+import StudentTabBar from '../components/StudentTabBar';
 import stallDazhong from '../assets/stall-dazhong.png';
 import stallFengwei from '../assets/stall-fengwei.png';
 import stallMianshi from '../assets/stall-mianshi.png';
@@ -30,6 +31,7 @@ export interface ShopSelectPageProps {
   draft: OrderDraft;
   currentShop: ShopSummary | null;
   notice: string;
+  initialTab?: 'home' | 'order';
   onEnterShop: (shop: ShopSummary) => void;
   onOpenOrders: () => void;
   onOpenProfile?: () => void;
@@ -88,11 +90,12 @@ export default function ShopSelectPage({
   draft,
   currentShop,
   notice,
+  initialTab = 'home',
   onEnterShop,
   onOpenOrders,
   onOpenProfile,
 }: ShopSelectPageProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'order' | 'mine'>('order');
+  const [activeTab, setActiveTab] = useState<'home' | 'order' | 'mine'>(initialTab);
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<SourceError | null>(null);
@@ -186,7 +189,9 @@ export default function ShopSelectPage({
   });
 
   const shopOf = (id: string) => shops.find((shop) => shop.merchantId === id) ?? null;
-  const featuredDishes = dishes.filter((dish) => shopOf(dish.merchantId)).slice(0, 3);
+  const featuredDishes = dishes
+    .filter((dish) => shopOf(dish.merchantId)?.active !== false)
+    .slice(0, 3);
   const carouselCards = Array.from({ length: 3 }, (_, index) => picker.cards[index] ?? null);
 
   useEffect(() => {
@@ -513,7 +518,7 @@ export default function ShopSelectPage({
                     {featuredDishes.map((dish, index) => {
                       const shop = shopOf(dish.merchantId);
                       return (
-                        <button key={dish.dishId} type="button" className={`student-home__dish ${index === 0 ? 'student-home__dish--featured' : ''}`} onClick={() => { if (shop) onEnterShop(shop); }}>
+                        <button key={dish.dishId} type="button" className={`student-home__dish ${index === 0 ? 'student-home__dish--featured' : ''}`} disabled={!shop || shop.active === false} onClick={() => { if (shop && shop.active !== false) onEnterShop(shop); }}>
                           <span className={`student-home__dish-photo student-home__dish-photo--${pictureClass(dish.name, index)}`} aria-hidden="true" />
                           <span className="student-home__dish-info"><strong>{dish.name}</strong><small>{shop?.name ?? '进入店铺查看'}</small><span className="student-home__dish-price">{formatYuan(dish.unitPriceFen)}</span></span>
                         </button>
@@ -560,58 +565,22 @@ export default function ShopSelectPage({
       </div>
 
       {/* 底部导航栏：对齐参考图样式，点餐 Tab 具备专属高亮黄色椭圆块 */}
-      <nav className="student-home__nav" aria-label="学生端导航">
-        <button
-          type="button"
-          className={activeTab === 'home' ? 'is-active-tab' : ''}
-          aria-current={activeTab === 'home' ? 'page' : undefined}
-          onClick={() => {
-            setActiveTab('home');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        >
-          <Icon name="home" />
-          <span>首页</span>
-          {activeTab === 'home' ? <span className="nav-pill-blob" aria-hidden="true" /> : null}
-        </button>
-
-        <button
-          type="button"
-          className={activeTab === 'order' ? 'is-active-tab' : ''}
-          aria-current={activeTab === 'order' ? 'page' : undefined}
-          onClick={() => {
-            setActiveTab('order');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        >
-          <Icon name="bowl" />
-          <span>点餐</span>
-          {activeTab === 'order' ? <span className="nav-pill-blob" aria-hidden="true" /> : null}
-        </button>
-
-        <button type="button" onClick={onOpenOrders}>
-          <Icon name="orders" />
-          <span>订单</span>
-        </button>
-
-        <button
-          type="button"
-          className={activeTab === 'mine' ? 'is-active-tab' : ''}
-          aria-current={activeTab === 'mine' ? 'page' : undefined}
-          onClick={() => {
-            if (onOpenProfile) {
-              onOpenProfile();
-            } else {
-              setActiveTab('mine');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          }}
-        >
-          <Icon name="user" />
-          <span>我的</span>
-          {activeTab === 'mine' ? <span className="nav-pill-blob" aria-hidden="true" /> : null}
-        </button>
-      </nav>
+      <StudentTabBar
+        active={activeTab === 'home' ? 'home' : activeTab === 'mine' ? 'profile' : 'order'}
+        onGoHome={() => {
+          setActiveTab('home');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onGoOrder={() => {
+          setActiveTab('order');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onOpenOrders={onOpenOrders}
+        onOpenProfile={() => {
+          if (onOpenProfile) onOpenProfile();
+          else setActiveTab('mine');
+        }}
+      />
     </section>
   );
 }

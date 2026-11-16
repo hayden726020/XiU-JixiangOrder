@@ -1,8 +1,10 @@
 # 三端接口草案
 
-DRAFT v0.3（联调冻结候选），仍待三人确认，不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径；三人确认前按“联调候选”使用，不宣称正式上线。
+DRAFT v0.5（联调冻结候选），仍待三人确认，不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径；三人确认前按“联调候选”使用，不宣称正式上线。
 
 **v0.4 增补（2026-11-14）**：在 v0.3 之上新增商家注册、创建店铺、新增菜品、`GET /merchant/profile`、`GET /merchants`（学生店铺列表）与订单 `merchantId/merchantName`，并给 `GET /menu` 的 `dishes[]` 增加 `type`。v0.4 增补已由 `services/api` 实现并通过自动测试，仍待三人确认；v0.3 既有端点口径不变。
+
+**v0.5 增补（2026-11-16）**：`GET /merchants` 增加 `active` 区分档口启用状态和营业时间提示；未发布阶段不按营业时间或时段结束时间拦截预约下单，但停用档口、手动停用/满额时段、库存和仅今天/明天日期限制仍有效。停用档口下单返回 `MERCHANT_CLOSED`（409）。
 
 ## 基础格式
 
@@ -22,7 +24,7 @@ DRAFT v0.3（联调冻结候选），仍待三人确认，不能作为正式发�
 | POST /auth/logout | 无 | 204 |
 
 - role 仅允许 STUDENT、MERCHANT、ADMIN；档口账号另含 merchantId，学生账号另含 studentId（均为不透明字符串）。
-- 客户端此后请求带 Authorization: Bearer <token>；令牌只保存在内存或必要的短期存储中，不写日志、不进 URL、不出现在错误截图。
+- 客户端此后请求带 Authorization: Bearer <token>；学生令牌在客户端保留至服务端 `expiresAt`，退出登录时清除；不写日志、不进 URL、不出现在错误截图。
 - 服务端逐请求校验会话、角色及对象归属；客户端隐藏入口不构成权限控制。
 - 会话过期返回 401 SESSION_EXPIRED；未登录或令牌无效返回 401 UNAUTHENTICATED；两者都引导重新登录，不泄露账号是否存在。
 - 示例见 auth-demo-login.json 与 me.json，均为虚构数据。
@@ -118,7 +120,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 
 `GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
 
-- `slots[]` 字段为 `id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled,version`；已结束、已满或服务端停用的时段 `enabled=false`。
+- `slots[]` 字段为 `id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled,version`；已满或服务端停用的时段 `enabled=false`。在当前未发布阶段，时段结束时间不限制下单；仍须属于今天或明天、服务端启用且有剩余名额。
 - `dishes[]` 字段为 `id,merchantId,type,name,priceFen,availableQuantity,onSale,version`。`type` 取值 `STAPLE`（主食）/`SNACK`（小吃）/`DRINK`（饮品）/`SET`（套餐），由新增菜品时写入。`GET /menu` 返回全部菜品；档口端必须按登录身份 `merchantId` 过滤展示，未登录不展示档口菜单；服务端写操作按归属校验，不依赖客户端过滤作为安全边界。
 - `version` 与 `PUT /merchant/menu/{dishId}`、`PUT /merchant/slots/{slotId}` 的 `expectedVersion` 同源；保存成功后 `version` + 1 并在响应中返回新版本；旧版本返回 `MENU_VERSION_CONFLICT`（409）。
 
@@ -144,13 +146,13 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 
 ### 学生店铺列表与订单店铺字段（v0.4 增补）
 
-`GET /merchants`（已登录会话可读，未登录 401）返回 `{ data: { merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] } }`：
+`GET /merchants`（已登录会话可读，未登录 401）返回 `{ data: { merchants: [{ merchantId, name, canteenId, active, orderable, sortOrder }] } }`：
 
-- `merchantId` 与 `dishes[].merchantId`、订单 `merchantId` 同一取值空间；`name` 为展示名；`canteenId` 取当前食堂配置；`orderable` 由服务端按店铺状态与营业时间判断，客户端不用 `openAt/closeAt` 自行推断；`sortOrder` 从 1 递增。
+- `merchantId` 与 `dishes[].merchantId`、订单 `merchantId` 同一取值空间；`name` 为展示名；`canteenId` 取当前食堂配置；`active` 表示档口是否启用，停用时不可下单；`orderable` 仅表示当前是否处于营业时间，仅作提示，在当前未发布阶段不阻止查看菜单或下单；`sortOrder` 从 1 递增。
 - 不返回联系人、电话等商家资料；跨店/未注册不在此接口暴露。
 - `dishes[].merchantId` 为必填非空字符串；缺失时学生端按 `INVALID_RESPONSE` 处理，不静默混店。
 - `GET /orders`、`GET /orders/{id}`、`POST /orders` 以及档口/管理端同源订单响应均返回 `merchantId` 与 `merchantName`（快照）；`merchantName` 缺失时为 null。
-- 错误码：店铺不存在沿用 `MERCHANT_NOT_FOUND`（404）；店铺不可下单的专用码（如 `MERCHANT_CLOSED`）尚未实现，客户端按未登记码兜底，正式登记前不得据此断言服务端行为。
+- 错误码：店铺不存在沿用 `MERCHANT_NOT_FOUND`（404）；停用档口下单返回 `MERCHANT_CLOSED`（409）。
 - 演示数据名称差异（学生样例 `demo-dish-02/03` 与当前服务端种子不一致）不改变接口语义；统一后由学生端同步 fixture。
 
 首版不增加学生在线申请变更用餐方式的流程。学生订单详情说明“如需更改堂食或外带，请联系档口，由档口确认”；学生线下提出后，档口使用 dining-mode 操作更新，`reason` 必填并持久化为响应的 `diningModeReason`。学生端只读回结果，不自行修改或假装已经提交变更申请。

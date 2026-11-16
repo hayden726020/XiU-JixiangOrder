@@ -4,6 +4,7 @@ import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { clearSession } from '../../../shared/session';
 import { clearPresence } from '../../../shared/location';
 import SampleBanner from '../components/SampleBanner';
+import StudentTabBar from '../components/StudentTabBar';
 import studentAvatar from '../assets/student-avatar.png';
 import '../profile.css';
 
@@ -58,41 +59,6 @@ function ChevronRightIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ width: '1.1rem', height: '1.1rem' }}>
       <polyline points="9 18 15 12 9 6" />
-    </svg>
-  );
-}
-
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m3 10 9-7 9 7v10H3zM9 21v-7h6v7" />
-    </svg>
-  );
-}
-
-function BowlIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 12h18a9 9 0 0 1-18 0ZM5 21h14" />
-      <path d="M9 8c0-2 2-2 2-4m4 5c0-2 2-2 2-4" />
-    </svg>
-  );
-}
-
-function OrdersIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="5" y="3" width="14" height="18" rx="2" />
-      <path d="M9 8h6M9 12h6M9 16h4" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" />
     </svg>
   );
 }
@@ -253,41 +219,13 @@ export default function ProfilePage({
       </main>
 
       {/* 底部导航栏：对齐参考图样式，我的 Tab 具备专属高亮 */}
-      <nav className="student-home__nav" aria-label="学生端导航">
-        <button
-          type="button"
-          onClick={onGoToShop}
-        >
-          <HomeIcon />
-          <span>首页</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onGoToMenu}
-        >
-          <BowlIcon />
-          <span>点餐</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenOrders}
-        >
-          <OrdersIcon />
-          <span>订单</span>
-        </button>
-
-        <button
-          type="button"
-          className="is-active-tab"
-          aria-current="page"
-        >
-          <UserIcon />
-          <span>我的</span>
-          <span className="nav-pill-blob" aria-hidden="true" />
-        </button>
-      </nav>
+      <StudentTabBar
+        active="profile"
+        onGoHome={onGoToShop}
+        onGoOrder={onGoToMenu}
+        onOpenOrders={onOpenOrders}
+        onOpenProfile={() => undefined}
+      />
 
       {/* 弹窗 1：位置信息与隐私 */}
       {modal === 'location' ? (

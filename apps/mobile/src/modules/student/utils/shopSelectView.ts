@@ -71,14 +71,16 @@ export function deriveShopCards(
       const title = hasName ? shop.name : SHOP_NAME_MISSING;
       const canteenText = shop.canteenId ? `所属食堂：${shop.canteenId}` : CANTEEN_MISSING;
       const orderableText =
-        shop.orderable === true
+        shop.active === false
+          ? SHOP_CLOSED_REASON
+          : shop.orderable === true
           ? ORDERABLE_YES
           : shop.orderable === false
             ? ORDERABLE_NO
             : ORDERABLE_MISSING;
       const disabledReason = !canSetShop
         ? SHOP_SWITCH_BUSY
-        : shop.orderable === false
+        : shop.active === false
           ? SHOP_CLOSED_REASON
           : '';
       return {

@@ -27,6 +27,7 @@ test('学生读取店铺列表，字段完整且不泄露联系方式', async ()
     assert.equal(typeof merchant.merchantId, 'string');
     assert.equal(typeof merchant.name, 'string');
     assert.equal(typeof merchant.canteenId, 'string');
+    assert.equal(typeof merchant.active, 'boolean');
     assert.equal(typeof merchant.orderable, 'boolean');
     assert.equal(typeof merchant.sortOrder, 'number');
     assert.equal(merchant.contactPhone, undefined);
@@ -44,6 +45,27 @@ test('店铺营业时间之外 orderable=false', async () => {
   const response = await ctx.api('GET', '/merchants', { token });
   const target = response.body.data.merchants.find((item) => item.merchantId === 'demo-merchant-01');
   assert.equal(target.orderable, false);
+
+  const order = await ctx.api('POST', '/orders', {
+    token,
+    body: orderBody('closed-shop-order-1'),
+  });
+  assert.equal(order.status, 201);
+});
+
+test('已停用店铺不可下单', async () => {
+  ctx.db.prepare("UPDATE merchants SET status = 'DISABLED' WHERE id = 'demo-merchant-01'").run();
+  const token = await ctx.login('student');
+  const merchants = await ctx.api('GET', '/merchants', { token });
+  const target = merchants.body.data.merchants.find((item) => item.merchantId === 'demo-merchant-01');
+  assert.equal(target.active, false);
+
+  const response = await ctx.api('POST', '/orders', {
+    token,
+    body: orderBody('inactive-shop-order-1'),
+  });
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error.code, 'MERCHANT_CLOSED');
 });
 
 test('档口也会话可读取店铺列表', async () => {

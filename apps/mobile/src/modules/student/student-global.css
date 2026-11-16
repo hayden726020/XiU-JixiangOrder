@@ -10,9 +10,7 @@
 }
 
 /* Keep the four student destinations consistent across all page layouts. */
-.student-home__nav,
-.student-tabbar,
-.student-menu-tabbar {
+.student-tabbar.student-tabbar {
   position: fixed;
   right: 0;
   bottom: 0;
@@ -22,8 +20,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   justify-content: stretch;
-  height: auto;
-  min-height: 4.15rem;
+  min-height: 4.4rem;
   padding: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(7, 22, 56, 0.06);
   border-radius: 1.25rem 1.25rem 0 0;
@@ -32,9 +29,7 @@
   backdrop-filter: blur(14px);
 }
 
-.student-home__nav button,
-.student-tabbar .student-tab-item,
-.student-menu-tabbar button {
+.student-tabbar__item {
   position: relative;
   display: grid;
   min-width: 0;
@@ -55,51 +50,25 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.student-home__nav button > svg,
-.student-tabbar .student-tab-item > svg,
-.student-menu-tabbar button > svg {
+.student-tabbar__item > svg {
   width: 1.35rem;
   height: 1.35rem;
   stroke: currentColor;
 }
 
-.student-home__nav button > span:not(.nav-pill-blob),
-.student-tabbar .student-tab-item > span,
-.student-menu-tabbar button > span {
+.student-tabbar__item > span {
   position: relative;
   z-index: 1;
   font-size: 0.72rem;
   line-height: 1.2;
 }
 
-.student-home__nav button.is-active-tab,
-.student-tabbar .student-tab-item.is-active,
-.student-menu-tabbar button.is-active {
+.student-tabbar__item.is-active {
   color: #071638;
   font-weight: 800;
 }
 
-.student-home__nav button.is-active-tab::before,
-.student-tabbar .student-tab-item.is-active::before,
-.student-menu-tabbar button.is-active::before {
-  position: absolute;
-  top: 0.08rem;
-  left: 50%;
-  width: 2.8rem;
-  height: 1.55rem;
-  border-radius: 999px;
-  background: #ffd525;
-  content: "";
-  transform: translateX(-50%);
-}
-
-.student-home__nav .nav-pill-blob {
-  display: none;
-}
-
-.student-home__nav button:focus-visible,
-.student-tabbar .student-tab-item:focus-visible,
-.student-menu-tabbar button:focus-visible {
+.student-tabbar__item:focus-visible {
   outline: 3px solid #2874d8;
   outline-offset: 2px;
 }
@@ -147,9 +116,7 @@
 }
 
 @media (min-width: 600px) {
-  .student-home__nav,
-  .student-tabbar,
-  .student-menu-tabbar {
+  .student-tabbar {
     right: auto;
     left: 50%;
     width: min(100%, 42rem);

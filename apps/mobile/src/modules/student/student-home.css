@@ -524,35 +524,6 @@
 .student-home__mine-row svg { width: 1rem; height: 1rem; }
 .student-home__fineprint { font-size: .75rem; }
 
-.student-home__nav {
-  position: sticky;
-  z-index: 5;
-  bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  min-height: calc(74px + env(safe-area-inset-bottom));
-  padding: .5rem .35rem calc(.45rem + env(safe-area-inset-bottom));
-  border-radius: 24px 24px 0 0;
-  background: rgba(250,251,255,.97);
-  box-shadow: 0 -8px 25px rgba(7,22,56,.1);
-}
-.student-home__nav button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .12rem;
-  padding: .1rem;
-  border: 0;
-  background: transparent;
-  color: var(--home-navy);
-  font-size: .78rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.student-home__nav button svg { width: 1.55rem; height: 1.55rem; }
-.student-home__nav button.is-active { color: #0864e9; }
-.student-home__nav button.is-active span { padding: .02rem .45rem; border-radius: 50%; background: #ffe469; color: var(--home-navy); }
 .student-home button:focus-visible { outline: 3px solid #0864e9; outline-offset: 3px; }
 
 /* ============================================================
@@ -787,30 +758,6 @@
   font-size: 0.68rem;
   color: #e11d48;
 }
-
-/* 导航栏高亮指示器样式 */
-.student-home__nav button {
-  position: relative;
-}
-
-.student-home__nav button.is-active-tab {
-  color: #071638;
-}
-
-.student-home__nav .nav-pill-blob {
-  position: absolute;
-  top: 48%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 58px;
-  height: 52px;
-  background: #fedb43;
-  border-radius: 46% 54% 48% 52% / 48% 52% 48% 52%;
-  z-index: -1;
-  opacity: 0.96;
-  box-shadow: 0 2px 8px rgba(254, 219, 67, 0.4);
-}
-
 
 @media (prefers-reduced-motion: reduce) {
   .student-home__shop-slide { transition: none; }

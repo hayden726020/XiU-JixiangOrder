@@ -217,8 +217,8 @@ export function createOrder({ db, clock, user, body }) {
       if (!slot) {
         throw notFound('SLOT_NOT_FOUND', '所选时段不存在。');
       }
-      if (!slot.enabled || slot.end_at <= now || (slot.date !== today && slot.date !== tomorrow)) {
-        throw conflict('SLOT_CLOSED', '该时段已关闭或已过，请选择其他时段。');
+      if (!slot.enabled || (slot.date !== today && slot.date !== tomorrow)) {
+        throw conflict('SLOT_CLOSED', '该时段已停用或日期不可预约，请选择其他时段。');
       }
 
       const dishes = [];
@@ -241,6 +241,10 @@ export function createOrder({ db, clock, user, body }) {
         throw validationError('同一订单只能包含同一档口的菜品。');
       }
       const merchantId = dishes[0].dish.merchant_id;
+      const merchantStatus = db.prepare('SELECT status FROM merchants WHERE id = ?').get(merchantId);
+      if (merchantStatus?.status !== 'ACTIVE') {
+        throw conflict('MERCHANT_CLOSED', '该档口当前已停用，暂不可下单。');
+      }
 
       const updateDish = db.prepare(
         `UPDATE dishes SET available_quantity = available_quantity - ?, version = version + 1
@@ -682,7 +686,7 @@ export function listMenu({ db, clock, query }) {
       capacity: slot.capacity,
       booked: slot.booked_count,
       remainingCapacity: Math.max(0, slot.capacity - slot.booked_count),
-      enabled: slot.enabled === 1 && slot.end_at > now && slot.booked_count < slot.capacity,
+      enabled: slot.enabled === 1 && slot.booked_count < slot.capacity,
       version: slot.version,
     }));
   const dishes = db

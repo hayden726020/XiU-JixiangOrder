@@ -105,6 +105,7 @@ export function listMerchants({ db, clock }) {
           merchantId: row.id,
           name: row.name,
           canteenId,
+          active: row.status === 'ACTIVE',
           orderable: row.status === 'ACTIVE' && nowHm >= row.open_at && nowHm < row.close_at,
           sortOrder: index + 1,
         })),
