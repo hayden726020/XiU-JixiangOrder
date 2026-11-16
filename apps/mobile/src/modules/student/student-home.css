@@ -42,9 +42,10 @@
 
 .student-home__brand {
   position: relative;
-  display: inline-block;
-  margin: 1.15rem 0 0;
-  font-size: clamp(1.8rem, 7.4vw, 2.45rem);
+  display: block;
+  width: fit-content;
+  margin: .2rem 0 0;
+  font-size: clamp(2.3rem, 10vw, 3.2rem);
   font-weight: 950;
   line-height: 1.2;
   letter-spacing: .04em;
@@ -79,9 +80,11 @@
 }
 
 .student-home__hero-note {
-  display: inline-block;
+  display: block;
   position: relative;
-  margin-top: 2.45rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 1.2rem;
   padding: .6rem 1.25rem .75rem;
   background: rgba(255,253,247,.96);
   border-radius: 14px 18px 12px 20px;
