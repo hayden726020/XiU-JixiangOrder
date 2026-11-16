@@ -1,8 +1,10 @@
 # 三端接口草案
 
-DRAFT v0.3（2026-11-13 联调冻结候选）与 v0.4 增补（2026-11-14）分列；**三人结论已由 spcuteag 代签汇总为“同意”，魈嘶、漪x3 本人书面追认待补**。追认收齐前不得写成“三人本人已签署”，也不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径。
+DRAFT v0.5（2026-11-16 增补），在 v0.3（2026-11-13 联调冻结候选）与 v0.4 增补（2026-11-14）之上仅调整店铺列表读取权限；**三人结论已由 spcuteag 代签汇总为“同意”，魈嘶、漪x3 本人书面追认待补**。追认收齐前不得写成“三人本人已签署”，也不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径。
 
 **v0.4 增补（2026-11-14）**：在 v0.3 之上新增商家注册、创建店铺、新增菜品、`GET /merchant/profile`、`GET /merchants`（学生店铺列表）与订单 `merchantId/merchantName`，并给 `GET /menu` 的 `dishes[]` 增加 `type`。v0.4 增补已由 `services/api` 实现并通过自动测试（当前 82/82）；三人结论已代签汇总“同意”，本人书面追认待补；v0.3 既有端点口径不变。
+
+**v0.5 增补（2026-11-16）**：`GET /merchants` 改为公开只读，未登录也可读取，用于学生未登录时浏览首页与菜单；响应仍只返回 `merchantId/name/canteenId/orderable/sortOrder`，不返回商家联系人、电话或其他账号资料。`POST /orders` 的学生身份校验、个人订单列表与详情、其他写接口的权限规则均不变。状态仍为待三人确认，本人书面追认未收齐前不得写成“已签署”。
 
 ## 基础格式
 
@@ -56,7 +58,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | GET /me | 当前会话身份 | 返回 user 与 canteenId；仅本人信息 |
 | POST /auth/logout | 无 | 204；删除服务端会话，不删除订单 |
 | GET /menu?date=YYYY-MM-DD | 今天或明天菜单及时段 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选 |
-| GET /merchants | 已登录会话读取店铺列表 | `{ merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] }`；只读，不返回联系方式 |
+| GET /merchants | 匿名可读的店铺列表（公开只读） | `{ merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] }`；未登录也返回 200，只返回公开字段，不返回联系方式或账号资料 |
 | POST /orders | requestId, items[{dishId,quantity}], slotId, diningMode | 服务端计价并模拟付款后的订单；字段例子见 create-order.json |
 | GET /orders | 学生自己的订单列表 | 不返回其他学生订单 |
 | GET /orders/{id} | 获取有权限的订单 | 三端从同一订单来源读取，字段按角色过滤 |
@@ -142,12 +144,12 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 - 跨店访问按不存在处理：`MERCHANT_NOT_FOUND`/`SHOP_NOT_FOUND`/`DISH_NOT_FOUND`（404），不泄露其他商家是否存在。
 - 只支持今天和明天；其他日期返回 VALIDATION_ERROR。
 
-### 学生店铺列表与订单店铺字段（v0.4 增补）
+### 学生店铺列表与订单店铺字段（v0.4 增补，v0.5 调整读取权限）
 
-`GET /merchants`（已登录会话可读，未登录 401）返回 `{ data: { merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] } }`：
+`GET /merchants`（公开只读，未登录也可读取并返回 200；v0.5 起不再要求登录）返回 `{ data: { merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] } }`：
 
 - `merchantId` 与 `dishes[].merchantId`、订单 `merchantId` 同一取值空间；`name` 为展示名；`canteenId` 取当前食堂配置；`orderable` 由服务端按店铺状态与营业时间判断，客户端不用 `openAt/closeAt` 自行推断；`sortOrder` 从 1 递增。
-- 不返回联系人、电话等商家资料；跨店/未注册不在此接口暴露。
+- 匿名与已登录请求的响应字段一致，只含上述五个公开字段；不返回联系人、电话、账号资料或其他商家资料；跨店/未注册不在此接口暴露。
 - `dishes[].merchantId` 为必填非空字符串；缺失时学生端按 `INVALID_RESPONSE` 处理，不静默混店。
 - `GET /orders`、`GET /orders/{id}`、`POST /orders` 以及档口/管理端同源订单响应均返回 `merchantId` 与 `merchantName`（快照）；`merchantName` 缺失时为 null。
 - 错误码：店铺不存在沿用 `MERCHANT_NOT_FOUND`（404）；店铺不可下单的专用码（如 `MERCHANT_CLOSED`）尚未实现，客户端按未登记码兜底，正式登记前不得据此断言服务端行为。
@@ -214,8 +216,8 @@ v0.3 已补齐档口菜单、订单列表、分页、延迟、取消审批、用
 2. 样例与真实模式：公共层不提供全局“样例开关”。各模块在自身 data source 内选择 sample/real，首版默认 sample。切换 real 的前提是已配置服务地址且已登录；real 请求失败必须显示失败或结果待确认，不得回退样例，也不得把样例数据标成真实结果。
 3. 错误与 requestId 统一：模块复用 apps/mobile/src/shared 的 apiClient（ApiError 含 code/message/status/retryable）与 requestId 能力；不得另定义同名错误类并用 instanceof 判断 shared 错误，避免把真实失败降级为 UNKNOWN，也不得维护第二套 requestId 生成/复用逻辑。base URL 已包含 `/api/v1`，调用 `apiRequest` 时 path 只写 `/merchant/orders` 这类相对路径，不能再拼 `/api/v1`；下单 requestId 在内容不变时复用、内容变化时重生成、操作结束或开始新单后重置。
 4. 定位（触发口径 A，2026-11-14 已确认）：模块只使用 shared/location 的一次性定位与范围判断，不直接引入 @capacitor/geolocation，不上传坐标。学生端进入时段页自动请求一次位置；每页最多一次，在途合并、不并发，切页返回不叠加，单次 12 秒上限；不做持续追踪。页面同时展示用途与演示范围说明；拒绝、失败、超时返回 UNKNOWN，不阻塞下单。
-5. 以上口径为 DRAFT v0.3 联调冻结候选 + v0.4 增补；三人本人书面追认待补，追认收齐前仍不能宣称正式发布。
+5. 以上口径为 DRAFT v0.3 联调冻结候选 + v0.4 增补 + v0.5 增补；三人本人书面追认待补，追认收齐前仍不能宣称正式发布。
 
 ## 单 APK 客户端补充
 
-客户端统一为 apps/mobile 中三个角色模块，接口仍由独立 services/api 提供，不能把服务端放进 APK。公共会话与角色入口由 spcuteag维护，服务器逐请求验证角色和对象归属；客户端切换入口不改变授权。Android 一次性定位通过公共适配实现，模块只使用范围结果，仍遵守不上传坐标、短时失效和用户可删除的约定。此架构补充不改变 v0.3/v0.4 的追认状态；演示登录/会话在三人本人书面追认收齐后生效。
+客户端统一为 apps/mobile 中三个角色模块，接口仍由独立 services/api 提供，不能把服务端放进 APK。公共会话与角色入口由 spcuteag维护，服务器逐请求验证角色和对象归属；客户端切换入口不改变授权。Android 一次性定位通过公共适配实现，模块只使用范围结果，仍遵守不上传坐标、短时失效和用户可删除的约定。此架构补充不改变 v0.3/v0.4/v0.5 的追认状态；演示登录/会话在三人本人书面追认收齐后生效。

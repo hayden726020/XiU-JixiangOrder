@@ -105,7 +105,7 @@ export function createApp({ db, clock, logger = () => {} }) {
 
     { method: 'GET', pattern: /^\/api\/v1\/dining\/config$/, handler: getDiningConfig },
     { method: 'GET', pattern: /^\/api\/v1\/menu$/, handler: (ctx) => listMenu({ ...ctx, query: queryOf(ctx.req) }) },
-    { method: 'GET', pattern: /^\/api\/v1\/merchants$/, handler: withAuth(null, listMerchants) },
+    { method: 'GET', pattern: /^\/api\/v1\/merchants$/, handler: listMerchants },
     { method: 'GET', pattern: /^\/api\/v1\/crowd$/, handler: (ctx) => getCrowd({ ...ctx, query: queryOf(ctx.req) }) },
 
     { method: 'POST', pattern: /^\/api\/v1\/orders$/, handler: withBody(['STUDENT'], createOrder) },

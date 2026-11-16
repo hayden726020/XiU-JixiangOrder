@@ -12,10 +12,32 @@ afterEach(async () => {
   await ctx.close();
 });
 
-test('未登录读取店铺列表返回 401', async () => {
+test('匿名读取店铺列表返回 200，仅含公开字段且不含联系方式', async () => {
+  ctx.db
+    .prepare("UPDATE merchants SET contact_name = '张联系人', contact_phone = '13800001111' WHERE id = 'demo-merchant-01'")
+    .run();
   const response = await ctx.api('GET', '/merchants');
-  assert.equal(response.status, 401);
-  assert.equal(response.body.error.code, 'UNAUTHENTICATED');
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.merchants.length, 2);
+  for (const merchant of response.body.data.merchants) {
+    assert.deepEqual(Object.keys(merchant).sort(), [
+      'canteenId',
+      'merchantId',
+      'name',
+      'orderable',
+      'sortOrder',
+    ]);
+    assert.equal(typeof merchant.merchantId, 'string');
+    assert.equal(typeof merchant.name, 'string');
+    assert.equal(typeof merchant.canteenId, 'string');
+    assert.equal(typeof merchant.orderable, 'boolean');
+    assert.equal(typeof merchant.sortOrder, 'number');
+  }
+  const raw = JSON.stringify(response.body);
+  assert.equal(raw.includes('张联系人'), false);
+  assert.equal(raw.includes('13800001111'), false);
+  assert.equal(raw.includes('contactName'), false);
+  assert.equal(raw.includes('contactPhone'), false);
 });
 
 test('学生读取店铺列表，字段完整且不泄露联系方式', async () => {
