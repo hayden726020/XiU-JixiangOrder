@@ -555,6 +555,259 @@
 .student-home__nav button.is-active span { padding: .02rem .45rem; border-radius: 50%; background: #ffe469; color: var(--home-navy); }
 .student-home button:focus-visible { outline: 3px solid #0864e9; outline-offset: 3px; }
 
+/* ============================================================
+   点餐页面专属样式 (依据 photo/点餐页面.png 高保真还原)
+   ============================================================ */
+
+.student-order-view {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  color: var(--home-navy);
+  background: #edf2f9;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+
+.student-order-view .student-home__scroll {
+  flex: 1;
+}
+
+.student-order-hero {
+  position: relative;
+  height: clamp(235px, 62vw, 290px);
+  padding: calc(1.3rem + env(safe-area-inset-top)) 1.25rem 0;
+  background: url("./assets/campus-hero.png") center 18% / cover no-repeat;
+  overflow: hidden;
+  text-align: center;
+}
+
+.student-order-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(237,242,249,0.1) 60%, rgba(237,242,249,0.92) 100%);
+  pointer-events: none;
+}
+
+.student-order-hero__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.student-order-hero__title-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 0.15rem;
+}
+
+.student-order-hero__title {
+  position: relative;
+  margin: 0;
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", serif;
+  font-size: clamp(2.2rem, 8.2vw, 2.75rem);
+  font-weight: 900;
+  color: #071638;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.9);
+}
+
+.student-order-hero__sunburst {
+  position: absolute;
+  top: -0.3rem;
+  right: -1.8rem;
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+.student-order-hero__underline {
+  width: clamp(140px, 48vw, 190px);
+  height: 15px;
+  margin-top: -0.28rem;
+}
+
+.student-order-hero__banner-wrap {
+  margin-top: 0.75rem;
+  width: min(92vw, 360px);
+  filter: drop-shadow(0 6px 14px rgba(7, 22, 56, 0.12));
+}
+
+.student-order-hero__banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.student-order-body {
+  position: relative;
+  z-index: 3;
+  margin-top: -1.2rem;
+  padding: 0.5rem 1.1rem 2rem;
+}
+
+.student-order-mode-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.65rem;
+}
+
+.student-order-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.student-order-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52% 48%;
+  align-items: center;
+  min-height: 160px;
+  padding: 0.65rem 0.85rem 0.75rem 0.65rem;
+  background: url("./assets/stall-card-bg.png") center / 100% 100% no-repeat, #ffffff;
+  border-radius: 18px 22px 16px 20px;
+  filter: drop-shadow(0 6px 16px rgba(7, 22, 56, 0.08));
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.2s ease;
+}
+
+.student-order-card:hover,
+.student-order-card:focus-visible {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 10px 24px rgba(7, 22, 56, 0.13));
+}
+
+.student-order-card:active {
+  transform: scale(0.985);
+}
+
+.student-order-card.is-current {
+  outline: 2.5px solid #ffd525;
+  outline-offset: 3px;
+}
+
+.student-order-card__photo-box {
+  position: relative;
+  width: 100%;
+  padding: 0.2rem;
+}
+
+.student-order-card__photo {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(7, 22, 56, 0.12));
+}
+
+.student-order-card__info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.55rem;
+  padding-left: 0.7rem;
+}
+
+.student-order-card__title {
+  margin: 0;
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", serif;
+  font-size: clamp(1.4rem, 5.2vw, 1.7rem);
+  font-weight: 900;
+  color: #071638;
+  line-height: 1.2;
+}
+
+.student-order-card__badge {
+  display: inline-block;
+  padding: 0.2rem 0.8rem;
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+
+.student-order-card__action {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 0.15rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #071638;
+  cursor: pointer;
+  position: relative;
+}
+
+.student-order-card__action-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.student-order-card__action-text {
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", cursive, sans-serif;
+  font-size: 1.12rem;
+  font-weight: 900;
+  color: #071638;
+  letter-spacing: 0.04em;
+}
+
+.student-order-card__action-arrow {
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #071638;
+  transition: transform 0.2s ease;
+}
+
+.student-order-card:hover .student-order-card__action-arrow {
+  transform: translateX(4px);
+}
+
+.student-order-card__action-underline {
+  width: 76px;
+  height: 10px;
+  margin-top: -0.15rem;
+}
+
+.student-order-card__disabled {
+  margin: 0;
+  font-size: 0.68rem;
+  color: #e11d48;
+}
+
+/* 导航栏高亮指示器样式 */
+.student-home__nav button {
+  position: relative;
+}
+
+.student-home__nav button.is-active-tab {
+  color: #071638;
+}
+
+.student-home__nav .nav-pill-blob {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 58px;
+  height: 52px;
+  background: #fedb43;
+  border-radius: 46% 54% 48% 52% / 48% 52% 48% 52%;
+  z-index: -1;
+  opacity: 0.96;
+  box-shadow: 0 2px 8px rgba(254, 219, 67, 0.4);
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   .student-home__shop-slide { transition: none; }
 }

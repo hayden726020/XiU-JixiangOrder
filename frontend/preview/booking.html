@@ -74,14 +74,23 @@
     border-color: #1b6bd6;
   }
 
-  /* 预览容器 */
+  /* 预览容器包装 */
+  .preview-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    padding: 1.5rem 1rem 2rem;
+    display: flex;
+    justify-content: center;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+  }
   .preview-container {
     display: flex;
     justify-content: center;
+    align-items: flex-start;
     gap: 2rem;
-    margin: 1.5rem auto 0;
-    padding: 0 1rem;
-    max-width: 1000px;
+    margin: 0 auto;
+    min-width: 0;
     transition: all 0.25s ease;
   }
   .preview-frame {
@@ -147,7 +156,8 @@
   <button type="button" class="preview-compare-toggle" id="tab-compare">双屏并列对照</button>
 </div>
 
-<div class="preview-container" id="preview-container">
+<div class="preview-scroll-wrapper">
+  <div class="preview-container" id="preview-container">
 
   <!-- ==================== 页面一：预约取餐 ==================== -->
   <div class="preview-frame" id="frame-p1">
@@ -421,6 +431,7 @@
     </section>
   </div>
 
+  </div>
 </div>
 
 <div class="preview-toast" id="preview-toast"></div>

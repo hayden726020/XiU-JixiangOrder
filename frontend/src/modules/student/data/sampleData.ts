@@ -12,19 +12,27 @@ export const DEMO_SHOPS: ShopSummary[] = [
     sortOrder: 1,
   },
   {
+    merchantId: 'demo-merchant-03',
+    name: '一食堂·风味小炒',
+    canteenId: 'demo-canteen-01',
+    orderable: true,
+    demo: true,
+    sortOrder: 2,
+  },
+  {
     merchantId: 'demo-merchant-02',
     name: '一食堂·面档',
     canteenId: 'demo-canteen-01',
     orderable: true,
     demo: true,
-    sortOrder: 2,
+    sortOrder: 3,
   },
 ];
 
 export const DISH_SHOP: Record<string, string> = {
   'demo-dish-01': 'demo-merchant-01',
   'demo-dish-02': 'demo-merchant-02',
-  'demo-dish-03': 'demo-merchant-01',
+  'demo-dish-03': 'demo-merchant-03',
   'demo-dish-04': 'demo-merchant-01',
   'demo-dish-05': 'demo-merchant-01',
 };
@@ -68,8 +76,8 @@ export const DISHES: SampleDish[] = [
     dishId: 'demo-dish-03',
     name: '演示青椒肉丝',
     unitPriceFen: 1500,
-    availability: { '2026-11-13': 0, '2026-11-14': 20 },
-    onSale: { '2026-11-13': false, '2026-11-14': true },
+    availability: { '2026-11-13': 25, '2026-11-14': 20 },
+    onSale: { '2026-11-13': true, '2026-11-14': true },
   },
   {
     dishId: 'demo-dish-04',
