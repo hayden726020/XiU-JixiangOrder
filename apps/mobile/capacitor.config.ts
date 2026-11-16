@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.xiujixiang.order',
-  appName: '吉祥点餐',
+  appName: '时麦呼',
   webDir: 'dist',
   android: {
     allowMixedContent: true,

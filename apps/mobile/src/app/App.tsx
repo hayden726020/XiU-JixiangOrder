@@ -76,7 +76,7 @@ export default function App() {
       <header className="app-header">
         <div>
           <p className="app-kicker">单 APK · 三角色共用</p>
-          <h1>吉祥点餐</h1>
+          <h1>时麦呼</h1>
         </div>
         <span className="app-version">Day2 联调</span>
       </header>

@@ -100,7 +100,7 @@ server.on('error', (error) => {
 });
 
 server.listen(port, host, () => {
-  console.log('吉祥点餐演示 API 已启动');
+  console.log('时麦呼演示 API 已启动');
   console.log(`  本机:   http://127.0.0.1:${port}/api/v1/health`);
   for (const address of localAddresses()) {
     console.log(`  局域网: http://${address}:${port}/api/v1`);
