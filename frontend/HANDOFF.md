@@ -1,18 +1,19 @@
-# 吉祥点餐管理端前端交接（2026-11-16）
+# 吉祥点餐管理端前端交接（2026-11-16 晚）
 
 ## 1 当前代码基线
 
 | 项 | 值 |
 | --- | --- |
-| 日常源码目录 | `D:\jixiang\workspace\frontend` |
-| Git 基线目录 | `D:\jixiang\workspace\campus-meal-admin-baseline` |
+| 日常源码目录 | `D:\吉祥社代码\workspace\team-context\frontend`（Syncthing 同步目录；旧写法 `D:\jixiang\workspace\frontend` 即此路径） |
+| Git 基线目录 | `D:\吉祥社代码\workspace\campus-meal-admin-baseline`（**2026-11-16 晚由 `campus-meal` 仓库 worktree 建立**，共享同一 `.git`；旧克隆已不存在时按此路径重新 `git fetch` + `git worktree add`） |
 | 分支 | `frontend/admin-redesign-2026-11-16` |
 | 基线父提交 | `integration/student-visual-1.14 @ 320aa0f` |
-| 本轮代码提交 | `8faaa5d52a4fa35b4c29006b1cdf792933b3da95` |
+| 分支前序提交 | `8faaa5d`（概览/订单页）、`bd59ffb`（首版 HANDOFF/提示词） |
+| 本轮提交 | 营业与配置页（`#/admin/settings`）——以本目录 `git log -1 --oneline` 为准 |
 | 远端 | `https://github.com/hayden726020/XiU-JixiangOrder.git` |
-| 稀疏检出范围 | 仅 `frontend/`，其余模块未覆盖 |
+| 稀疏检出范围 | 仅 `frontend/`；本机 worktree 检出完整仓库树，但只提交 `frontend/` 下本任务文件 |
 
-本地 Git 是浅克隆 + 部分克隆的稀疏工作区，只用于前端基线交付。需要完整仓库历史或其他角色模块时，请新建完整克隆，不要在当前工作区强制补全或切换目录。
+工作树里的 `frontend/` 与同步目录 `team-context/frontend/` 是两个独立副本：改动先落在同步目录，再由本任务复制到 worktree 提交。**不要直接在 worktree 改代码**（队友看不到），也不要把同步目录整体覆盖到 worktree（会带上他人未完成改动）。
 
 ## 2 本轮已完成页面
 
@@ -20,9 +21,10 @@
 | --- | --- | --- | --- |
 | 管理端概览 | `#/admin` | `pages/OverviewPage.tsx`、`admin-overview.css` | 已按设计稿实现 |
 | 订单与异常查询 | `#/admin/orders` | `pages/OrdersPage.tsx`、`admin-orders.css` | 已按设计稿实现 |
-| 订单查询空状态 | `#/admin/orders` | `pages/OrdersPage.tsx`、`admin-orders.css` | 已按设计稿实现 |
+| 订单查询空状态 | `#/admin/orders` | 同上 | 已按设计稿实现 |
+| **营业与食堂配置** | `#/admin/settings` | `pages/SettingsPage.tsx`、`admin-settings.css`、`components/SettingsEditor.tsx` | **本轮完成（查看态 + 编辑态展开）** |
 
-参考图来源：`D:\jixiang\workspace\设计系列\管理端*.png`。只实现设计稿中的手机应用界面，不实现左侧设计说明卡、页眉或展示稿网格背景。
+参考图来源：`frontend/photo/backhand/管理端*.png`（旧记录写作 `设计系列\管理端*.png`）。只实现右侧手机应用界面，不实现左侧设计说明卡、展示稿页眉或画布网格背景。
 
 ### 概览页
 
@@ -30,7 +32,7 @@
 - 三张统计卡：样例订单、待处理取消、已设延迟。
 - 两个入口：订单与异常查询、营业与配置。
 - 当前会话卡与退出操作。
-- 概览使用精简外壳，不显示联调横幅、错误演习、模式切换和后台导航。
+- 使用精简外壳，不显示联调横幅、错误演习、模式切换和后台导航。
 
 ### 订单列表
 
@@ -41,6 +43,15 @@
 - 保留订单卡进入只读详情。
 - 空状态下保留筛选，隐藏摘要和订单卡，居中显示图标、标题、说明和绿色描边刷新按钮。
 - 空状态分页只在右下角显示“第 N 页”。
+
+### 营业与食堂配置（本轮）
+
+- 精简外壳：`AdminHome` 新增 `admin-panel--settings`，隐藏页头、页脚、返回链接、联调横幅与后台导航；背景 `#F4F6F3`。
+- 页面结构：小标题「管理端」→ 主标题「营业与食堂配置」→ 副标题「查看食堂范围与提醒阈值，可分别编辑保存」→ 食堂范围（食堂 / 中心点 / 范围半径 / 误差容忍 / 配置版本 / 更新时间，6 行键值右对齐）→ 注释（演示值 + 中心点隐私口径）→ 提醒条件（当前参考阈值 / 预约需求阈值）→ 档口营业时间（样例模式两张并排卡：名称 + 「营业中」浅绿标签 + 时钟线框图标 + 时段换行；真实模式为浅绿缺口提示条）→ 底部通栏主按钮「编辑配置」。
+- 配色：主色深绿 `#1F4A33`、背景 `#F4F6F3`、白卡圆角约 14px 浅阴影；正文 `#2A362D`，辅助 `#7B857E`/`#939A94`。
+- 交互：点「编辑配置」在页尾展开编辑卡，分「食堂范围」「提醒条件」两组，各自主按钮保存；取消编辑收起。
+- 编辑语义保留：`dining`/`crowd` 分别保存、每次一个 section、`requestId` 变更后重发、`expectedVersion`、`SETTING_VERSION_CONFLICT` 保留输入并提示重新读取、保存成功后重读确认版本、401/403/503/超时文案、样例模式拒绝写。
+- 数据边界：真实模式读 `GET /admin/settings`；服务端无档口营业时间端点，真实模式不展示样例档口，改用缺口提示，不伪造管理员会话。
 
 ## 3 现有数据与权限边界
 
@@ -53,13 +64,12 @@
 
 ## 4 外壳与后续页面现状
 
-`AdminHome.tsx` 目前只对概览和订单列表使用精简外壳。以下页面仍沿用旧外壳和旧视觉：
+`AdminHome.tsx` 目前对概览、订单列表、营业与配置使用精简外壳。以下仍沿用旧外壳和旧视觉：
 
 - 订单详情 `#/admin/orders/{id}`
-- 营业与配置 `#/admin/settings`
 - 非管理员身份提示
 
-新对话不要把“订单列表已重构”误认为整个管理端都已完成。修改共享外壳时必须回归概览、订单、详情、配置和非管理员入口。
+新对话不要把“概览/订单/配置已完成”误认为整个管理端都已完成。修改共享外壳时必须回归概览、订单、详情、配置和非管理员入口。
 
 ## 5 剩余管理端设计稿
 
@@ -69,8 +79,8 @@
 2. `管理端订单详情已取消.png`
 3. `管理端详情兜底两态.png`
 4. `管理端订单错误三态.png`
-5. `管理端营业与配置.png`
-6. `管理端配置编辑表单.png`
+5. ~~`管理端营业与配置.png`~~（本轮完成）
+6. `管理端配置编辑表单.png`（**下一张**；当前编辑态为过渡实现，未按图精修）
 7. `管理端配置保存反馈三态.png`
 8. `管理端需管理员身份.png`
 
@@ -78,51 +88,52 @@
 
 ## 6 运行与验证
 
-本机 Node.js 位于 `D:\Node`，PowerShell 使用 `npm.cmd`：
+Bash（本机实测）：
+
+```bash
+cd D:\吉祥社代码\workspace\team-context\frontend
+npm run dev -- --port 5173 --strictPort
+```
+
+PowerShell（旧记录写法）：
 
 ```powershell
 $env:Path = "D:\Node;$env:Path"
-cd D:\jixiang\workspace\frontend
+cd D:\吉祥社代码\workspace\team-context\frontend
 & "D:\Node\npm.cmd" run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-连接线上演示 API：
+连接线上演示 API：`VITE_API_BASE_URL=https://39.96.195.158/api/v1`。
 
-```powershell
-$env:Path = "D:\Node;$env:Path"
-$env:VITE_API_BASE_URL = "https://39.96.195.158/api/v1"
-& "D:\Node\npm.cmd" run dev -- --host 127.0.0.1 --port 5173 --strictPort
-```
+管理端页面需要管理员会话，本机核对链路：
 
-构建检查：
+1. 后台启动 `campus-meal/services/api`（8787，首次生成 `.runtime/demo-accounts.json`，密码不打印、不入文档）。
+2. 浏览器默认 API 为相对 `/api/v1`，需在 localStorage 写 `xiu.mobile.apiBaseUrl.v1 = http://127.0.0.1:8787/api/v1`。
+3. 用 `demo-admin` 调 `/auth/demo-login` 取会话，写入 `sessionStorage['xiu.mobile.session.v1']` 后**整页刷新**（会话是模块级变量）。
+4. 打开 `http://127.0.0.1:5173/#/admin/settings`。
 
-```powershell
-$env:Path = "D:\Node;$env:Path"
-& "D:\Node\npm.cmd" run build
-```
+CDP 截图脚本（headless Edge，390×844）：`frontend/.runtime/admin-settings-shot.mjs`，生成查看态、编辑态、档口两卡样式三张图到 `.runtime/`。核对完只停本次启动的 8787，5173 dev server 保留。
 
 本轮结果：
 
-- `tsc --noEmit` 通过。
-- Vite 生产构建通过，139 modules。
-- 仅有现有的大 chunk 与动态 import 警告，不是构建失败。
-- 已用演示管理员会话打开订单页浏览器预览。
-- 未做逐像素视觉复核、真机安装或 APK 包内复验。
+- `npx tsc --noEmit` 中 `modules/admin` 错误数 **0**。
+- `npx vite build` 通过（约 200 ms）。
+- 全量 `npm run build` 可能被并行会话未完成的 `src/modules/merchant/pages/OnboardingPage.tsx`（`DISH_TYPE_OPTIONS` 未定义）阻塞，属队友改动，不要代改或回退。
+- 已用 CDP 截图做视觉复核；未做逐像素比对、真机安装或 APK 包内复验。
 
 ## 7 Git 推送环境
 
-- Git 安装在 `D:\Git`，`git` 在 `D:\Git\cmd`。
-- Git 直连 GitHub 在本机不稳定，已验证系统代理可用：
+- Git 安装在 `D:\dev\Git`；`git` 可直接调用。
+- 2026-11-16 20:00 曾出现 `github.com:443` 全断（直连与代理均超时）；20:10 起直连恢复，但 **pack 传输仍可能中断**（`fetch-pack: unexpected disconnect`），此时改用命令级代理：
 
-```powershell
-$env:Path = "D:\Git\cmd;D:\Git\usr\bin;$env:Path"
-$env:HTTP_PROXY = "http://127.0.0.1:7892"
-$env:HTTPS_PROXY = "http://127.0.0.1:7892"
+```bash
+HTTPS_PROXY=http://127.0.0.1:7892 HTTP_PROXY=http://127.0.0.1:7892 git fetch origin <branch>
 ```
 
-- 仅推送专用分支，不推送或强制更新 `main`。
-- `frontend/.gitignore` 已排除 `node_modules`、`dist`、Syncthing 元数据、临时运行目录、Edge 浏览器缓存和 `*.sync-conflict-*`。
+- 只推专用分支，不推 `main`、不强推；推送后用 `git ls-remote` 复查 refs。
+- `frontend/.gitignore` 已排除 `node_modules`、`dist`、临时运行目录、Syncthing 元数据、Edge 浏览器缓存和 `*.sync-conflict-*`。
+- 本机提交身份此前为 `CodeArts Agent <codearts-agent@local>`（用 `-c user.name/-c user.email` 临时指定，不改全局配置）。
 
 ## 8 新对话开场
 
-将 `frontend/NEXT-CONVERSATION-PROMPT.md` 全文提交给新对话，并附上本次要实现的下一张 `设计系列` 参考图。
+将 `frontend/NEXT-CONVERSATION-PROMPT.md` 全文提交给新对话，并附上下一张参考图 `frontend/photo/backhand/管理端配置编辑表单.png`。

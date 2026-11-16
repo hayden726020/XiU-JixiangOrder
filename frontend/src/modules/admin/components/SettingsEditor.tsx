@@ -157,47 +157,41 @@ interface SettingsEditorProps {
   source: AdminSource;
   settings: AdminSettings;
   onReloaded: (next: AdminSettings) => void;
+  onDone: () => void;
 }
 
-export default function SettingsEditor({ source, settings, onReloaded }: SettingsEditorProps) {
-  const [form, setForm] = useState<SettingsDraftForm | null>(null);
-  const [diningRequestId, setDiningRequestId] = useState<string | null>(null);
-  const [crowdRequestId, setCrowdRequestId] = useState<string | null>(null);
+export default function SettingsEditor({ source, settings, onReloaded, onDone }: SettingsEditorProps) {
+  const [form, setForm] = useState<SettingsDraftForm>({
+    name: settings.dining.name,
+    radiusMeters: String(settings.dining.radiusMeters),
+    accuracyToleranceMeters: String(settings.dining.accuracyToleranceMeters),
+    crowdedAt: String(settings.crowd.crowdedAt),
+  });
+  const [diningRequestId, setDiningRequestId] = useState<string | null>(() =>
+    createRequestId('admin-settings-dining'),
+  );
+  const [crowdRequestId, setCrowdRequestId] = useState<string | null>(() =>
+    createRequestId('admin-settings-crowd'),
+  );
   const [busy, setBusy] = useState<AdminSettingsSection | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<SaveErrorView | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   function resetEditState() {
-    setForm(null);
-    setDiningRequestId(null);
-    setCrowdRequestId(null);
     setBusy(null);
     setFieldError(null);
     setSaveError(null);
   }
 
-  function startEdit() {
-    setForm({
-      name: settings.dining.name,
-      radiusMeters: String(settings.dining.radiusMeters),
-      accuracyToleranceMeters: String(settings.dining.accuracyToleranceMeters),
-      crowdedAt: String(settings.crowd.crowdedAt),
-    });
-    setDiningRequestId(createRequestId('admin-settings-dining'));
-    setCrowdRequestId(createRequestId('admin-settings-crowd'));
-    setFieldError(null);
-    setSaveError(null);
-    setSuccess(null);
-  }
-
-  function cancelEdit() {
+  function closeEditor() {
     resetEditState();
     setSuccess(null);
+    onDone();
   }
 
   function updateField(field: keyof SettingsDraftForm, value: string) {
-    setForm((current) => (current ? { ...current, [field]: value } : current));
+    setForm((current) => ({ ...current, [field]: value }));
     if (field === 'crowdedAt') {
       setCrowdRequestId(createRequestId('admin-settings-crowd'));
     } else {
@@ -215,7 +209,14 @@ export default function SettingsEditor({ source, settings, onReloaded }: Setting
       const next = await source.getSettings();
       onReloaded(next);
       if (discardInput) {
-        resetEditState();
+        setForm({
+          name: next.dining.name,
+          radiusMeters: String(next.dining.radiusMeters),
+          accuracyToleranceMeters: String(next.dining.accuracyToleranceMeters),
+          crowdedAt: String(next.crowd.crowdedAt),
+        });
+        setDiningRequestId(createRequestId('admin-settings-dining'));
+        setCrowdRequestId(createRequestId('admin-settings-crowd'));
         setSuccess('已重新读取服务端配置，未保存的输入已丢弃。');
       }
     } catch (loadError) {
@@ -224,7 +225,7 @@ export default function SettingsEditor({ source, settings, onReloaded }: Setting
   }
 
   async function submit(section: AdminSettingsSection) {
-    if (!form || busy) {
+    if (busy) {
       return;
     }
     setFieldError(null);
@@ -309,6 +310,14 @@ export default function SettingsEditor({ source, settings, onReloaded }: Setting
     const reloadedVersion = section === 'dining' ? next.dining.version : next.crowd.version;
     resetEditState();
     if (reloadedVersion === savedVersion) {
+      setForm({
+        name: next.dining.name,
+        radiusMeters: String(next.dining.radiusMeters),
+        accuracyToleranceMeters: String(next.dining.accuracyToleranceMeters),
+        crowdedAt: String(next.crowd.crowdedAt),
+      });
+      setDiningRequestId(createRequestId('admin-settings-dining'));
+      setCrowdRequestId(createRequestId('admin-settings-crowd'));
       setSuccess(`${label}已保存，服务端 version ${savedVersion}；重新读取一致，确认生效。`);
     } else {
       setSaveError({
@@ -320,121 +329,91 @@ export default function SettingsEditor({ source, settings, onReloaded }: Setting
   }
 
   return (
-    <div className="admin-section">
-      <h3>配置编辑（S5 真实保存）</h3>
-      <p className="admin-muted">
-        可编辑白名单：dining 的 name、radiusMeters、accuracyToleranceMeters 与 crowd 的 crowdedAt。
-        中心点不在此页编辑，保存时按服务端读取值原样回传；canteenId、demo 与 version 不可改。
-        dining 与 crowd 分别保存，每次只提交一个 section，并携带各自的 requestId 与 expectedVersion。
+    <div className="admin-settings__form">
+      <section className="admin-settings__form-group" aria-labelledby="admin-settings-edit-dining">
+        <h4 id="admin-settings-edit-dining">食堂范围</h4>
+        <div className="admin-settings__form-grid">
+          <label>
+            <span>食堂名称</span>
+            <input
+              type="text"
+              value={form.name}
+              maxLength={120}
+              onChange={(event) => updateField('name', event.target.value)}
+            />
+          </label>
+          <label>
+            <span>范围半径（米）</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={5000}
+              step={1}
+              value={form.radiusMeters}
+              onChange={(event) => updateField('radiusMeters', event.target.value)}
+            />
+          </label>
+          <label>
+            <span>误差容忍（米）</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={500}
+              step={1}
+              value={form.accuracyToleranceMeters}
+              onChange={(event) => updateField('accuracyToleranceMeters', event.target.value)}
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          className="admin-settings__save"
+          disabled={busy !== null}
+          onClick={() => void submit('dining')}
+        >
+          {busy === 'dining' ? '保存中…' : '保存食堂范围'}
+        </button>
+      </section>
+
+      <section className="admin-settings__form-group" aria-labelledby="admin-settings-edit-crowd">
+        <h4 id="admin-settings-edit-crowd">提醒条件</h4>
+        <div className="admin-settings__form-grid">
+          <label>
+            <span>当前参考阈值（人）</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={1000}
+              step={1}
+              value={form.crowdedAt}
+              onChange={(event) => updateField('crowdedAt', event.target.value)}
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          className="admin-settings__save"
+          disabled={busy !== null}
+          onClick={() => void submit('crowd')}
+        >
+          {busy === 'crowd' ? '保存中…' : '保存提醒阈值'}
+        </button>
+      </section>
+
+      <p className="admin-settings__form-hint">
+        {source.mode === 'live'
+          ? '每组分别保存，每次只提交一组；保存成功后重新读取确认版本。冲突时保留输入、不自动覆盖；中心点按服务端值原样回传，不在本页编辑。'
+          : '样例模式不会写入服务端；切换到真实服务并确认管理员会话后可保存。'}
       </p>
 
-      {!form ? (
-        <div className="admin-form__actions">
-          <button type="button" className="admin-action" onClick={startEdit}>
-            编辑配置
-          </button>
-          <span className="admin-muted">
-            {source.mode === 'live'
-              ? '保存会调用 PUT /admin/settings，并在成功后重新读取确认。'
-              : '样例模式不会写入服务端；切到真实服务后可保存。'}
-          </span>
-        </div>
-      ) : (
-        <form
-          className="admin-form"
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-          }}
-        >
-          <div className="admin-form__grid">
-            <label>
-              <span>食堂名称</span>
-              <input
-                type="text"
-                value={form.name}
-                maxLength={120}
-                onChange={(event) => updateField('name', event.target.value)}
-              />
-            </label>
-            <label>
-              <span>范围半径（米）</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={5000}
-                step={1}
-                value={form.radiusMeters}
-                onChange={(event) => updateField('radiusMeters', event.target.value)}
-              />
-            </label>
-            <label>
-              <span>误差容忍（米）</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={500}
-                step={1}
-                value={form.accuracyToleranceMeters}
-                onChange={(event) => updateField('accuracyToleranceMeters', event.target.value)}
-              />
-            </label>
-            <label>
-              <span>当前参考阈值（人）</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={1000}
-                step={1}
-                value={form.crowdedAt}
-                onChange={(event) => updateField('crowdedAt', event.target.value)}
-              />
-            </label>
-          </div>
-
-          <p className="admin-muted">
-            dining 请求：requestId={diningRequestId ?? '未生成'} · expectedVersion=dining {settings.dining.version}
-          </p>
-          <p className="admin-muted">
-            crowd 请求：requestId={crowdRequestId ?? '未生成'} · expectedVersion=crowd {settings.crowd.version}
-          </p>
-          <p className="admin-muted">
-            修改 dining 字段会重新生成 dining 的 requestId；修改阈值会重新生成 crowd 的 requestId；
-            失败后用同一 requestId 重试。
-          </p>
-
-          {fieldError ? (
-            <p className="admin-form__error" role="alert">
-              {fieldError}
-            </p>
-          ) : null}
-
-          <div className="admin-form__actions">
-            <button
-              type="button"
-              className="admin-action"
-              disabled={busy !== null}
-              onClick={() => void submit('dining')}
-            >
-              {busy === 'dining' ? '保存中…' : '保存食堂范围'}
-            </button>
-            <button
-              type="button"
-              className="admin-action"
-              disabled={busy !== null}
-              onClick={() => void submit('crowd')}
-            >
-              {busy === 'crowd' ? '保存中…' : '保存提醒阈值'}
-            </button>
-            <button type="button" className="admin-action" disabled={busy !== null} onClick={cancelEdit}>
-              取消编辑
-            </button>
-          </div>
-        </form>
-      )}
+      {fieldError ? (
+        <p className="admin-settings__form-error" role="alert">
+          {fieldError}
+        </p>
+      ) : null}
 
       {saveError ? (
         <div className="notice admin-error" role="alert">
@@ -460,10 +439,11 @@ export default function SettingsEditor({ source, settings, onReloaded }: Setting
         </div>
       ) : null}
 
-      <p className="admin-muted">
-        冲突处理：服务端返回 SETTING_VERSION_CONFLICT 时保留当前输入，不自动覆盖；只有点击“重新读取最新配置”才会丢弃输入。
-        保存成功后页面会重新读取一次，并以服务端返回的 version 为准。
-      </p>
+      <div className="admin-settings__form-actions">
+        <button type="button" className="admin-action" disabled={busy !== null} onClick={closeEditor}>
+          取消编辑
+        </button>
+      </div>
     </div>
   );
 }

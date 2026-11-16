@@ -83,7 +83,8 @@ export default function AdminHome() {
   const isAdmin = session?.user.role === 'ADMIN';
   const isOverview = location.route === 'overview';
   const isOrders = location.route === 'orders';
-  const isFocusedPage = isOverview || isOrders;
+  const isSettings = location.route === 'settings';
+  const isFocusedPage = isOverview || isOrders || isSettings;
   const baseInfo = getApiBaseInfo();
   const activeNav = location.route === 'orderDetail' ? 'orders' : location.route;
 
@@ -124,7 +125,7 @@ export default function AdminHome() {
 
   return (
     <section
-      className={`module-panel admin-panel${isOverview ? ' admin-panel--overview' : ''}${isOrders ? ' admin-panel--orders' : ''}`}
+      className={`module-panel admin-panel${isOverview ? ' admin-panel--overview' : ''}${isOrders ? ' admin-panel--orders' : ''}${isSettings ? ' admin-panel--settings' : ''}`}
       aria-labelledby="admin-title"
     >
       {!isFocusedPage ? (

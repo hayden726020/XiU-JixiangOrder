@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../../../shared';
+import '../admin-settings.css';
 import SettingsEditor from '../components/SettingsEditor';
-import type { AdminSource } from '../data/source';
 import { sampleStalls } from '../data/sample';
+import type { AdminSource } from '../data/source';
 import type { AdminSettings } from '../types';
 import { formatDateTime } from '../utils/display';
 
@@ -54,8 +55,23 @@ function describeError(error: unknown): SettingsError {
   };
 }
 
-function demoLabel(demo: boolean): string {
-  return demo ? '服务端标注为演示值，未经现场验证' : '非演示值，仍需现场核准';
+function demoNote(demo: boolean, extra: string): string {
+  const base = demo ? '服务端标注为演示值，未经现场验证。' : '非演示值，仍需现场核准。';
+  return `${base}${extra}`;
+}
+
+function centerLabel(settings: AdminSettings): string {
+  const { latitude, longitude } = settings.dining.center;
+  return Number.isFinite(latitude) && Number.isFinite(longitude) ? '已配置' : '未配置';
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M8 4.6V8l2.4 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 interface SettingsPageProps {
@@ -67,6 +83,7 @@ export default function SettingsPage({ source }: SettingsPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<SettingsError | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,7 +101,7 @@ export default function SettingsPage({ source }: SettingsPageProps) {
         if (!cancelled) {
           setError(describeError(loadError));
           setSettings(null);
-          setLoading(false);
+          setEditing(false);
         }
       });
     return () => {
@@ -93,22 +110,28 @@ export default function SettingsPage({ source }: SettingsPageProps) {
   }, [source, attempt]);
 
   return (
-    <div className="admin-section">
-      <h3>营业与食堂配置</h3>
-      <p className="admin-muted">
-        {source.mode === 'live'
-          ? '真实服务只读，数据来自 GET /admin/settings 的 dining 与 crowd 两段。'
-          : '样例只读配置，不会请求服务端。'}
-        S3 已按服务端结构只读对齐；S5 已接入 PUT /admin/settings，dining 与 crowd 分别保存、成功后重新读取确认，冲突时保留输入；S6 的 401/403/503 错误态不显示样例配置。
-      </p>
+    <div className="admin-settings">
+      <header className="admin-settings__header">
+        <a href="#/admin" aria-label="返回管理端概览">管理端</a>
+        <h2 className="admin-settings__title" id="admin-title">营业与食堂配置</h2>
+        <p className="admin-settings__subtitle">查看食堂范围与提醒阈值，可分别编辑保存</p>
+      </header>
 
-      {loading ? <p className="admin-muted">正在读取配置…</p> : null}
+      {loading ? (
+        <p className="admin-settings__loading" role="status">
+          正在读取配置…
+        </p>
+      ) : null}
 
       {error ? (
-        <div className="notice admin-error" role="alert">
+        <div className="notice admin-error admin-settings__error" role="alert">
           <strong>{error.title}</strong>
           <p>{error.detail}</p>
-          <button type="button" className="admin-action" onClick={() => setAttempt((value) => value + 1)}>
+          <button
+            type="button"
+            className="admin-action"
+            onClick={() => setAttempt((value) => value + 1)}
+          >
             重试
           </button>
           <a href="#/system-check">去公共自检页检查登录与服务 →</a>
@@ -117,101 +140,132 @@ export default function SettingsPage({ source }: SettingsPageProps) {
 
       {!loading && !error && settings ? (
         <>
-          <h3>食堂范围</h3>
-          <dl className="admin-kv">
-            <div>
-              <dt>食堂</dt>
-              <dd>
-                {settings.dining.name}（{settings.dining.canteenId}）
-              </dd>
-            </div>
-            <div>
-              <dt>中心点</dt>
-              <dd>已配置；原始坐标不在管理页展示，仅用于学生端设备内范围判断</dd>
-            </div>
-            <div>
-              <dt>范围半径</dt>
-              <dd>{settings.dining.radiusMeters} 米</dd>
-            </div>
-            <div>
-              <dt>误差容忍</dt>
-              <dd>{settings.dining.accuracyToleranceMeters} 米，超过或边界不确定时判为未知</dd>
-            </div>
-            <div>
-              <dt>配置版本</dt>
-              <dd>version {settings.dining.version}</dd>
-            </div>
-            <div>
-              <dt>更新时间</dt>
-              <dd>
-                {settings.dining.updatedAt
-                  ? formatDateTime(settings.dining.updatedAt)
-                  : '服务端未返回 updatedAt'}
-              </dd>
-            </div>
-          </dl>
-          <p className="admin-muted">{demoLabel(settings.dining.demo)}。</p>
+          <section className="admin-settings__block" aria-labelledby="admin-settings-dining">
+            <h3 id="admin-settings-dining">食堂范围</h3>
+            <dl className="admin-settings__card admin-settings__kv">
+              <div>
+                <dt>食堂</dt>
+                <dd>{settings.dining.name}</dd>
+              </div>
+              <div>
+                <dt>中心点</dt>
+                <dd>{centerLabel(settings)}</dd>
+              </div>
+              <div>
+                <dt>范围半径</dt>
+                <dd>{settings.dining.radiusMeters} 米</dd>
+              </div>
+              <div>
+                <dt>误差容忍</dt>
+                <dd>{settings.dining.accuracyToleranceMeters} 米</dd>
+              </div>
+              <div>
+                <dt>配置版本</dt>
+                <dd>version {settings.dining.version}</dd>
+              </div>
+              <div>
+                <dt>更新时间</dt>
+                <dd>
+                  {settings.dining.updatedAt
+                    ? formatDateTime(settings.dining.updatedAt)
+                    : '服务端未返回'}
+                </dd>
+              </div>
+            </dl>
+            <p className="admin-settings__note">
+              {demoNote(settings.dining.demo, '中心点已配置，受隐私口径限制不展示坐标。')}
+            </p>
+          </section>
 
-          <h3>提醒条件</h3>
-          <dl className="admin-kv">
-            <div>
-              <dt>当前参考阈值</dt>
-              <dd>
-                {settings.crowd.crowdedAt} 人（服务端字段 crowdedAt，version {settings.crowd.version}）
-              </dd>
-            </div>
-            <div>
-              <dt>预约需求阈值</dt>
-              <dd>服务端未提供；契约要求两类阈值分开比较，页面不以样例值填充</dd>
-            </div>
-          </dl>
-          <p className="admin-muted">
-            {demoLabel(settings.crowd.demo)}。阈值只用于人数提醒提示，不表示食堂真实人数，也不保证有座位。
-          </p>
+          <section className="admin-settings__block" aria-labelledby="admin-settings-crowd">
+            <h3 id="admin-settings-crowd">提醒条件</h3>
+            <dl className="admin-settings__card admin-settings__kv">
+              <div>
+                <dt>当前参考阈值</dt>
+                <dd>{settings.crowd.crowdedAt} 人</dd>
+              </div>
+              <div>
+                <dt>预约需求阈值</dt>
+                <dd>待接入</dd>
+              </div>
+            </dl>
+            <p className="admin-settings__note">
+              {settings.crowd.demo ? '演示阈值，未经现场验证。' : ''}
+              阈值只用于人数提醒，不表示食堂真实人数，也不保证有座位。
+            </p>
+          </section>
 
-          <h3>档口营业时间</h3>
-          {source.mode === 'sample' ? (
-            <>
-              {sampleStalls.map((stall) => (
-                <div key={stall.stallId} className="admin-order">
-                  <div className="admin-order__head">
-                    <strong>{stall.name}</strong>
-                    <span className="admin-tag">{stall.enabled ? '营业中' : '已停用'}</span>
-                  </div>
-                  <div className="admin-order__meta">
-                    <span>{stall.stallId}</span>
-                    <ul className="admin-hours" aria-label={`${stall.name}营业时间`}>
-                      {stall.businessHours.map((hours) => (
-                        <li key={`${hours.start}-${hours.end}`}>
-                          {hours.start}—{hours.end}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+          <section className="admin-settings__block" aria-labelledby="admin-settings-stalls">
+            <h3 id="admin-settings-stalls">档口营业时间</h3>
+            {source.mode === 'sample' ? (
+              <>
+                <div className="admin-settings__stalls">
+                  {sampleStalls.map((stall) => (
+                    <article key={stall.stallId} className="admin-settings__stall">
+                      <div className="admin-settings__stall-head">
+                        <strong>{stall.name}</strong>
+                        <span
+                          className={`admin-settings__badge${stall.enabled ? '' : ' admin-settings__badge--off'}`}
+                        >
+                          {stall.enabled ? '营业中' : '已停用'}
+                        </span>
+                      </div>
+                      <ul className="admin-settings__hours" aria-label={`${stall.name}营业时间`}>
+                        {stall.businessHours.map((hours) => (
+                          <li key={`${hours.start}-${hours.end}`}>
+                            <ClockIcon />
+                            {hours.start}–{hours.end}
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  ))}
                 </div>
-              ))}
-              <p className="admin-muted">
-                以上为样例演示值。服务端当前没有档口营业时间端点，真实模式不显示这些数据。
-              </p>
-            </>
-          ) : (
-            <div className="notice">
-              <strong>服务端未提供档口营业时间</strong>
-              <p>
-                GET /admin/settings 当前只有 dining 与 crowd 两段，没有档口时段、启用状态或档口名称。
-                “管理端维护、档口只读”的字段与端点仍待确认，页面不用样例值冒充真实配置。
-              </p>
-            </div>
-          )}
+                <p className="admin-settings__note">
+                  样例演示值；服务端当前没有档口营业时间端点，真实模式不显示这些数据。
+                </p>
+              </>
+            ) : (
+              <div className="admin-settings__stall admin-settings__stall--empty">
+                <strong>服务端未提供档口营业时间</strong>
+                <p>
+                  GET /admin/settings 当前只有 dining 与 crowd 两段，没有档口时段、启用状态或名称；
+                  字段与端点确认后再展示，不用样例值冒充真实配置。
+                </p>
+              </div>
+            )}
+          </section>
 
-          <SettingsEditor source={source} settings={settings} onReloaded={setSettings} />
+          <div className="admin-settings__footer">
+            {editing ? (
+              <div className="admin-settings__editor">
+                <SettingsEditor
+                  source={source}
+                  settings={settings}
+                  onReloaded={setSettings}
+                  onDone={() => setEditing(false)}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="admin-settings__primary"
+                onClick={() => setEditing(true)}
+              >
+                编辑配置
+              </button>
+            )}
+          </div>
         </>
       ) : null}
 
-      <p className="hint">
-        真实读写使用 GET /admin/settings 与 PUT /admin/settings；PUT 的 requestId、section、expectedVersion
-        与 SETTING_VERSION_CONFLICT 已在 DRAFT v0.3 中定义。页面每次只提交一个 section，保存后重新读取一次确认版本。
-      </p>
+      {loading || error ? (
+        <div className="admin-settings__footer">
+          <button type="button" className="admin-settings__primary" disabled>
+            编辑配置
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
