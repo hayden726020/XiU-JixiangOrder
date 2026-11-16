@@ -67,7 +67,8 @@ function orderIdFromRoute(route: string): string | null {
 
 function viewFromRoute(): View {
   const route = merchantRoute();
-  if (route === MERCHANT_ROUTE || route === SETUP_ROUTE) return { name: 'setup' };
+  if (route === SETUP_ROUTE) return { name: 'setup' };
+  if (route === MERCHANT_ROUTE) return { name: 'list' };
   if (route === MENU_ROUTE) return { name: 'menu' };
   if (route === ORDERS_ROUTE) return { name: 'list' };
   const orderId = orderIdFromRoute(route);
@@ -135,8 +136,11 @@ export default function MerchantHome() {
       } else if (route === MENU_ROUTE) {
         setView({ name: 'menu' });
         setNotice(null);
-      } else if (route === MERCHANT_ROUTE || route === SETUP_ROUTE) {
+      } else if (route === SETUP_ROUTE) {
         setView({ name: 'setup' });
+        setNotice(null);
+      } else if (route === MERCHANT_ROUTE) {
+        setView({ name: 'list' });
         setNotice(null);
       } else if (route === ORDERS_ROUTE) {
         setView({ name: 'list' });
