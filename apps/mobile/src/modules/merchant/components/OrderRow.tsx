@@ -6,9 +6,10 @@ import { itemsSummary, totalQuantity } from '../utils/money';
 interface OrderRowProps {
   order: MerchantOrder;
   onOpen: (id: string) => void;
+  showCancellationDetails?: boolean;
 }
 
-export default function OrderRow({ order, onOpen }: OrderRowProps) {
+export default function OrderRow({ order, onOpen, showCancellationDetails = true }: OrderRowProps) {
   const status = statusView(order.status);
   const dining = diningModeView(order.diningMode);
   const primary = getPrimaryAction(order);
@@ -30,9 +31,9 @@ export default function OrderRow({ order, onOpen }: OrderRowProps) {
       </span>
       <span className="order-row__bottom">
         <span>共 {totalQuantity(order.items)} 份</span>
-        <span className="order-row__next">{nextStep}</span>
+        <span className={`order-row__next${primary ? '' : ' order-row__next--muted'}`}>{nextStep}</span>
       </span>
-      {order.status === 'CANCELLED' && (
+      {showCancellationDetails && order.status === 'CANCELLED' && (
         <span className="order-row__cancel" data-cancel-reason={cancellationNote(order)}>
           <span>取消说明：{cancellationNote(order)}</span>
           {order.paymentStatus === 'SIMULATED_REFUNDED' && (

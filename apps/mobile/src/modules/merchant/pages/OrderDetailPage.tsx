@@ -19,6 +19,8 @@ import {
   statusView,
 } from '../state/orderView';
 import { formatYuan, totalQuantity } from '../utils/money';
+import NewOrderDetailPage from './NewOrderDetailPage';
+import ReadyOrderDetailPage from './ReadyOrderDetailPage';
 
 interface OrderDetailPageProps {
   order: MerchantOrder;
@@ -29,7 +31,17 @@ interface OrderDetailPageProps {
   actionError?: { code: string; message: string } | null;
 }
 
-export default function OrderDetailPage({
+export default function OrderDetailPage(props: OrderDetailPageProps) {
+  if (props.order.status === 'NEW') {
+    return <NewOrderDetailPage {...props} />;
+  }
+  if (props.order.status === 'READY') {
+    return <ReadyOrderDetailPage {...props} />;
+  }
+  return <OrderDetailContent {...props} />;
+}
+
+function OrderDetailContent({
   order,
   mode,
   onBack,
