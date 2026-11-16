@@ -81,7 +81,7 @@ S2 管理端可在“样例 / 真实服务”间切换：样例不请求后端�
 
 ## 安卓打包（已实际执行）
 
-Capacitor 已配置 `appId=com.xiujixiang.order`、`appName=时麦呼`、`webDir=dist`。`android/` 已由 `npx cap add android` 生成（minSdk 24，compileSdk/targetSdk 36）。
+Capacitor 已配置 `appId=com.xiujixiang.order`、`appName=食麦呼`、`webDir=dist`。`android/` 已由 `npx cap add android` 生成（minSdk 24，compileSdk/targetSdk 36）。
 
 构建要求 **JDK 21**（Capacitor 8.6.2 的 Java 源发行版为 21，JDK 17 会报“无效的源发行版：21”）、Android SDK 36 与可用 Gradle。需设置 `JAVA_HOME` 指向 JDK 21、`ANDROID_HOME` 指向 Android SDK；工程路径应避免中文和空格。
 

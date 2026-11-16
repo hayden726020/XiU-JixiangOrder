@@ -214,7 +214,7 @@ export default function ProfilePage({
 
         {/* 4. 底部品牌页脚 */}
         <footer className="profile-footer">
-          时麦呼 · 校园预约取餐
+          食麦呼 · 校园预约取餐
         </footer>
       </main>
 

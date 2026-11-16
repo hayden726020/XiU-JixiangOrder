@@ -121,7 +121,7 @@ export default function LoginPage({ gate }: LoginPageProps) {
       <header className="student-login-brand">
         <div className="student-login-brand__row">
           <p className="student-login-brand__name">
-            时麦呼
+            食麦呼
             <svg className="student-login-brand__spark" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 d="M12 1.5c.9 4.6 2.9 6.6 7.5 7.5-4.6.9-6.6 2.9-7.5 7.5-.9-4.6-2.9-6.6-7.5-7.5 4.6-.9 6.6-2.9 7.5-7.5Z"
@@ -136,7 +136,7 @@ export default function LoginPage({ gate }: LoginPageProps) {
           <p className="student-login-brand__tag">校园点餐</p>
         </div>
 
-        <p className="student-login-brand__subtitle">欢迎来到校园食堂</p>
+        <p className="student-login-brand__subtitle">欢迎来到食麦呼</p>
 
         <div className="student-login-brand__title-wrap">
           <h1 id="student-login-heading" className="student-login-brand__title">
@@ -270,7 +270,7 @@ export default function LoginPage({ gate }: LoginPageProps) {
 
       <footer className="student-login-foot">
         <p>账号与身份由服务端验证</p>
-        <p className="student-login-foot__brand">时麦呼 · 校园预约取餐</p>
+        <p className="student-login-foot__brand">食麦呼 · 校园预约取餐</p>
       </footer>
     </section>
   );

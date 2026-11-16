@@ -425,7 +425,7 @@ export default function ShopSelectPage({
           <div className="student-home">
             <header className="student-home__hero">
               <div className="student-home__hero-content">
-                <p className="student-home__brand">校园食堂 <span aria-hidden="true">✳</span></p>
+                <p className="student-home__brand">食麦呼 <span aria-hidden="true">✳</span></p>
                 <div className="student-home__hero-note">
                   <h2>今天想吃什么？</h2>
                   <p>好好吃饭，从这里开始</p>
@@ -538,7 +538,7 @@ export default function ShopSelectPage({
           <div className="student-home">
             <header className="student-home__hero">
               <div className="student-home__hero-content">
-                <p className="student-home__brand">校园食堂 <span aria-hidden="true">✳</span></p>
+                <p className="student-home__brand">食麦呼 <span aria-hidden="true">✳</span></p>
                 <div className="student-home__hero-note">
                   <h2>个人中心</h2>
                   <p>账号与订单管理</p>
