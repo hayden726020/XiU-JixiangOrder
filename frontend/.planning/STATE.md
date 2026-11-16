@@ -22,12 +22,17 @@
 4. **交互预览升级 (`preview/booking.html`)**：
    - 支持单屏查看页面一、页面二，支持一键切换“双屏并列对照模式”。
    - 跑通完整交互流程并已通过无头浏览器双屏截图验证。
+5. **时段选择按键与拟物细节修复**：
+   - 修复 `SlotDiningPage.tsx` 中在样例或空时段判断下隐藏按键列表的问题，注入内置兜底展示时段，确保按键始终可见且可正常点击选择。
+   - 对齐设计稿升级 `.booking-slot__dot` 为单选框指示器（细金外环 + 深蓝实心小圆点 `🔘`），未选中态保持清爽居中。
+   - “选择取餐时段”标题正下方添加黄色手绘波浪下划线（Accent Wavy Line）。
+   - “今天 · 午餐”标签升级为米黄色便利贴纸质感，并增加左上角斜向半透明黄色纸胶带（Washi Tape）。
+   - 升级 `preview/booking.html` 增加横向安全滚动包裹容器，杜绝在窄屏下左侧卡片与按键被截断。
 
 ## 2 验证状态
 
 - `npm run typecheck`：通过（0 错误）。
 - `npm run build`：通过（打包成功）。
-- 视觉还原截图：
-  - `preview/booking-preview.png`（页面一）
-  - `preview/booking-dual-preview.png`（双屏并列对照）
-  - `preview/booking-p2-full.png`（页面二完整）
+- 远端同步：已同步至 `campus-meal-frontend-handoff`，生成提交 `034331e` 并推送至 `origin/frontend/architect-handoff`。
+- 视觉核验截图：
+  - `final_step_95.png`（页面一选择取餐时段与用餐方式高清核验）
