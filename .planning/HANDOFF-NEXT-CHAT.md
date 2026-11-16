@@ -7,7 +7,7 @@
 - 仓库：`D:\Jixiang\workspace\campus-meal`
 - 分支：`docs/readme-status`
 - 最新基线提交：`cd170d813ee1da6e54e562a3ad86a375875cab91`（`feat(student): unify pages and student navigation`）
-- 当前提交相对本机记录的 `origin/docs/readme-status` ahead 1。尝试 `git fetch origin` 时网络解析失败（`getaddrinfo() thread failed to start`），所以尚未确认远端最新 HEAD；推送状态待本轮继续处理。
+- 本轮提交 `cd170d8`（页面基线）和 `0344783`（handoff）已推送到 `origin/docs/readme-status`，`git push` 返回成功，推送范围为 `0b6ae1e..0344783`。推送后 `git status` 显示本地与远端跟踪分支一致；随后 `git ls-remote` 因网络解析错误失败，无法额外读取远端 HEAD。
 - APK 版本：`1.16` / versionCode `17`。最新 APK 已安装到 A024（Android 16）；`apps/mobile/android/app/build.gradle` 的版本号改动已包含在基线提交。
 
 ## 本轮改动
