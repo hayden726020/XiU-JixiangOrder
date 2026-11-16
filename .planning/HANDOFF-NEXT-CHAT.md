@@ -1,43 +1,38 @@
-# 新对话交接：学生端页面接入与手机联调
+# 新对话交接：学生端正式页面收尾
 
 更新时间：2026-11-16（Asia/Shanghai）
 
-## Git 基线
+## 当前基线
 
+- 仓库：`D:\Jixiang\workspace\campus-meal`
 - 分支：`docs/readme-status`
-- 学生端基线提交：`e484dc2c49f9267e3d753e8a794b96eec64edc99`（`feat(student): integrate Gemini student pages and APK 1.15`）
-- 已推送到：`origin/docs/readme-status`；推送后查询远端 ref 与本地 HEAD 完全一致。
-- 本交接文件将单独提交并推送；开始新对话时先执行 `git status --short --branch` 与 `git log -3 --oneline`。
-- 在 `e484dc2` 基线提交时，分支相对抓取到的 `origin/main` 为 ahead 2 / behind 8；相对 `origin/integration/student-visual-1.14` 为 ahead 2 / behind 16。未合 main、未建 PR、未强推。后续合并前先对照最新 main 和 integration 分支，避免覆盖已有页面视觉提交。
-- `e484dc2` 包含本地原有规划状态改动、APK 版本号改动和学生模块页面/资源；不要丢弃或重置这些内容。
+- 最新基线提交：`cd170d813ee1da6e54e562a3ad86a375875cab91`（`feat(student): unify pages and student navigation`）
+- 当前提交相对本机记录的 `origin/docs/readme-status` ahead 1。尝试 `git fetch origin` 时网络解析失败（`getaddrinfo() thread failed to start`），所以尚未确认远端最新 HEAD；推送状态待本轮继续处理。
+- APK 版本：`1.16` / versionCode `17`。最新 APK 已安装到 A024（Android 16）；`apps/mobile/android/app/build.gradle` 的版本号改动已包含在基线提交。
 
-## 本轮完成
+## 本轮改动
 
-- 接入 Gemini 学生首页档口选择、订单列表、时段、确认页、个人中心视觉；订单详情沿用真实订单状态与操作语义，只做展示适配。
-- `StudentHome` 已接上档口、订单、个人中心入口与返回路径。菜单页 `MenuPage.tsx` 未另行改造：与 Gemini 源文件对照后，核心实现基本一致；Gemini 新视觉主要在档口选择页，进店后仍显示既有菜单列表样式。
-- 未登录可读取公共档口/菜单；订单列表和下单操作仍由认证门控。确认页点“确认下单”时会显示登录引导；认证失效的超时查单也会引导重新登录。
-- 时段卡片已改成窄屏两列换行；确认页日期按已选时段日期显示今天/明天；订单详情 READY 状态显示待处理取消申请；个人中心说明弹窗具备焦点初始定位、Tab 循环、Escape 关闭及焦点恢复。
-- 页面和业务改动经 code reviewer 检查；三项复核问题均已修复。安全审查通过，要求样例位置清除文案明确标为不会请求云端、真实模式二次检查登录，均已处理。
+- 接入学生登录页面和登录视觉资源，错误凭据提示区分账号密码错误、服务地址未配置及网络错误；登录仍调用共享 `demoLogin` 与会话管理。
+- 学生点餐菜单页改为校园照片、蓝白手账卡片和黄色强调；保留真实菜单、库存、数量和下单流程，移除样例订单测试按钮和阶段编号。
+- 修复学生订单与详情在未选择档口时的不可达问题；未登录订单页保留底部导航。
+- 订单、档口、菜单、预约、确认、详情和个人中心隐藏重复的公共调试外壳；正式模式移除“真实接口”等内部说明，样例模式继续显示样例标识。
+- 学生页主次按钮和店铺、菜单、订单、个人中心底栏统一视觉与选中状态；去除菜单页重复黄色选中底色。
+- 新页面和资源位于 `apps/mobile/src/modules/student/`。未改服务端契约。
 
-## 验证证据
+## 验证和部署
 
-- `npm run build`：通过（TypeScript 检查与 Vite 构建）；存在 bundle 大于 500 kB 与 `shared/location.ts` 动态导入被静态导入覆盖的警告。
+- `npm run typecheck`：通过。
+- `npm run build`：通过；仍提示 JS chunk 大于 500 kB，以及 `shared/location.ts` 动态导入被静态导入覆盖。
+- `git diff --check`：通过。
 - `npx cap sync android`：通过。
-- Android `assembleDebug`：使用本机 JDK 21 构建成功；APK `versionName 1.15` / `versionCode 16`。
-- APK 已安装到 A024（Android 16）。手机实测浏览公共档口与菜单、未登录订单引导、明天时段选择、堂食选择、确认页、个人中心和说明弹窗。点击确认下单只显示登录引导，没有发送下单；本轮没有创建真实订单。
-- 时段两列、日期“明天”及确认页安全区样式调整曾在手机检查；最后一项去掉重复顶部 inset 后重新构建并安装，但未再次打开确认页截图复核。
-- `git diff --check`：通过（清理了一处订单列表 CSS 尾随空格）。未运行自动化测试。
-- 没有用真账号完成登录；没有验证带真实订单 ID 的订单详情页。
+- Android `assembleDebug`：使用 Android Studio 内置 JDK 25 构建成功；系统默认 JDK 17 不支持 Java 21 源码。
+- ADB 将 version 1.16 安装到 A024，安装成功。
+- 代码复核通过。手机完整页面流程按用户要求转由用户手动检查；真实/错误凭据登录服务连通性尚未完成实机验证，不要标记为通过。
+- 未创建真实订单。
 
-## 契约与页面现状
+## 下一步
 
-- API 契约仍为 DRAFT v0.4，待三人确认，不是正式发布契约。
-- 学生订单详情以服务端真实状态/取餐码为准；没有真实订单数据，所以本轮只做静态复核，没有手机验证订单详情内容。
-- 当前手机停在公共能力自检页登录表单；服务地址已配置。代码与 README 中有学生演示账号 `demo-student`，但密码是后端首次启动时生成并保存在服务端运行目录，没有客户端找回入口。
-
-## 未完成与下一步
-
-1. 用户没有学生演示密码。项目没有密码重置端点；`db.mjs` 用 `INSERT OR IGNORE` 写入用户，因此仅删除运行时账号文件后重启不一定会更新数据库密码哈希。不要读取或提交 `services/api/.runtime/demo-accounts.json`，不要尝试用本机运行时密码登录远端服务。
-2. 尝试以 `jixiang@39.96.195.158` 连接部署服务时，SSH 因本机没有该主机的已验证 ED25519 host key 而拒绝；未绕过校验、未改服务器。要重置密码，需要后端负责人提供可信 host-key fingerprint/授权通道，或由后端负责人仅更新 `demo-student` 的数据库哈希与运行时密码文件，并单独交付新密码，保留 merchant/admin 账号。
-3. 用户拿到新密码后，在手机公共登录表单登录并检查 `/me` 返回学生角色；随后再实测订单列表读取和认证失效路径。不要在未经用户授权时提交真实订单。
-4. 合并前先同步最新 `origin/main` / 学生视觉集成分支，确认目标分支与 PR 策略；不得强推 main。
+1. 继续尝试将 `cd170d8` 和 handoff 更新推送到 `origin/docs/readme-status`，先确认当前远端 HEAD，禁止强推。
+2. 用户手动检查 A024 上的登录交互、错误凭据提示、服务连通、点餐/订单/个人中心视觉与导航。如需改动，基于本基线继续。
+3. 不使用演示密码尝试登录；不要读取或提交 `services/api/.runtime/demo-accounts.json`。真实订单操作需用户另行授权。
+4. 合并前对照最新 `origin/main` 和 `origin/integration/student-visual-1.14`，目前没有合 main、建 PR 或强推。
