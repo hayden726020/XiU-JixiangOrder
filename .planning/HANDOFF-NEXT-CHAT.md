@@ -7,7 +7,7 @@
 - 仓库：`D:\Jixiang\workspace\campus-meal`
 - 分支：`docs/readme-status`
 - 最新基线提交：`cd170d813ee1da6e54e562a3ad86a375875cab91`（`feat(student): unify pages and student navigation`）
-- 本轮提交 `cd170d8`（页面基线）和 `0344783`（handoff）已推送到 `origin/docs/readme-status`，`git push` 返回成功，推送范围为 `0b6ae1e..0344783`。推送后 `git status` 显示本地与远端跟踪分支一致；随后 `git ls-remote` 因网络解析错误失败，无法额外读取远端 HEAD。
+- 页面基线 `cd170d8` 及 handoff 提交 `0344783`、`1b4cddb` 已推送到 `origin/docs/readme-status`；最后一次 `git push` 返回成功，推送范围为 `0344783..1b4cddb`。推送后 `git status` 显示本地与远端跟踪分支一致。此前 `git ls-remote` 因网络解析错误失败，未能单独读取远端 HEAD。
 - APK 版本：`1.16` / versionCode `17`。最新 APK 已安装到 A024（Android 16）；`apps/mobile/android/app/build.gradle` 的版本号改动已包含在基线提交。
 
 ## 本轮改动
@@ -32,7 +32,7 @@
 
 ## 下一步
 
-1. 继续尝试将 `cd170d8` 和 handoff 更新推送到 `origin/docs/readme-status`，先确认当前远端 HEAD，禁止强推。
+1. 当前页面基线与 handoff 已推送到 `origin/docs/readme-status`；后续继续开发前先同步并检查远端分支状态，禁止强推。
 2. 用户手动检查 A024 上的登录交互、错误凭据提示、服务连通、点餐/订单/个人中心视觉与导航。如需改动，基于本基线继续。
 3. 不使用演示密码尝试登录；不要读取或提交 `services/api/.runtime/demo-accounts.json`。真实订单操作需用户另行授权。
 4. 合并前对照最新 `origin/main` 和 `origin/integration/student-visual-1.14`，目前没有合 main、建 PR 或强推。
