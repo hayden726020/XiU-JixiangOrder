@@ -191,6 +191,16 @@ code {
   box-shadow: inset 0 2px 4px rgba(20, 83, 45, 0.16);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .back-link {
+    transition: none;
+  }
+
+  .back-link:active {
+    transform: none;
+  }
+}
+
 .badge {
   display: inline-block;
   margin: 0 0 0.6rem;
