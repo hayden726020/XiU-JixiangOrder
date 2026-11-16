@@ -27,6 +27,8 @@ import LoginGuide from '../components/LoginGuide';
 import OrderCrowdNote from '../components/OrderCrowdNote';
 import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
+import '../order-detail.css';
+import '../order-list.css';
 
 export interface OrderDetailPageProps {
   source: StudentSource;
@@ -205,42 +207,31 @@ export default function OrderDetailPage({
   });
   const statusView =
     readState.order !== null ? toOrderStatusView(readState.order, { mode: source.mode }) : null;
+  const cancelRequestPending = readState.order?.cancelRequest.status === 'PENDING';
 
   if (realLoggedOut) {
     return (
-      <section className="student-page" aria-labelledby="student-order-title">
+      <main className="student-order-detail" aria-labelledby="student-order-title">
         <RealModeNotice />
-        <button type="button" className="student-secondary student-back" onClick={onBack}>
-          {backLabel}
-        </button>
-        <header className="student-page__head">
-          <p className="student-kicker">真实模式 · 只读订单</p>
-          <h2 id="student-order-title">订单详情</h2>
-        </header>
-        <LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} />
-      </section>
+        <nav className="order-nav">
+          <button type="button" className="order-nav__back" onClick={onBack} aria-label={backLabel}><span aria-hidden="true">‹</span></button>
+          <h1 id="student-order-title" className="order-nav__title">订单详情</h1>
+          <div className="order-nav__placeholder" />
+        </nav>
+        <div style={{ padding: '1rem' }}><LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} /></div>
+      </main>
     );
   }
 
   return (
-    <section className="student-page" aria-labelledby="student-order-title">
+    <main className="student-order-detail" aria-labelledby="student-order-title">
       {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
-      <button type="button" className="student-secondary student-back" onClick={onBack}>
-        {backLabel}
-      </button>
-
-      <header className="student-page__head">
-        <p className="student-kicker">
-          {source.mode === 'real' ? '真实模式 · 只读订单' : 'S6 · 订单详情（只读）'}
-        </p>
-        <h2 id="student-order-title">订单详情</h2>
-        <p className="student-page__lead">
-          {source.mode === 'real'
-            ? '只读展示服务端订单；状态与取餐码按返回展示。'
-            : '只读展示样例订单；当前不会发生真实取餐或资金交易。'}
-        </p>
-      </header>
+      <nav className="order-nav">
+        <button type="button" className="order-nav__back" onClick={onBack} aria-label={backLabel}><span aria-hidden="true">‹</span></button>
+        <h1 id="student-order-title" className="order-nav__title">订单详情</h1>
+        <div className="order-nav__placeholder" />
+      </nav>
 
       {source.mode === 'real' && gate.usable ? (
         <p className="student-session-note">当前登录：{gate.identityText}（仅用于核对）</p>
@@ -271,11 +262,21 @@ export default function OrderDetailPage({
 
       {readState.order !== null && statusView ? (
         <>
-          <section className="student-order-head" aria-label="订单状态">
-            <span className="student-status-badge">{statusView.statusLabel}</span>
-            {statusView.demoLabel ? (
-              <span className="student-order-demo">{statusView.demoLabel}</span>
-            ) : null}
+          <div className="order-detail-content">
+          {statusView.status === 'READY' ? (
+            <section className="order-ready-banner" aria-label="取餐通知">
+              <div className="order-ready-banner__title-wrap"><h2 className="order-ready-banner__title">做好啦，来取餐吧！</h2><span className="order-ready-banner__sparkle" aria-hidden="true">✨</span>{cancelRequestPending ? <span className="order-status-card__tape-tag" role="status">取消申请待处理</span> : null}</div>
+              <p className="order-ready-banner__sub">{statusView.shop.text} · 可取餐</p>
+            </section>
+          ) : (
+            <section className="order-status-card" aria-label="订单状态">
+              <div className="order-status-card__header"><div className="order-status-card__title-wrap"><h2 className="order-status-card__title">{statusView.statusLabel}</h2><span className="order-status-card__sparkles" aria-hidden="true">✨</span></div>{cancelRequestPending ? <span className="order-status-card__tape-tag" role="status">取消申请待处理</span> : null}</div>
+              <p className="order-status-card__lead">{statusView.status === 'CANCELLED' ? '订单已取消' : '订单状态以服务端返回为准'}</p>
+              <p className="order-status-card__sublead">{statusView.shop.text} · {statusView.slotRangeText || '时段信息未提供'}</p>
+            </section>
+          )}
+          <section className="student-order-head" aria-label="订单编号">
+            {statusView.demoLabel ? <span className="student-order-demo">{statusView.demoLabel}</span> : null}
             <p className="student-order-id">订单号 {statusView.orderId}</p>
           </section>
 
@@ -324,20 +325,22 @@ export default function OrderDetailPage({
               </p>
             </section>
           ) : (
-            <section aria-labelledby="student-timeline-title">
+            <section className="order-status-card" aria-labelledby="student-timeline-title">
               <h3 id="student-timeline-title" className="student-section-title">
                 订单进度
               </h3>
-              <ol className="student-timeline">
+              <ol className="order-steps-bar" aria-label="订单进度">
+                <span className="order-steps-bar__line-bg" aria-hidden="true" />
+                <span className="order-steps-bar__line-active" style={{ width: `${Math.max(0, statusView.activeIndex) * 25}%` }} aria-hidden="true" />
                 {statusView.steps.map((step) => (
                   <li
                     key={step.name}
-                    className={`student-timeline__step${step.reached ? ' is-reached' : ''}${
+                    className={`order-step-node${step.reached ? ' is-reached' : ''}${
                       step.current ? ' is-current' : ''
                     }`}
                   >
-                    <span className="student-timeline__dot" aria-hidden="true" />
-                    <span className="student-timeline__name">{step.name}</span>
+                    <span className="order-step-node__circle" aria-hidden="true" />
+                    <span className="order-step-node__name">{step.name}</span>
                   </li>
                 ))}
               </ol>
@@ -405,15 +408,26 @@ export default function OrderDetailPage({
             ) : null}
           </section>
 
-          <section className="student-info" aria-label="取餐码">
-            <p className="student-info__row">
-              <span>取餐码</span>
-              <span>{statusView.pickupCodeText}</span>
-            </p>
-            {statusView.pickupCodeNotice ? (
-              <p className="student-order-note">{statusView.pickupCodeNotice}</p>
-            ) : null}
-          </section>
+          {statusView.status === 'READY' && readState.order.pickupCode ? (
+            <section className="pickup-ticket-card" aria-label="取餐码凭证">
+              <div className="pickup-ticket-card__tape" aria-hidden="true" />
+              <div className="pickup-ticket-card__notch-left" aria-hidden="true" />
+              <div className="pickup-ticket-card__notch-right" aria-hidden="true" />
+              <div className="pickup-ticket-card__title-box"><h3 className="pickup-ticket-card__title">取餐码</h3></div>
+              <div className="pickup-ticket-card__code" aria-label={`取餐码 ${readState.order.pickupCode}`}>
+                {readState.order.pickupCode.split('').map((character, index) => <span key={`${character}-${index}`}>{character}</span>)}
+              </div>
+              <p className="pickup-ticket-card__hint">向档口出示取餐码</p>
+              <p className="pickup-ticket-card__subhint">{statusView.pickupCodeNotice}</p>
+              <div className="pickup-ticket-card__divider" aria-hidden="true" />
+              <div className="pickup-ticket-card__footer"><span>{statusView.slotRangeText}</span><span aria-hidden="true">|</span><span className="pickup-ticket-card__dining-tag">{statusView.diningModeText}</span></div>
+            </section>
+          ) : (
+            <section className="student-info" aria-label="取餐码">
+              <p className="student-info__row"><span>取餐码</span><span>{statusView.pickupCodeText}</span></p>
+              {statusView.pickupCodeNotice ? <p className="student-order-note">{statusView.pickupCodeNotice}</p> : null}
+            </section>
+          )}
 
           <section className="student-rule" aria-label="取消规则">
             <h3 className="student-section-title">取消规则</h3>
@@ -434,10 +448,11 @@ export default function OrderDetailPage({
           </section>
 
           <OrderCrowdNote crowd={crowd} />
+          </div>
         </>
       ) : null}
 
       {source.mode === 'sample' ? <DemoModeNotice /> : null}
-    </section>
+    </main>
   );
 }

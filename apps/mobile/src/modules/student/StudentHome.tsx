@@ -67,6 +67,7 @@ export default function StudentHome() {
   const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
   const [shopNotice, setShopNotice] = useState('');
+  const [shopInitialTab, setShopInitialTab] = useState<'home' | 'order' | 'mine'>('home');
 
   function goTo(next: StudentView): void {
     setView(next);
@@ -109,6 +110,31 @@ export default function StudentHome() {
     goTo('orders');
   }
 
+  if (currentShop === null && view === 'orders') {
+    return (
+      <OrderListPage
+        source={source}
+        onBack={() => goTo('shop')}
+        backLabel="← 返回店铺选择"
+        onOpenOrder={(id) => openOrderFrom('orders', id)}
+        onGoToHome={() => { setShopInitialTab('home'); goTo('shop'); }}
+        onGoToShop={() => { setShopInitialTab('order'); goTo('shop'); }}
+        onGoToProfile={() => { setShopInitialTab('mine'); goTo('shop'); }}
+      />
+    );
+  }
+
+  if (currentShop === null && view === 'order' && orderId !== null) {
+    return (
+      <OrderDetailPage
+        source={source}
+        orderId={orderId}
+        onBack={() => goTo('orders')}
+        backLabel="← 返回我的订单"
+      />
+    );
+  }
+
   if (currentShop === null || view === 'shop') {
     return (
       <ShopSelectPage
@@ -118,6 +144,8 @@ export default function StudentHome() {
         notice={shopNotice || draft.getState().notice || ''}
         onEnterShop={enterShop}
         onOpenOrders={() => openOrders('shop')}
+        initialTab={shopInitialTab}
+        onActiveTabChange={setShopInitialTab}
       />
     );
   }
@@ -155,6 +183,9 @@ export default function StudentHome() {
         onBack={() => goTo(backToShops ? 'shop' : 'menu')}
         backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
+        onGoToHome={() => { setShopInitialTab('home'); goTo('shop'); }}
+        onGoToShop={() => { setShopInitialTab('order'); goTo('shop'); }}
+        onGoToProfile={() => { setShopInitialTab('mine'); goTo('shop'); }}
       />
     );
   }

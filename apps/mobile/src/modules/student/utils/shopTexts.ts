@@ -19,7 +19,7 @@ export const SHOP_FOREIGN_ITEM_NOTICE = '已移除不属于当前店铺的菜品
 
 export const SHOP_LIST_UNAVAILABLE_TEXT = '服务端未提供店铺列表';
 export const SHOP_LIST_UNAVAILABLE_HINT =
-  '契约 DRAFT v0.3 未定义店铺列表接口；真实模式不会回退演示店铺。';
+  '店铺列表暂不可用，请重试；真实模式不会回退演示店铺。';
 
 export const DERIVED_ENTRY_LABEL = '仅按菜品归属继续（不显示店铺名称）';
 export const DERIVED_NAME_NOTE = '店铺名称未提供，仅按菜品归属展示';

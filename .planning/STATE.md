@@ -8,6 +8,8 @@
 
 ## 本轮已完成
 
+- 2026-11-14 阿里云 ECS 演示服务接入与受信任 IP HTTPS 证书上线：目标公网 IP 39.96.195.158（Ubuntu 24.04.5 LTS）。Node.js v24.22.3，低权限用户 jixiang，Systemd jixiang-api.service 开机自启，服务仅监听 127.0.0.1:8787（外网未暴露）。基于 RFC 8738 规范成功签发 Let's Encrypt 受信短期 IP 证书，Nginx 反代 443 端口，统一对外地址 https://39.96.195.158/api/v1，80 端口 301 重定向与 acme.sh Cron 自动续签生效。公网真实 HTTPS 端到端自动化跑通学生下单、档口接单制作、学生查码、档口核销与管理端审计；SQLite 订单数据持久化落盘。真机物理设备操作明确标记为【未做】。跨 Agent 交接详见 `team-context/backend/HANDOFF-FOR-NEXT-AGENT.md`。
+
 - 学生端 S1—S3 已由魈嘶推送 `student/s0-baseline @ 454553e`；本机核对改动仅限 `apps/mobile/src/modules/student/`，与 main 合并无冲突，合并提交 `32519ed`（本地，未推送）。
 - 契约 DRAFT v0.2 增补客户端接入口径：首版每天 3 个时段（档口 2026-11-13 冻结）、样例开关由模块 data source 决定、模块必须复用 shared 的 ApiError 与 requestId。
 - 重打 debug APK：versionCode 2 / versionName 1.1，含学生 S1—S3 页面与 geolocation 插件；4,915,302 字节，SHA-256 `7111a8430f0a05c7fe22c24c2d5b86db496fc83b782dc7b52779023cc0906f97`。已在 A024（Android 16 / API 36）安装并完成学生 S3 页面真机验收，截图见 `team-context/backend/截图/apk-1.1-*.png`；真实接口与档口页面仍未验证。
