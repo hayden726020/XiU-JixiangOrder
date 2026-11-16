@@ -1,0 +1,33 @@
+.admin-sim {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: 0.7rem;
+  background: #fffdf5;
+}
+
+.admin-sim label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.admin-sim select {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.admin-sim p {
+  flex: 1 1 14rem;
+  margin: 0;
+}

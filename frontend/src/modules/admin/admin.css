@@ -1,0 +1,270 @@
+.admin-panel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-banner {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #f0d58a;
+  border-radius: 0.7rem;
+  background: var(--amber-100);
+  color: var(--amber-700);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.admin-banner strong {
+  font-size: 0.86rem;
+}
+
+.admin-banner__tag {
+  justify-self: start;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-nav a {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  color: var(--green-900);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.admin-nav a:hover,
+.admin-nav a:focus-visible {
+  border-color: var(--green-700);
+  outline: none;
+}
+
+.admin-nav a[aria-current='page'] {
+  border-color: var(--green-700);
+  background: var(--green-100);
+  font-weight: 600;
+}
+
+.admin-section {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-section h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.admin-muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.admin-stat {
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: #fbfdfb;
+}
+
+.admin-stat span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.admin-stat strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.25rem;
+}
+
+.admin-card-grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.admin-link-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.admin-link-card:hover,
+.admin-link-card:focus-visible {
+  border-color: var(--green-700);
+  outline: none;
+}
+
+.admin-link-card strong {
+  font-size: 0.98rem;
+}
+
+.admin-link-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.admin-order-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-order {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: #ffffff;
+}
+
+.admin-order__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.admin-order__id {
+  font-size: 0.82rem;
+}
+
+.admin-order__meta {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.admin-order__meta strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.admin-order__exception {
+  color: #991b1b;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.admin-tag {
+  flex: none;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #eef3ee;
+  color: var(--green-900);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.admin-tag--new {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.admin-tag--accepted {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.admin-tag--preparing {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.admin-tag--ready {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.admin-tag--completed {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.admin-tag--cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admin-mode {
+  font-weight: 600;
+}
+
+.admin-mode--dine_in {
+  color: #065f46;
+}
+
+.admin-mode--takeaway {
+  color: #075985;
+}
+
+.admin-kv {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.admin-kv > div {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+  gap: 0.6rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px dashed var(--line);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.admin-kv dt {
+  color: var(--muted);
+}
+
+.admin-kv dd {
+  margin: 0;
+}
+
+.admin-hours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-hours li {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  font-size: 0.78rem;
+}
