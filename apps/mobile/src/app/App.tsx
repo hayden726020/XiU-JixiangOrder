@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { navigateToHash, runAfterBackPress } from '../shared/backPress';
+import { navigateToHash, runAfterBackPress, runAfterPressTransition } from '../shared/backPress';
 import { mobileModules } from './moduleRegistry';
 import SystemCheck from './SystemCheck';
 
@@ -29,7 +29,7 @@ function Home() {
             key={module.id}
             type="button"
             className="module-card"
-            onClick={() => navigate(module.route)}
+            onClick={(event) => runAfterPressTransition(event.currentTarget, () => navigate(module.route))}
           >
             <span className="module-card__title">{module.title}</span>
             <span className="module-card__desc">{module.subtitle}</span>
@@ -39,7 +39,7 @@ function Home() {
           </button>
         ))}
       </div>
-      <button type="button" className="check-entry" onClick={() => navigate(CHECK_ROUTE)}>
+      <button type="button" className="check-entry" onClick={(event) => runAfterPressTransition(event.currentTarget, () => navigate(CHECK_ROUTE))}>
         公共能力自检（服务、登录与定位）
       </button>
     </section>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { runAfterBackPress, runAfterPressTransition } from '../../../shared/backPress';
 import type { OrderDraft } from '../state/orderDraft';
 import type { DishDto, MenuResponse, ShopSummary, StudentSource } from '../types';
 import { SAMPLE_ONLY_DISH_IDS } from '../data/sampleData';
@@ -106,7 +107,7 @@ export default function MenuPage({
         type="button"
         className="student-secondary student-back"
         disabled={!canSwitchShop}
-        onClick={onBackToShops}
+        onClick={(event) => runAfterBackPress(event.currentTarget, onBackToShops)}
       >
         ← 返回店铺选择
       </button>
@@ -271,7 +272,7 @@ export default function MenuPage({
           type="button"
           className="student-primary"
           disabled={!canProceed}
-          onClick={onProceed}
+          onClick={(event) => runAfterPressTransition(event.currentTarget, onProceed, 'forward')}
         >
           选时段 ›
         </button>

@@ -1,3 +1,4 @@
+import { runAfterPressTransition } from '../../../shared/backPress';
 import OrderRow from '../components/OrderRow';
 import { DEMO_SCENARIOS } from '../data/sampleData';
 import type { MerchantOrder, MerchantScenario } from '../data/types';
@@ -53,11 +54,11 @@ export default function OrderListPage({
         </div>
         <div className="merchant-view__actions">
           {!isSample && (
-            <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
+            <button type="button" className="merchant-link-button" onClick={(event) => runAfterPressTransition(event.currentTarget, onOpenSetup, 'forward')} data-open-onboarding>
               商家注册 / 开店
             </button>
           )}
-          <button type="button" className="merchant-link-button" onClick={onOpenMenu} data-open-menu>
+          <button type="button" className="merchant-link-button" onClick={(event) => runAfterPressTransition(event.currentTarget, onOpenMenu, 'forward')} data-open-menu>
             菜单与库存
           </button>
         </div>
@@ -146,7 +147,7 @@ export default function OrderListPage({
         <button
           type="button"
           className="merchant-order-list__setup"
-          onClick={onOpenSetup}
+          onClick={(event) => runAfterPressTransition(event.currentTarget, onOpenSetup, 'forward')}
           data-open-onboarding
         >
           商家注册 / 开店

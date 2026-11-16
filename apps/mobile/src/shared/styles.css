@@ -28,6 +28,7 @@ body {
 
 button {
   font: inherit;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -123,7 +124,11 @@ code {
   border-radius: 0.9rem;
   color: var(--ink);
   cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: border-color 140ms ease, transform 140ms cubic-bezier(0.22, 1, 0.36, 1), opacity 140ms ease, background-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .module-card:hover,
@@ -131,6 +136,13 @@ code {
   border-color: var(--green-700);
   transform: translateY(-1px);
   outline: none;
+}
+
+.module-card:active {
+  transform: scale(0.975);
+  opacity: 0.84;
+  background-color: #edf8f0;
+  border-color: var(--green-700);
 }
 
 .module-card__title {
@@ -186,16 +198,29 @@ code {
 }
 
 .back-link:active {
-  transform: translateY(2px) scale(0.96);
-  background-color: #e8f3eb;
-  box-shadow: inset 0 2px 4px rgba(20, 83, 45, 0.16);
+  transform: scale(0.95);
+  opacity: 0.78;
+  background-color: #e4f2e8;
+  border-color: var(--green-700);
 }
 
-.back-link.back-navigation-pending {
-  transform: translateY(2px) scale(0.96);
-  background-color: #e8f3eb;
-  box-shadow: inset 0 2px 4px rgba(20, 83, 45, 0.16);
-  transition-duration: 90ms;
+.app-shell .back-link.back-navigation-pending,
+.app-shell .action-button.back-navigation-pending:not(:disabled) {
+  transform: scale(0.95);
+  opacity: 0.78;
+  background-color: #e4f2e8;
+  border-color: var(--green-700);
+  color: #0f3f21;
+  transition: transform 75ms cubic-bezier(0.22, 1, 0.36, 1), opacity 75ms ease, background-color 75ms ease;
+}
+
+.app-shell .module-card.back-navigation-pending,
+.app-shell .check-entry.back-navigation-pending {
+  transform: scale(0.975);
+  opacity: 0.84;
+  background-color: #edf8f0;
+  border-color: var(--green-700);
+  transition: transform 75ms cubic-bezier(0.22, 1, 0.36, 1), opacity 75ms ease, background-color 75ms ease;
 }
 
 body.back-navigation-waiting::after {
@@ -205,43 +230,118 @@ body.back-navigation-waiting::after {
   content: "";
 }
 
-::view-transition-old(root) {
-  animation: back-route-blur-out 300ms ease both;
+::view-transition-group(root) {
+  animation-duration: 340ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+::view-transition-old(root),
 ::view-transition-new(root) {
-  animation: back-route-blur-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  mix-blend-mode: normal;
+  animation-duration: 340ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
 }
 
-@keyframes back-route-blur-out {
+html[data-nav-direction="forward"]::view-transition-old(root) {
+  z-index: 1;
+  animation-name: ios-push-old;
+}
+
+html[data-nav-direction="forward"]::view-transition-new(root) {
+  z-index: 2;
+  animation-name: ios-push-new;
+}
+
+html[data-nav-direction="back"]::view-transition-old(root) {
+  z-index: 2;
+  animation-name: ios-pop-old;
+}
+
+html[data-nav-direction="back"]::view-transition-new(root) {
+  z-index: 1;
+  animation-name: ios-pop-new;
+}
+
+html[data-nav-fallback="forward"] .app-shell,
+html[data-nav-fallback="back"] .app-shell {
+  animation: ios-fallback-reveal 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes ios-push-old {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
   to {
+    transform: translate3d(-20%, 0, 0) scale(0.96);
     opacity: 0.72;
-    filter: blur(5px);
-    transform: translateY(-4px) scale(0.992);
   }
 }
 
-@keyframes back-route-blur-in {
+@keyframes ios-push-new {
   from {
+    transform: translate3d(100%, 0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes ios-pop-old {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes ios-pop-new {
+  from {
+    transform: translate3d(-20%, 0, 0) scale(0.96);
     opacity: 0.72;
-    filter: blur(5px);
-    transform: translateY(6px) scale(0.992);
+  }
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ios-fallback-reveal {
+  from {
+    opacity: 0.55;
   }
   to {
     opacity: 1;
-    filter: blur(0);
-    transform: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .back-link {
+  .back-link,
+  .module-card,
+  .check-entry {
     transition: none;
   }
 
   .back-link:active,
-  .back-link.back-navigation-pending {
+  .module-card:active,
+  .check-entry:active,
+  .app-shell .back-link.back-navigation-pending,
+  .app-shell .action-button.back-navigation-pending:not(:disabled),
+  .app-shell .module-card.back-navigation-pending,
+  .app-shell .check-entry.back-navigation-pending {
     transform: none;
+    opacity: 1;
+  }
+
+  html[data-nav-fallback] .app-shell {
+    animation: none;
   }
 }
 
@@ -321,12 +421,24 @@ body.back-navigation-waiting::after {
   color: var(--green-900);
   font-size: 0.88rem;
   cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), opacity 140ms ease, background-color 140ms ease;
 }
 
 .check-entry:hover,
 .check-entry:focus-visible {
   background: var(--green-100);
   outline: none;
+}
+
+.check-entry:active {
+  transform: scale(0.975);
+  opacity: 0.84;
+  background: #edf8f0;
+}
+
+button.back-navigation-pending:not(:disabled) {
+  transform: scale(0.96);
+  opacity: 0.8;
 }
 
 .check-block {

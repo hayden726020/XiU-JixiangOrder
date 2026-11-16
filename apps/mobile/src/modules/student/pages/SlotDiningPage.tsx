@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { runAfterBackPress } from '../../../shared/backPress';
+import { runAfterBackPress, runAfterPressTransition } from '../../../shared/backPress';
 
 import { getPresenceRuntime, type PresenceState } from '../state/presenceRuntime';
 import { derivePresenceView, type PresenceView } from '../utils/presenceView';
@@ -506,7 +506,7 @@ export default function SlotDiningPage({
             type="button"
             className="booking-submit"
             disabled={!snapshot.canConfirm}
-            onClick={onConfirm}
+            onClick={(event) => runAfterPressTransition(event.currentTarget, onConfirm, 'forward')}
           >
             去确认订单
           </button>
