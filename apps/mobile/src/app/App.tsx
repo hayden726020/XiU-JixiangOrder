@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { runAfterBackPress } from '../shared/backPress';
+import { navigateToHash, runAfterBackPress } from '../shared/backPress';
 import { mobileModules } from './moduleRegistry';
 import SystemCheck from './SystemCheck';
 
@@ -13,7 +13,7 @@ function readRoute(): string {
 }
 
 function navigate(route: string): void {
-  window.location.hash = route;
+  navigateToHash(route);
 }
 
 function Home() {
@@ -64,7 +64,11 @@ export default function App() {
   useEffect(() => {
     const onHashChange = () => setRoute(readRoute());
     window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    window.addEventListener('app:navigate', onHashChange);
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+      window.removeEventListener('app:navigate', onHashChange);
+    };
   }, []);
 
   const activeModule = mobileModules.find(

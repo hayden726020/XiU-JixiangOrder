@@ -32,6 +32,7 @@ import { formatYuan } from './utils/money';
 import { demoLogin } from '../../shared/auth';
 import { getApiBaseInfo, saveStoredApiBaseUrl } from '../../shared/config';
 import { createRequestId } from '../../shared/requestId';
+import { navigateToHash } from '../../shared/backPress';
 import { getSession, subscribeSession, type Session } from '../../shared/session';
 import './merchant.css';
 
@@ -284,7 +285,7 @@ export default function MerchantHome() {
 
   function cancelOnboarding() {
     clearActionState();
-    window.location.hash = '/';
+    navigateToHash('/');
   }
 
   function openMenu() {
