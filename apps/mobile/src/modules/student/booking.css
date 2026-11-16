@@ -211,6 +211,7 @@
   border-radius: 14px;
   background: #fff;
   color: var(--booking-navy);
+  transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
   cursor: pointer;
 }
 
@@ -238,22 +239,30 @@
   border-radius: 50%;
   background: #fff;
   color: var(--booking-navy);
+  transition: background-color 220ms ease, border-color 220ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .booking-mode__check svg {
   width: 0.75rem;
   height: 0.75rem;
+  opacity: 0;
+  transform: scale(.45);
+  transition: opacity 150ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .booking-mode.is-active {
   border-color: #ecd23f;
   background: #fff3c4;
+  box-shadow: 0 3px 10px rgba(118, 92, 0, .08);
 }
 
 .booking-mode.is-active .booking-mode__check {
   border-color: #ecd23f;
   background: var(--booking-yellow);
+  transform: scale(1.08);
 }
+.booking-mode.is-active .booking-mode__check svg { opacity: 1; transform: scale(1); }
+.booking-mode:active .booking-mode__check { transform: scale(.82); }
 
 .booking-slots__head {
   display: flex;
@@ -336,11 +345,11 @@
   white-space: nowrap;
   cursor: pointer;
   box-sizing: border-box;
-  transition: all 0.15s ease;
+  transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 180ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .booking-slot__dot {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 15px;
@@ -351,6 +360,9 @@
   margin-right: 5px;
   flex-shrink: 0;
   box-sizing: border-box;
+  opacity: 0;
+  transform: scale(.5);
+  transition: opacity 150ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .booking-slot__dot::after {
@@ -366,11 +378,15 @@
   border-color: #f0cf65;
   background: #fef8e2;
   color: var(--booking-navy);
+  box-shadow: 0 3px 8px rgba(118, 92, 0, .08);
 }
 
 .booking-slot.is-active .booking-slot__dot {
-  display: inline-flex;
+  opacity: 1;
+  transform: scale(1);
 }
+
+.booking-slot:not(:disabled):active { transform: scale(.97); }
 
 .booking-slot:disabled {
   background: #f2f5f9;
@@ -1016,6 +1032,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .booking-mode,
+  .booking-mode__check,
+  .booking-mode__check svg,
+  .booking-slot,
+  .booking-slot__dot { transition-duration: 60ms; }
+  .booking-mode__check,
+  .booking-mode.is-active .booking-mode__check,
+  .booking-mode__check svg,
+  .booking-mode.is-active .booking-mode__check svg,
+  .booking-mode:active .booking-mode__check,
+  .booking-slot__dot,
+  .booking-slot.is-active .booking-slot__dot,
+  .booking-slot:not(:disabled):active { transform: none; }
   .booking-location__toggle {
     transition: none;
   }

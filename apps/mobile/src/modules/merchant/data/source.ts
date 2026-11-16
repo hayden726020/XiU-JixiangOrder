@@ -654,7 +654,7 @@ export function createMerchantSource(options: {
       sampleProfile = {
         merchant: {
           id: 'demo-merchant-01',
-          name: input.merchantName,
+          name: input.merchantName?.trim() || sampleProfile.merchant?.name || '未命名商家',
           contactName: input.contactName,
           contactPhone: input.contactPhone,
           status: 'ACTIVE',

@@ -237,7 +237,7 @@ export default function MenuPage({
                         disabled={quantity <= 0}
                         onClick={() => updateQuantity(dish, quantity - 1)}
                       >
-                        −
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
                       </button>
                       <span className="student-stepper__value" aria-live="polite">
                         {quantity}
@@ -249,7 +249,7 @@ export default function MenuPage({
                         disabled={atLimit}
                         onClick={() => updateQuantity(dish, quantity + 1)}
                       >
-                        +
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
                       </button>
                     </div>
                   ) : null}

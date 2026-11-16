@@ -419,7 +419,7 @@ export default function SlotDiningPage({
               onClick={() => selectMode('DINE_IN')}
             >
               <span className="booking-mode__check">
-                {snapshot.diningMode === 'DINE_IN' ? <CheckIcon /> : null}
+                <CheckIcon />
               </span>
               <DineInIcon />
               <span className="booking-mode__label">堂食</span>
@@ -431,7 +431,7 @@ export default function SlotDiningPage({
               onClick={() => selectMode('TAKEAWAY')}
             >
               <span className="booking-mode__check">
-                {snapshot.diningMode === 'TAKEAWAY' ? <CheckIcon /> : null}
+                <CheckIcon />
               </span>
               <TakeawayIcon />
               <span className="booking-mode__label">外带</span>
