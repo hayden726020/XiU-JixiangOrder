@@ -78,6 +78,16 @@
 
 新对话不要把“概览/订单/配置已完成”误认为整个管理端都已完成。修改共享外壳时必须回归概览、订单、详情、配置和非管理员入口。
 
+### 并行会话未提交改动（2026-11-16 20:22 记录，未纳入远端基线）
+
+同步目录 `team-context/frontend` 里另有管理端改动，**未提交、未推送**（按“不代提交他人工作”处理）：
+
+- `pages/OrdersPage.tsx`：错误态改为 `admin-orders__error-state` + `codeLabel`（401/403/503/NETWORK/ERROR）徽标 + 精简文案 + 重试/去登录按钮，对应 `管理端订单错误三态.png`。
+- `admin-orders.css`：新增错误态样式（约 331—403 行）；本轮的 `admin-orders--empty` 空状态样式仍保留（8 处）。
+- `pages/OverviewPage.tsx`：新增 `navigateTo()`（`history.pushState` + 手动派发 `hashchange`），两个入口链接拦截默认跳转。
+
+只读核对：`npx tsc --noEmit` 中 `modules/admin` 错误数 0，结构完整（`codeLabel` 已渲染），但**未做错误路径 CDP 视觉核对**、未写接入记录。新对话开工先 `git status` 与 `git log` 判断是否已由该会话提交；若仍未提交，不覆盖、也不替其宣称“错误三态已完成”。
+
 ## 5 剩余管理端设计稿
 
 建议按订单主链路优先：

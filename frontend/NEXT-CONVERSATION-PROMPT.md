@@ -50,6 +50,8 @@ npx vite build           # 应通过
 
 已知：全量 `npm run build` 可能被并行会话未完成的 `merchant/pages/OnboardingPage.tsx`（`DISH_TYPE_OPTIONS`）阻塞，属队友改动，不要代改或回退。
 
+开工先 `git status --short`、`git log -3 --oneline`、`git ls-remote origin refs/heads/frontend/admin-redesign-2026-11-16` 核对。同步目录可能另有并行会话的管理端改动（截至 2026-11-16 20:22：`OrdersPage.tsx` 错误态 `codeLabel`、`OverviewPage.tsx` 的 `navigateTo` 路由修复），这些尚未提交；不要覆盖，也不要替其宣称已完成。
+
 ## Git 边界
 
 - 改动先写同步目录 `team-context/frontend`，验证后复制到 `campus-meal-admin-baseline/frontend` 对应路径，只 `git add` 本任务文件后提交。
