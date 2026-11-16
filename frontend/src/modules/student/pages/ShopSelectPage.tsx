@@ -32,6 +32,7 @@ export interface ShopSelectPageProps {
   notice: string;
   onEnterShop: (shop: ShopSummary) => void;
   onOpenOrders: () => void;
+  onOpenProfile?: () => void;
 }
 
 const STALL_PHOTOS = {
@@ -89,6 +90,7 @@ export default function ShopSelectPage({
   notice,
   onEnterShop,
   onOpenOrders,
+  onOpenProfile,
 }: ShopSelectPageProps) {
   const [activeTab, setActiveTab] = useState<'home' | 'order' | 'mine'>('order');
   const [shops, setShops] = useState<ShopSummary[]>([]);
@@ -605,8 +607,12 @@ export default function ShopSelectPage({
           className={activeTab === 'mine' ? 'is-active-tab' : ''}
           aria-current={activeTab === 'mine' ? 'page' : undefined}
           onClick={() => {
-            setActiveTab('mine');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (onOpenProfile) {
+              onOpenProfile();
+            } else {
+              setActiveTab('mine');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
           }}
         >
           <Icon name="user" />
