@@ -29,9 +29,26 @@ import {
   reportLocation,
 } from './location.mjs';
 import { getAdminSettings, putAdminSettings } from './admin.mjs';
-import { createDish, createShop, getMerchantProfile, listMerchants, registerMerchant } from './merchant.mjs';
-import { registerStudent } from './student-registration.mjs';
+import { getPublicImage, uploadMerchantImage } from './images.mjs';
+import {
+  createDish,
+  createShop,
+  getMerchantProfile,
+  listMerchantDishes,
+  listMerchantShops,
+  listMerchants,
+  registerMerchant,
+  selectActiveShop,
+  setDailyMenu,
+  updateMerchantProfile,
+  updateShop,
+  updateShopBusinessHours,
+} from './merchant.mjs';
+import { registerMerchantAccount, registerStudent } from './student-registration.mjs';
 import { createAuthRateLimiter } from './auth-rate-limit.mjs';
+import { getMerchantWallet, withdrawMerchantWallet } from './wallet.mjs';
+
+const DISH_MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 function withAuth(roles, handler) {
   return async (ctx) => {
@@ -43,9 +60,9 @@ function withAuth(roles, handler) {
   };
 }
 
-function withBody(roles, handler) {
+function withBody(roles, handler, bodyOptions = undefined) {
   return withAuth(roles, async (ctx) => {
-    const body = await readJsonBody(ctx.req);
+    const body = await readJsonBody(ctx.req, bodyOptions);
     return handler({ ...ctx, body });
   });
 }
@@ -110,6 +127,10 @@ export function createApp({ db, clock, logger = () => {} }) {
       checkAuthRateLimit(ctx.req, 'register');
       return registerStudent(ctx);
     } },
+    { method: 'POST', pattern: /^\/api\/v1\/auth\/merchant-register$/, handler: (ctx) => {
+      checkAuthRateLimit(ctx.req, 'register');
+      return registerMerchantAccount(ctx);
+    } },
     { method: 'POST', pattern: /^\/api\/v1\/auth\/login$/, handler: (ctx) => {
       checkAuthRateLimit(ctx.req, 'login');
       return demoLogin(ctx);
@@ -123,6 +144,7 @@ export function createApp({ db, clock, logger = () => {} }) {
 
     { method: 'GET', pattern: /^\/api\/v1\/dining\/config$/, handler: getDiningConfig },
     { method: 'GET', pattern: /^\/api\/v1\/menu$/, handler: (ctx) => listMenu({ ...ctx, query: queryOf(ctx.req) }) },
+    { method: 'GET', pattern: /^\/api\/v1\/images\/(?<id>[^/]+)$/, handler: (ctx) => getPublicImage({ ...ctx, params: decodeParams(ctx.params) }) },
     { method: 'GET', pattern: /^\/api\/v1\/merchants$/, handler: withAuth(null, listMerchants) },
     { method: 'GET', pattern: /^\/api\/v1\/crowd$/, handler: (ctx) => getCrowd({ ...ctx, query: queryOf(ctx.req) }) },
 
@@ -149,9 +171,24 @@ export function createApp({ db, clock, logger = () => {} }) {
       handler: withAuth(['MERCHANT'], getMerchantProfile),
     },
     {
+      method: 'PATCH',
+      pattern: /^\/api\/v1\/merchant\/profile$/,
+      handler: withBody(['MERCHANT'], updateMerchantProfile),
+    },
+    {
+      method: 'PUT',
+      pattern: /^\/api\/v1\/merchant\/profile$/,
+      handler: withBody(['MERCHANT'], updateMerchantProfile),
+    },
+    {
       method: 'POST',
       pattern: /^\/api\/v1\/merchant\/registration$/,
       handler: withBody(['MERCHANT'], registerMerchant),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/merchant\/shops$/,
+      handler: withAuth(['MERCHANT'], listMerchantShops),
     },
     {
       method: 'POST',
@@ -159,9 +196,79 @@ export function createApp({ db, clock, logger = () => {} }) {
       handler: withBody(['MERCHANT'], createShop),
     },
     {
+      method: 'PATCH',
+      pattern: /^\/api\/v1\/merchant\/shops\/(?<shopId>[^/]+)$/,
+      handler: withBody(['MERCHANT'], (ctx) => updateShop({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+    {
+      method: 'PUT',
+      pattern: /^\/api\/v1\/merchant\/shops\/(?<shopId>[^/]+)$/,
+      handler: withBody(['MERCHANT'], (ctx) => updateShop({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+    {
+      method: 'PATCH',
+      pattern: /^\/api\/v1\/merchant\/shop$/,
+      handler: withBody(['MERCHANT'], updateShop),
+    },
+    {
+      method: 'PUT',
+      pattern: /^\/api\/v1\/merchant\/shop$/,
+      handler: withBody(['MERCHANT'], updateShop),
+    },
+    {
+      method: 'PUT',
+      pattern: /^\/api\/v1\/merchant\/shops\/(?<shopId>[^/]+)\/business-hours$/,
+      handler: withBody(['MERCHANT'], (ctx) => updateShopBusinessHours({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+    {
+      method: 'PATCH',
+      pattern: /^\/api\/v1\/merchant\/shops\/(?<shopId>[^/]+)\/business-hours$/,
+      handler: withBody(['MERCHANT'], (ctx) => updateShopBusinessHours({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+    {
+      method: 'PUT',
+      pattern: /^\/api\/v1\/merchant\/shop\/business-hours$/,
+      handler: withBody(['MERCHANT'], updateShopBusinessHours),
+    },
+    {
+      method: 'PATCH',
+      pattern: /^\/api\/v1\/merchant\/shop\/business-hours$/,
+      handler: withBody(['MERCHANT'], updateShopBusinessHours),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/merchant\/shops\/(?<shopId>[^/]+)\/select$/,
+      handler: withAuth(['MERCHANT'], (ctx) => selectActiveShop({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/merchant\/images$/,
+      handler: withAuth(['MERCHANT'], uploadMerchantImage),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/merchant\/dishes$/,
+      handler: withAuth(['MERCHANT'], (ctx) => listMerchantDishes({ ...ctx, query: queryOf(ctx.req) })),
+    },
+    {
+      method: 'PUT',
+      pattern: /^\/api\/v1\/merchant\/menus\/(?<date>[^/]+)$/,
+      handler: withBody(['MERCHANT'], (ctx) => setDailyMenu({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+    {
       method: 'POST',
       pattern: /^\/api\/v1\/merchant\/menu$/,
-      handler: withBody(['MERCHANT'], createDish),
+      handler: withBody(['MERCHANT'], createDish, { maxBytes: DISH_MAX_BODY_BYTES }),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/merchant\/wallet$/,
+      handler: withAuth(['MERCHANT'], (ctx) => getMerchantWallet({ ...ctx, query: queryOf(ctx.req) })),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/merchant\/wallet\/withdraw$/,
+      handler: withBody(['MERCHANT'], withdrawMerchantWallet),
     },
 
     {
@@ -202,7 +309,9 @@ export function createApp({ db, clock, logger = () => {} }) {
     {
       method: 'PUT',
       pattern: /^\/api\/v1\/merchant\/menu\/(?<dishId>[^/]+)$/,
-      handler: withBody(['MERCHANT'], (ctx) => updateMerchantDish({ ...ctx, params: decodeParams(ctx.params) })),
+      handler: withBody(['MERCHANT'], (ctx) => updateMerchantDish({ ...ctx, params: decodeParams(ctx.params) }), {
+        maxBytes: DISH_MAX_BODY_BYTES,
+      }),
     },
     {
       method: 'DELETE',

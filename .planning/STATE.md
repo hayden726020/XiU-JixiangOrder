@@ -1,6 +1,25 @@
 # 公共开发状态
 
-更新日期：2026-11-17。方案版本：APK-v2（增加开店、选店与学生开放注册后端扩展范围）。维护人：spcuteag。
+更新日期：2026-11-18。方案版本：APK-v2（增加开店、选店与学生/商家开放注册后端扩展范围）。维护人：spcuteag。
+
+## 2026-11-18 服务端 7 项商家端缺口补齐（DRAFT v0.7）
+
+- 补齐 `services/api/` 与 `contracts/API.md`（DRAFT v0.7，待三人确认）全部 7 项服务端能力：
+  1. **菜品图片上传与口味/配菜/加购持久化**：新增 `POST /api/v1/merchant/images`（支持 JSON `dataUrl`、原始二进制与 `multipart/form-data`，校验 JPG/PNG/WebP 魔数，上限 2 MB）与 `GET /api/v1/images/{id}`；`dishes` 持久化 `imageUrl`、`flavorGroups`、`sides`、`addOns`，`POST /orders` 支持 `selectedFlavors`/`selectedSides`/`selectedAddOns` 并由服务端校验必选口味与计算加购价。
+  2. **菜品库与每日菜单**：新增 `GET /api/v1/merchant/dishes` 与 `PUT /api/v1/merchant/menus/{date}`；配置某日菜单后，`GET /menu`、`POST /orders` 与未制作取消恢复均按当日上架项和每日库存执行，不影响菜品库和其他日期。
+  3. **商家与店铺资料编辑**：新增 `PATCH/PUT /api/v1/merchant/profile`、`PATCH/PUT /api/v1/merchant/shops/{shopId}`（及 `/merchant/shop` 别名），支持乐观锁 `expectedVersion`（冲突返回 409 `SHOP_VERSION_CONFLICT`）。
+  4. **店铺营业时间与营业开关**：注册默认营业时间改为 `08:00—22:00` 并支持自定义；新增 `PUT/PATCH /api/v1/merchant/shops/{shopId}/business-hours`（及 `/merchant/shop/business-hours`）修改 `openAt`、`closeAt` 与 `active` 开关，停用后 `GET /merchants` 标记 `active=false` 且下单返回 409 `MERCHANT_CLOSED`。
+  5. **钱包 / 结算 / 提现**：新增 `GET /api/v1/merchant/wallet` 与 `POST /api/v1/merchant/wallet/withdraw`；订单核销完成（`COMPLETED`）原子入账 `income`，提现支持 `requestId` 幂等与事务内余额防超额（409 `INSUFFICIENT_BALANCE`）。
+  6. **商家账号自助注册**：新增 `POST /api/v1/auth/merchant-register`（复用注册限流与 `COLLATE NOCASE` 唯一账号命名空间，拒绝越权字段，随后通过 `/auth/login` 登录）。
+  7. **多店支持**：移除 `shops.merchant_id UNIQUE` 限制，支持同一账号开立多家不同名称店铺（重名 `SHOP_NAME_DUPLICATE`）、`GET /api/v1/merchant/shops` 与 `POST /api/v1/merchant/shops/{shopId}/select`，并补充旧版 SQLite 数据库原地迁移升级逻辑。
+- 验证结果：
+  - `npm --prefix services/api test`：**106/106 通过（0 失败）**（含新增 `test/merchant-features.test.mjs` 与旧库迁移测试）。
+- **线上阿里云 ECS（`39.96.195.158`）后端与 Web 前端部署（2026-11-18）**：
+  - 部署前于 ECS `/root/backup-api-20261118/` 完整备份原有 `/opt/jixiang-order/services/api`、`/opt/jixiang-order/data/orders.sqlite` 与 `/etc/nginx/sites-available/default`（停服刷盘后备份，既有用户与订单数据完整保留）。
+  - 后端同步更新至 `/opt/jixiang-order/services/api/`，以 `jixiang` 用户在 ECS 本机实测 `npm test` **106/106 通过（0 失败）**，`jixiang-api.service` 状态 `active`。
+  - 前端执行 `npm --prefix apps/mobile run build`（181 modules，`dist/assets/index--ZP0rR5z.js`，已内置 `VITE_API_BASE_URL=https://39.96.195.158/api/v1` 与 `VITE_STUDENT_MODE=real`）部署至 ECS `/var/www/jixiang-web/`。
+  - 更新 Nginx 配置（`/etc/nginx/sites-available/default`）：`location ^~ /api/v1/` 反代 `127.0.0.1:8787`（设 `client_max_body_size 5m;` 支持图片上传），`location /` 托管静态前端并配置 SPA 回退 `try_files $uri $uri/ /index.html;`，保留 `/.well-known/acme-challenge/`；`nginx -t` 通过并 `reload nginx`（状态 `active`）。
+  - 公网实测：`GET https://39.96.195.158/`（200）、`GET https://39.96.195.158/assets/index--ZP0rR5z.js`（200）、`GET https://39.96.195.158/api/v1/health`（200，`demoUsers: 8`）、`GET https://39.96.195.158/api/v1/menu`（200，`hasFlavorGroups: true`）、新接口 `/api/v1/merchant/dishes`、`/api/v1/merchant/wallet`、`/api/v1/merchant/shops`、`/api/v1/auth/merchant-register` 与 `/api/v1/images/...` 均已就绪生效。
 
 ## 2026-11-17 四项体验与真实模式对齐修复、ECS 同步及 APK 1.38 构建（versionCode 39）
 

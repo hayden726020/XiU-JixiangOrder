@@ -1,6 +1,6 @@
 import { ApiError, unavailable, validationError } from './errors.mjs';
 
-const MAX_BODY_BYTES = 64 * 1024;
+const DEFAULT_MAX_BODY_BYTES = 64 * 1024;
 
 export function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -27,23 +27,28 @@ export function sendError(res, error) {
   });
 }
 
-export async function readJsonBody(req, { allowEmpty = true } = {}) {
+export async function readRawBody(req, { maxBytes = DEFAULT_MAX_BODY_BYTES } = {}) {
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY_BYTES) {
+    if (size > maxBytes) {
       throw validationError('请求体过大。');
     }
     chunks.push(chunk);
   }
-  if (size === 0) {
+  return Buffer.concat(chunks);
+}
+
+export async function readJsonBody(req, { allowEmpty = true, maxBytes = DEFAULT_MAX_BODY_BYTES } = {}) {
+  const raw = await readRawBody(req, { maxBytes });
+  if (raw.length === 0) {
     if (allowEmpty) {
       return {};
     }
     throw validationError('请求体不能为空。');
   }
-  const text = Buffer.concat(chunks).toString('utf8');
+  const text = raw.toString('utf8');
   try {
     return JSON.parse(text);
   } catch {
@@ -103,6 +108,13 @@ export function createRequestHandler({ routes, db, clock, logger = () => {} }) {
         if (statusCode === 204) {
           res.writeHead(204);
           res.end();
+        } else if (result.rawBody !== undefined) {
+          res.writeHead(statusCode, {
+            'Content-Length': Buffer.byteLength(result.rawBody),
+            'X-Content-Type-Options': 'nosniff',
+            ...(result.headers ?? {}),
+          });
+          res.end(result.rawBody);
         } else {
           sendJson(res, statusCode, result.body);
         }

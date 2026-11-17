@@ -223,7 +223,7 @@ test('创建店铺成功，profile 进入 SHOP_CREATED', async () => {
   assert.equal(profile.body.data.shop.version, 1);
 });
 
-test('重复创建店铺返回 SHOP_ALREADY_EXISTS，同 requestId 重试仍返回首次结果', async () => {
+test('支持同一账号开多家不同名称店铺，同 requestId 重试返回首次结果，重名返回 SHOP_NAME_DUPLICATE', async () => {
   await registerMerchant();
   const first = await createShop(newMerchant, 'onboarding-shop-1');
   const retry = await ctx.api('POST', '/merchant/shops', {
@@ -232,13 +232,22 @@ test('重复创建店铺返回 SHOP_ALREADY_EXISTS，同 requestId 重试仍返�
   });
   assert.equal(retry.status, 201);
   assert.equal(retry.body.data.shop.id, first.shop.id);
+  assert.equal(retry.body.data.shops.length, 1);
 
-  const again = await ctx.api('POST', '/merchant/shops', {
+  const duplicate = await ctx.api('POST', '/merchant/shops', {
+    token: newMerchant,
+    body: shopBody('onboarding-shop-dup'),
+  });
+  assert.equal(duplicate.status, 409);
+  assert.equal(duplicate.body.error.code, 'SHOP_NAME_DUPLICATE');
+
+  const second = await ctx.api('POST', '/merchant/shops', {
     token: newMerchant,
     body: shopBody('onboarding-shop-2', { shopName: '吉祥小馆二店' }),
   });
-  assert.equal(again.status, 409);
-  assert.equal(again.body.error.code, 'SHOP_ALREADY_EXISTS');
+  assert.equal(second.status, 201);
+  assert.notEqual(second.body.data.shop.id, first.shop.id);
+  assert.equal(second.body.data.shops.length, 2);
 });
 
 test('新增菜品成功，GET /menu 返回 type，学生可下单该菜', async () => {

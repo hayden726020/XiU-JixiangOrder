@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS merchants (
   id TEXT PRIMARY KEY,
+  owner_user_id TEXT REFERENCES users(id),
   name TEXT NOT NULL,
   open_at TEXT NOT NULL,
   close_at TEXT NOT NULL,
@@ -102,10 +103,14 @@ CREATE TABLE IF NOT EXISTS merchants (
 
 CREATE TABLE IF NOT EXISTS shops (
   id TEXT PRIMARY KEY,
-  merchant_id TEXT NOT NULL UNIQUE REFERENCES merchants(id),
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  owner_user_id TEXT REFERENCES users(id),
   name TEXT NOT NULL,
   location TEXT NOT NULL,
   description TEXT,
+  open_at TEXT NOT NULL DEFAULT '08:00',
+  close_at TEXT NOT NULL DEFAULT '22:00',
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'DISABLED')),
   version INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
@@ -114,12 +119,54 @@ CREATE TABLE IF NOT EXISTS shops (
 CREATE TABLE IF NOT EXISTS dishes (
   id TEXT PRIMARY KEY,
   merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  shop_id TEXT,
   type TEXT NOT NULL DEFAULT 'STAPLE' CHECK (type IN ('STAPLE', 'SNACK', 'DRINK', 'SET')),
   name TEXT NOT NULL,
   price_fen INTEGER NOT NULL CHECK (price_fen >= 0),
   available_quantity INTEGER NOT NULL CHECK (available_quantity >= 0),
   on_sale INTEGER NOT NULL DEFAULT 1,
-  version INTEGER NOT NULL DEFAULT 1
+  version INTEGER NOT NULL DEFAULT 1,
+  image_url TEXT,
+  flavor_groups_json TEXT NOT NULL DEFAULT '[]',
+  sides_json TEXT NOT NULL DEFAULT '[]',
+  add_ons_json TEXT NOT NULL DEFAULT '[]'
+);
+
+CREATE TABLE IF NOT EXISTS daily_menu_days (
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  date TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (merchant_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS daily_menu_items (
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  date TEXT NOT NULL,
+  dish_id TEXT NOT NULL REFERENCES dishes(id) ON DELETE CASCADE,
+  available_quantity INTEGER NOT NULL CHECK (available_quantity >= 0),
+  PRIMARY KEY (merchant_id, date, dish_id)
+);
+
+CREATE TABLE IF NOT EXISTS uploaded_images (
+  id TEXT PRIMARY KEY,
+  merchant_id TEXT NOT NULL,
+  owner_user_id TEXT,
+  mime_type TEXT NOT NULL CHECK (mime_type IN ('image/jpeg', 'image/png', 'image/webp')),
+  data_blob BLOB NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS wallet_entries (
+  id TEXT PRIMARY KEY,
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  owner_user_id TEXT,
+  kind TEXT NOT NULL CHECK (kind IN ('income', 'withdraw')),
+  order_id TEXT UNIQUE,
+  label TEXT NOT NULL,
+  amount_fen INTEGER NOT NULL CHECK (amount_fen > 0),
+  created_at INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS slots (
@@ -137,6 +184,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   student_id TEXT NOT NULL,
   merchant_id TEXT NOT NULL,
+  shop_id TEXT,
   merchant_name TEXT,
   slot_id TEXT NOT NULL REFERENCES slots(id),
   dining_mode TEXT NOT NULL CHECK (dining_mode IN ('DINE_IN', 'TAKEAWAY')),
@@ -160,12 +208,14 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE TABLE IF NOT EXISTS order_items (
   order_id TEXT NOT NULL REFERENCES orders(id),
+  item_index INTEGER NOT NULL DEFAULT 0,
   dish_id TEXT NOT NULL,
   name TEXT NOT NULL,
   quantity INTEGER NOT NULL,
   unit_price_fen INTEGER NOT NULL,
   merchant_id TEXT NOT NULL,
-  PRIMARY KEY (order_id, dish_id)
+  customization_json TEXT,
+  PRIMARY KEY (order_id, item_index)
 );
 
 CREATE TABLE IF NOT EXISTS request_log (
@@ -196,7 +246,119 @@ CREATE INDEX IF NOT EXISTS idx_orders_student ON orders(student_id, created_at D
 CREATE INDEX IF NOT EXISTS idx_orders_merchant ON orders(merchant_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_slot ON orders(slot_id, status);
 CREATE INDEX IF NOT EXISTS idx_users_account_nocase ON users(account COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_dishes_merchant ON dishes(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_merchant ON wallet_entries(merchant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wallet_owner ON wallet_entries(owner_user_id, created_at DESC);
 `;
+
+function migrateShopsTable(db) {
+  const shopColumns = db.prepare('PRAGMA table_info(shops)').all();
+  const tableRow = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'shops'").get();
+  const hasUniqueMerchant = typeof tableRow?.sql === 'string' && /merchant_id[^,]*UNIQUE/i.test(tableRow.sql);
+  const needsColumns =
+    !shopColumns.some((column) => column.name === 'owner_user_id') ||
+    !shopColumns.some((column) => column.name === 'open_at') ||
+    !shopColumns.some((column) => column.name === 'close_at') ||
+    !shopColumns.some((column) => column.name === 'status');
+  if (!hasUniqueMerchant && !needsColumns) {
+    return;
+  }
+  db.exec('PRAGMA foreign_keys = OFF;');
+  db.exec('BEGIN IMMEDIATE;');
+  try {
+    db.exec(`
+      CREATE TABLE shops_new (
+        id TEXT PRIMARY KEY,
+        merchant_id TEXT NOT NULL REFERENCES merchants(id),
+        owner_user_id TEXT REFERENCES users(id),
+        name TEXT NOT NULL,
+        location TEXT NOT NULL,
+        description TEXT,
+        open_at TEXT NOT NULL DEFAULT '08:00',
+        close_at TEXT NOT NULL DEFAULT '22:00',
+        status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'DISABLED')),
+        version INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      INSERT INTO shops_new (id, merchant_id, owner_user_id, name, location, description, open_at, close_at, status, version, created_at, updated_at)
+      SELECT
+        s.id,
+        s.merchant_id,
+        m.owner_user_id,
+        s.name,
+        s.location,
+        s.description,
+        COALESCE(m.open_at, '08:00'),
+        COALESCE(m.close_at, '22:00'),
+        COALESCE(m.status, 'ACTIVE'),
+        s.version,
+        s.created_at,
+        s.updated_at
+      FROM shops s
+      LEFT JOIN merchants m ON m.id = s.merchant_id;
+      DROP TABLE shops;
+      ALTER TABLE shops_new RENAME TO shops;
+    `);
+    db.exec('COMMIT;');
+  } catch (error) {
+    try {
+      db.exec('ROLLBACK;');
+    } catch {
+      // ignore rollback error
+    }
+    throw error;
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON;');
+  }
+}
+
+function migrateOrderItemsTable(db) {
+  const columns = db.prepare('PRAGMA table_info(order_items)').all();
+  if (columns.some((column) => column.name === 'item_index') && columns.some((column) => column.name === 'customization_json')) {
+    return;
+  }
+  db.exec('PRAGMA foreign_keys = OFF;');
+  db.exec('BEGIN IMMEDIATE;');
+  try {
+    db.exec(`
+      CREATE TABLE order_items_new (
+        order_id TEXT NOT NULL REFERENCES orders(id),
+        item_index INTEGER NOT NULL DEFAULT 0,
+        dish_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        unit_price_fen INTEGER NOT NULL,
+        merchant_id TEXT NOT NULL,
+        customization_json TEXT,
+        PRIMARY KEY (order_id, item_index)
+      );
+      INSERT INTO order_items_new (order_id, item_index, dish_id, name, quantity, unit_price_fen, merchant_id, customization_json)
+      SELECT
+        order_id,
+        ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY rowid) - 1,
+        dish_id,
+        name,
+        quantity,
+        unit_price_fen,
+        merchant_id,
+        NULL
+      FROM order_items;
+      DROP TABLE order_items;
+      ALTER TABLE order_items_new RENAME TO order_items;
+    `);
+    db.exec('COMMIT;');
+  } catch (error) {
+    try {
+      db.exec('ROLLBACK;');
+    } catch {
+      // ignore rollback error
+    }
+    throw error;
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON;');
+  }
+}
 
 export function createDatabase(path = ':memory:') {
   const db = new DatabaseSync(path);
@@ -216,7 +378,13 @@ export function createDatabase(path = ':memory:') {
   if (!orderColumns.some((column) => column.name === 'remark')) {
     db.exec('ALTER TABLE orders ADD COLUMN remark TEXT;');
   }
+  if (!orderColumns.some((column) => column.name === 'shop_id')) {
+    db.exec('ALTER TABLE orders ADD COLUMN shop_id TEXT;');
+  }
   const merchantColumns = db.prepare('PRAGMA table_info(merchants)').all();
+  if (!merchantColumns.some((column) => column.name === 'owner_user_id')) {
+    db.exec('ALTER TABLE merchants ADD COLUMN owner_user_id TEXT;');
+  }
   if (!merchantColumns.some((column) => column.name === 'contact_name')) {
     db.exec('ALTER TABLE merchants ADD COLUMN contact_name TEXT;');
   }
@@ -229,9 +397,34 @@ export function createDatabase(path = ':memory:') {
   if (!merchantColumns.some((column) => column.name === 'created_at')) {
     db.exec('ALTER TABLE merchants ADD COLUMN created_at INTEGER;');
   }
+  db.exec(`
+    UPDATE merchants
+    SET owner_user_id = (SELECT u.id FROM users u WHERE u.merchant_id = merchants.id LIMIT 1)
+    WHERE owner_user_id IS NULL;
+  `);
+  migrateShopsTable(db);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_shops_owner ON shops(owner_user_id, created_at);');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_shops_merchant ON shops(merchant_id);');
+  migrateOrderItemsTable(db);
+
   const dishColumns = db.prepare('PRAGMA table_info(dishes)').all();
   if (!dishColumns.some((column) => column.name === 'type')) {
     db.exec("ALTER TABLE dishes ADD COLUMN type TEXT NOT NULL DEFAULT 'STAPLE';");
+  }
+  if (!dishColumns.some((column) => column.name === 'shop_id')) {
+    db.exec('ALTER TABLE dishes ADD COLUMN shop_id TEXT;');
+  }
+  if (!dishColumns.some((column) => column.name === 'image_url')) {
+    db.exec('ALTER TABLE dishes ADD COLUMN image_url TEXT;');
+  }
+  if (!dishColumns.some((column) => column.name === 'flavor_groups_json')) {
+    db.exec("ALTER TABLE dishes ADD COLUMN flavor_groups_json TEXT NOT NULL DEFAULT '[]';");
+  }
+  if (!dishColumns.some((column) => column.name === 'sides_json')) {
+    db.exec("ALTER TABLE dishes ADD COLUMN sides_json TEXT NOT NULL DEFAULT '[]';");
+  }
+  if (!dishColumns.some((column) => column.name === 'add_ons_json')) {
+    db.exec("ALTER TABLE dishes ADD COLUMN add_ons_json TEXT NOT NULL DEFAULT '[]';");
   }
   return db;
 }

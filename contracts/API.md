@@ -8,7 +8,14 @@ DRAFT v0.6（学生开放注册增补，仍待三人确认），不能作为正�
 
 **v0.6 增补（2026-11-17）**：公开 `POST /auth/student-register` 与 `POST /auth/login`；只允许以账号、密码注册学生身份，注册不签发会话，用户随后单独登录。保留 `/auth/demo-login` 兼容既有客户端。学生端未来的注册入口与公共登录入口受影响；档口、管理端接口不变。
 
-**v0.5 增补（2026-11-17，DRAFT，待三人确认）**：订单增加可选 `remark`（≤50 字，未填写返回 null，学生下单写入并在三端订单响应回读）；档口 `PUT /merchant/menu/{dishId}` 增加 `name`、`type` 校验与写入，并新增 `DELETE /merchant/menu/{dishId}`（存在未结束订单返回 409 `DISH_IN_USE`）。演示服务已实现并通过自动测试（90/90）。
+**v0.7 增补（2026-11-18，DRAFT，待三人确认）**：补齐商家端 7 项服务端能力：
+1. 商家账号自助注册：`POST /auth/merchant-register`（限流、共享账号命名空间、不直接签发令牌）。
+2. 菜品图片上传与回读：`POST /merchant/images`（支持 JSON `dataUrl`、原始二进制或 `multipart/form-data`，魔数校验，最大 2 MB）、`GET /images/{id}`；菜品增加 `imageUrl`、`flavorGroups`、`sides`、`addOns`，`POST /orders` 支持 `selectedFlavors`/`selectedSides`/`selectedAddOns` 并由服务端校验必选口味与计算加购价。
+3. 菜品库与每日菜单：`GET /merchant/dishes`、`PUT /merchant/menus/{date}`；设置每日菜单后，`GET /menu` 与 `POST /orders` 按日上架菜品及每日库存生效。
+4. 资料编辑：`PATCH/PUT /merchant/profile`、`PATCH/PUT /merchant/shops/{shopId}`（及 `/merchant/shop` 别名）。
+5. 店铺营业时间与营业开关：`PUT/PATCH /merchant/shops/{shopId}/business-hours`（及 `/merchant/shop/business-hours`），注册默认 `08:00—22:00`，支持修改 `openAt`、`closeAt` 与 `active`；停用店铺下单返回 `MERCHANT_CLOSED`（409）。
+6. 钱包、结算与提现：`GET /merchant/wallet`、`POST /merchant/wallet/withdraw`；订单核销完成（`COMPLETED`）自动按订单总额写入 `income` 流水，提现支持幂等与余额并发保护。
+7. 多店管理：取消一账号一店限制，支持同一账号创建多家不同名称店铺（重名 `SHOP_NAME_DUPLICATE`）、`GET /merchant/shops`、`POST /merchant/shops/{shopId}/select` 切换当前激活店铺，并支持 `?shopId=` 过滤。
 
 ## 基础格式
 
@@ -65,29 +72,41 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | 方法与路径 | 输入或用途 | 主要输出与限制 |
 | --- | --- | --- |
 | POST /auth/student-register | account, password | 仅创建 STUDENT；201，无会话；见上节 |
+| POST /auth/merchant-register | account, password, displayName? | 仅创建 MERCHANT 账号与未登记商家占位；201 `{ registered: true, role: "MERCHANT" }`，不签发会话；随后调 `/auth/login` 登录 |
 | POST /auth/login、/auth/demo-login | account, password | 服务端签发会话令牌并返回服务端认定的角色；演示路径保留兼容；见上节 |
 | GET /me | 当前会话身份 | 返回 user 与 canteenId；仅本人信息 |
 | POST /auth/logout | 无 | 204；删除服务端会话，不删除订单 |
-| GET /menu?date=YYYY-MM-DD | 今天或明天菜单及时段 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选 |
-| GET /merchants | 已登录会话读取店铺列表 | `{ merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] }`；只读，不返回联系方式 |
-| POST /orders | requestId, items[{dishId,quantity}], slotId, diningMode, remark?（≤50 字） | 服务端计价并模拟付款后的订单；字段例子见 create-order.json |
+| GET /menu?date=YYYY-MM-DD | 未来 7 天内菜单及时段 | 菜品含 `imageUrl/flavorGroups/sides/addOns`，已配置每日菜单的店铺按当天选品和每日库存返回 |
+| GET /images/{id} | 公开读取已上传菜品图片 | 返回图片二进制与 `Content-Type`；`X-Content-Type-Options: nosniff` |
+| GET /merchants | 已登录会话读取店铺列表 | `{ merchants: [{ merchantId, shopId, name, location, description, canteenId, openAt, closeAt, active, orderable, sortOrder }] }`；只读，不返回联系方式 |
+| POST /orders | requestId, items[{dishId,quantity,selectedFlavors?,selectedSides?,selectedAddOns?}], slotId, diningMode, remark?（≤50 字） | 服务端校验必选口味与加购计价并模拟付款 |
 | GET /orders | 学生自己的订单列表 | 不返回其他学生订单 |
 | GET /orders/{id} | 获取有权限的订单 | 三端从同一订单来源读取，字段按角色过滤 |
 | POST /orders/{id}/cancel | requestId, expectedVersion, reason | NEW 直接取消退款；其余可申请状态设 PENDING，不假装已退款 |
-| GET /merchant/orders | 本档口订单列表，query=status,page,pageSize | 受档口身份约束；返回 {orders,page,pageSize,total}，取餐码始终为 null；默认 page=1、pageSize=20，最大 100，按 createdAt 倒序 |
+| GET /merchant/orders | 本档口订单列表，query=status,page,pageSize,shopId? | 受档口身份约束；返回 {orders,page,pageSize,total}，取餐码始终为 null；支持按 `shopId` 过滤 |
 | POST /merchant/orders/{id}/advance | requestId, expectedVersion, action=ACCEPT/START_PREPARING/MARK_READY | 仅允许合法的下一状态，不支持跳到 COMPLETED |
-| POST /merchant/orders/{id}/verify | requestId, expectedVersion, pickupCode | 仅 READY 且码正确、未用过时完成；示例见 verify-order.json |
+| POST /merchant/orders/{id}/verify | requestId, expectedVersion, pickupCode | 仅 READY 且码正确、未用过时完成；完成时原子结算 `income` 到钱包 |
 | POST /merchant/orders/{id}/cancel-decision | requestId, expectedVersion, decision=APPROVE/REJECT, reason | 仅处理 PENDING 且非终态订单；reason 写入 cancelRequest.decisionReason；批准后取消并模拟退款；拒绝保留原状态和原申请理由 |
 | POST /merchant/orders/{id}/cancel | requestId, expectedVersion, reason | 缺货等主动取消；NEW/ACCEPTED/PREPARING/READY 才允许；见 cancel-refund.json |
 | POST /merchant/orders/{id}/delay | requestId, expectedVersion, reason, expectedReadyAt | 仅 ACCEPTED/PREPARING/READY 允许；保存延迟信息，主状态不变，学生能查看 |
 | PATCH /merchant/orders/{id}/dining-mode | requestId, expectedVersion, diningMode, reason | 档口确认后更改未结束订单；reason 必填并持久化为 diningModeReason，三端及统计更新 |
-| PUT /merchant/menu/{dishId} | requestId, expectedVersion, name, type, priceFen, availableQuantity, onSale | 校验名称/类别、非负价格/数量和档口归属；不修改历史订单价格；成功返回完整菜品与新 version；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
-| DELETE /merchant/menu/{dishId} | requestId, expectedVersion | 成功后菜单不再返回该菜品；存在未结束订单（NEW/ACCEPTED/PREPARING/READY）返回 409 `DISH_IN_USE`；不存在或不属于本档口返回 404 `DISH_NOT_FOUND`；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
-| PUT /merchant/slots/{slotId} | requestId, expectedVersion, capacity, enabled | 容量不得低于已占用量；不静默取消既有订单；成功返回时段与新 version；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
-| GET /merchant/profile | 当前会话的商家/店铺状态 | 只返回本人商家；未注册返回 `merchant=null`、`onboardingStep=UNREGISTERED`；见 v0.4 增补 |
-| POST /merchant/registration | requestId, merchantName, contactName, contactPhone | 201 返回与 profile 相同的 `merchant/shop/onboardingStep`；重复注册 409 `MERCHANT_ALREADY_REGISTERED`，手机号冲突 409 `CONTACT_PHONE_TAKEN` |
-| POST /merchant/shops | requestId, shopName, location, description? | 201 返回与 profile 相同的结构；首版单店，重复创建 409 `SHOP_ALREADY_EXISTS` |
-| POST /merchant/menu | requestId, type, name, priceFen, availableQuantity, onSale? | 新增菜品归属当前商家；同店重名 409 `DISH_NAME_DUPLICATE`；成功后立即出现在 `GET /menu` |
+| POST /merchant/images | dataUrl JSON / 原始图片二进制 / multipart | 仅 MERCHANT；校验 JPG/PNG/WebP 魔数与 ≤2 MB，返回 `{ id, imageUrl, mimeType, sizeBytes }` |
+| GET /merchant/dishes | query=shopId? | 仅 MERCHANT；返回当前账号（或指定店铺）菜品库完整列表（含图片与定制项） |
+| PUT /merchant/menus/{date} | requestId, shopId?, dishes[{dishId,availableQuantity}] | 仅 MERCHANT；设置未来 7 天内指定日期的上架菜品与每日库存，不影响菜品库和其他日期 |
+| PUT /merchant/menu/{dishId} | requestId, expectedVersion, name, type, priceFen, availableQuantity, onSale, imageUrl?, flavorGroups?, sides?, addOns? | 校验名称/类别/定制项、非负价格/数量和档口归属；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
+| DELETE /merchant/menu/{dishId} | requestId, expectedVersion | 成功后菜单与每日菜单不再返回该菜品；存在未结束订单返回 409 `DISH_IN_USE`；不存在或不属于本档口返回 404 `DISH_NOT_FOUND` |
+| PUT /merchant/slots/{slotId} | requestId, expectedVersion, capacity, enabled | 成功返回时段与新 version；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
+| GET /merchant/profile | 当前会话的商家/店铺状态 | 返回 `merchant, shop, shops[], activeShopId, activeMerchantId, onboardingStep` |
+| PATCH/PUT /merchant/profile | requestId, merchantName?, contactName?, contactPhone? | 修改已注册商家资料；手机号冲突 409 `CONTACT_PHONE_TAKEN` |
+| POST /merchant/registration | requestId, merchantName, contactName, contactPhone, openAt?, closeAt? | 201 返回 profile；默认营业时间 `08:00—22:00`；重复注册 409 `MERCHANT_ALREADY_REGISTERED` |
+| GET /merchant/shops | 当前账号名下全部店铺 | 返回 `{ shops, activeShopId, activeMerchantId }` |
+| POST /merchant/shops | requestId, shopName, location, description?, openAt?, closeAt?, active? | 支持同一账号创建多家不同名称店铺；同名返回 409 `SHOP_NAME_DUPLICATE` |
+| PATCH/PUT /merchant/shops/{shopId}（及 `/merchant/shop`） | requestId, expectedVersion?, shopName?, location?, description?, openAt?, closeAt?, active? | 修改店铺资料；旧版本返回 409 `SHOP_VERSION_CONFLICT`；跨店返回 404 `SHOP_NOT_FOUND` |
+| PUT/PATCH /merchant/shops/{shopId}/business-hours（及 `/merchant/shop/business-hours`） | requestId, expectedVersion?, openAt?, closeAt?, active? | 修改店铺营业时间（`HH:MM`，`openAt < closeAt`）与营业开关（`active`） |
+| POST /merchant/shops/{shopId}/select | 无 | 切换当前会话默认激活的店铺（更新 `user.merchantId`） |
+| POST /merchant/menu | requestId, shopId?, type, name, priceFen, availableQuantity, onSale?, imageUrl?, flavorGroups?, sides?, addOns? | 新增菜品归属当前（或指定）店铺；同店重名 409 `DISH_NAME_DUPLICATE` |
+| GET /merchant/wallet | query=shopId? | 仅 MERCHANT；返回 `{ balanceFen, totalIncomeFen, totalWithdrawnFen, pendingSettlementFen, entries[], demo }` |
+| POST /merchant/wallet/withdraw | requestId, amountFen, shopId?, label? | 仅 MERCHANT；幂等模拟提现；余额不足返回 409 `INSUFFICIENT_BALANCE` |
 | GET /dining/config | 当前公开的食堂范围配置 | { canteenId, name, center{latitude,longitude}, radiusMeters, accuracyToleranceMeters, updatedAt, demo }；这是食堂边界，不是学生位置 |
 | PUT /me/location | requestId, presence=INSIDE/OUTSIDE/UNKNOWN | 按会话身份保存判断，返回服务端 observedAt 和 expiresAt；拒绝多余坐标字段 |
 | DELETE /me/location | 清除本人位置判断 | 重复删除仍成功，不删除订单、不阻碍继续下单 |
@@ -133,28 +152,37 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 `GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
 
 - `slots[]` 字段为 `id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled,version`；已满或服务端停用的时段 `enabled=false`。在当前未发布阶段，时段结束时间不限制下单；仍须属于今天或明天、服务端启用且有剩余名额。
-- `dishes[]` 字段为 `id,merchantId,type,name,priceFen,availableQuantity,onSale,version`。`type` 取值 `STAPLE`（主食）/`SNACK`（小吃）/`DRINK`（饮品）/`SET`（套餐），由新增菜品时写入。`GET /menu` 返回全部菜品；档口端必须按登录身份 `merchantId` 过滤展示，未登录不展示档口菜单；服务端写操作按归属校验，不依赖客户端过滤作为安全边界。
+- `dishes[]` 字段为 `id,merchantId,shopId,type,name,priceFen,availableQuantity,onSale,version,imageUrl,flavorGroups,sides,addOns`。`type` 取值 `STAPLE`（主食）/`SNACK`（小吃）/`DRINK`（饮品）/`SET`（套餐），由新增菜品时写入。`GET /menu` 返回全部菜品（若店铺已配置该日每日菜单，则仅返回该日上架菜品并覆盖每日库存）；档口端按登录身份过滤展示，服务端写操作按归属校验。
 - `version` 与 `PUT /merchant/menu/{dishId}`、`PUT /merchant/slots/{slotId}` 的 `expectedVersion` 同源；保存成功后 `version` + 1 并在响应中返回新版本；旧版本返回 `MENU_VERSION_CONFLICT`（409）。
 
-### 商家注册、创建店铺与新增菜品（v0.4 增补）
+### 商家注册、多店管理、每日菜单、营业时间与钱包（v0.4—v0.7 增补）
 
-仅 `MERCHANT` 会话可调用；身份与 `merchantId` 全部取自服务端会话，客户端传入的 `merchantId`/`role` 一律拒绝。所有写请求带 `requestId`，同一身份+操作+requestId 返回首次结果，同键不同内容返回 `REQUEST_CONFLICT`。
+仅 `MERCHANT` 会话可调用；身份与归属校验全部取自服务端会话，客户端传入的越权字段一律拒绝。所有写请求带 `requestId`，同一身份+操作+requestId 返回首次结果，同键不同内容返回 `REQUEST_CONFLICT`。
 
 | 方法与路径 | 请求字段 | 成功响应 |
 | --- | --- | --- |
-| GET /merchant/profile | 无 | `{ merchant, shop, onboardingStep }`；`onboardingStep` 为 `UNREGISTERED`/`REGISTERED`/`SHOP_CREATED` |
-| POST /merchant/registration | `requestId, merchantName(2—30), contactName(2—20), contactPhone(11 位大陆手机号)` | 201 `{ merchant, shop, onboardingStep }` |
-| POST /merchant/shops | `requestId, shopName(2—30), location(2—50), description?(≤100)` | 201 `{ merchant, shop, onboardingStep }` |
-| POST /merchant/menu | `requestId, type, name(1—30), priceFen(1—1000000), availableQuantity(0—10000), onSale?(默认 true)` | 201 `{ id, merchantId, type, name, priceFen, availableQuantity, onSale, version:1 }` |
+| GET /merchant/profile | 无 | `{ merchant, shop, shops[], activeShopId, activeMerchantId, onboardingStep }`；`onboardingStep` 为 `UNREGISTERED`/`REGISTERED`/`SHOP_CREATED` |
+| PATCH/PUT /merchant/profile | `requestId, merchantName?, contactName?, contactPhone?` | 200 `{ merchant, shop, shops[], activeShopId, activeMerchantId, onboardingStep }` |
+| POST /merchant/registration | `requestId, merchantName(2—30), contactName(2—20), contactPhone(11 位大陆手机号), openAt?, closeAt?` | 201 `{ merchant, shop, shops[], activeShopId, activeMerchantId, onboardingStep }` |
+| GET /merchant/shops | 无 | 200 `{ shops[], activeShopId, activeMerchantId }` |
+| POST /merchant/shops | `requestId, shopName(2—30), location(2—50), description?(≤100), openAt?, closeAt?, active?` | 201 `{ merchant, shop, shops[], activeShopId, activeMerchantId, onboardingStep }` |
+| PATCH/PUT /merchant/shops/{shopId}（及 `/merchant/shop`） | `requestId, expectedVersion?, shopName?, location?, description?, openAt?, closeAt?, active?` | 200 `{ merchant, shop, shops[], activeShopId, activeMerchantId, onboardingStep }` |
+| PUT/PATCH /merchant/shops/{shopId}/business-hours（及 `/merchant/shop/business-hours`） | `requestId, expectedVersion?, openAt?, closeAt?, active?` | 200 `{ merchantId, shopId, openAt, closeAt, active, status, version }` |
+| POST /merchant/shops/{shopId}/select | 无 | 200 `{ merchant, shop, shops[], activeShopId, activeMerchantId, onboardingStep }` |
+| POST /merchant/images | JSON `{ dataUrl, requestId? }` / 原始二进制 / multipart | 201 `{ id, imageUrl, mimeType, sizeBytes }` |
+| GET /merchant/dishes | query `shopId?` | 200 `{ dishes[] }`（完整菜品库，含 `imageUrl/flavorGroups/sides/addOns`） |
+| PUT /merchant/menus/{date} | `requestId, shopId?, dishes[{dishId, availableQuantity}]` | 200 `{ date, merchantId, shopId, dishes[], slots[] }` |
+| POST /merchant/menu | `requestId, shopId?, type, name(1—30), priceFen(1—1000000), availableQuantity(0—10000), onSale?, imageUrl?, flavorGroups?, sides?, addOns?` | 201 `{ id, merchantId, shopId, type, name, priceFen, availableQuantity, onSale, version:1, imageUrl, flavorGroups, sides, addOns }` |
+| GET /merchant/wallet | query `shopId?` | 200 `{ balanceFen, totalIncomeFen, totalWithdrawnFen, pendingSettlementFen, entries[], demo }` |
+| POST /merchant/wallet/withdraw | `requestId, amountFen(1—10000000), shopId?, label?` | 201 `{ balanceFen, totalIncomeFen, totalWithdrawnFen, pendingSettlementFen, entries[], demo }` |
 
-- `merchant`：`{ id, name, contactName, contactPhone(掩码 138****8000), status, createdAt }`；`shop`：`{ id, merchantId, name, location, description, version }`。
-- 注册与创建店铺的成功响应与 `GET /merchant/profile` 使用同一结构（`merchant/shop/onboardingStep`），档口端可直接映射，无需再额外查询。
-- 注册成功后服务端把该账号的 `merchantId` 落库，随后的 `GET /me` 与同一令牌请求直接生效，**不要求重新登录**。演示档口 `demo-merchant` 已有 `merchantId` 但未注册，可补注册一次；已注册账号再次注册返回 409 `MERCHANT_ALREADY_REGISTERED`。
-- 首版一账号一店：已有店铺再次创建返回 409 `SHOP_ALREADY_EXISTS`；未注册账号创建店铺或新增菜品返回 409 `MERCHANT_NOT_REGISTERED`。
+- `merchant`：`{ id, name, contactName, contactPhone(掩码 138****8000), openAt, closeAt, active, status, createdAt }`；`shop`：`{ id, merchantId, name, location, description, openAt, closeAt, active, status, version }`。
+- 注册成功后服务端把该账号的 `merchantId` 落库，随后的 `GET /me` 与同一令牌请求直接生效，**不要求重新登录**。演示档口 `demo-merchant` 与自助注册账号均已有未登记占位 `merchantId`，可补注册一次；已注册账号再次注册返回 409 `MERCHANT_ALREADY_REGISTERED`。
+- 多店支持：同一商家账号可多次调用 `POST /merchant/shops` 开立多家不同名称的店铺（同名返回 409 `SHOP_NAME_DUPLICATE`）；每家分店拥有独立 `shopId`、`merchantId`、营业时间与营业开关。未注册账号创建店铺或新增菜品返回 409 `MERCHANT_NOT_REGISTERED`。
 - 同店菜品名称不允许重复（`DISH_NAME_DUPLICATE`）；`priceFen` 最小 1 分（不允许 0 元菜），可售数量 0 表示暂不可售但仍展示；类型枚举不允许自定义。
-- 新增菜品为全局菜单，不按日期/时段上架；学生端 `GET /menu` 立即可见并可下单引用新 `dishId`。学生端按 `merchantId` 过滤展示，`type` 由前端展示。
+- 新增菜品默认全局可见；若商家通过 `PUT /merchant/menus/{date}` 配置了某日每日菜单，则该日 `GET /menu` 与 `POST /orders` 按每日菜单上架项与每日库存扣减/恢复。
 - 跨店访问按不存在处理：`MERCHANT_NOT_FOUND`/`SHOP_NOT_FOUND`/`DISH_NOT_FOUND`（404），不泄露其他商家是否存在。
-- 只支持今天和明天；其他日期返回 VALIDATION_ERROR。
+- 菜单与每日菜单支持未来 7 天（含今天）；其他日期返回 `VALIDATION_ERROR`。
 
 ### 学生店铺列表与订单店铺字段（v0.4 增补）
 
@@ -199,12 +227,12 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 | 401 | SESSION_EXPIRED | 提示会话过期并重新登录，不重复提交原写操作 |
 | 403 | FORBIDDEN | 拒绝越权操作 |
 | 404 | ORDER_NOT_FOUND | 订单不存在或对当前身份不可见 |
-| 404 | MERCHANT_NOT_FOUND / SHOP_NOT_FOUND / DISH_NOT_FOUND | 商家/店铺/菜品不存在或不属于当前商家，不泄露其他商家 |
+| 404 | MERCHANT_NOT_FOUND / SHOP_NOT_FOUND / DISH_NOT_FOUND / IMAGE_NOT_FOUND | 商家/店铺/菜品/图片不存在或不属于当前商家，不泄露其他商家 |
 | 409 | OUT_OF_STOCK / SLOT_FULL / SLOT_CLOSED | 刷新可售信息，保留学生选择供调整 |
-| 409 | REQUEST_CONFLICT / ORDER_VERSION_CONFLICT | 不创建另一单；核对或刷新再确认 |
+| 409 | REQUEST_CONFLICT / ORDER_VERSION_CONFLICT / SHOP_VERSION_CONFLICT | 不创建另一单或覆盖新资料；核对或刷新再确认 |
 | 409 | INVALID_ORDER_STATE / ALREADY_CANCELLED | 显示当前状态，不重复修改或返还 |
 | 409 | DISH_IN_USE | 该菜品存在未结束订单，提示先停售或等待订单结束，不删除菜品 |
-| 409 | MERCHANT_ALREADY_REGISTERED / CONTACT_PHONE_TAKEN / SHOP_ALREADY_EXISTS / DISH_NAME_DUPLICATE / MERCHANT_NOT_REGISTERED | 保留输入并显示明确原因；不重复创建或覆盖已有资料 |
+| 409 | MERCHANT_ALREADY_REGISTERED / CONTACT_PHONE_TAKEN / SHOP_NAME_DUPLICATE / DISH_NAME_DUPLICATE / MERCHANT_NOT_REGISTERED / INSUFFICIENT_BALANCE | 保留输入并显示明确原因；不重复创建、不超额提现 |
 | 409 | ACCOUNT_TAKEN | 注册账号已被使用；请更换账号 |
 | 409 | PICKUP_CODE_USED / PICKUP_CODE_INVALID | 核销未成功，不改已取状态 |
 | 429 | RATE_LIMITED | 请求过于频繁；稍后重试，保留用户输入 |
