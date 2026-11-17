@@ -566,6 +566,12 @@ export default function OrderDetailPage({
                 <span>时段范围：</span>
                 <span>{statusView.slotRangeText}</span>
               </div>
+              {statusView.remark ? (
+                <div className="order-extra-row">
+                  <span>订单备注：</span>
+                  <span>{statusView.remark}</span>
+                </div>
+              ) : null}
               {statusView.delayText ? (
                 <p style={{ color: '#d97706', margin: '0.2rem 0' }}>{statusView.delayText}</p>
               ) : null}

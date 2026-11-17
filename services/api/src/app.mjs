@@ -8,6 +8,7 @@ import {
   changeDiningMode,
   createOrder,
   decideCancellation,
+  deleteMerchantDish,
   getOrder,
   listAdminOrders,
   listMenu,
@@ -202,6 +203,11 @@ export function createApp({ db, clock, logger = () => {} }) {
       method: 'PUT',
       pattern: /^\/api\/v1\/merchant\/menu\/(?<dishId>[^/]+)$/,
       handler: withBody(['MERCHANT'], (ctx) => updateMerchantDish({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+    {
+      method: 'DELETE',
+      pattern: /^\/api\/v1\/merchant\/menu\/(?<dishId>[^/]+)$/,
+      handler: withBody(['MERCHANT'], (ctx) => deleteMerchantDish({ ...ctx, params: decodeParams(ctx.params) })),
     },
     {
       method: 'PUT',

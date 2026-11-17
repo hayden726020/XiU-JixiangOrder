@@ -11,6 +11,13 @@ import {
   sampleDates,
   toDishDto,
 } from '../src/modules/student/data/sampleData.ts';
+import { ORDER_REMARK_MAX_LENGTH, sanitizeOrderRemark } from '../src/modules/student/utils/remark.ts';
+
+test('sanitizeOrderRemark trims control chars and caps remark at 50 chars', () => {
+  assert.equal(ORDER_REMARK_MAX_LENGTH, 50);
+  assert.equal(sanitizeOrderRemark('  不要辣\u0007，少放盐  '), '不要辣，少放盐');
+  assert.equal(sanitizeOrderRemark('好'.repeat(60)).length, 50);
+});
 
 test('sampleData provides 7 dynamic dates, 08:00-22:00 slots, and dish availability across all dates', () => {
   assert.equal(typeof sampleDates, 'function');

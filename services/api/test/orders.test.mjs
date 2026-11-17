@@ -89,7 +89,7 @@ test('只剩一份时并发下单最多成功一笔', async () => {
   assert.equal(count, 1);
 });
 
-test('只剩一个名额时并发下单最多成功一笔', async () => {
+test('并发下单不受时段名额限制', async () => {
   const token = await ctx.login('student');
   ctx.db.prepare('UPDATE slots SET capacity = 1, booked_count = 0 WHERE id = ?').run(SLOT_TODAY);
   const [first, second] = await Promise.all([
@@ -97,9 +97,9 @@ test('只剩一个名额时并发下单最多成功一笔', async () => {
     placeOrder(token, 'race-slot-2'),
   ]);
   const successes = [first, second].filter((response) => response.status === 201);
-  assert.equal(successes.length, 1);
+  assert.equal(successes.length, 2);
   const slot = ctx.db.prepare('SELECT booked_count FROM slots WHERE id = ?').get(SLOT_TODAY);
-  assert.equal(slot.booked_count, 1);
+  assert.equal(slot.booked_count, 2);
 });
 
 test('已结束但仍启用且有名额的时段仍可下单', async () => {
@@ -184,14 +184,14 @@ test('菜单只允许今天或明天，并返回剩余名额', async () => {
   assert.equal(today.body.data.slots.length, 3);
   assert.equal(today.body.data.slots[0].remainingCapacity, 20);
   assert.equal(today.body.data.slots[2].remainingCapacity, 0);
-  assert.equal(today.body.data.slots[2].enabled, false);
+  assert.equal(today.body.data.slots[2].enabled, true);
   assert.ok(today.body.data.dishes.length >= 1);
 
   const fullSlot = await placeOrder(await ctx.login('student'), 'full-slot-1', {
     slotId: 'slot-2026-11-13-lunch-3',
   });
-  assert.equal(fullSlot.status, 409);
-  assert.equal(fullSlot.body.error.code, 'SLOT_FULL');
+  assert.equal(fullSlot.status, 201);
+  assert.equal(fullSlot.body.data.slotId, 'slot-2026-11-13-lunch-3');
 
   const tomorrow = await ctx.api('GET', '/menu?date=2026-11-14');
   assert.equal(tomorrow.status, 200);
@@ -240,4 +240,41 @@ test('档口订单列表支持状态筛选分页且不暴露取餐码', async ()
   const invalidStatus = await ctx.api('GET', '/merchant/orders?status=INVALID', { token: merchantToken });
   assert.equal(invalidStatus.status, 400);
   assert.equal(invalidStatus.body.error.code, 'VALIDATION_ERROR');
+});
+
+test('订单备注随订单保存并在列表与详情返回', async () => {
+  const token = await ctx.login('student');
+  const response = await placeOrder(token, 'remark-1', { remark: '少放盐，多给点汤汁' });
+  assert.equal(response.status, 201);
+  assert.equal(response.body.data.remark, '少放盐，多给点汤汁');
+
+  const list = await ctx.api('GET', '/orders', { token });
+  assert.equal(list.body.data.orders[0].remark, '少放盐，多给点汤汁');
+
+  const detail = await ctx.api('GET', `/orders/${response.body.data.id}`, { token });
+  assert.equal(detail.body.data.remark, '少放盐，多给点汤汁');
+});
+
+test('未填写备注时订单备注为 null', async () => {
+  const token = await ctx.login('student');
+  const response = await placeOrder(token, 'remark-null');
+  assert.equal(response.status, 201);
+  assert.equal(response.body.data.remark, null);
+});
+
+test('订单备注超过 50 字被拒绝且不创建订单', async () => {
+  const token = await ctx.login('student');
+  const response = await placeOrder(token, 'remark-2', { remark: '备'.repeat(51) });
+  assert.equal(response.status, 400);
+  assert.equal(response.body.error.code, 'VALIDATION_ERROR');
+  const count = ctx.db.prepare('SELECT COUNT(*) AS count FROM orders').get().count;
+  assert.equal(count, 0);
+});
+
+test('同一 requestId 修改备注视为不同内容', async () => {
+  const token = await ctx.login('student');
+  await placeOrder(token, 'remark-3', { remark: '少放盐' });
+  const response = await placeOrder(token, 'remark-3', { remark: '不要辣' });
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error.code, 'REQUEST_CONFLICT');
 });

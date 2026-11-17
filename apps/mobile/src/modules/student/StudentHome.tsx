@@ -153,7 +153,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
   const [shopNotice, setShopNotice] = useState('');
 
-  function goTo(next: StudentView): void {
+  function applyViewTransition(next: StudentView): void {
     const commit = () => {
       setView(next);
       window.scrollTo(0, 0);
@@ -192,9 +192,37 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
     }
   }
 
-  function goToShop(tab: 'home' | 'order' = 'home'): void {
+  function goTo(next: StudentView, nav: 'push' | 'back' | 'replace' = 'push'): void {
+    if (nav === 'back') {
+      const state = window.history.state as { module?: string; studentView?: StudentView } | null;
+      if (state && state.module === 'student' && state.studentView !== 'shop') {
+        window.history.back();
+        return;
+      }
+    }
+    if (nav === 'replace') {
+      window.history.replaceState({ module: 'student', studentView: next }, '');
+    } else {
+      window.history.pushState({ module: 'student', studentView: next }, '');
+    }
+    applyViewTransition(next);
+  }
+
+  useEffect(() => {
+    window.history.replaceState({ module: 'student', studentView: 'shop' }, '');
+    const onPopState = (event: PopStateEvent) => {
+      const state = event.state as { module?: string; studentView?: StudentView } | null;
+      const nextView = state && state.module === 'student' ? (state.studentView ?? 'shop') : 'shop';
+      setView(nextView);
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  function goToShop(tab: 'home' | 'order' = 'home', nav: 'push' | 'back' = 'push'): void {
     setShopLandingTab(tab);
-    goTo('shop');
+    goTo('shop', nav);
   }
 
   function openOrder(id: string): void {
@@ -237,7 +265,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
     return (
       <OrderListPage
         source={source}
-        onBack={() => goToShop('home')}
+        onBack={() => goToShop('home', 'back')}
         backLabel="← 返回店铺选择"
         onOpenOrder={(id) => openOrderFrom('orders', id)}
         onGoToHome={() => goToShop('home')}
@@ -252,7 +280,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
       <OrderDetailPage
         source={source}
         orderId={orderId}
-        onBack={() => goTo('orders')}
+        onBack={() => goTo('orders', 'back')}
         backLabel="← 返回我的订单"
         onGoToHome={() => goToShop('home')}
         onGoToShop={() => goToShop('order')}
@@ -303,7 +331,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
         source={source}
         draft={draft}
         shop={currentShop}
-        onBack={() => goTo('menu')}
+        onBack={() => goTo('menu', 'back')}
         onConfirm={() => goTo('confirm')}
       />
     );
@@ -315,9 +343,13 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
         source={source}
         draft={draft}
         shop={currentShop}
-        onBack={() => goTo('slot')}
-        onBackToMenu={() => goTo('menu')}
-        onSubmitted={(id) => openOrderFrom('menu', id)}
+        onBack={() => goTo('slot', 'back')}
+        onBackToMenu={() => goTo('menu', 'back')}
+        onSubmitted={(id) => {
+          setDetailFrom('menu');
+          setOrderId(id);
+          goTo('order', 'replace');
+        }}
       />
     );
   }
@@ -327,7 +359,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
     return (
       <OrderListPage
         source={source}
-        onBack={() => goTo(backToShops ? 'shop' : 'menu')}
+        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
         backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
         onGoToHome={() => goToShop('home')}
@@ -343,7 +375,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
       <OrderDetailPage
         source={source}
         orderId={orderId}
-        onBack={() => goTo(backTarget)}
+        onBack={() => goTo(backTarget, 'back')}
         backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
         onGoToHome={() => goToShop('home')}
         onGoToShop={() => goToShop('order')}
@@ -358,7 +390,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
       source={source}
       draft={draft}
       shop={currentShop}
-      onBackToShops={() => goToShop('home')}
+      onBackToShops={() => goToShop('home', 'back')}
       onProceed={() => goTo('slot')}
       onOpenOrders={() => openOrders('menu')}
       onOpenProfile={() => goTo('profile')}

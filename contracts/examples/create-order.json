@@ -1,9 +1,9 @@
 {
   "_meta": {
-    "contractVersion": "DRAFT v0.3",
+    "contractVersion": "DRAFT v0.5",
     "fictional": true,
     "implemented": true,
-    "note": "字段按 DRAFT v0.3 联调候选更新；ID、时间和菜品均为虚构样例，不是实际服务返回或真实学生数据。"
+    "note": "字段按 DRAFT v0.3 联调候选与 v0.5 增补更新；ID、时间和菜品均为虚构样例，不是实际服务返回或真实学生数据。"
   },
   "request": {
     "method": "POST",
@@ -17,7 +17,8 @@
         }
       ],
       "slotId": "demo-slot-20261113-lunch",
-      "diningMode": "DINE_IN"
+      "diningMode": "DINE_IN",
+      "remark": "少放盐，多给点汤汁"
     }
   },
   "response": {
@@ -38,6 +39,7 @@
         "slotEnd": "2026-11-13T12:00:00+08:00",
         "diningMode": "DINE_IN",
         "diningModeReason": null,
+        "remark": "少放盐，多给点汤汁",
         "totalFen": 1800,
         "status": "NEW",
         "paymentStatus": "SIMULATED_PAID",

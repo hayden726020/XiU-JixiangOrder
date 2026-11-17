@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS orders (
   slot_id TEXT NOT NULL REFERENCES slots(id),
   dining_mode TEXT NOT NULL CHECK (dining_mode IN ('DINE_IN', 'TAKEAWAY')),
   dining_mode_reason TEXT,
+  remark TEXT,
   total_fen INTEGER NOT NULL,
   status TEXT NOT NULL,
   payment_status TEXT NOT NULL,
@@ -186,6 +187,9 @@ export function createDatabase(path = ':memory:') {
   }
   if (!orderColumns.some((column) => column.name === 'merchant_name')) {
     db.exec('ALTER TABLE orders ADD COLUMN merchant_name TEXT;');
+  }
+  if (!orderColumns.some((column) => column.name === 'remark')) {
+    db.exec('ALTER TABLE orders ADD COLUMN remark TEXT;');
   }
   const merchantColumns = db.prepare('PRAGMA table_info(merchants)').all();
   if (!merchantColumns.some((column) => column.name === 'contact_name')) {

@@ -2,6 +2,24 @@
 
 更新日期：2026-11-17。方案版本：APK-v2（增加开店、选店与学生开放注册后端扩展范围）。维护人：spcuteag。
 
+## 2026-11-17 全分支合并、线上 ECS 服务端同步与 APK 1.37 构建（versionCode 38）
+
+- 解决三分支分散与线上服务端未同步两项阻塞，在 `docs/readme-status` 基线上完成全量整合：
+  1. **后端接口全量合入并同步至阿里云 ECS（`https://39.96.195.158/api/v1`）**：
+     - 合入 `445f22c`（订单备注 `remark`、商家菜品改名/改类别/删除 `DELETE /api/v1/merchant/menu/:dishId`）与 `85ed5b2`（取消时段接单名额上限，满额不再抛 `SLOT_FULL`），并与 `8cc9838`（学生开放注册 `/api/v1/auth/student-register`、通用登录 `/api/v1/auth/login`、15 分钟限流、NOCASE 索引）及晚间时段可约规则合并。
+     - 本地与 ECS 服务器 `services/api` 全量自动化测试均 **98/98 通过（0 失败）**。
+  2. **学生端全功能整合**：
+     - 保留手账/卡片风格视觉、iOS 进出过渡、底栏液态动效、「演示模式 / 真实模式」顶部切换按钮（`localStorage` 记忆）、7 天动态日期与 08:00—22:00 时段、学生开放注册/登录切换页。
+     - 合入确认订单页备注输入（50 字上限 + 5 个常用口味快捷标签 + 订单详情备注展示，`9cb2926`）与 Android 历史栈返回上一页（`pushState` / `popstate`，`138279a`）。
+  3. **商家端与管理端最新页面同步**：
+     - 合入 `origin/frontend/handoff-2026-11-17 @ 3e1710d` 的完整商家端模块（真实模式档口登录页、菜品新增/改名/改类别/删除、加料自定义编辑器与预览、订单列表与详情定时自动发现新单、底部「菜单 / 订单 / 我的」三栏导航、开店完成回列表与取消回角色入口）。
+     - 保留管理端重设计页面（`9091620`）。
+- 验证与产物：
+  - `node --prefix apps/mobile --test apps/mobile/test/*.mjs`：**12/12 通过**。
+  - `npm --prefix services/api test`：**98/98 通过**。
+  - `npm --prefix apps/mobile run build`（`tsc --noEmit && vite build`）：**通过**（164 modules，`dist/assets/index-DTJnadPC.js`）。
+  - **APK 1.37（`versionCode 38`）**：[app-debug.apk](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk)，大小 `8,274,146` 字节，SHA-256 `cf2df765078abb7f2ec600be6f5abe709a3be06daadfe937b576ce31cf5c3134`。
+
 ## 2026-11-17 已实现改动合并与 APK 1.36 构建（versionCode 37）
 
 - 在 `docs/readme-status` 基线上合并当前已实现的未合并项并完成 debug APK 重打：

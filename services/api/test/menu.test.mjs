@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
-import { DISH, SLOT_TODAY, startTestServer } from './helpers.mjs';
+import { DISH, SLOT_TODAY, orderBody, startTestServer } from './helpers.mjs';
 
 let ctx;
 
@@ -180,4 +180,72 @@ test('学生不能保存时段，管理员可以保存时段', async () => {
   });
   assert.equal(allowed.status, 200);
   assert.equal(allowed.body.data.version, 2);
+});
+test('档口可修改菜品名称与类别', async () => {
+  const token = await ctx.login('merchant');
+  const saved = await ctx.api('PUT', `/merchant/menu/${DISH}`, {
+    token,
+    body: dishBody('menu-rename-1', { name: '新鸡肉饭', type: 'SET' }),
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.data.name, '新鸡肉饭');
+  assert.equal(saved.body.data.type, 'SET');
+  assert.equal(saved.body.data.version, 2);
+
+  const menu = await ctx.api('GET', '/menu?date=2026-11-13');
+  const dish = menu.body.data.dishes.find((item) => item.id === DISH);
+  assert.equal(dish.name, '新鸡肉饭');
+  assert.equal(dish.type, 'SET');
+});
+
+test('档口可删除菜品，删除后菜单不再返回', async () => {
+  const token = await ctx.login('merchant');
+  const removed = await ctx.api('DELETE', `/merchant/menu/${DISH}`, {
+    token,
+    body: { requestId: 'menu-delete-1', expectedVersion: 1 },
+  });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.body.data.id, DISH);
+
+  const menu = await ctx.api('GET', '/menu?date=2026-11-13');
+  assert.equal(menu.body.data.dishes.some((item) => item.id === DISH), false);
+});
+
+test('删除有未结束订单的菜品返回 DISH_IN_USE', async () => {
+  const student = await ctx.login('student');
+  const order = await ctx.api('POST', '/orders', { token: student, body: orderBody('delete-in-use-order') });
+  assert.equal(order.status, 201);
+
+  const token = await ctx.login('merchant');
+  const current = ctx.db.prepare('SELECT version FROM dishes WHERE id = ?').get(DISH);
+  const removed = await ctx.api('DELETE', `/merchant/menu/${DISH}`, {
+    token,
+    body: { requestId: 'menu-delete-2', expectedVersion: current.version },
+  });
+  assert.equal(removed.status, 409);
+  assert.equal(removed.body.error.code, 'DISH_IN_USE');
+});
+
+test('删除菜品受版本与档口归属约束', async () => {
+  const token = await ctx.login('merchant');
+  const stale = await ctx.api('DELETE', `/merchant/menu/${DISH}`, {
+    token,
+    body: { requestId: 'menu-delete-3', expectedVersion: 2 },
+  });
+  assert.equal(stale.status, 409);
+  assert.equal(stale.body.error.code, 'MENU_VERSION_CONFLICT');
+
+  const otherDish = await ctx.api('DELETE', '/merchant/menu/demo-dish-02', {
+    token,
+    body: { requestId: 'menu-delete-4', expectedVersion: 1 },
+  });
+  assert.equal(otherDish.status, 404);
+  assert.equal(otherDish.body.error.code, 'DISH_NOT_FOUND');
+
+  const student = await ctx.login('student');
+  const forbiddenDelete = await ctx.api('DELETE', `/merchant/menu/${DISH}`, {
+    token: student,
+    body: { requestId: 'menu-delete-5', expectedVersion: 1 },
+  });
+  assert.equal(forbiddenDelete.status, 403);
 });

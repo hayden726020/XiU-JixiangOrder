@@ -81,6 +81,7 @@ export interface OrderStatusView {
   cancelRuleText: string;
   changeDiningRuleText: string;
   version: number;
+  remark: string;
 }
 
 function parseShanghai(iso: string | null | undefined): ParsedShanghaiTime | null {
@@ -199,5 +200,6 @@ export function toOrderStatusView(
     cancelRuleText: CANCEL_RULE_TEXT,
     changeDiningRuleText: CHANGE_DINING_RULE_TEXT,
     version: order.version,
+    remark: typeof order.remark === 'string' ? order.remark : '',
   };
 }

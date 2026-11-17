@@ -58,6 +58,39 @@ export interface Dish {
   availableQuantity: number;
   onSale: boolean;
   version: number | null;
+  imageUrl: string | null;
+}
+
+export interface DishOption {
+  id: string;
+  name: string;
+  priceFen: number;
+}
+
+export interface DishFlavorGroup {
+  id: string;
+  name: string;
+  required: boolean;
+  options: DishOption[];
+}
+
+export interface DishCustomization {
+  imageUrl: string | null;
+  flavorGroups: DishFlavorGroup[];
+  sides: DishOption[];
+  addOns: DishOption[];
+}
+
+export interface DishCustomizationDraft {
+  imageUrl: string | null;
+  flavorGroups: Array<{
+    id: string;
+    name: string;
+    required: boolean;
+    options: Array<{ id: string; name: string }>;
+  }>;
+  sides: Array<{ id: string; name: string }>;
+  addOns: Array<{ id: string; name: string; priceText: string }>;
 }
 
 export interface MenuDay {
@@ -147,9 +180,30 @@ export interface ChangeDiningModeInput {
 export interface UpdateDishInput {
   requestId: string;
   expectedVersion: number | null;
+  name: string;
+  type: DishType;
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+}
+
+export interface DeleteDishInput {
+  requestId: string;
+  expectedVersion: number | null;
+}
+
+export interface DailyMenuSelection {
+  dishId: string;
+  availableQuantity: number;
+}
+
+export interface SetDailyMenuInput {
+  requestId: string;
+  dishes: DailyMenuSelection[];
+}
+
+export interface DeletedDish {
+  dishId: string;
 }
 
 export interface UpdateSlotInput {
@@ -181,7 +235,7 @@ export interface MerchantProfile {
 
 export interface MerchantRegistrationInput {
   requestId: string;
-  merchantName: string;
+  merchantName?: string;
   contactName: string;
   contactPhone: string;
 }
@@ -208,6 +262,8 @@ export interface MerchantSource {
   getOrders: (page?: number, pageSize?: number) => Promise<SourceResult<OrderPage>>;
   getOrder: (id: string) => Promise<SourceResult<MerchantOrder>>;
   getMenu: (date: string) => Promise<SourceResult<MenuDay>>;
+  getDishLibrary: (date: string) => Promise<SourceResult<Dish[]>>;
+  setDailyMenu: (date: string, input: SetDailyMenuInput) => Promise<SourceResult<MenuDay>>;
   getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
   getProfile: () => Promise<SourceResult<MerchantProfile>>;
   registerMerchant: (input: MerchantRegistrationInput) => Promise<SourceResult<MerchantProfile>>;
@@ -220,5 +276,6 @@ export interface MerchantSource {
   setDelay: (id: string, input: SetDelayInput) => Promise<SourceResult<MerchantOrder>>;
   changeDiningMode: (id: string, input: ChangeDiningModeInput) => Promise<SourceResult<MerchantOrder>>;
   updateDish: (date: string, dishId: string, input: UpdateDishInput) => Promise<SourceResult<Dish>>;
+  deleteDish: (date: string, dishId: string, input: DeleteDishInput) => Promise<SourceResult<DeletedDish>>;
   updateSlot: (date: string, slotId: string, input: UpdateSlotInput) => Promise<SourceResult<Slot>>;
 }

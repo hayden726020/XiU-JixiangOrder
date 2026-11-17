@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createRequestId } from '../../../shared/requestId';
-import { runAfterBackPress } from '../../../shared/backPress';
 import type { Session } from '../../../shared/session';
 import type { MerchantSource } from '../data/types';
 import {
@@ -12,6 +11,14 @@ import {
   type OnboardingField,
   type ShopDraft,
 } from '../state/onboarding';
+import wallPhoto1 from '../assets/wall-1.webp';
+import wallPhoto2 from '../assets/wall-2.webp';
+import wallPhoto3 from '../assets/wall-3.webp';
+import wallPhoto4 from '../assets/wall-4.webp';
+import wallPhoto5 from '../assets/wall-5.webp';
+import wallPhoto6 from '../assets/wall-6.webp';
+import brandChef from '../assets/brand-chef.png';
+import brandWordmark from '../assets/brand-wordmark-v2.png';
 
 type Step = 1 | 2;
 
@@ -20,10 +27,11 @@ interface OnboardingPageProps {
   session: Session | null;
   source: MerchantSource;
   onBack: () => void;
+  onCancel: () => void;
 }
 
 const EMPTY_MERCHANT: MerchantRegistrationDraft = {
-  merchantName: '',
+
   contactName: '',
   contactPhone: '',
 };
@@ -39,11 +47,62 @@ const STEPS: ReadonlyArray<{ id: Step; label: string }> = [
   { id: 2, label: '创建店铺' },
 ];
 
+const WALL_PHOTOS = [
+  wallPhoto1,
+  wallPhoto2,
+  wallPhoto3,
+  wallPhoto4,
+  wallPhoto5,
+  wallPhoto6,
+];
+
+function OnboardingHero() {
+  return (
+    <section className="onboarding-hero" aria-label="食麦呼 · 档口端 与您一起，打造更好的食堂体验">
+      <img
+        className="onboarding-hero__wordmark"
+        src={brandWordmark}
+        alt="食麦呼 · 与您一起，打造更好的食堂体验"
+      />
+      <img className="onboarding-hero__chef" src={brandChef} alt="" aria-hidden="true" />
+    </section>
+  );
+}
+
+function OnboardingWallFrames({ reversed = false }: { reversed?: boolean }) {
+  const photos = reversed ? [...WALL_PHOTOS].reverse() : [...WALL_PHOTOS];
+  return (
+    <>
+      {[...photos, ...photos].map((src, index) => (
+        <figure className="onboarding-wall__frame" key={`${src}-${index}`}>
+          <span className="onboarding-wall__photo">
+            <img src={src} alt="" />
+          </span>
+        </figure>
+      ))}
+    </>
+  );
+}
+
+function OnboardingWall() {
+  return (
+    <div className="onboarding-wall" aria-hidden="true">
+      <div className="onboarding-wall__row onboarding-wall__row--top">
+        <OnboardingWallFrames />
+      </div>
+      <div className="onboarding-wall__row onboarding-wall__row--bottom">
+        <OnboardingWallFrames reversed />
+      </div>
+    </div>
+  );
+}
+
 export default function OnboardingPage({
   mode,
   session,
   source,
   onBack,
+  onCancel,
 }: OnboardingPageProps) {
   const [step, setStep] = useState<Step>(1);
   const [merchant, setMerchant] = useState<MerchantRegistrationDraft>(EMPTY_MERCHANT);
@@ -224,7 +283,7 @@ export default function OnboardingPage({
   if (!allowed) {
     return (
       <div className="merchant-view" data-onboarding-blocked="true">
-        <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)} data-onboarding-back>← 返回角色入口</button>
+        <button type="button" className="back-link" onClick={onBack} data-onboarding-back>← 返回订单列表</button>
         <header className="merchant-view__header">
           <div>
             <h2>商家注册与开店</h2>
@@ -247,6 +306,8 @@ export default function OnboardingPage({
 
   return (
     <div className="merchant-view onboarding-page">
+      <OnboardingHero />
+      <OnboardingWall />
       <section className="onboarding-overview" aria-labelledby="onboarding-title">
         <header className="merchant-view__header">
           <div>
@@ -301,26 +362,14 @@ export default function OnboardingPage({
             noValidate
           >
             <div className="onboarding-field">
-              <label htmlFor="onboarding-merchant-name">商家名称</label>
-              <input
-                id="onboarding-merchant-name"
-                value={merchant.merchantName}
-                onChange={(event) => updateMerchant('merchantName', event.target.value)}
-                maxLength={30}
-                placeholder="合同主体名称，2—30 个字符"
-                autoComplete="organization"
-                data-field="merchantName"
-              />
-              {errors.merchantName && <p className="field-error" role="alert" data-error="merchantName">{errors.merchantName}</p>}
-            </div>
-            <div className="onboarding-field">
-              <label htmlFor="onboarding-contact-name">联系人</label>
+
+              <label htmlFor="onboarding-contact-name">店铺负责人</label>
               <input
                 id="onboarding-contact-name"
                 value={merchant.contactName}
                 onChange={(event) => updateMerchant('contactName', event.target.value)}
                 maxLength={20}
-                placeholder="档口负责人，2—20 个字符"
+                placeholder="店铺负责人，2—20 个字符"
                 autoComplete="name"
                 data-field="contactName"
               />
@@ -356,7 +405,7 @@ export default function OnboardingPage({
             <button
               type="button"
               className="action-button onboarding-cancel"
-              onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}
+              onClick={onCancel}
               disabled={saving !== null}
               data-action="cancel-onboarding"
             >
@@ -371,7 +420,7 @@ export default function OnboardingPage({
           <h3>2 创建店铺</h3>
           <p className="hint">店铺会绑定当前档口账号；页面不填写 merchantId，避免替别的店操作。</p>
           <p className="onboarding-summary" data-merchant-preview>
-            商家草稿：{merchant.merchantName} · {merchant.contactName} · {merchant.contactPhone}
+            商家草稿：{merchant.contactName} · {merchant.contactPhone}
           </p>
           <div className="onboarding-field">
             <label htmlFor="onboarding-shop-name">店铺名称</label>

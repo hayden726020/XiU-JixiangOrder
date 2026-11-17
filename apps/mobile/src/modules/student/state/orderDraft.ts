@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import { apiError, isApiError, toSourceError } from '../types';
 import { sumFen } from '../utils/money';
+import { sanitizeOrderRemark } from '../utils/remark';
 import { DISH_LIMIT_TEXT, DISH_SHORTAGE_NOTICE } from '../utils/submitTexts';
 import { SHOP_FOREIGN_ITEM_NOTICE, SHOP_SWITCH_NOTICE } from '../utils/shopTexts';
 import { filterDishesByShop } from '../utils/dishShopFilter';
@@ -34,6 +35,7 @@ export interface DraftState {
   shopId: string | null;
   slotId: string | null;
   diningMode: DiningMode | null;
+  remark: string;
   status: DraftStatus;
   order: StudentOrder | null;
   error: SourceError | null;
@@ -72,6 +74,7 @@ export interface OrderDraft {
   getLimit(dishId: string): number;
   setSlot(slotId: string): void;
   setDiningMode(mode: DiningMode): void;
+  setRemark(remark: string): void;
   applyDishCatalog(dishes: DishDto[]): void;
   restoreSelection(selection: DraftSelection): boolean;
   canProceedToSlot(): boolean;
@@ -102,6 +105,7 @@ export function createOrderDraft({
     shopId: null,
     slotId: null,
     diningMode: null,
+    remark: '',
     status: 'idle',
     order: null,
     error: null,
@@ -202,6 +206,7 @@ export function createOrderDraft({
     state.shopId = merchantId;
     state.slotId = null;
     state.diningMode = null;
+    state.remark = '';
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -226,6 +231,7 @@ export function createOrderDraft({
     limits.clear();
     state.slotId = null;
     state.diningMode = null;
+    state.remark = '';
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -278,6 +284,22 @@ export function createOrderDraft({
       throw apiError('VALIDATION_ERROR', '请选择堂食或外带。', false);
     }
     state.diningMode = mode;
+    notifyChange();
+  }
+
+  function setRemark(text: string): void {
+    const next = sanitizeOrderRemark(typeof text === 'string' ? text : '');
+    if (next === state.remark) {
+      return;
+    }
+    state.remark = next;
+    if (state.status !== 'submitting') {
+      requestIds.complete();
+      submission = null;
+      state.status = 'idle';
+      state.order = null;
+      state.error = null;
+    }
     notifyChange();
   }
 
@@ -372,6 +394,7 @@ export function createOrderDraft({
       selection.diningMode !== null && MODES.has(selection.diningMode)
         ? selection.diningMode
         : null;
+    state.remark = '';
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -393,6 +416,7 @@ export function createOrderDraft({
       items: getItems(),
       slotId: state.slotId,
       diningMode: state.diningMode,
+      remark: state.remark === '' ? undefined : state.remark,
     };
   }
 
@@ -416,6 +440,7 @@ export function createOrderDraft({
       items: input.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
       slotId: input.slotId,
       diningMode: input.diningMode,
+      remark: input.remark,
     };
 
     inFlight = (async () => {
@@ -455,6 +480,7 @@ export function createOrderDraft({
           items: submission.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
           slotId: submission.slotId,
           diningMode: submission.diningMode,
+          remark: submission.remark,
         }
       : { requestId };
     try {
@@ -487,6 +513,7 @@ export function createOrderDraft({
     limits.clear();
     state.slotId = null;
     state.diningMode = null;
+    state.remark = '';
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -506,6 +533,7 @@ export function createOrderDraft({
     getLimit,
     setSlot,
     setDiningMode,
+    setRemark,
     applyDishCatalog,
     restoreSelection,
     canProceedToSlot,

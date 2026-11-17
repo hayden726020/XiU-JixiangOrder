@@ -1,4 +1,3 @@
-import { runAfterPressTransition } from '../../../shared/backPress';
 import OrderRow from '../components/OrderRow';
 import { DEMO_SCENARIOS } from '../data/sampleData';
 import type { MerchantOrder, MerchantScenario } from '../data/types';
@@ -18,6 +17,10 @@ interface OrderListPageProps {
   onOpenOrder: (id: string) => void;
   onOpenMenu: () => void;
   onOpenSetup: () => void;
+  onRefresh: () => void;
+  refreshing: boolean;
+  lastRefreshedAt: string | null;
+  autoRefreshSeconds: number;
 }
 
 export default function OrderListPage({
@@ -34,6 +37,10 @@ export default function OrderListPage({
   onOpenOrder,
   onOpenMenu,
   onOpenSetup,
+  onRefresh,
+  refreshing,
+  lastRefreshedAt,
+  autoRefreshSeconds,
 }: OrderListPageProps) {
   const groups = groupOrders(orders);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -54,15 +61,34 @@ export default function OrderListPage({
         </div>
         <div className="merchant-view__actions">
           {!isSample && (
-            <button type="button" className="merchant-link-button" onClick={(event) => runAfterPressTransition(event.currentTarget, onOpenSetup, 'forward')} data-open-onboarding>
+            <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
               商家注册 / 开店
             </button>
           )}
-          <button type="button" className="merchant-link-button" onClick={(event) => runAfterPressTransition(event.currentTarget, onOpenMenu, 'forward')} data-open-menu>
+          <button type="button" className="merchant-link-button" onClick={onOpenMenu} data-open-menu>
             菜单与库存
           </button>
         </div>
       </header>
+
+      {!isSample && (
+        <div className="merchant-refresh-bar" role="status">
+          <span>
+            每 {autoRefreshSeconds} 秒自动刷新
+            {lastRefreshedAt ? ` · 最近更新 ${lastRefreshedAt}` : ' · 等待首次刷新'}
+          </span>
+          <button
+            type="button"
+            className="merchant-link-button merchant-refresh-bar__button"
+            onClick={onRefresh}
+            disabled={refreshing || loading}
+            aria-busy={refreshing || undefined}
+            data-refresh-orders
+          >
+            {refreshing ? '刷新中…' : '刷新列表'}
+          </button>
+        </div>
+      )}
 
       {isSample && (
         <label className="merchant-scenario">
@@ -102,7 +128,7 @@ export default function OrderListPage({
                   key={order.id}
                   order={order}
                   onOpen={onOpenOrder}
-
+                  showCancellationDetails={!isSample}
                 />
               ))}
             </div>
@@ -147,7 +173,7 @@ export default function OrderListPage({
         <button
           type="button"
           className="merchant-order-list__setup"
-          onClick={(event) => runAfterPressTransition(event.currentTarget, onOpenSetup, 'forward')}
+          onClick={onOpenSetup}
           data-open-onboarding
         >
           商家注册 / 开店
