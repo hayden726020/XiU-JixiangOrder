@@ -1,5 +1,7 @@
+@import url("https://miaoda.feishu.cn/fonts/css2?family=Ma+Shan+Zheng&display=swap");
+
 .app-shell:has(.student-home, .student-order-view) {
-  background: #edf2f9;
+  background: #faf6ea;
 }
 
 .app-shell:has(.student-home, .student-order-view) > .app-header,
@@ -526,292 +528,762 @@
 
 .student-home__nav {
   position: sticky;
-  z-index: 5;
+  z-index: 20;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(4,1fr);
-  min-height: calc(74px + env(safe-area-inset-bottom));
-  padding: .5rem .35rem calc(.45rem + env(safe-area-inset-bottom));
-  border-radius: 24px 24px 0 0;
-  background: rgba(250,251,255,.97);
-  box-shadow: 0 -8px 25px rgba(7,22,56,.1);
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  min-height: calc(70px + env(safe-area-inset-bottom));
+  padding: 0.4rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid rgba(226, 220, 208, 0.55);
+  box-shadow: 0 -6px 22px rgba(15, 23, 42, 0.06);
 }
+
 .student-home__nav button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.25rem;
+  border: 0;
+  background: transparent;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student-home__nav .nav-tab-pill {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .12rem;
-  padding: .1rem;
-  border: 0;
-  background: transparent;
-  color: var(--home-navy);
-  font-size: .78rem;
-  font-weight: 800;
-  cursor: pointer;
+  gap: 0.14rem;
+  min-width: 78px;
+  padding: 0.34rem 0.85rem;
+  border-radius: 999px;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
 }
-.student-home__nav button svg { width: 1.55rem; height: 1.55rem; }
-.student-home__nav button.is-active { color: #0864e9; }
-.student-home__nav button.is-active span { padding: .02rem .45rem; border-radius: 50%; background: #ffe469; color: var(--home-navy); }
-.student-home button:focus-visible { outline: 3px solid #0864e9; outline-offset: 3px; }
+
+.student-home__nav button svg {
+  width: 1.42rem;
+  height: 1.42rem;
+}
+
+.student-home__nav button.is-active-tab {
+  color: #0d1b36;
+  font-weight: 800;
+}
+
+.student-home__nav button.is-active-tab .nav-tab-pill {
+  background: #ffe37e;
+  box-shadow: 0 2px 8px rgba(253, 214, 72, 0.32);
+}
+
+.student-home__nav button:focus-visible {
+  outline: 2.5px solid #0864e9;
+  outline-offset: 2px;
+  border-radius: 14px;
+}
 
 /* ============================================================
-   点餐页面专属样式 (依据 photo/点餐页面.png 高保真还原)
+   点餐页面专属样式 (对齐「食麦呼」校园美食点餐页设计稿)
    ============================================================ */
 
 .student-order-view {
+  --home-navy: #0f1d36;
+  --home-yellow: #ffd525;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   color: var(--home-navy);
-  background: #edf2f9;
-  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  background: linear-gradient(180deg, #faf7ee 0%, #f8f4ea 100%);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
 }
 
 .student-order-view .student-home__scroll {
   flex: 1;
 }
 
-.student-order-hero {
-  position: relative;
-  height: clamp(260px, 66vw, 320px);
-  padding: calc(1.6rem + env(safe-area-inset-top)) 1.35rem 0;
-  background: url("./assets/campus-hero.png") center 10% / cover no-repeat;
-  overflow: hidden;
-  text-align: left;
+.order-feed {
+  padding: calc(0.5rem + env(safe-area-inset-top)) 0.95rem 1.4rem;
 }
 
-.student-order-hero::after {
-  content: "";
+/* 顶部栏 */
+.order-topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  min-height: 66px;
+  padding-top: 0.2rem;
+}
+
+.order-topbar__brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.order-topbar__title-row {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  width: fit-content;
+}
+
+.order-topbar__logo {
+  margin: 0;
+  font-size: clamp(1.55rem, 6.4vw, 1.85rem);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: 0.02em;
+  color: #0b1c36;
+}
+
+.order-topbar__spark {
+  margin-left: 0.1rem;
+  margin-top: -0.25rem;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: #f5c400;
+}
+
+.order-topbar__subtitle {
+  margin: 0.22rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #7c786e;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* 悬挂纸条便签：今天去哪家吃？ */
+.order-hanging-note {
+  position: relative;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -0.95rem;
+  margin-left: 0.15rem;
+}
+
+.order-hanging-note__rope {
+  display: block;
+  width: 2.5px;
+  height: 18px;
+  background: repeating-linear-gradient(
+    180deg,
+    #8c6239 0px,
+    #8c6239 3px,
+    #c69c6d 3px,
+    #c69c6d 5px
+  );
+  border-radius: 2px;
+}
+
+.order-hanging-note__card {
+  position: relative;
+  padding: 0.42rem 0.95rem 0.48rem;
+  background: linear-gradient(180deg, #fffdf7 0%, #f9f3e3 100%);
+  border: 1px solid rgba(214, 200, 174, 0.65);
+  border-radius: 4px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.11);
+  transform: rotate(-2.5deg);
+}
+
+.order-hanging-note__card span {
+  display: block;
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", serif;
+  font-size: clamp(1.06rem, 4.3vw, 1.24rem);
+  font-weight: 900;
+  line-height: 1.2;
+  color: #162238;
+  white-space: nowrap;
+}
+
+.order-hanging-note__sparkles {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(237,242,249,0.05) 55%, rgba(237,242,249,0.95) 100%);
+  top: 2px;
+  right: 3px;
+  width: 14px;
+  height: 14px;
   pointer-events: none;
 }
 
-.student-order-hero__content {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding-left: 0.35rem;
-}
-
-.student-order-hero__title-wrap {
-  position: relative;
+.order-topbar__search {
+  flex: 0 0 auto;
   display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-top: 0.2rem;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #1e293b;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-.student-order-hero__title {
-  position: relative;
-  margin: 0;
-  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", serif;
-  font-size: clamp(2.35rem, 8.6vw, 2.95rem);
-  font-weight: 900;
-  color: #071638;
-  letter-spacing: 0.04em;
-  line-height: 1.15;
-  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.95);
+.order-topbar__search:hover,
+.order-topbar__search.is-active {
+  background: rgba(253, 224, 103, 0.35);
 }
 
-.student-order-hero__sunburst {
-  position: absolute;
-  top: -0.25rem;
-  right: -2rem;
-  width: 2rem;
-  height: 2rem;
+.order-topbar__search svg {
+  width: 21px;
+  height: 21px;
 }
 
-.student-order-hero__underline {
-  width: clamp(150px, 50vw, 205px);
-  height: 16px;
-  margin-top: -0.28rem;
+/* 可展开搜索栏 */
+.order-search-panel {
+  margin-top: 0.55rem;
 }
 
-.student-order-hero__banner-wrap {
-  margin-top: 0.85rem;
-  width: min(88vw, 345px);
-  transform: rotate(-1.5deg);
-  filter: drop-shadow(0 6px 14px rgba(7, 22, 56, 0.12));
-}
-
-.student-order-hero__banner-img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.student-order-body {
-  position: relative;
-  z-index: 3;
-  margin-top: -1.35rem;
-  padding: 0.4rem 1.15rem 2.2rem;
-}
-
-.student-order-mode-wrap {
+.order-search-box {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.48rem 0.8rem;
+  background: #ffffff;
+  border: 1px solid #e6dfd1;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.order-search-box svg {
+  width: 16px;
+  height: 16px;
+  color: #7c8594;
+  flex-shrink: 0;
+}
+
+.order-search-box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #0f1d36;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.order-search-box__clear {
+  border: 0;
+  background: #f3efe6;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+/* 分区标题 */
+.order-section {
+  margin-top: 0.85rem;
+}
+
+.order-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.order-section__head--rec {
+  align-items: flex-end;
   margin-bottom: 0.65rem;
 }
 
-.student-order-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1.05rem;
-}
-
-.student-order-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 53% 47%;
-  align-items: center;
-  min-height: 155px;
-  padding: 0.65rem 0.85rem 0.75rem 0.65rem;
-  background: url("./assets/stall-card-bg.png") center / 100% 100% no-repeat, #ffffff;
-  border-radius: 18px 22px 16px 20px;
-  filter: drop-shadow(0 6px 16px rgba(7, 22, 56, 0.08));
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.2s ease;
-}
-
-.student-order-card:hover,
-.student-order-card:focus-visible {
-  transform: translateY(-2px);
-  filter: drop-shadow(0 10px 24px rgba(7, 22, 56, 0.13));
-}
-
-.student-order-card:active {
-  transform: scale(0.985);
-}
-
-.student-order-card.is-current {
-  outline: 2.5px solid #ffd525;
-  outline-offset: 3px;
-}
-
-.student-order-card__photo-box {
-  position: relative;
-  width: 100%;
-  padding: 0.15rem;
-}
-
-.student-order-card__photo {
-  width: 100%;
-  height: auto;
-  display: block;
-  filter: drop-shadow(0 4px 10px rgba(7, 22, 56, 0.12));
-}
-
-.student-order-card__info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.55rem;
-  padding-left: 0.75rem;
-}
-
-.student-order-card__title {
-  margin: 0;
-  font-family: "PingFang SC", "Microsoft YaHei", "STKaiti", "KaiTi", sans-serif;
-  font-size: clamp(1.45rem, 5.5vw, 1.8rem);
-  font-weight: 950;
-  color: #071638;
-  line-height: 1.2;
-  letter-spacing: 0.02em;
-}
-
-.student-order-card__badge {
-  display: inline-block;
-  padding: 0.22rem 0.85rem;
-  background: #fff0ba;
-  color: #634300;
-  font-size: 0.85rem;
-  font-weight: 850;
-  border-radius: 999px;
-  letter-spacing: 0.03em;
-}
-
-.student-order-card__action {
+.order-section__bar-title {
   display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-top: 0.15rem;
-  padding: 0;
+  align-items: center;
+  gap: 0.42rem;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #0f1d36;
+  line-height: 1.2;
+}
+
+.order-section__bar {
+  display: inline-block;
+  width: 4px;
+  height: 17px;
+  border-radius: 999px;
+  background: #ffd525;
+}
+
+.order-section__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+  padding: 0.15rem 0.2rem;
   border: 0;
   background: transparent;
-  color: #071638;
+  color: #6b7280;
+  font-size: 0.76rem;
+  font-weight: 600;
   cursor: pointer;
-  position: relative;
 }
 
-.student-order-card__action-row {
+.order-section__more svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* 8 格美食分类 */
+.order-cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem 0.35rem;
+  padding: 0.1rem 0 0.25rem;
+}
+
+.order-cat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.36rem;
+  padding: 0.1rem;
+  border: 0;
+  background: transparent;
+  color: #1e293b;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.order-cat-item:active {
+  transform: scale(0.95);
+}
+
+.order-cat-item__circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.order-cat-item__circle svg {
+  width: 40px;
+  height: 40px;
+}
+
+.order-cat-item.is-selected .order-cat-item__circle {
+  border-color: #f5b700;
+  box-shadow: 0 4px 12px rgba(245, 183, 0, 0.24);
+  transform: translateY(-1px);
+}
+
+.order-cat-item__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.order-cat-item.is-selected .order-cat-item__label {
+  color: #9a5d00;
+  font-weight: 800;
+}
+
+/* 为你推荐标题与下划线 */
+.order-rec-title-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.order-rec-title {
+  margin: 0;
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", serif;
+  font-size: 1.48rem;
+  font-weight: 900;
+  line-height: 1.1;
+  color: #0d1b36;
+  letter-spacing: 0.02em;
+  -webkit-text-stroke: 0.45px #0d1b36;
+}
+
+.order-rec-title__stroke {
+  width: 102px;
+  height: 10px;
+  margin-top: -2px;
+}
+
+/* 筛选胶囊栏 */
+.order-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  margin-bottom: 0.85rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+  scrollbar-width: none;
+}
+
+.order-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.order-filter-pill {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.2rem;
+  padding: 0.36rem 0.58rem;
+  border-radius: 999px;
+  border: 1px solid #e7e1d4;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.73rem;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 
-.student-order-card__action-text {
-  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", cursive, sans-serif;
-  font-size: 1.22rem;
-  font-weight: 950;
-  color: #071638;
-  letter-spacing: 0.04em;
-  -webkit-text-stroke: 0.4px #071638;
+.order-filter-pill.is-active {
+  background: #fde067;
+  border-color: #f6cd3b;
+  color: #0f1d36;
+  font-weight: 800;
 }
 
-.student-order-card__action-arrow {
-  font-size: 1.35rem;
-  font-weight: 900;
-  line-height: 1;
-  color: #071638;
-  transition: transform 0.2s ease;
+.order-filter-pill__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.student-order-card:hover .student-order-card__action-arrow {
-  transform: translateX(4px);
+.order-filter-pill__icon svg {
+  width: 13px;
+  height: 13px;
 }
 
-.student-order-card__action-underline {
-  width: 82px;
-  height: 11px;
-  margin-top: -0.15rem;
+.order-filter-pill__icon.is-open svg {
+  color: #f97316;
+  fill: #fb923c;
 }
 
-.student-order-card__disabled {
+.order-filter-pill__icon.is-canteen-1 svg,
+.order-filter-pill__icon.is-canteen-2 svg,
+.order-filter-pill__icon.is-reservable svg {
+  color: #475569;
+}
+
+/* 档口推荐卡片 */
+.order-stall-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.88rem;
+}
+
+.order-stall-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.68rem;
+  padding: 0.75rem;
+  background: #ffffff;
+  border: 1px solid rgba(226, 219, 206, 0.55);
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.045);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.order-stall-card:hover,
+.order-stall-card:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.order-stall-card.is-current {
+  border-color: #f5c400;
+  box-shadow: 0 4px 16px rgba(245, 196, 0, 0.16);
+}
+
+.order-stall-card__head {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 0.54rem;
+}
+
+.order-stall-card__cover {
+  width: 118px;
+  height: 84px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f1ece1;
+}
+
+.order-stall-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.order-stall-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.order-stall-card__title {
   margin: 0;
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: #0f1d36;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-stall-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.24rem;
+  margin: 0;
+  font-size: 0.67rem;
+  font-weight: 500;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+.order-stall-card__meta svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: #8b94a3;
+}
+
+.order-stall-card__meta span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-stall-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.14rem;
+}
+
+.order-stall-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
   font-size: 0.68rem;
-  color: #e11d48;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-/* 导航栏高亮指示器样式 */
-.student-home__nav button {
+.order-stall-badge svg {
+  width: 11px;
+  height: 11px;
+}
+
+.order-stall-badge.is-open {
+  background: #e6f4ea;
+  color: #2e7d32;
+}
+
+.order-stall-badge.is-closed {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.order-stall-badge.is-reservable {
+  background: #fef3c7;
+  color: #92600a;
+}
+
+.order-stall-badge.is-reservable svg {
+  color: #d97706;
+}
+
+.order-stall-badge.is-popular {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.order-stall-badge.is-popular svg {
+  color: #ea580c;
+  fill: #f97316;
+}
+
+.order-stall-card__go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: #fdf6dc;
+  color: #1e293b;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.order-stall-card__go:hover {
+  background: #fde067;
+  transform: translateX(1px);
+}
+
+.order-stall-card__go svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 3列菜品展示图 */
+.order-stall-card__dishes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.48rem;
+}
+
+.order-dish-thumb {
   position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.42 / 1;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f1ece1;
+  cursor: pointer;
 }
 
-.student-home__nav button.is-active-tab {
-  color: #071638;
+.order-dish-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease;
 }
 
-.student-home__nav .nav-pill-blob {
+.order-dish-thumb:hover img {
+  transform: scale(1.04);
+}
+
+.order-dish-thumb__scrim {
   position: absolute;
-  top: 48%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 58px;
-  height: 52px;
-  background: #fedb43;
-  border-radius: 46% 54% 48% 52% / 48% 52% 48% 52%;
-  z-index: -1;
-  opacity: 0.96;
-  box-shadow: 0 2px 8px rgba(254, 219, 67, 0.4);
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 38%,
+    rgba(10, 14, 22, 0.78) 100%
+  );
+  pointer-events: none;
 }
 
+.order-dish-thumb__caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.22rem;
+  padding: 0.28rem 0.38rem;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.order-dish-thumb__name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-dish-thumb__price {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.order-stall-card__disabled {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #dc2626;
+}
+
+.order-filter-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px dashed #dcd4c4;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.order-filter-empty p {
+  margin: 0 0 0.75rem;
+}
+
+.order-filter-empty__btn {
+  padding: 0.42rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: #fde067;
+  color: #0f1d36;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.order-mode-footer {
+  margin-top: 0.9rem;
+}
+
+@media (max-width: 375px) {
+  .order-stall-card__head {
+    grid-template-columns: 108px minmax(0, 1fr) 26px;
+    gap: 0.48rem;
+  }
+
+  .order-stall-card__cover {
+    width: 108px;
+    height: 78px;
+  }
+
+  .order-cat-item__circle {
+    width: 52px;
+    height: 52px;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .student-home__shop-slide { transition: none; }
+  .home-polaroid-slide,
+  .order-dish-thumb img {
+    transition: none;
+  }
 }
