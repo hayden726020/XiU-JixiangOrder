@@ -1,0 +1,231 @@
+.app-shell:has(.student-booking:not(.student-booking--confirm)) { background: #fbf5ed; }
+.student-booking:not(.student-booking--confirm) {
+  --booking-navy: #351808;
+  --booking-yellow: #f8bb20;
+  --booking-blue: #ad6b0c;
+  background: #fbf5ed;
+  color: #351808;
+  font-family: "Songti SC", "Noto Serif CJK SC", "Microsoft YaHei", serif;
+}
+.student-booking:not(.student-booking--confirm) .booking-hero {
+  padding: calc(1.1rem + env(safe-area-inset-top)) 1rem 0;
+  background: radial-gradient(circle at 50% 10%, #fffdfa 0, #fbf5ed 70%);
+}
+.student-booking:not(.student-booking--confirm) .booking-nav {
+  grid-template-columns: 2.5rem 1fr 2.5rem;
+  min-height: 3.5rem;
+  margin-bottom: 1.4rem;
+}
+.student-booking:not(.student-booking--confirm) .booking-nav__back { background: none; color: #351808; }
+.student-booking:not(.student-booking--confirm) .booking-nav__back svg { width: 1.55rem; height: 1.55rem; }
+.student-booking:not(.student-booking--confirm) .booking-nav__title {
+  position: relative; width: fit-content; margin: auto; font-size: clamp(1.75rem, 7vw, 2.45rem); font-weight: 900;
+  letter-spacing: .04em; text-shadow: none;
+}
+.student-booking:not(.student-booking--confirm) .booking-nav__title::after,
+.student-booking:not(.student-booking--confirm) .booking-ticket h3::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -.24rem;
+  border-bottom: .23rem solid #f7bc21; border-radius: 50%; transform: rotate(-2deg);
+}
+.student-booking:not(.student-booking--confirm) .booking-nav__mode { font-size: 0; background: none; padding: 0; }
+.booking-ticket {
+  position: relative; display: grid; grid-template-columns: 35% 1fr; gap: .6rem; align-items: center;
+  min-height: 10.6rem; padding: 1.1rem .85rem 1rem .65rem;
+  border: 1px solid #ead6be; border-radius: .35rem; background: #fffaf3;
+  box-shadow: 0 .38rem .65rem #6b390929;
+  margin-bottom: 1.25rem;
+}
+.booking-ticket::before, .booking-ticket::after { content: ""; position: absolute; top: 50%; width: .8rem; height: 1.15rem; border: 1px solid #ead6be; background: #fbf5ed; transform: translateY(-50%); }
+.booking-ticket::before { left: -.42rem; border-radius: 0 1rem 1rem 0; border-left: 0; }
+.booking-ticket::after { right: -.42rem; border-radius: 1rem 0 0 1rem; border-right: 0; }
+.booking-ticket__polaroid { position: relative; z-index: 1; padding: .45rem .45rem 1.2rem; background: white; box-shadow: 0 .35rem .8rem #6031103d; transform: rotate(-8deg); }
+.booking-ticket__polaroid::before { content: ""; position: absolute; width: 42%; height: 1rem; top: -.5rem; left: 28%; background: #ffd568ba; transform: rotate(-10deg); }
+.booking-ticket__polaroid img { display: block; width: 100%; height: 6.5rem; object-fit: cover; }
+.booking-ticket__placeholder { display: grid; place-items: center; width: 100%; height: 6.5rem; background: #f4e6cf; color: #9b6c37; font-size: .88rem; }
+.booking-ticket__details { align-self: start; min-width: 0; padding-top: .25rem; }
+.booking-ticket h3 { position: relative; width: fit-content; max-width: 100%; margin: 0 0 .75rem; font-size: clamp(1.25rem, 5vw, 1.8rem); line-height: 1.2; font-weight: 900; }
+.booking-ticket__details p { margin: 0 0 .45rem; color: #63564d; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.booking-ticket__details > span { display: inline-block; padding: .3rem .65rem; background: #fce9ca; border-radius: 2rem; color: #8a4e08; font-size: .8rem; }
+.booking-ticket__price { grid-column: 2; justify-self: end; margin-top: -.2rem; font-size: clamp(1.5rem, 6vw, 2rem); font-weight: 900; white-space: nowrap; }
+.booking-ticket__bowl { position: absolute; right: 1.3rem; top: .75rem; width: 2.8rem; color: #eac992; opacity: .8; }
+.student-booking:not(.student-booking--confirm) .booking-body { margin: 0; padding: 0 1rem calc(1.5rem + env(safe-area-inset-bottom)); gap: 1.25rem; }
+.student-booking:not(.student-booking--confirm) .booking-mode-card { padding: 0; background: none; box-shadow: none; }
+.student-booking:not(.student-booking--confirm) .booking-section-title { margin: 0 0 .8rem; padding-left: .75rem; font-size: 1.2rem; }
+.student-booking:not(.student-booking--confirm) .booking-section-title::before { content: ""; position: absolute; left: 0; top: .1rem; bottom: .1rem; width: .26rem; background: #f7bc21; border-radius: .1rem; }
+.student-booking:not(.student-booking--confirm) .booking-section-title::after { display: none; }
+.student-booking:not(.student-booking--confirm) .booking-mode-grid,
+.student-booking:not(.student-booking--confirm) .booking-slot-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.student-booking:not(.student-booking--confirm) .booking-mode { display: flex; flex-direction: row; justify-content: center; gap: .7rem; min-height: 4.2rem; border-color: #e6d6c5; background: #fffaf5; color: #351808; }
+.student-booking:not(.student-booking--confirm) .booking-mode > svg { width: 2rem; height: 2rem; color: #351808; }
+.student-booking:not(.student-booking--confirm) .booking-mode__label { font-size: 1.1rem; }
+.student-booking:not(.student-booking--confirm) .booking-mode__check { position: absolute; top: 50%; right: .65rem; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; border-color: #cfbdad; }
+.student-booking:not(.student-booking--confirm) .booking-mode.is-active,
+.student-booking:not(.student-booking--confirm) .booking-slot.is-active { border-color: #d28a04; background: #fff0ca; box-shadow: inset 0 0 1.2rem #f5c35247; }
+.student-booking:not(.student-booking--confirm) .booking-mode.is-active .booking-mode__check,
+.student-booking:not(.student-booking--confirm) .booking-slot.is-active .booking-slot__dot { background: #f6bd25; border-color: #f6bd25; color: #351808; }
+.student-booking:not(.student-booking--confirm) .booking-slots__head { align-items: center; padding-top: .7rem; border-top: 1px solid #eee2d5; }
+.student-booking:not(.student-booking--confirm) .booking-slots__tag { padding: .45rem .65rem; background: #ffe8b8; color: #351808; font-size: .88rem; }
+.student-booking:not(.student-booking--confirm) .booking-slot { display: flex; justify-content: space-between; min-height: 5.2rem; padding: .7rem .8rem; border-color: #e6d6c5; background: #fffaf5; color: #351808; text-align: left; }
+.booking-slot__copy { display: flex; flex-direction: column; gap: .15rem; }
+.booking-slot__copy strong { font-size: clamp(.95rem, 4vw, 1.18rem); }
+.booking-slot__copy small { font-size: .75rem; font-weight: 500; }
+.student-booking:not(.student-booking--confirm) .booking-slot__dot { display: inline-flex; align-items: center; justify-content: center; width: 1.3rem; height: 1.3rem; margin: 0; border-color: #cfbdad; }
+.student-booking:not(.student-booking--confirm) .booking-slot__dot::after { display: none; }
+.student-booking:not(.student-booking--confirm) .booking-slot__dot svg { width: .9rem; height: .9rem; }
+.student-booking:not(.student-booking--confirm) .booking-slot:disabled { background: #f2ebe4; color: #968b80; }
+.student-booking:not(.student-booking--confirm) .booking-slot:disabled .booking-slot__dot::after { display: block; width: 1rem; height: 1px; background: #a99c90; transform: rotate(-45deg); }
+.student-booking:not(.student-booking--confirm) .booking-crowd { margin: 0; padding: 1rem; border: 1px solid #ead9c5; border-radius: .3rem; background: #fffaf3; color: #4f4134; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__tag { position: static; box-shadow: none; border: 0; padding: 0; background: transparent; color: #351808; font-size: 1rem; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__grid { margin-top: .6rem; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__detail,
+.student-booking:not(.student-booking--confirm) .booking-crowd__side,
+.student-booking:not(.student-booking--confirm) .booking-crowd__numbers,
+.student-booking:not(.student-booking--confirm) .booking-crowd__meta { color: #6b5f52; }
+.student-booking:not(.student-booking--confirm) .booking-location { border: 0; border-top: 1px solid #eee2d5; border-bottom: 1px solid #eee2d5; border-radius: 0; background: none; box-shadow: none; padding: .6rem 0; }
+.student-booking:not(.student-booking--confirm) .booking-location__title { font-size: .92rem; }
+.student-booking:not(.student-booking--confirm) .booking-location__sub { color: #6b5f52; }
+.student-booking:not(.student-booking--confirm) .booking-location__retry { color: #8d520c; }
+.student-booking:not(.student-booking--confirm) .booking-body > .booking-footer__hint { margin: -1rem 0 0; text-align: center; font-size: .7rem; color: #6b5f52; }
+.student-booking:not(.student-booking--confirm) .booking-body > .student-demo-notice { margin: -1rem 0 0; font-size: .7rem; text-align: center; }
+@media (max-width: 350px) { .booking-ticket__bowl { display: none; } .booking-ticket { grid-template-columns: 38% 1fr; } .booking-ticket__polaroid img { height: 5rem; } }
+/* Ticket, note and checkout share the compact paper proportions of the reference. */
+.booking-ticket { box-sizing: border-box; min-height: 11rem; padding: .75rem .9rem; align-items: start; }
+.booking-ticket__polaroid { align-self: center; }
+.booking-ticket__details { padding-top: .35rem; }
+.booking-ticket h3 { font-size: clamp(1.45rem, 5.5vw, 2rem); }
+.booking-ticket__details::after { content: ""; position: absolute; right: 29%; bottom: 1.1rem; height: 3.3rem; border-right: 1px dashed #dbad71; }
+.booking-ticket__price { position: absolute; right: 1rem; bottom: .7rem; margin: 0; }
+.student-booking:not(.student-booking--confirm) .booking-crowd { position: relative; min-height: 4.65rem; box-sizing: border-box; padding: .75rem 1rem; background: #fffaf3; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__tag { font-size: 1.05rem; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__placeholder { max-width: 92%; margin: .3rem 0 0; font-size: .78rem; line-height: 1.45; color: #66584d; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__toggle { position: absolute; right: .8rem; top: .8rem; border: 0; background: transparent; color: #8d520c; font-family: inherit; font-size: .7rem; text-decoration: underline; cursor: pointer; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__range { margin: .6rem 0 0; font-weight: 700; }
+.student-booking:not(.student-booking--confirm) .booking-location { padding: .55rem 0; }
+.student-booking:not(.student-booking--confirm) .booking-location__row { min-height: 2.8rem; }
+.student-booking:not(.student-booking--confirm) .booking-location__status { margin: .2rem 0 0 2rem; }
+
+/* Reference ticket: shallow torn paper, overlapping photograph and right price. */
+.booking-ticket { grid-template-columns: 30% 42% 28%; gap: 0; min-height: 7.8rem; margin-bottom: 1.25rem; padding: .5rem .75rem; overflow: visible; }
+.booking-ticket__torn { position: absolute; left: .1rem; right: .1rem; bottom: -.3rem; height: .35rem; background: linear-gradient(135deg, #fffaf3 50%, transparent 50%) 0 0 / .65rem .65rem repeat-x; filter: drop-shadow(0 .1rem .08rem #6b390922); }
+.booking-ticket__polaroid { grid-column: 1; width: 96%; padding: .3rem .3rem .7rem; box-sizing: border-box; transform: rotate(-8deg) translateY(-.25rem); }
+.booking-ticket__polaroid img, .booking-ticket__placeholder { height: 5.8rem; }
+.booking-ticket__details { grid-column: 2; padding: .55rem 0 0 .45rem; }
+.booking-ticket h3 { margin-bottom: .5rem; font-size: clamp(1.22rem, 5.2vw, 1.8rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.booking-ticket__details p { margin-bottom: .4rem; font-size: .78rem; }
+.booking-ticket__details > span { padding: .2rem .5rem; font-size: .72rem; }
+.booking-ticket__details::after { right: 28%; bottom: 1.1rem; height: 2.7rem; }
+.booking-ticket__price { grid-column: 3; right: .75rem; bottom: 1rem; font-size: clamp(1.25rem, 5vw, 1.8rem); }
+.booking-ticket__bowl { right: 1.5rem; top: .7rem; width: 2.5rem; }
+
+/* Perforated note: the whole heading opens the live reference details. */
+.student-booking:not(.student-booking--confirm) .booking-crowd { min-height: 4.5rem; padding: .55rem .75rem .55rem 1.65rem; border-style: dashed; background: #fffbf5; }
+.student-booking:not(.student-booking--confirm) .booking-crowd::before { content: ""; position: absolute; left: .22rem; top: .55rem; bottom: .55rem; width: .55rem; background: radial-gradient(circle, #fbf5ed 35%, #e9d8c3 42%, transparent 50%) 0 0 / .5rem .85rem repeat-y; }
+.student-booking:not(.student-booking--confirm) .booking-crowd::after { content: ""; position: absolute; right: 1rem; top: -.25rem; width: 2.25rem; height: .7rem; background: #f9d98eab; transform: rotate(12deg); }
+.student-booking:not(.student-booking--confirm) .booking-crowd__tag { display: inline-flex; align-items: center; gap: .35rem; font-size: .95rem; font-weight: 800; cursor: pointer; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__tag:disabled { color: #351808; cursor: default; }
+.student-booking:not(.student-booking--confirm) .booking-crowd__placeholder { max-width: 100%; margin: .2rem 0 0; font-size: .76rem; line-height: 1.4; }
+
+/* Checkout ticket card matching the reference close-up. */
+.student-booking:not(.student-booking--confirm) .booking-footer {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.25rem;
+  padding: 0.65rem 1.05rem 0.65rem 1.65rem;
+  box-sizing: border-box;
+  border: 1px solid #ead8c3;
+  border-radius: 0.42rem;
+  background: #fffcf6;
+  box-shadow: 0 0.25rem 0.65rem rgba(107, 57, 9, 0.11);
+}
+.student-booking:not(.student-booking--confirm) .booking-footer::before,
+.student-booking:not(.student-booking--confirm) .booking-footer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: 8px 16px;
+  background-position: 0 33%, 0 67%;
+}
+.student-booking:not(.student-booking--confirm) .booking-footer::before {
+  left: -1px;
+  background-image:
+    radial-gradient(circle at 0 50%, #fbf5ed 0 5.4px, #ead8c3 5.7px 6.5px, transparent 6.8px),
+    radial-gradient(circle at 0 50%, #fbf5ed 0 5.4px, #ead8c3 5.7px 6.5px, transparent 6.8px);
+}
+.student-booking:not(.student-booking--confirm) .booking-footer::after {
+  right: -1px;
+  background-image:
+    radial-gradient(circle at 100% 50%, #fbf5ed 0 5.4px, #ead8c3 5.7px 6.5px, transparent 6.8px),
+    radial-gradient(circle at 100% 50%, #fbf5ed 0 5.4px, #ead8c3 5.7px 6.5px, transparent 6.8px);
+}
+.student-booking:not(.student-booking--confirm) .booking-footer__summary {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.7rem;
+  padding-right: 1.15rem;
+  white-space: nowrap;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #5c5249;
+}
+.student-booking:not(.student-booking--confirm) .booking-footer__summary::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 1.5px;
+  height: 2.1rem;
+  background: #cfa247;
+  transform: translateY(-50%);
+}
+.student-booking:not(.student-booking--confirm) .booking-footer .booking-footer__amount {
+  font-family: "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, "Times New Roman", "SimSun", serif;
+  font-size: clamp(1.35rem, 5.2vw, 1.62rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #2e1607;
+}
+.student-booking:not(.student-booking--confirm) .booking-footer .booking-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: #f8cf52;
+  color: #231206;
+  box-shadow: none;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  transition: background-color 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.student-booking:not(.student-booking--confirm) .booking-footer .booking-submit:hover:not(:disabled) {
+  background: #f5c63b;
+}
+.student-booking:not(.student-booking--confirm) .booking-footer .booking-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.student-booking:not(.student-booking--confirm) .booking-footer .booking-submit:disabled {
+  background: #efe3c8;
+  color: #8c7b6a;
+  cursor: not-allowed;
+}
+.student-booking:not(.student-booking--confirm) .booking-footer .booking-submit svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}

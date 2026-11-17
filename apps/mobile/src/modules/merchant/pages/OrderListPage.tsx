@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import OrderRow from '../components/OrderRow';
 import { DEMO_SCENARIOS } from '../data/sampleData';
 import type { MerchantOrder, MerchantScenario } from '../data/types';
@@ -7,6 +8,7 @@ interface OrderListPageProps {
   orders: MerchantOrder[];
   scenario: MerchantScenario;
   isSample: boolean;
+  onboardingCompleted: boolean;
   loading: boolean;
   error: string | null;
   page: number;
@@ -27,6 +29,7 @@ export default function OrderListPage({
   orders,
   scenario,
   isSample,
+  onboardingCompleted,
   loading,
   error,
   page,
@@ -42,7 +45,9 @@ export default function OrderListPage({
   lastRefreshedAt,
   autoRefreshSeconds,
 }: OrderListPageProps) {
-  const groups = groupOrders(orders);
+  const [activeGroupKey, setActiveGroupKey] = useState('new');
+  const groups = groupOrders(orders, { includeEmpty: true });
+  const activeGroup = groups.find((group) => group.key === activeGroupKey) ?? groups[0];
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -55,14 +60,20 @@ export default function OrderListPage({
           </h2>
           <p className="lead">
             {isSample
-              ? '按状态分组：堂食/外带与待处理取消申请一眼可见。'
-              : '真实数据；按状态分组。接单、开始制作、标记可取与核销已接入服务端，成功后状态立即更新。'}
+              ? '点上方状态栏切换查看各状态订单；堂食/外带与待处理取消申请一眼可见。'
+              : '真实数据；点上方状态栏切换查看。接单、开始制作、标记可取与核销已接入服务端，成功后状态立即更新。'}
           </p>
         </div>
         <div className="merchant-view__actions">
           {!isSample && (
-            <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
-              商家注册 / 开店
+            <button
+              type="button"
+              className="merchant-link-button"
+              onClick={onOpenSetup}
+              data-open-onboarding
+              data-onboarding-state={onboardingCompleted ? 'completed' : 'pending'}
+            >
+              {onboardingCompleted ? '店铺信息' : '商家注册 / 开店'}
             </button>
           )}
           <button type="button" className="merchant-link-button" onClick={onOpenMenu} data-open-menu>
@@ -108,32 +119,62 @@ export default function OrderListPage({
         <p className="merchant-empty">正在读取订单…</p>
       ) : error ? (
         <p className="merchant-empty">订单读取失败：{error}</p>
-      ) : groups.length === 0 ? (
+      ) : orders.length === 0 ? (
         <p className="merchant-empty">
           {total > 0
             ? '本页没有订单，请返回上一页。'
             : isSample ? '暂无订单，样例模式下可切换演示场景。' : '服务返回 0 笔订单。'}
         </p>
       ) : (
-        groups.map((group) => (
-          <section key={group.key} className="order-group">
-            <h3 className="order-group__title">
-              {group.label}
-              <span className="order-group__count">{group.count}</span>
-              {group.hasPendingCancel && <span className="merchant-flag">有取消申请</span>}
-            </h3>
-            <div className="order-group__rows">
-              {group.orders.map((order) => (
-                <OrderRow
-                  key={order.id}
-                  order={order}
-                  onOpen={onOpenOrder}
-                  showCancellationDetails={!isSample}
-                />
-              ))}
-            </div>
-          </section>
-        ))
+        <>
+          <div className="merchant-status-bar" role="group" aria-label="按订单状态查看">
+            {groups.map((group) => {
+              const active = group.key === activeGroup.key;
+              return (
+                <button
+                  key={group.key}
+                  type="button"
+                  className={`merchant-status-chip${active ? ' merchant-status-chip--active' : ''}`}
+                  aria-pressed={active}
+                  onClick={() => setActiveGroupKey(group.key)}
+                  data-order-status={group.key}
+                >
+                  <span className="merchant-status-chip__label">{group.label}</span>
+                  {group.key === 'new' && group.count > 0 && (
+                    <span
+                      className="merchant-status-chip__badge merchant-status-chip__badge--alert"
+                      aria-label={`${group.count} 笔待接单`}
+                    >
+                      {group.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {activeGroup.count === 0 ? (
+            <p className="merchant-empty">「{activeGroup.label}」暂无订单。</p>
+          ) : (
+            <section className="order-group" aria-label={activeGroup.label}>
+              <h3 className="order-group__title">
+                {activeGroup.label}
+                <span className="order-group__count">{activeGroup.count}</span>
+                {activeGroup.hasPendingCancel && <span className="merchant-flag">有取消申请</span>}
+              </h3>
+              <div className="order-group__rows">
+                {activeGroup.orders.map((order) => (
+                  <OrderRow
+                    key={order.id}
+                    order={order}
+                    onOpen={onOpenOrder}
+                    showCancellationDetails={!isSample}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       {!loading && !error && total > 0 && (

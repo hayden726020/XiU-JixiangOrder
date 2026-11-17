@@ -176,7 +176,9 @@ export default function ShopSelectPage({
   const [activeFilter, setActiveFilter] = useState<OrderFilterId>('all');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [signNudged, setSignNudged] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const nudgeTimerRef = useRef<number | null>(null);
 
   function selectTab(next: 'home' | 'order' | 'mine'): void {
     setInternalTab(next);
@@ -241,6 +243,28 @@ export default function ShopSelectPage({
       searchInputRef.current?.focus();
     }
   }, [searchOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (nudgeTimerRef.current !== null) {
+        window.clearTimeout(nudgeTimerRef.current);
+      }
+    };
+  }, []);
+
+  function triggerSignNudge(): void {
+    if (nudgeTimerRef.current !== null) {
+      window.clearTimeout(nudgeTimerRef.current);
+    }
+    setSignNudged(false);
+    window.requestAnimationFrame(() => {
+      setSignNudged(true);
+      nudgeTimerRef.current = window.setTimeout(() => {
+        setSignNudged(false);
+        nudgeTimerRef.current = null;
+      }, 1200);
+    });
+  }
 
   async function loadDerivedShops(): Promise<void> {
     if (derivedBusy) return;
@@ -329,10 +353,20 @@ export default function ShopSelectPage({
                 <p className="order-topbar__subtitle">西安邮电大学 · 校园美食平台</p>
               </div>
 
-              <div className="order-hanging-note" aria-label="今天去哪家吃？">
-                <span className="order-hanging-note__rope" aria-hidden="true" />
-                <div className="order-hanging-note__card">
-                  <span>今天去哪家吃？</span>
+              <button
+                type="button"
+                className={`order-hanging-note${signNudged ? ' is-nudged' : ''}`}
+                aria-label="今天去哪家吃？点击轻晃木牌"
+                onClick={triggerSignNudge}
+              >
+                <span className="order-hanging-note__ropes" aria-hidden="true">
+                  <span className="order-hanging-note__rope order-hanging-note__rope--left" />
+                  <span className="order-hanging-note__rope order-hanging-note__rope--right" />
+                </span>
+                <span className="order-hanging-note__board">
+                  <span className="order-hanging-note__pin order-hanging-note__pin--left" aria-hidden="true" />
+                  <span className="order-hanging-note__pin order-hanging-note__pin--right" aria-hidden="true" />
+                  <span className="order-hanging-note__text">今天去哪家吃？</span>
                   <svg
                     className="order-hanging-note__sparkles"
                     viewBox="0 0 22 22"
@@ -343,8 +377,8 @@ export default function ShopSelectPage({
                     <path d="M9 15L18 11" stroke="#F5C400" strokeWidth="2.4" strokeLinecap="round" />
                     <path d="M11 19L19 18" stroke="#F5C400" strokeWidth="2.4" strokeLinecap="round" />
                   </svg>
-                </div>
-              </div>
+                </span>
+              </button>
 
               <button
                 type="button"

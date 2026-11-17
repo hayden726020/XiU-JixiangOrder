@@ -1,38 +1,28 @@
 import { useEffect, useState } from 'react';
 import type { OrderDraft } from '../state/orderDraft';
 import type { DishDto, MenuResponse, ShopSummary, StudentSource } from '../types';
-import { SAMPLE_ONLY_DISH_IDS } from '../data/sampleData';
 import { filterDishesByShop } from '../utils/dishShopFilter';
-import { toDishView } from '../utils/dishView';
 import { formatYuan } from '../utils/money';
 import { toSourceErrorView } from '../utils/sourceErrorView';
-import { DISH_LIMIT_TEXT } from '../utils/submitTexts';
-import {
-  CURRENT_SHOP_PREFIX,
-  DEMO_DATA_LABEL,
-  EMPTY_SHOP_MENU,
-  SAMPLE_ONLY_LABEL,
-  SHOP_SWITCH_BUSY,
-} from '../utils/shopTexts';
-import DemoModeNotice from '../components/DemoModeNotice';
-import RealModeNotice from '../components/RealModeNotice';
-import SampleBanner from '../components/SampleBanner';
+import { SHOP_SWITCH_NOTICE } from '../utils/shopTexts';
+import OrderDishCard from '../components/OrderDishCard';
+import OrderMenuIcon from '../components/OrderMenuIcons';
+import '../order-menu.css';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
+type Category = '全部' | '主食' | '套餐' | '小吃' | '饮品';
+const CATEGORIES: Category[] = ['全部', '主食', '套餐', '小吃', '饮品'];
 
-const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-
-function formatMonthDay(date: string): string {
-  const [, month, day] = date.split('-');
-  return `${month}-${day}`;
+function categoryOf(dish: DishDto): Category {
+  if (/套餐|定食|组合/.test(dish.name)) return '套餐';
+  if (/饭|面|粉|粥|饺|包|馒头/.test(dish.name)) return '主食';
+  if (/饮|茶|咖啡|可乐|牛奶|酸奶|果汁|水$/.test(dish.name)) return '饮品';
+  return '小吃';
 }
 
-function dayLabel(date: string, allowedDates: string[]): string {
-  const index = allowedDates.indexOf(date);
-  if (index === 0) return '今天';
-  if (index === 1) return '明天';
-  const weekday = new Date(Date.parse(`${date}T12:00:00+08:00`)).getUTCDay();
-  return WEEKDAY_LABELS[weekday];
+function monthDay(date: string): string {
+  const [, month, day] = date.split('-');
+  return `${Number(month)}-${day}`;
 }
 
 export interface MenuPageProps {
@@ -44,25 +34,18 @@ export interface MenuPageProps {
   onViewSampleOrder: () => void;
   onViewCancelOrder?: () => void;
   onOpenOrders: () => void;
+  onGoHome?: () => void;
+  onGoProfile?: () => void;
 }
 
-export default function MenuPage({
-  source,
-  draft,
-  shop,
-  onBackToShops,
-  onProceed,
-  onViewSampleOrder,
-  onViewCancelOrder,
-  onOpenOrders,
-}: MenuPageProps) {
+export default function OrderMenuPage({ source, draft, shop, onBackToShops, onProceed, onViewSampleOrder, onViewCancelOrder, onOpenOrders, onGoHome, onGoProfile }: MenuPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [errorText, setErrorText] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
+  const [category, setCategory] = useState<Category>('全部');
   const date = snapshot.date;
-  const shopRole = source.mode === 'sample' ? DEMO_DATA_LABEL : '公共服务';
 
   useEffect(() => {
     let cancelled = false;
@@ -71,31 +54,24 @@ export default function MenuPage({
     setErrorText('');
     source.getMenu(date).then(
       (data) => {
-        if (cancelled || !draft.isMenuReadCurrent(token)) {
-          return;
-        }
+        if (cancelled || !draft.isMenuReadCurrent(token)) return;
         setMenu(data);
         setStatus('ready');
         draft.applyDishCatalog(filterDishesByShop(data.dishes, shop.merchantId));
+        setSnapshot(draft.getState());
       },
       (error: unknown) => {
-        if (cancelled || !draft.isMenuReadCurrent(token)) {
-          return;
-        }
+        if (cancelled || !draft.isMenuReadCurrent(token)) return;
         setMenu(null);
         setStatus('error');
         setErrorText(toSourceErrorView(error));
       },
     );
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [source, draft, shop.merchantId, date, reloadToken]);
 
   function changeDate(next: string): void {
-    if (!draft.setDate(next)) {
-      return;
-    }
+    if (!draft.setDate(next)) return;
     setMenu(null);
     setStatus('loading');
     setSnapshot(draft.getState());
@@ -106,220 +82,56 @@ export default function MenuPage({
     setSnapshot(draft.getState());
   }
 
-  const canSwitchShop = draft.canSetShop();
   const shopDishes = menu ? filterDishesByShop(menu.dishes, shop.merchantId) : [];
-  const canProceed = snapshot.canProceedToSlot;
+  const shownDishes = category === '全部' ? shopDishes : shopDishes.filter((dish) => categoryOf(dish) === category);
+  const canSwitchShop = draft.canSetShop();
 
-  return (
-    <section className="student-page" aria-labelledby="student-menu-title">
-      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
-
-      <button
-        type="button"
-        className="student-secondary student-back"
-        disabled={!canSwitchShop}
-        onClick={onBackToShops}
-      >
-        ← 返回店铺选择
-      </button>
-      {!canSwitchShop ? (
-        <p className="student-order-note" role="status">
-          {SHOP_SWITCH_BUSY}
-        </p>
-      ) : null}
-
-      <p
-        className="student-shop-title"
-        data-shop-demo={source.mode === 'sample' ? 'true' : 'false'}
-      >
-        {CURRENT_SHOP_PREFIX}：{shop.name}
-        {source.mode === 'sample' ? ` · ${DEMO_DATA_LABEL}` : ''}
-      </p>
-
-      <header className="student-page__head">
-        <p className="student-kicker">
-          {source.mode === 'real' ? 'S9 · 真实菜单与数量（只读）' : 'S5 · 样例菜单与数量（可进入确认页）'}
-        </p>
-        <h2 id="student-menu-title">学生点餐</h2>
-        <p className="student-page__lead">
-          {source.mode === 'real'
-            ? `菜品、价格与可售数量来自${shopRole}；金额以下单结果为准。`
-            : `样例菜单可调整数量，全部数据来自模块内样例源；当前只显示${shop.name}的菜。`}
-        </p>
+  return <section className="meal-menu" aria-labelledby="meal-menu-title">
+    <div className="meal-menu__main">
+      <header className="meal-menu__header">
+        <div className="meal-menu__heading"><h1 id="meal-menu-title">学生点餐</h1><span className="meal-menu__rays" aria-hidden="true">✳</span></div>
+        <button className="meal-menu__orders ticket-edge" type="button" onClick={onOpenOrders}><OrderMenuIcon name="receipt" size={21} /> 我的订单 <OrderMenuIcon name="chevron" size={17} /></button>
       </header>
 
-      {source.mode === 'real' ? (
-        <section className="student-order-entry" aria-label="我的订单入口">
-          <button type="button" className="student-secondary" onClick={onOpenOrders}>
-            我的订单
-          </button>
-          <p className="student-order-entry__hint">查看本人在公共服务的订单，只读</p>
-        </section>
-      ) : null}
+      <div className="meal-menu__shop ticket-edge">
+        <OrderMenuIcon name="shop" size={27} />
+        <span className="meal-menu__shop-label">当前店铺</span>
+        <strong>{shop.name}</strong>
+        <button type="button" disabled={!canSwitchShop} onClick={onBackToShops}>切换店铺 <OrderMenuIcon name="chevron" size={16} /></button>
+      </div>
+      {!canSwitchShop ? <p className="meal-menu__notice" role="status">订单结果待确认，暂时不能切换店铺。</p> : null}
+      {source.mode === 'sample' ? <p className="meal-menu__demo">示例菜单 · 图片仅供参考</p> : <p className="meal-menu__demo">菜单与价格来自公共服务 · 图片仅供参考</p>}
 
-      <div className="student-date-switch" role="group" aria-label="选择菜单日期">
-        {snapshot.allowedDates.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={`student-date-switch__item${date === item ? ' is-active' : ''}`}
-            aria-pressed={date === item}
-            onClick={() => changeDate(item)}
-          >
-            {dayLabel(item, snapshot.allowedDates)} {formatMonthDay(item)}
-          </button>
-        ))}
+      <div className="meal-menu__dates" role="group" aria-label="选择菜单日期">
+        {snapshot.allowedDates.map((item, index) => <button key={item} type="button" className={date === item ? 'is-active' : ''} aria-pressed={date === item} onClick={() => changeDate(item)}><OrderMenuIcon name="calendar" size={21} /> {index === 0 ? '今天' : '明天'} {monthDay(item)}</button>)}
       </div>
 
-      {snapshot.notice ? (
-        <p className="student-notice" role="status">
-          {snapshot.notice}
-        </p>
-      ) : null}
+      <div className="meal-menu__categories" role="tablist" aria-label="菜品分类，按名称整理">
+        {CATEGORIES.map((item) => <button key={item} type="button" role="tab" aria-selected={category === item} className={category === item ? 'is-active' : ''} onClick={() => setCategory(item)}>{item}</button>)}
+      </div>
 
-      {status === 'loading' ? (
-        <p className="student-loading">
-          {source.mode === 'real' ? '正在读取菜单…' : '正在读取样例菜单…'}
-        </p>
-      ) : null}
+      {snapshot.notice && snapshot.notice !== SHOP_SWITCH_NOTICE ? <p className="meal-menu__notice" role="status">{snapshot.notice}</p> : null}
+      {status === 'loading' ? <p className="meal-menu__state">正在读取菜单…</p> : null}
+      {status === 'error' ? <div className="meal-menu__state is-error" role="alert"><p>{errorText}</p><button type="button" onClick={() => setReloadToken((value) => value + 1)}>重新读取</button></div> : null}
+      {status === 'ready' && shopDishes.length === 0 ? <p className="meal-menu__state">当前店铺暂无菜单信息</p> : null}
+      {status === 'ready' && shopDishes.length > 0 && shownDishes.length === 0 ? <p className="meal-menu__state">此分类暂无菜品</p> : null}
+      {status === 'ready' && shownDishes.length > 0 ? <ul className="meal-menu__dishes" aria-label="菜品列表">{shownDishes.map((dish, index) => <OrderDishCard key={dish.dishId} dish={dish} quantity={snapshot.items.find((item) => item.dishId === dish.dishId)?.quantity ?? 0} index={index} onQuantityChange={(next) => updateQuantity(dish, next)} />)}</ul> : null}
 
-      {status === 'error' ? (
-        <div className="student-error" role="alert">
-          <p>{errorText}</p>
-          <button type="button" className="student-secondary" onClick={() => setReloadToken((value) => value + 1)}>
-            重新读取
-          </button>
-        </div>
-      ) : null}
+      {source.mode === 'sample' ? <div className="meal-menu__sample-actions"><button type="button" onClick={onViewSampleOrder}>查看示例订单</button>{onViewCancelOrder ? <button type="button" onClick={onViewCancelOrder}>查看取消状态</button> : null}</div> : null}
+    </div>
 
-      {status === 'ready' && menu && menu.dishes.length === 0 ? (
-        <p className="student-loading">暂无菜单信息，请稍后重试</p>
-      ) : null}
-
-      {status === 'ready' && menu && menu.dishes.length > 0 && shopDishes.length === 0 ? (
-        <p className="student-loading">{EMPTY_SHOP_MENU}</p>
-      ) : null}
-
-      {status === 'ready' && shopDishes.length > 0 ? (
-        <ul
-          className="student-dish-list"
-          aria-label={`${formatMonthDay(menu?.date ?? date)} ${
-            source.mode === 'real' ? '菜品' : '样例菜品'
-          }`}
-        >
-          {shopDishes.map((dish) => {
-            const quantity = snapshot.items.find((item) => item.dishId === dish.dishId)?.quantity ?? 0;
-            const view = toDishView(dish);
-            const limit = dish.onSale === true ? Math.max(0, dish.availableQuantity ?? 0) : 0;
-            const atLimit = view.kind === 'ON_SALE' && quantity >= limit;
-            const sampleOnly = source.mode === 'sample' && SAMPLE_ONLY_DISH_IDS.includes(dish.dishId);
-            return (
-              <li
-                key={dish.dishId}
-                data-dish-id={dish.dishId}
-                data-merchant-id={dish.merchantId}
-                className={`student-dish${
-                  view.kind === 'OFF_SALE' ? ' is-off' : view.kind === 'SHORTAGE' ? ' is-shortage' : ''
-                }`}
-              >
-                <div className="student-dish__body">
-                  <p className="student-dish__name">
-                    {dish.name}
-                    {sampleOnly ? (
-                      <span className="student-sample-only">{SAMPLE_ONLY_LABEL}</span>
-                    ) : null}
-                  </p>
-                  {view.kind === 'SHORTAGE' ? (
-                    <button
-                      type="button"
-                      className="student-dish__shortage"
-                      aria-label={`${dish.name} ${view.metaText}，查看提示`}
-                      onClick={() => updateQuantity(dish, 1)}
-                    >
-                      {view.metaText}
-                    </button>
-                  ) : (
-                    <p className="student-dish__meta">{view.metaText}</p>
-                  )}
-                  {atLimit ? <p className="student-dish__limit">{DISH_LIMIT_TEXT}</p> : null}
-                </div>
-                <div className="student-dish__aside">
-                  <span className="student-dish__price">{formatYuan(dish.unitPriceFen)}</span>
-                  {view.stepperVisible ? (
-                    <div className="student-stepper" role="group" aria-label={`${dish.name} 数量`}>
-                      <button
-                        type="button"
-                        className="student-stepper__button"
-                        aria-label={`减少 ${dish.name}`}
-                        disabled={quantity <= 0}
-                        onClick={() => updateQuantity(dish, quantity - 1)}
-                      >
-                        −
-                      </button>
-                      <span className="student-stepper__value" aria-live="polite">
-                        {quantity}
-                      </span>
-                      <button
-                        type="button"
-                        className="student-stepper__button"
-                        aria-label={`增加 ${dish.name}`}
-                        disabled={atLimit}
-                        onClick={() => updateQuantity(dish, quantity + 1)}
-                      >
-                        +
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-
-      <footer className="student-summary">
-        <p className="student-summary__main">
-          {snapshot.totalQuantity > 0
-            ? `已选 ${snapshot.totalQuantity} 份 · 预估 ${formatYuan(snapshot.previewFen)}`
-            : '尚未选择菜品'}
-        </p>
-        <p className="student-summary__note">预估仅用于预览，金额以服务端返回为准</p>
-        <button
-          type="button"
-          className="student-primary"
-          disabled={!canProceed}
-          onClick={onProceed}
-        >
-          下一步：选择时段
-        </button>
-        <p className="student-summary__hint">
-          {canProceed ? '已选内容会带入时段页。' : '请先选择菜品'}
-        </p>
-      </footer>
-
-      {source.mode === 'sample' ? (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="student-secondary student-sample-order"
-            onClick={onViewSampleOrder}
-          >
-            查看样例订单
-          </button>
-          {onViewCancelOrder ? (
-            <button
-              type="button"
-              className="student-secondary student-sample-order"
-              style={{ background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}
-              onClick={onViewCancelOrder}
-            >
-              查看取消状态订单
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {source.mode === 'sample' ? <DemoModeNotice /> : null}
-    </section>
-  );
+    <div className="meal-menu__bottom">
+      <div className="meal-menu__basket ticket-edge">
+        <div className="meal-menu__basket-total"><OrderMenuIcon name="basket" size={24} /><span>共 {snapshot.totalQuantity} 份</span><i aria-hidden="true" /><strong>合计 {formatYuan(snapshot.previewFen)}</strong></div>
+        <button type="button" disabled={!snapshot.canProceedToSlot} onClick={onProceed}>选择取餐时间 <OrderMenuIcon name="chevron" size={18} /></button>
+      </div>
+      <p className="meal-menu__estimate">此处为预估金额，下单金额以服务端返回为准</p>
+      <nav className="meal-menu__nav" aria-label="学生端导航">
+        <button type="button" onClick={onGoHome ?? onBackToShops}><OrderMenuIcon name="home" size={25} /><span>首页</span></button>
+        <button type="button" className="is-active" aria-current="page"><OrderMenuIcon name="bowl" size={26} /><span>点餐</span></button>
+        <button type="button" onClick={onOpenOrders}><OrderMenuIcon name="receipt" size={25} /><span>订单</span></button>
+        <button type="button" onClick={onGoProfile ?? onOpenOrders}><OrderMenuIcon name="user" size={25} /><span>我的</span></button>
+      </nav>
+    </div>
+  </section>;
 }

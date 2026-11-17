@@ -298,6 +298,11 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
       onViewSampleOrder={() => openOrderFrom('menu', 'demo-order-001')}
       onViewCancelOrder={() => openOrderFrom('menu', 'demo-order-cancel-001')}
       onOpenOrders={() => openOrders('menu')}
+      onGoHome={() => {
+        setShopTab('home');
+        goTo('shop');
+      }}
+      onGoProfile={() => goTo('profile')}
     />
   );
 }

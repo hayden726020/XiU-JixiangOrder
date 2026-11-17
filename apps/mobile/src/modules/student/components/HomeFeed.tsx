@@ -12,6 +12,7 @@ import {
 import { formatYuan } from '../utils/money';
 import { resolveDishPhoto } from '../utils/orderVisuals';
 import DemoModeNotice from './DemoModeNotice';
+import './home-feed.css';
 import noodleCounterPhoto from '../assets/noodle-counter.png';
 import stallCounterJiachang from '../assets/stall-counter-jiachang.png';
 import stallCounterXiaochao from '../assets/stall-counter-xiaochao.png';
