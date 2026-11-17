@@ -38,8 +38,8 @@
 ## Git 基线
 
 - 远端：`https://github.com/hayden726020/XiU-JixiangOrder.git`，默认分支 `main`。
-- 远端基线分支：`frontend/baseline-2026-11-17`；提交链 `ddd9785 merge` → `ca24fed fix(mobile): 订单详情页定时检测新订单并保留当前订单` → `81113c3 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` → 本次 docs 提交。
-- 本次分支 `frontend/handoff-2026-11-17` 已与基线分支同步到同一提交（以实际 `git log` / `git ls-remote` 为准）。
+- 远端基线分支：`frontend/baseline-2026-11-17`；提交链 `ddd9785 merge` → `ca24fed fix(mobile): 订单详情页定时检测新订单并保留当前订单` → `ca97747 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` → `bc114d6 docs(mobile): 记录档口登录页、基线提交与验收步骤`。
+- 本次分支 `frontend/handoff-2026-11-17` 已与基线分支同步到同一远端提交。远端哈希与本地同内容提交（`81113c3`/`44e8653`）不同但提交树一致；下次操作前先 `git fetch` 核对，不要直接强推本地提交。
 - GitHub HTTPS 会间歇性超时或 `Connection was reset`；重试即可，或加 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用。
 - 远端没有 `frontend/`；本地副本对应远端 `apps/mobile`。
 

@@ -12,7 +12,8 @@
 - 本次通过稀疏克隆建立工作区 `E:\project\workspace\.git-sync`（只检出 `apps/mobile`），在其上创建分支 `frontend/handoff-2026-11-17` 提交并推送。
 - 2026-11-17 刷新修复提交：`98ff18d fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`；随后合并 `9cb2926` 形成 `ddd9785`。
 - 实际提交哈希与推送结果以本次回复中的 `git log -1` / `git ls-remote` 输出为准。
-- 2026-11-17 档口登录页提交：`81113c3 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`；同时把 19:10 基线之后并行完成的菜品自定义、品牌图片与档口视觉样式纳入远端。
+- 2026-11-17 档口登录页提交：远端 `ca97747 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`（本地同内容提交 `81113c3`，提交树哈希一致）；随后文档提交远端 `bc114d6`（本地同内容 `44e8653`）。同时把 19:10 基线之后并行完成的菜品自定义、品牌图片与档口视觉样式纳入远端。
+- 本次推送因 `github.com:443` 直连被阻断，改用 GitHub API 创建同内容提交并更新分支引用；远端提交哈希与本地不同，但提交树与本地一致（`0b50d58`）。
 - GitHub HTTPS 连接在当前网络下间歇性 `Connection was reset`；重试可成功，不要据此判定仓库不可达。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
 - **本地 `frontend/android` 与 `frontend/capacitor.config.ts` 是本次为出包新生成的临时模板**：`versionCode 2`、`versionName "0.1.0"`，未覆盖远端正式工程。禁止把本地 `android/` 整目录覆盖到远端 `apps/mobile/android`。
@@ -185,8 +186,8 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 ## 9 Git 操作约定
 
 - 工作区：`E:\project\workspace\.git-sync`（稀疏检出 `apps/mobile`）。
-- 当前分支：`frontend/handoff-2026-11-17`，提交链 `ddd9785`（合并）→ `ca24fed`（详情页检测）→ `c02046c`（docs）→ `81113c3 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` → 本次 docs 提交（以 `git log` 为准）。
-- 远端基线分支 `frontend/baseline-2026-11-17` 已快进到同一提交；只推专用分支，不推 `main`，不强推。
+- 当前分支：`frontend/handoff-2026-11-17`，远端提交链 `ddd9785`（合并）→ `ca24fed`（详情页检测）→ `c02046c`（docs）→ `ca97747 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` → 本次 docs 提交（`bc114d6`，以 `git ls-remote` 为准；本地同内容提交为 `81113c3` → `44e8653`）。
+- 远端基线分支 `frontend/baseline-2026-11-17` 已快进到同一提交；只推专用分支，不推 `main`，不强推。注意远端哈希与本地哈希不同但树一致，下一次操作前先 `git fetch` 核对，不要用本地提交直接强推。
 - 提交信息：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`、`merge: 合并当前前端基线与档口订单刷新修复`、`docs(mobile): 更新当前基线、刷新验收与交接说明`、`fix(mobile): 订单详情页定时检测新订单并保留当前订单`、`feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`。
 - GitHub 主站连接可能超时或 `Connection was reset`；重试或用 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用，远端与本地 SHA 一致。
 - 推送后用 `git log -1 --oneline`、`git status`、`git ls-remote` 核对。
