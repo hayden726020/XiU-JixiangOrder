@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 export type StudentTab = 'home' | 'order' | 'orders' | 'profile';
 
 interface StudentTabBarProps {
@@ -14,6 +16,13 @@ const TABS: Array<{ id: StudentTab; label: string }> = [
   { id: 'orders', label: '订单' },
   { id: 'profile', label: '我的' },
 ];
+
+let lastCommittedTab: StudentTab | null = null;
+
+function tabIndexOf(tab: StudentTab): number {
+  const index = TABS.findIndex((item) => item.id === tab);
+  return index >= 0 ? index : 0;
+}
 
 function TabIcon({ tab }: { tab: StudentTab }) {
   switch (tab) {
@@ -50,6 +59,45 @@ export default function StudentTabBar({
   onOpenOrders,
   onOpenProfile,
 }: StudentTabBarProps) {
+  const [displayTab, setDisplayTab] = useState<StudentTab>(() => lastCommittedTab ?? active);
+  const [animDir, setAnimDir] = useState<'none' | 'forward' | 'backward'>(() => {
+    if (!lastCommittedTab || lastCommittedTab === active) return 'none';
+    return tabIndexOf(active) > tabIndexOf(lastCommittedTab) ? 'forward' : 'backward';
+  });
+
+  useEffect(() => {
+    const reduceMotion = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      lastCommittedTab = active;
+      setDisplayTab(active);
+      setAnimDir('none');
+      return;
+    }
+
+    const fromTab = displayTab;
+    if (fromTab === active) {
+      lastCommittedTab = active;
+      return;
+    }
+
+    const nextDir = tabIndexOf(active) > tabIndexOf(fromTab) ? 'forward' : 'backward';
+    setAnimDir(nextDir);
+
+    let frame2 = 0;
+    const frame1 = window.requestAnimationFrame(() => {
+      frame2 = window.requestAnimationFrame(() => {
+        lastCommittedTab = active;
+        setDisplayTab(active);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame1);
+      window.cancelAnimationFrame(frame2);
+    };
+  }, [active]);
+
   const actions: Record<StudentTab, () => void> = {
     home: onGoHome,
     order: onGoOrder,
@@ -57,15 +105,31 @@ export default function StudentTabBar({
     profile: onOpenProfile,
   };
 
+  const activeIndex = tabIndexOf(displayTab);
+
   return (
-    <nav className="student-tabbar" aria-label="学生端底部导航">
+    <nav
+      className="student-tabbar"
+      aria-label="学生端底部导航"
+      data-active-index={activeIndex}
+      data-anim-dir={animDir}
+    >
+      <div className="student-tabbar__track" aria-hidden="true">
+        <span className="student-tabbar__indicator" />
+        <span className="student-tabbar__blob" />
+      </div>
       {TABS.map(({ id, label }) => (
         <button
           key={id}
           type="button"
           className={`student-tabbar__item${active === id ? ' is-active' : ''}`}
           aria-current={active === id ? 'page' : undefined}
-          onClick={actions[id]}
+          onClick={() => {
+            if (id !== active) {
+              lastCommittedTab = active;
+            }
+            actions[id]();
+          }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <TabIcon tab={id} />

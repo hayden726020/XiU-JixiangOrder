@@ -81,13 +81,14 @@ export default function MenuPage({
     };
   }, [source, draft, shop.merchantId, date, reloadToken]);
 
-  function changeDate(next: string): void {
+  function changeDate(next: string): boolean {
     if (!draft.setDate(next)) {
-      return;
+      return false;
     }
     setMenu(null);
     setStatus('loading');
     setSnapshot(draft.getState());
+    return true;
   }
 
   function updateQuantity(dish: DishDto, next: number): void {
@@ -98,6 +99,15 @@ export default function MenuPage({
   const canSwitchShop = draft.canSetShop();
   const shopDishes = menu ? filterDishesByShop(menu.dishes, shop.merchantId) : [];
   const canProceed = snapshot.canProceedToSlot;
+  const activeDateIndex = Math.max(0, snapshot.allowedDates.indexOf(date));
+  const [dateAnimDir, setDateAnimDir] = useState<'none' | 'forward' | 'backward'>('none');
+
+  function handleDateClick(next: string, nextIndex: number): void {
+    if (next === date) return;
+    const prevIndex = activeDateIndex;
+    if (!changeDate(next)) return;
+    setDateAnimDir(nextIndex > prevIndex ? 'forward' : 'backward');
+  }
 
   return (
     <section className="student-menu-page student-page" aria-labelledby="student-menu-title">
@@ -141,14 +151,24 @@ export default function MenuPage({
         </p>
       </header>
 
-      <div className="student-date-switch" role="group" aria-label="选择菜单日期">
+      <div
+        className="student-date-switch"
+        role="group"
+        aria-label="选择菜单日期"
+        data-active-index={activeDateIndex}
+        data-anim-dir={dateAnimDir}
+      >
+        <span
+          className="student-date-switch__thumb"
+          aria-hidden="true"
+        />
         {snapshot.allowedDates.map((item, index) => (
           <button
             key={item}
             type="button"
             className={`student-date-switch__item${date === item ? ' is-active' : ''}`}
             aria-pressed={date === item}
-            onClick={() => changeDate(item)}
+            onClick={() => handleDateClick(item, index)}
           >
             {DAY_LABELS[index]} {formatMonthDay(item)}
           </button>

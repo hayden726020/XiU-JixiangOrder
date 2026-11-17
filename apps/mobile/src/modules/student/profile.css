@@ -30,7 +30,13 @@
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   position: relative;
   box-sizing: border-box;
+  overflow-x: hidden;
   padding-bottom: calc(5.2rem + env(safe-area-inset-bottom));
+}
+
+.student-profile .student-sample-banner {
+  margin: 0;
+  padding: calc(0.5rem + env(safe-area-inset-top)) 1rem 0.5rem;
 }
 
 /* 顶部封面背景与大标题区域 */
@@ -43,6 +49,7 @@
     url("./assets/campus-hero.webp") center 35% / cover no-repeat;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start;
 }
 

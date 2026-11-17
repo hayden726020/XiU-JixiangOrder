@@ -143,27 +143,118 @@
 }
 
 .student-menu-page .student-date-switch {
+  position: relative;
   grid-template-columns: 1fr 1fr;
   gap: 0.2rem;
   padding: 0.35rem;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 1.15rem 0.9rem 1.25rem 0.8rem;
-  background: rgba(255, 253, 248, 0.92);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.94);
   box-shadow: 0 4px 12px rgba(7, 22, 56, 0.07);
+  overflow: hidden;
+}
+
+.student-menu-page .student-date-switch__thumb {
+  position: absolute;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  left: 0.35rem;
+  right: calc(50% + 0.1rem);
+  z-index: 0;
+  border: 1px solid #e7b900;
+  border-radius: 999px;
+  background: var(--menu-yellow);
+  box-shadow: 0 2px 8px rgba(231, 185, 0, 0.32), 0 2px 4px rgba(7, 22, 56, 0.1);
+  pointer-events: none;
+  transform-origin: center;
+  will-change: left, right, transform;
+}
+
+.student-menu-page .student-date-switch[data-active-index="0"] .student-date-switch__thumb {
+  left: 0.35rem;
+  right: calc(50% + 0.1rem);
+  transition:
+    left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    right 420ms cubic-bezier(0.32, 0.72, 0, 1) 45ms;
+}
+
+.student-menu-page .student-date-switch[data-active-index="1"] .student-date-switch__thumb {
+  left: calc(50% + 0.1rem);
+  right: 0.35rem;
+  transition:
+    right 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 420ms cubic-bezier(0.32, 0.72, 0, 1) 45ms;
+}
+
+.student-menu-page .student-date-switch[data-active-index="1"][data-anim-dir="forward"] .student-date-switch__thumb {
+  animation: date-pill-squish-right 440ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.student-menu-page .student-date-switch[data-active-index="0"][data-anim-dir="backward"] .student-date-switch__thumb {
+  animation: date-pill-squish-left 440ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .student-menu-page .student-date-switch__item {
+  position: relative;
+  z-index: 1;
   min-height: 2.9rem;
+  border-color: transparent;
   border-radius: 999px;
+  background: transparent;
   color: #47546a;
   font-weight: 600;
+  transition: color 240ms ease, transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.student-menu-page .student-date-switch__item:active {
+  transform: scale(0.95);
 }
 
 .student-menu-page .student-date-switch__item.is-active {
-  border-color: #e7b900;
-  background: var(--menu-yellow);
+  border-color: transparent;
+  background: transparent;
   color: var(--menu-navy);
-  box-shadow: 0 2px 4px rgba(7, 22, 56, 0.12);
+  font-weight: 700;
+  box-shadow: none;
+  transform: scale(1.02);
+}
+
+@keyframes date-pill-squish-right {
+  0% {
+    transform: scaleY(1);
+  }
+  32% {
+    transform: scaleY(0.86);
+  }
+  72% {
+    transform: scaleY(1.04);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes date-pill-squish-left {
+  0% {
+    transform: scaleY(1);
+  }
+  32% {
+    transform: scaleY(0.86);
+  }
+  72% {
+    transform: scaleY(1.04);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-menu-page .student-date-switch__thumb,
+  .student-menu-page .student-date-switch__item {
+    transition: none;
+    animation: none;
+  }
 }
 
 .student-menu-page .student-notice {
