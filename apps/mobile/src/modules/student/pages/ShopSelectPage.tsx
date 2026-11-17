@@ -373,9 +373,9 @@ export default function ShopSelectPage({
                     fill="none"
                     aria-hidden="true"
                   >
-                    <path d="M5 13L11 5" stroke="#FFE169" strokeWidth="2.4" strokeLinecap="round" />
-                    <path d="M9 15L18 11" stroke="#FFE169" strokeWidth="2.4" strokeLinecap="round" />
-                    <path d="M11 19L19 18" stroke="#FFE169" strokeWidth="2.4" strokeLinecap="round" />
+                    <path d="M5 13L11 5" stroke="#F5C400" strokeWidth="2.4" strokeLinecap="round" />
+                    <path d="M9 15L18 11" stroke="#F5C400" strokeWidth="2.4" strokeLinecap="round" />
+                    <path d="M11 19L19 18" stroke="#F5C400" strokeWidth="2.4" strokeLinecap="round" />
                   </svg>
                 </span>
               </button>

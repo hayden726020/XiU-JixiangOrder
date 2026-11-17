@@ -87,7 +87,6 @@ export default function AdminHome() {
   const isOrders = location.route === 'orders';
   const isOrderDetail = location.route === 'orderDetail';
   const isSettings = location.route === 'settings';
-  const isFocusedPage = isOverview || isOrders || isOrderDetail || isSettings;
   const baseInfo = getApiBaseInfo();
   const activeNav = location.route === 'orderDetail' ? 'orders' : location.route;
 
@@ -154,7 +153,7 @@ export default function AdminHome() {
       className={`module-panel admin-panel${isOverview ? ' admin-panel--overview' : ''}${isOrders ? ' admin-panel--orders' : ''}${isOrderDetail ? ' admin-panel--order-detail' : ''}${isSettings ? ' admin-panel--settings' : ''}`}
       aria-labelledby="admin-title"
     >
-      {!isFocusedPage ? (
+      {location.route !== 'orderDetail' ? (
         <>
           {mode === 'sample' ? (
             <SampleBanner />
@@ -220,7 +219,7 @@ export default function AdminHome() {
         </>
       ) : null}
 
-      {!isFocusedPage ? (
+      {location.route !== 'orderDetail' ? (
         <nav className="admin-nav" aria-label="管理端页面">
           {navItems.map((item) => (
             <a
