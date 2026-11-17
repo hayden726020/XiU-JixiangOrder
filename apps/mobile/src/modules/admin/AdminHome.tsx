@@ -23,8 +23,11 @@ import {
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrdersPage from './pages/OrdersPage';
 import OverviewPage from './pages/OverviewPage';
+import QualificationReviewPage from './pages/QualificationReviewPage';
+import MerchantAccountsPage from './pages/MerchantAccountsPage';
 import SettingsPage from './pages/SettingsPage';
 import type { AdminRoute } from './types';
+import './admin-theme.css';
 
 const ADMIN_ROOT = '/admin';
 
@@ -36,6 +39,8 @@ interface AdminLocation {
 const navItems: Array<{ route: AdminRoute; href: string; label: string }> = [
   { route: 'overview', href: '#/admin', label: '概览' },
   { route: 'orders', href: '#/admin/orders', label: '订单与异常' },
+  { route: 'qualifications', href: '#/admin/qualifications', label: '档口审核' },
+  { route: 'merchantAccounts', href: '#/admin/merchant-accounts', label: '商家账号' },
   { route: 'settings', href: '#/admin/settings', label: '营业与配置' },
 ];
 
@@ -56,6 +61,12 @@ function readLocation(): AdminLocation {
   }
   if (hash === `${ADMIN_ROOT}/settings`) {
     return { route: 'settings', orderId: null };
+  }
+  if (hash === `${ADMIN_ROOT}/qualifications`) {
+    return { route: 'qualifications', orderId: null };
+  }
+  if (hash === `${ADMIN_ROOT}/merchant-accounts`) {
+    return { route: 'merchantAccounts', orderId: null };
   }
   return { route: 'overview', orderId: null };
 }
@@ -87,7 +98,8 @@ export default function AdminHome() {
   const isOrders = location.route === 'orders';
   const isOrderDetail = location.route === 'orderDetail';
   const isSettings = location.route === 'settings';
-  const isFocusedPage = isOverview || isOrders || isOrderDetail || isSettings;
+  const isQualifications = location.route === 'qualifications';
+  const isMerchantAccounts = location.route === 'merchantAccounts';
   const baseInfo = getApiBaseInfo();
   const activeNav = location.route === 'orderDetail' ? 'orders' : location.route;
 
@@ -151,10 +163,10 @@ export default function AdminHome() {
 
   return (
     <section
-      className={`module-panel admin-panel${isOverview ? ' admin-panel--overview' : ''}${isOrders ? ' admin-panel--orders' : ''}${isOrderDetail ? ' admin-panel--order-detail' : ''}${isSettings ? ' admin-panel--settings' : ''}`}
+      className={`module-panel admin-panel${isOverview ? ' admin-panel--overview' : ''}${isOrders ? ' admin-panel--orders' : ''}${isOrderDetail ? ' admin-panel--order-detail' : ''}${isSettings ? ' admin-panel--settings' : ''}${isQualifications ? ' admin-panel--qualifications' : ''}${isMerchantAccounts ? ' admin-panel--merchant-accounts' : ''}`}
       aria-labelledby="admin-title"
     >
-      {!isFocusedPage ? (
+      {location.route !== 'orderDetail' ? (
         <>
           {mode === 'sample' ? (
             <SampleBanner />
@@ -220,7 +232,7 @@ export default function AdminHome() {
         </>
       ) : null}
 
-      {!isFocusedPage ? (
+      {location.route !== 'orderDetail' ? (
         <nav className="admin-nav" aria-label="管理端页面">
           {navItems.map((item) => (
             <a
@@ -248,6 +260,10 @@ export default function AdminHome() {
         />
       ) : location.route === 'settings' ? (
         <SettingsPage source={source} />
+      ) : location.route === 'qualifications' ? (
+        <QualificationReviewPage source={source} />
+      ) : location.route === 'merchantAccounts' ? (
+        <MerchantAccountsPage source={source} />
       ) : (
         <OverviewPage
           mode={mode}

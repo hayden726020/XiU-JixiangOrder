@@ -1,5 +1,13 @@
 import { ApiError, apiRequest } from '../../../shared';
-import type { AdminSettings, Order, OrderStatus } from '../types';
+import type {
+  AdminMerchantAccount,
+  AdminQualification,
+  AdminSettings,
+  CreateMerchantAccountInput,
+  Order,
+  OrderStatus,
+  ReviewQualificationInput,
+} from '../types';
 import { sampleOrders, sampleSettings } from './sample';
 
 export type AdminSourceMode = 'sample' | 'live';
@@ -62,6 +70,13 @@ export interface AdminSource {
   getOrder(id: string): Promise<Order | null>;
   getSettings(): Promise<AdminSettings>;
   updateSettings(request: SettingsUpdateRequest): Promise<SettingsUpdateResult>;
+  listQualifications(): Promise<AdminQualification[]>;
+  reviewQualification(
+    merchantId: string,
+    input: ReviewQualificationInput,
+  ): Promise<AdminQualification>;
+  listMerchantAccounts(): Promise<AdminMerchantAccount[]>;
+  createMerchantAccount(input: CreateMerchantAccountInput): Promise<AdminMerchantAccount>;
 }
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -174,6 +189,77 @@ function parseSettingsUpdate(value: unknown, section: AdminSettingsSection): Set
   return { section, version: value.version };
 }
 
+function parseQualification(value: unknown): AdminQualification {
+  if (!isRecord(value)) throw invalidResponse();
+  const status = value.status === 'APPROVED' || value.status === 'REJECTED' ? value.status : 'PENDING';
+  const license = isRecord(value.businessLicense) ? value.businessLicense : {};
+  const permit = isRecord(value.foodPermit) ? value.foodPermit : {};
+  return {
+    merchantId: typeof value.merchantId === 'string' ? value.merchantId : '',
+    merchantName: typeof value.merchantName === 'string' ? value.merchantName : '',
+    contactName: typeof value.contactName === 'string' ? value.contactName : null,
+    contactPhone: typeof value.contactPhone === 'string' ? value.contactPhone : null,
+    status,
+    businessLicense: {
+      fileName: typeof license.fileName === 'string' ? license.fileName : '',
+      mimeType: typeof license.mimeType === 'string' ? license.mimeType : '',
+    },
+    foodPermit: {
+      fileName: typeof permit.fileName === 'string' ? permit.fileName : '',
+      mimeType: typeof permit.mimeType === 'string' ? permit.mimeType : '',
+    },
+    submittedAt: typeof value.submittedAt === 'string' ? value.submittedAt : '',
+    reviewedAt: typeof value.reviewedAt === 'string' ? value.reviewedAt : null,
+    reviewReason: typeof value.reviewReason === 'string' ? value.reviewReason : null,
+    version: typeof value.version === 'number' ? value.version : 1,
+  };
+}
+
+function parseMerchantAccount(value: unknown): AdminMerchantAccount {
+  if (!isRecord(value)) throw invalidResponse();
+  return {
+    userId: typeof value.userId === 'string' ? value.userId : '',
+    account: typeof value.account === 'string' ? value.account : '',
+    password: typeof value.password === 'string' ? value.password : null,
+    active: value.active !== false,
+    merchantId: typeof value.merchantId === 'string' ? value.merchantId : null,
+    merchantName: typeof value.merchantName === 'string' ? value.merchantName : null,
+    contactName: typeof value.contactName === 'string' ? value.contactName : null,
+    contactPhone: typeof value.contactPhone === 'string' ? value.contactPhone : null,
+    createdAt: typeof value.createdAt === 'string' ? value.createdAt : null,
+  };
+}
+
+let sampleQualificationState: AdminQualification[] = [
+  {
+    merchantId: 'demo-merchant-01',
+    merchantName: '一食堂·家常档',
+    contactName: '王师傅',
+    contactPhone: '138****8888',
+    status: 'PENDING',
+    businessLicense: { fileName: '营业执照-家常档.png', mimeType: 'image/png' },
+    foodPermit: { fileName: '食品经营许可证-家常档.png', mimeType: 'image/png' },
+    submittedAt: '2026-11-17T09:30:00+08:00',
+    reviewedAt: null,
+    reviewReason: null,
+    version: 1,
+  },
+];
+
+let sampleMerchantAccountState: AdminMerchantAccount[] = [
+  {
+    userId: 'demo-user-merchant-01',
+    account: 'demo-merchant',
+    password: 'demo-pass',
+    active: true,
+    merchantId: 'demo-merchant-01',
+    merchantName: '一食堂·家常档',
+    contactName: '王师傅',
+    contactPhone: '138****8888',
+    createdAt: '2026-11-13T08:00:00+08:00',
+  },
+];
+
 function samplePage(query: AdminOrderQuery): AdminOrderPage {
   const filtered =
     query.status === 'ALL'
@@ -272,6 +358,45 @@ export function createAdminSource(options: {
         });
         return parseSettingsUpdate(data, request.section);
       },
+      listQualifications: async () => {
+        const data = await apiRequest<unknown>('/admin/merchant-qualifications');
+        if (!isRecord(data) || !Array.isArray(data.qualifications)) throw invalidResponse();
+        return data.qualifications.map(parseQualification);
+      },
+      reviewQualification: async (merchantId, input) => {
+        const data = await apiRequest<unknown>(
+          `/admin/merchant-qualifications/${encodeURIComponent(merchantId)}/review`,
+          {
+            method: 'POST',
+            body: {
+              requestId: input.requestId,
+              expectedVersion: input.expectedVersion,
+              decision: input.decision,
+              ...(input.reason ? { reason: input.reason } : {}),
+            },
+          },
+        );
+        return parseQualification(data);
+      },
+      listMerchantAccounts: async () => {
+        const data = await apiRequest<unknown>('/admin/merchant-accounts');
+        if (!isRecord(data) || !Array.isArray(data.accounts)) throw invalidResponse();
+        return data.accounts.map(parseMerchantAccount);
+      },
+      createMerchantAccount: async (input) => {
+        const data = await apiRequest<unknown>('/admin/merchant-accounts', {
+          method: 'POST',
+          body: {
+            requestId: input.requestId,
+            account: input.account,
+            password: input.password,
+            merchantName: input.merchantName,
+            contactName: input.contactName,
+            contactPhone: input.contactPhone,
+          },
+        });
+        return parseMerchantAccount(data);
+      },
     };
   }
 
@@ -287,6 +412,53 @@ export function createAdminSource(options: {
         status: 0,
         retryable: false,
       });
+    },
+    listQualifications: async () => structuredClone(sampleQualificationState),
+    reviewQualification: async (merchantId, input) => {
+      const current = sampleQualificationState.find((item) => item.merchantId === merchantId);
+      if (!current) {
+        throw new ApiError({
+          code: 'QUALIFICATION_NOT_FOUND',
+          message: '该商家尚未提交资质。',
+          status: 404,
+          retryable: false,
+        });
+      }
+      if (current.version !== input.expectedVersion) {
+        throw new ApiError({
+          code: 'QUALIFICATION_VERSION_CONFLICT',
+          message: '资质已发生变化，请刷新后重试。',
+          status: 409,
+          retryable: true,
+        });
+      }
+      const updated: AdminQualification = {
+        ...current,
+        status: input.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        reviewReason: input.reason ?? null,
+        reviewedAt: new Date().toISOString(),
+        version: current.version + 1,
+      };
+      sampleQualificationState = sampleQualificationState.map((item) => (
+        item.merchantId === merchantId ? updated : item
+      ));
+      return structuredClone(updated);
+    },
+    listMerchantAccounts: async () => structuredClone(sampleMerchantAccountState),
+    createMerchantAccount: async (input) => {
+      const created: AdminMerchantAccount = {
+        userId: `demo-user-${input.account}`,
+        account: input.account,
+        password: input.password,
+        active: true,
+        merchantId: `demo-merchant-${sampleMerchantAccountState.length + 1}`,
+        merchantName: input.merchantName,
+        contactName: input.contactName,
+        contactPhone: input.contactPhone,
+        createdAt: new Date().toISOString(),
+      };
+      sampleMerchantAccountState = [...sampleMerchantAccountState, created];
+      return structuredClone(created);
     },
   };
   return applySimulation(sample, options.simulateError ?? 'none');

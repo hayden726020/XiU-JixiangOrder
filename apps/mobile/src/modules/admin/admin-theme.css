@@ -1,0 +1,328 @@
+/* 管理端：与食麦呼入口、学生登录、档口注册一致的暖色纸感主题 */
+
+body:has(.admin-panel) {
+  --ink: #14243f;
+  --muted: #6b6656;
+  --line: #ece2cc;
+  --surface: #fffdf7;
+  --canvas: #fbf7ea;
+  --green-900: #1f5c33;
+  --green-700: #2f7a2c;
+  --green-100: #eef7ef;
+  --amber-100: #fff3c4;
+  --amber-700: #8a6b16;
+  background: #fbf7ea;
+}
+
+body:has(.admin-panel) .app-shell {
+  background: #fbf7ea;
+  box-shadow: none;
+}
+
+body:has(.admin-panel) .app-main {
+  padding: 0;
+}
+
+body:has(.admin-panel) .app-shell:has(.admin-panel--overview),
+body:has(.admin-panel) .app-shell:has(.admin-panel--orders),
+body:has(.admin-panel) .app-shell:has(.admin-panel--order-detail),
+body:has(.admin-panel) .app-shell:has(.admin-panel--settings),
+body:has(.admin-panel) .app-shell:has(.admin-panel--access),
+body:has(.admin-panel) .app-shell:has(.admin-panel--qualifications),
+body:has(.admin-panel) .app-shell:has(.admin-panel--merchant-accounts),
+body:has(.admin-panel) .app-shell:has(.admin-settings--editing),
+body:has(.admin-panel) .app-shell:has(.admin-orders--error),
+body:has(.admin-panel) .app-shell:has(.admin-orders--empty) {
+  background: #fbf7ea;
+}
+
+body:has(.admin-panel) .app-shell:has(.admin-panel--qualifications) .app-header,
+body:has(.admin-panel) .app-shell:has(.admin-panel--qualifications) .app-main > .back-link,
+body:has(.admin-panel) .app-shell:has(.admin-panel--qualifications) .app-footer,
+body:has(.admin-panel) .app-shell:has(.admin-panel--merchant-accounts) .app-header,
+body:has(.admin-panel) .app-shell:has(.admin-panel--merchant-accounts) .app-main > .back-link,
+body:has(.admin-panel) .app-shell:has(.admin-panel--merchant-accounts) .app-footer {
+  display: none;
+}
+
+body:has(.admin-panel) .admin-overview,
+body:has(.admin-panel) .admin-orders,
+body:has(.admin-panel) .admin-order-detail,
+body:has(.admin-panel) .admin-settings,
+body:has(.admin-panel) .admin-access,
+body:has(.admin-panel) .admin-review,
+body:has(.admin-panel) .admin-accounts {
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 100, 60, 0.024) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120, 100, 60, 0.018) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 12% 4%, rgba(255, 213, 37, 0.22), transparent 42%),
+    radial-gradient(circle at 92% 22%, rgba(255, 247, 222, 0.9), transparent 48%),
+    linear-gradient(180deg, #fdf8e9 0%, #fbf5e6 60%, #f7f1df 100%);
+  color: #14243f;
+}
+
+body:has(.admin-panel) .admin-review,
+body:has(.admin-panel) .admin-accounts {
+  min-height: 100dvh;
+  padding: calc(1.75rem + env(safe-area-inset-top)) calc(1.25rem + env(safe-area-inset-right))
+    calc(1.75rem + env(safe-area-inset-bottom)) calc(1.25rem + env(safe-area-inset-left));
+}
+
+body:has(.admin-panel) .admin-overview__title,
+body:has(.admin-panel) .admin-orders__title,
+body:has(.admin-panel) .admin-order-detail__header h2,
+body:has(.admin-panel) .admin-settings h2,
+body:has(.admin-panel) .admin-access__title,
+body:has(.admin-panel) #admin-title {
+  color: #14243f;
+}
+
+body:has(.admin-panel) .admin-overview__title,
+body:has(.admin-panel) .admin-access__title {
+  font-family: "Ma Shan Zheng", "FZShuti", "STXingkai", "华文行楷", "STKaiti", "KaiTi", "Kaiti SC", serif;
+  letter-spacing: 0.08em;
+}
+
+body:has(.admin-panel) .admin-overview__header > p {
+  color: #8a6b16;
+}
+
+body:has(.admin-panel) .admin-banner,
+body:has(.admin-panel) .admin-overview__notice,
+body:has(.admin-panel) .admin-order-detail__notice,
+body:has(.admin-panel) .admin-settings__feedback--warning {
+  border-color: #ecd98a;
+  background: #fff3c4;
+  color: #8a6b16;
+}
+
+body:has(.admin-panel) .admin-nav {
+  border-bottom-color: #ece2cc;
+}
+
+body:has(.admin-panel) .admin-nav a {
+  border-color: #e6dcc6;
+  background: #fffdf7;
+  color: #1f5c33;
+}
+
+body:has(.admin-panel) .admin-nav a:hover,
+body:has(.admin-panel) .admin-nav a:focus-visible {
+  border-color: #2f7a2c;
+}
+
+body:has(.admin-panel) .admin-nav a[aria-current='page'] {
+  border-color: #2f7a2c;
+  background: #eef7ef;
+  color: #1f5c33;
+}
+
+body:has(.admin-panel) .admin-overview__stat,
+body:has(.admin-panel) .admin-overview__link,
+body:has(.admin-panel) .admin-overview__session,
+body:has(.admin-panel) .admin-stat,
+body:has(.admin-panel) .admin-link-card,
+body:has(.admin-panel) .admin-order,
+body:has(.admin-panel) .admin-settings__card,
+body:has(.admin-panel) .admin-order-detail__info,
+body:has(.admin-panel) .admin-order-detail__items,
+body:has(.admin-panel) .admin-review__card,
+body:has(.admin-panel) .admin-accounts__card,
+body:has(.admin-panel) .admin-accounts__form {
+  border-color: #ece2cc;
+  background: #fffdf7;
+  box-shadow: 0 10px 24px rgba(20, 36, 63, 0.06);
+}
+
+body:has(.admin-panel) .admin-session,
+body:has(.admin-panel) .admin-sim {
+  border-color: #ece2cc;
+  background: #fffdf7;
+  color: #14243f;
+}
+
+body:has(.admin-panel) .admin-muted,
+body:has(.admin-panel) .admin-orders__summary,
+body:has(.admin-panel) .admin-orders__loading,
+body:has(.admin-panel) .admin-overview__stat span,
+body:has(.admin-panel) .admin-overview__link-body span,
+body:has(.admin-panel) .admin-settings__kv,
+body:has(.admin-panel) .admin-order-detail__row {
+  color: #6b6656;
+}
+
+body:has(.admin-panel) .admin-overview__stat strong,
+body:has(.admin-panel) .admin-overview__link-body strong,
+body:has(.admin-panel) .admin-order__id,
+body:has(.admin-panel) .admin-order__meta strong,
+body:has(.admin-panel) .admin-order-detail__header h2 {
+  color: #14243f;
+}
+
+body:has(.admin-panel) .admin-overview__arrow {
+  color: #2f7a2c;
+}
+
+body:has(.admin-panel) .admin-overview__link:hover,
+body:has(.admin-panel) .admin-overview__link:focus-visible,
+body:has(.admin-panel) .admin-order:hover,
+body:has(.admin-panel) .admin-order:focus-visible,
+body:has(.admin-panel) .admin-link-card:hover,
+body:has(.admin-panel) .admin-link-card:focus-visible {
+  border-color: #2f7a2c;
+  box-shadow: 0 12px 26px rgba(20, 36, 63, 0.1);
+}
+
+body:has(.admin-panel) .admin-orders__filters label > span {
+  color: #8a8069;
+}
+
+body:has(.admin-panel) .admin-orders__filters select,
+body:has(.admin-panel) input,
+body:has(.admin-panel) select,
+body:has(.admin-panel) textarea {
+  border-color: #e3dccb;
+  background: #fffdf7;
+  color: #14243f;
+}
+
+body:has(.admin-panel) .admin-orders__filters select:focus-visible,
+body:has(.admin-panel) input:focus-visible,
+body:has(.admin-panel) select:focus-visible,
+body:has(.admin-panel) textarea:focus-visible {
+  border-color: #2f7a2c;
+  outline-color: rgba(47, 122, 44, 0.18);
+}
+
+body:has(.admin-panel) .admin-orders__refresh,
+body:has(.admin-panel) .admin-orders__error-retry,
+body:has(.admin-panel) .admin-settings__cancel,
+body:has(.admin-panel) .admin-order-detail__fallback-actions button {
+  border-color: #bcd6bd;
+  background: #fffdf7;
+  color: #2f7a2c;
+}
+
+body:has(.admin-panel) .admin-orders__refresh:disabled {
+  border-color: #ece2cc;
+  color: #b9b2a6;
+}
+
+body:has(.admin-panel) button[type='submit'],
+body:has(.admin-panel) .admin-action,
+body:has(.admin-panel) .admin-access__login {
+  border-color: #2f7a2c;
+  background: #2f7a2c;
+  color: #ffffff;
+}
+
+body:has(.admin-panel) button[type='submit']:hover:not(:disabled),
+body:has(.admin-panel) .admin-action:hover:not(:disabled),
+body:has(.admin-panel) .admin-access__login:hover {
+  background: #276b25;
+}
+
+body:has(.admin-panel) .admin-settings__block h3,
+body:has(.admin-panel) .admin-settings__form-group h4 {
+  color: #14243f;
+}
+
+body:has(.admin-panel) .admin-settings__badge {
+  background: #fff3c4;
+  color: #8a6b16;
+}
+
+body:has(.admin-panel) .admin-settings__feedback--success {
+  border-color: #bcd6bd;
+  background: #eef7ef;
+  color: #1f5c33;
+}
+
+body:has(.admin-panel) .admin-access__icon {
+  color: #2f7a2c;
+}
+
+body:has(.admin-panel) .admin-access__description {
+  color: #6b6656;
+}
+
+body:has(.admin-panel) .admin-access__session {
+  background: #fff3c4;
+  color: #8a6b16;
+}
+
+body:has(.admin-panel) .admin-access__warn {
+  background: #fdf1ef;
+  color: #a3302a;
+}
+
+body:has(.admin-panel) .admin-order-detail__back {
+  color: #2f7a2c;
+}
+
+body:has(.admin-panel) .admin-order-detail__back:hover {
+  color: #276b25;
+}
+
+body:has(.admin-panel) .admin-order-detail__row {
+  border-color: #f1e9d8;
+}
+
+body:has(.admin-panel) .admin-review__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+body:has(.admin-panel) .admin-review__card,
+body:has(.admin-panel) .admin-accounts__card,
+body:has(.admin-panel) .admin-accounts__form {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  border: 1px solid #ece2cc;
+  border-radius: 0.9rem;
+}
+
+body:has(.admin-panel) .admin-accounts__grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body:has(.admin-panel) .admin-accounts__grid label,
+body:has(.admin-panel) .admin-review__reject label {
+  display: grid;
+  gap: 0.25rem;
+  color: #6b6656;
+  font-size: 0.78rem;
+}
+
+body:has(.admin-panel) .admin-accounts__grid input,
+body:has(.admin-panel) .admin-review__reject input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #e3dccb;
+  border-radius: 0.5rem;
+  background: #fffdf7;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+body:has(.admin-panel) .admin-review__reject {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+body:has(.admin-panel) .admin-review__reject label {
+  flex: 1;
+}
+
+@media (max-width: 420px) {
+  body:has(.admin-panel) .admin-accounts__grid {
+    grid-template-columns: 1fr;
+  }
+}

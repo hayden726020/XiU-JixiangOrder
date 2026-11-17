@@ -9,10 +9,20 @@ import type {
   Dish,
   DishType,
   MenuDay,
+  MerchantAccount,
   MerchantOrder,
   MerchantProfile,
+  MerchantProfileUpdateInput,
+  MerchantQualification,
   MerchantRegistrationInput,
   MerchantScenario,
+  OnboardingStep,
+  QualificationStatus,
+  UpdateMerchantAccountInput,
+  UploadQualificationInput,
+  WalletEntry,
+  WalletSummary,
+  WalletWithdrawInput,
   MerchantSource,
   OrderPage,
   Slot,
@@ -106,6 +116,29 @@ interface ApiMerchantProfile {
     description?: string | null;
     version?: number;
   } | null;
+  qualification?: {
+    merchantId?: string;
+    status?: string;
+    businessLicense?: { fileName?: string; mimeType?: string };
+    foodPermit?: { fileName?: string; mimeType?: string };
+    submittedAt?: string;
+    reviewedAt?: string | null;
+    reviewReason?: string | null;
+    version?: number;
+  } | null;
+  onboardingStep?: string;
+}
+
+interface ApiMerchantAccount {
+  userId?: string;
+  account?: string;
+  password?: string | null;
+  active?: boolean;
+  merchantId?: string | null;
+  merchantName?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  createdAt?: string | null;
 }
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -189,12 +222,74 @@ function mapSlots(payload: ApiMenu): SourceResult<SlotDay> {
   return { ok: true, data: { date: payload.date, demo: false, slots: payload.slots.map((slot) => mapSlot(slot)) } };
 }
 
+const ONBOARDING_STEPS: OnboardingStep[] = [
+  'NONE',
+  'UNREGISTERED',
+  'REGISTERED',
+  'QUALIFICATION_PENDING',
+  'QUALIFICATION_REJECTED',
+  'QUALIFICATION_APPROVED',
+  'SHOP_CREATED',
+];
+
+function mapQualification(raw: ApiMerchantProfile['qualification']): MerchantQualification | null {
+  if (!raw || typeof raw.status !== 'string') return null;
+  if (!['PENDING', 'APPROVED', 'REJECTED'].includes(raw.status)) return null;
+  return {
+    merchantId: raw.merchantId ?? '',
+    status: raw.status as QualificationStatus,
+    businessLicense: {
+      fileName: raw.businessLicense?.fileName ?? '',
+      mimeType: raw.businessLicense?.mimeType ?? '',
+    },
+    foodPermit: {
+      fileName: raw.foodPermit?.fileName ?? '',
+      mimeType: raw.foodPermit?.mimeType ?? '',
+    },
+    submittedAt: raw.submittedAt ?? '',
+    reviewedAt: raw.reviewedAt ?? null,
+    reviewReason: raw.reviewReason ?? null,
+    version: typeof raw.version === 'number' ? raw.version : 1,
+  };
+}
+
+function resolveOnboardingStep(
+  raw: string | undefined,
+  merchant: unknown,
+  shop: unknown,
+  qualification: MerchantQualification | null,
+): OnboardingStep {
+  if (typeof raw === 'string' && ONBOARDING_STEPS.includes(raw as OnboardingStep)) {
+    return raw as OnboardingStep;
+  }
+  if (shop) return 'SHOP_CREATED';
+  if (qualification?.status === 'PENDING') return 'QUALIFICATION_PENDING';
+  if (qualification?.status === 'REJECTED') return 'QUALIFICATION_REJECTED';
+  if (qualification?.status === 'APPROVED') return 'QUALIFICATION_APPROVED';
+  return merchant ? 'REGISTERED' : 'NONE';
+}
+
+function mapAccount(payload: ApiMerchantAccount): MerchantAccount {
+  return {
+    userId: payload.userId ?? '',
+    account: payload.account ?? '',
+    password: payload.password ?? null,
+    active: payload.active !== false,
+    merchantId: payload.merchantId ?? null,
+    merchantName: payload.merchantName ?? null,
+    contactName: payload.contactName ?? null,
+    contactPhone: payload.contactPhone ?? null,
+    createdAt: payload.createdAt ?? null,
+  };
+}
+
 function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> {
   if (typeof payload !== 'object' || payload === null) {
     return fail('INVALID_RESPONSE', '商家资料响应格式不正确。');
   }
   const merchant = payload.merchant ?? null;
   const shop = payload.shop ?? null;
+  const qualification = mapQualification(payload.qualification);
   if (
     merchant !== null
     && (typeof merchant.id !== 'string' || typeof merchant.name !== 'string')
@@ -228,7 +323,8 @@ function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> 
           version: Number.isFinite(shop.version) ? (shop.version as number) : 1,
         }
         : null,
-      onboardingStep: shop ? 'SHOP_CREATED' : merchant ? 'REGISTERED' : 'NONE',
+      qualification,
+      onboardingStep: resolveOnboardingStep(payload.onboardingStep, merchant, shop, qualification),
     },
   };
 }
@@ -408,6 +504,36 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return toOnboardingFailure(error, '商家资料查询');
       }
     },
+    getWallet: async (): Promise<SourceResult<WalletSummary>> => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取钱包。');
+      }
+      return fail('NOT_IMPLEMENTED', '钱包暂未接入共同服务；余额与提现暂不可用。');
+    },
+    withdrawWallet: async (): Promise<SourceResult<WalletSummary>> => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不操作钱包。');
+      }
+      return fail('NOT_IMPLEMENTED', '钱包暂未接入共同服务；提现暂不可用。');
+    },
+    updateProfile: async (input: MerchantProfileUpdateInput) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不保存资料。');
+      }
+      try {
+        const data = await apiRequest<ApiMerchantProfile>('/merchant/profile', {
+          method: 'PATCH',
+          body: {
+            requestId: input.requestId,
+            contactName: input.contactName,
+            contactPhone: input.contactPhone,
+          },
+        });
+        return mapProfile(data);
+      } catch (error) {
+        return toOnboardingFailure(error, '商家资料修改');
+      }
+    },
     registerMerchant: async (input: MerchantRegistrationInput) => {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送注册请求。');
@@ -444,6 +570,56 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return mapProfile(data);
       } catch (error) {
         return toOnboardingFailure(error, '店铺创建');
+      }
+    },
+    submitQualification: async (input: UploadQualificationInput) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送资质。');
+      }
+      try {
+        await apiRequest('/merchant/qualifications', {
+          method: 'POST',
+          body: {
+            requestId: input.requestId,
+            businessLicense: input.businessLicense,
+            foodPermit: input.foodPermit,
+          },
+        });
+        const data = await apiRequest<ApiMerchantProfile>('/merchant/profile');
+        return mapProfile(data);
+      } catch (error) {
+        return toOnboardingFailure(error, '资质上传');
+      }
+    },
+    getAccount: async () => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取账号信息。');
+      }
+      try {
+        const data = await apiRequest<ApiMerchantAccount>('/merchant/account');
+        return { ok: true, data: mapAccount(data) };
+      } catch (error) {
+        return toFailure(error, '账号信息读取失败，请稍后重试。');
+      }
+    },
+    updateAccount: async (input: UpdateMerchantAccountInput) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不保存账号信息。');
+      }
+      try {
+        const data = await apiRequest<ApiMerchantAccount>('/merchant/account', {
+          method: 'PATCH',
+          body: {
+            requestId: input.requestId,
+            account: input.account,
+            password: input.password,
+            contactName: input.contactName,
+            contactPhone: input.contactPhone,
+          },
+        });
+        return { ok: true, data: mapAccount(data) };
+      } catch (error) {
+        return toFailure(error, '账号信息保存失败，请稍后重试。');
       }
     },
     createDish: async (input: CreateDishInput) => {
@@ -626,6 +802,49 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
   };
 }
 
+const SAMPLE_PROFILE_STORAGE_KEY = 'merchant-sample-profile-v1';
+
+function emptyProfile(): MerchantProfile {
+  return { merchant: null, shop: null, onboardingStep: 'NONE' };
+}
+
+function readSampleProfile(): MerchantProfile {
+  if (typeof window === 'undefined') return emptyProfile();
+  try {
+    const raw = window.localStorage.getItem(SAMPLE_PROFILE_STORAGE_KEY);
+    if (!raw) return emptyProfile();
+    const parsed = JSON.parse(raw) as Partial<MerchantProfile> | null;
+    if (!parsed || typeof parsed !== 'object') return emptyProfile();
+    const merchant = parsed.merchant ?? null;
+    const shop = parsed.shop ?? null;
+    if (merchant && (typeof merchant.name !== 'string' || typeof merchant.id !== 'string')) {
+      return emptyProfile();
+    }
+    if (shop && (typeof shop.name !== 'string' || typeof shop.id !== 'string')) {
+      return emptyProfile();
+    }
+    return {
+      merchant,
+      shop,
+      qualification: parsed.qualification ?? null,
+      onboardingStep: parsed.onboardingStep
+        ?? (shop ? 'SHOP_CREATED' : merchant ? 'REGISTERED' : 'NONE'),
+    };
+  } catch {
+    return emptyProfile();
+  }
+}
+
+function persistSampleProfile(profile: MerchantProfile): void {
+
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(SAMPLE_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  } catch {
+    return;
+  }
+}
+
 export function createMerchantSource(options: {
   mode?: 'sample' | 'real';
   scenario?: MerchantScenario;
@@ -691,11 +910,30 @@ export function createMerchantSource(options: {
     const base = libraryDishes(date).find((dish) => dish.dishId === dishId);
     return base ? applyDishOverride(date, base) : null;
   }
-  let sampleProfile: MerchantProfile = {
-    merchant: null,
-    shop: null,
-    onboardingStep: 'NONE',
-  };
+  let walletEntries: WalletEntry[] = [
+    { id: 'wallet-in-1', kind: 'income', label: '订单收入 · 演示鸡肉饭', amountFen: 1800, createdAt: '2026-11-13T12:05:00+08:00' },
+    { id: 'wallet-in-2', kind: 'income', label: '订单收入 · 演示素面', amountFen: 1600, createdAt: '2026-11-13T12:10:00+08:00' },
+    { id: 'wallet-in-3', kind: 'income', label: '订单收入 · 演示素面 ×2', amountFen: 3200, createdAt: '2026-11-13T11:55:00+08:00' },
+    { id: 'wallet-out-1', kind: 'withdraw', label: '演示提现到银行卡', amountFen: 2000, createdAt: '2026-11-13T18:00:00+08:00' },
+  ];
+  const walletBalance = (): number => walletEntries.reduce(
+    (sum, entry) => (entry.kind === 'income' ? sum + entry.amountFen : sum - entry.amountFen),
+    0,
+  );
+  const walletSummary = (): WalletSummary => ({
+    balanceFen: walletBalance(),
+    totalIncomeFen: walletEntries
+      .filter((entry) => entry.kind === 'income')
+      .reduce((sum, entry) => sum + entry.amountFen, 0),
+    totalWithdrawnFen: walletEntries
+      .filter((entry) => entry.kind === 'withdraw')
+      .reduce((sum, entry) => sum + entry.amountFen, 0),
+    entries: [...walletEntries]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((entry) => ({ ...entry })),
+  });
+
+  let sampleProfile: MerchantProfile = readSampleProfile();
 
   return {
     mode: 'sample',
@@ -770,9 +1008,46 @@ export function createMerchantSource(options: {
       });
       return { ok: true, data: { ...day, slots } };
     },
+    getWallet: async (): Promise<SourceResult<WalletSummary>> => ({ ok: true, data: walletSummary() }),
+    withdrawWallet: async (input: WalletWithdrawInput): Promise<SourceResult<WalletSummary>> => {
+      if (!Number.isSafeInteger(input.amountFen) || input.amountFen <= 0) {
+        return fail('VALIDATION_ERROR', '提现金额必须是大于 0 的整数（单位：分）。');
+      }
+      const balance = walletBalance();
+      if (input.amountFen > balance) {
+        return fail('VALIDATION_ERROR', '演示提现金额超出样例余额，请调整金额。');
+      }
+      walletEntries.push({
+        id: `wallet-out-${Date.now()}`,
+        kind: 'withdraw',
+        label: '演示提现到银行卡',
+        amountFen: input.amountFen,
+        createdAt: new Date().toISOString(),
+      });
+      return { ok: true, data: walletSummary() };
+    },
     getProfile: async (): Promise<SourceResult<MerchantProfile>> => (
       { ok: true, data: structuredClone(sampleProfile) }
     ),
+    updateProfile: async (input: MerchantProfileUpdateInput): Promise<SourceResult<MerchantProfile>> => {
+      if (!sampleProfile.merchant) {
+        return fail('MERCHANT_REQUIRED', '请先完成商家注册，再修改我的信息。');
+      }
+      const contactName = input.contactName?.trim() || sampleProfile.merchant.contactName || '';
+      const contactPhone = input.contactPhone?.trim().replace(/[\s-]/g, '')
+        || sampleProfile.merchant.contactPhone
+        || '';
+      sampleProfile = {
+        ...sampleProfile,
+        merchant: {
+          ...sampleProfile.merchant,
+          contactName,
+          contactPhone,
+        },
+      };
+      persistSampleProfile(sampleProfile);
+      return { ok: true, data: structuredClone(sampleProfile) };
+    },
     registerMerchant: async (input: MerchantRegistrationInput): Promise<SourceResult<MerchantProfile>> => {
       sampleProfile = {
         merchant: {
@@ -785,11 +1060,15 @@ export function createMerchantSource(options: {
         shop: null,
         onboardingStep: 'REGISTERED',
       };
+      persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };
     },
     createShop: async (input: CreateShopInput): Promise<SourceResult<MerchantProfile>> => {
       if (!sampleProfile.merchant) {
         return fail('MERCHANT_REQUIRED', '请先完成商家注册。');
+      }
+      if (sampleProfile.qualification?.status !== 'APPROVED') {
+        return fail('QUALIFICATION_PENDING', '请先上传资质并通过审核，再创建店铺。');
       }
       sampleProfile = {
         ...sampleProfile,
@@ -802,7 +1081,100 @@ export function createMerchantSource(options: {
         },
         onboardingStep: 'SHOP_CREATED',
       };
+      persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };
+    },
+    submitQualification: async (input: UploadQualificationInput): Promise<SourceResult<MerchantProfile>> => {
+      if (!sampleProfile.merchant) {
+        return fail('MERCHANT_REQUIRED', '请先完成商家注册。');
+      }
+      sampleProfile = {
+        ...sampleProfile,
+        qualification: {
+          merchantId: sampleProfile.merchant.id,
+          status: 'PENDING',
+          businessLicense: {
+            fileName: input.businessLicense.fileName,
+            mimeType: input.businessLicense.mimeType,
+          },
+          foodPermit: {
+            fileName: input.foodPermit.fileName,
+            mimeType: input.foodPermit.mimeType,
+          },
+          submittedAt: new Date().toISOString(),
+          reviewedAt: null,
+          reviewReason: null,
+          version: (sampleProfile.qualification?.version ?? 0) + 1,
+        },
+        onboardingStep: 'QUALIFICATION_PENDING',
+      };
+      persistSampleProfile(sampleProfile);
+      return { ok: true, data: structuredClone(sampleProfile) };
+    },
+    mockApproveQualification: async (): Promise<SourceResult<MerchantProfile>> => {
+      if (!sampleProfile.qualification) {
+        return fail('QUALIFICATION_NOT_FOUND', '请先上传资质。');
+      }
+      sampleProfile = {
+        ...sampleProfile,
+        qualification: {
+          ...sampleProfile.qualification,
+          status: 'APPROVED',
+          reviewedAt: new Date().toISOString(),
+          reviewReason: null,
+          version: sampleProfile.qualification.version + 1,
+        },
+        onboardingStep: 'QUALIFICATION_APPROVED',
+      };
+      persistSampleProfile(sampleProfile);
+      return { ok: true, data: structuredClone(sampleProfile) };
+    },
+    getAccount: async (): Promise<SourceResult<MerchantAccount>> => ({
+      ok: true,
+      data: {
+        userId: 'demo-user-merchant-01',
+        account: 'demo-merchant',
+        password: 'demo-pass',
+        active: true,
+        merchantId: sampleProfile.merchant?.id ?? null,
+        merchantName: sampleProfile.merchant?.name ?? null,
+        contactName: sampleProfile.merchant?.contactName ?? null,
+        contactPhone: sampleProfile.merchant?.contactPhone ?? null,
+        createdAt: null,
+      },
+    }),
+    updateAccount: async (input: UpdateMerchantAccountInput): Promise<SourceResult<MerchantAccount>> => {
+      const merchant = sampleProfile.merchant;
+      if (!merchant) {
+        return fail('MERCHANT_REQUIRED', '请先完成商家注册。');
+      }
+      const contactName = input.contactName?.trim() || merchant.contactName || '';
+      const contactPhone = input.contactPhone?.trim().replace(/[\s-]/g, '')
+        || merchant.contactPhone
+        || '';
+      sampleProfile = {
+        ...sampleProfile,
+        merchant: {
+          ...merchant,
+          contactName,
+          contactPhone,
+        },
+      };
+      persistSampleProfile(sampleProfile);
+      return {
+        ok: true,
+        data: {
+          userId: 'demo-user-merchant-01',
+          account: input.account?.trim() || 'demo-merchant',
+          password: input.password || 'demo-pass',
+          active: true,
+          merchantId: merchant.id,
+          merchantName: merchant.name,
+          contactName,
+          contactPhone,
+          createdAt: null,
+        },
+      };
     },
     createDish: async (input: CreateDishInput): Promise<SourceResult<Dish>> => {
       const dish: Dish = {

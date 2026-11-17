@@ -1,4 +1,10 @@
-export type AdminRoute = 'overview' | 'orders' | 'orderDetail' | 'settings';
+export type AdminRoute =
+  | 'overview'
+  | 'orders'
+  | 'orderDetail'
+  | 'settings'
+  | 'qualifications'
+  | 'merchantAccounts';
 
 export type DiningMode = 'DINE_IN' | 'TAKEAWAY';
 
@@ -77,4 +83,47 @@ export interface CrowdSettings {
 export interface AdminSettings {
   dining: DiningSettings;
   crowd: CrowdSettings;
+}
+export type QualificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface AdminQualification {
+  merchantId: string;
+  merchantName: string;
+  contactName: string | null;
+  contactPhone: string | null;
+  status: QualificationStatus;
+  businessLicense: { fileName: string; mimeType: string };
+  foodPermit: { fileName: string; mimeType: string };
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewReason: string | null;
+  version: number;
+}
+
+export interface ReviewQualificationInput {
+  requestId: string;
+  expectedVersion: number;
+  decision: 'APPROVE' | 'REJECT';
+  reason?: string;
+}
+
+export interface AdminMerchantAccount {
+  userId: string;
+  account: string;
+  password: string | null;
+  active: boolean;
+  merchantId: string | null;
+  merchantName: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  createdAt: string | null;
+}
+
+export interface CreateMerchantAccountInput {
+  requestId: string;
+  account: string;
+  password: string;
+  merchantName: string;
+  contactName: string;
+  contactPhone: string;
 }
