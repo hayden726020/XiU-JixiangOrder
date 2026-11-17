@@ -431,10 +431,13 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
       source={source}
       draft={draft}
       shop={currentShop}
-      onBackToShops={() => goToShop('home', 'back')}
+      onBackToShops={() => goToShop('order', 'back')}
       onProceed={() => goTo('slot')}
+      onViewSampleOrder={() => openOrderFrom('menu', 'demo-order-001')}
+      onViewCancelOrder={() => openOrderFrom('menu', 'demo-order-cancel-001')}
       onOpenOrders={() => openOrders('menu')}
-      onOpenProfile={() => goTo('profile')}
+      onGoHome={() => goToShop('home')}
+      onGoProfile={() => goTo('profile')}
     />
   );
 }

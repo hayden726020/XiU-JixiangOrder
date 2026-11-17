@@ -9,10 +9,9 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  margin: -1.25rem calc(-1 * (1.25rem + env(safe-area-inset-right))) 0
-    calc(-1 * (1.25rem + env(safe-area-inset-left)));
-  padding: 0.55rem calc(1.25rem + env(safe-area-inset-right)) 0.55rem
-    calc(1.25rem + env(safe-area-inset-left));
+  margin: 0;
+  padding: 0.55rem calc(1rem + env(safe-area-inset-right)) 0.55rem
+    calc(1rem + env(safe-area-inset-left));
   background: var(--amber-100);
   color: var(--amber-700);
   border-bottom: 1px solid #f2dfa8;

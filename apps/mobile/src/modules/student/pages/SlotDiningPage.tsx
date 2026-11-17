@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { runAfterBackPress, runAfterPressTransition } from '../../../shared/backPress';
 
 import { getPresenceRuntime, type PresenceState } from '../state/presenceRuntime';
 import { derivePresenceView, type PresenceView } from '../utils/presenceView';
@@ -12,6 +11,8 @@ import { toSourceErrorView } from '../utils/sourceErrorView';
 import { formatSlotRange, toSlotView } from '../utils/slotView';
 import { toCrowdView } from '../utils/crowdView';
 import DemoModeNotice from '../components/DemoModeNotice';
+import BookingTicket from '../components/BookingTicket';
+import { formatYuan } from '../utils/money';
 import {
   LOCATION_NO_PROMISE_TEXT,
   LOCATION_SAMPLE_TEXT,
@@ -21,6 +22,7 @@ import {
   locationUsageItems,
 } from '../components/locationTexts';
 import '../booking.css';
+import '../booking-reference.css';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
@@ -353,36 +355,7 @@ export default function SlotDiningPage({
         ? `${selectedNames[0]}${selectedNames.length > 1 ? ` 等 ${selectedNames.length} 道` : ''}`
         : '已选菜品';
 
-  const dishMeta =
-    snapshot.totalQuantity === 0
-      ? `${shop.name} · 请返回菜单选择菜品`
-      : `${shop.name} · 已选 ${snapshot.totalQuantity} 份`;
-
-  const fallbackSlots: SlotDto[] = [
-    {
-      slotId: `slot-${date}-1130`,
-      slotStart: `${date}T11:30:00+08:00`,
-      slotEnd: `${date}T12:00:00+08:00`,
-      remainingCapacity: 18,
-      enabled: true,
-    },
-    {
-      slotId: `slot-${date}-1200`,
-      slotStart: `${date}T12:00:00+08:00`,
-      slotEnd: `${date}T12:30:00+08:00`,
-      remainingCapacity: 12,
-      enabled: true,
-    },
-    {
-      slotId: `slot-${date}-1230`,
-      slotStart: `${date}T12:30:00+08:00`,
-      slotEnd: `${date}T13:00:00+08:00`,
-      remainingCapacity: 0,
-      enabled: true,
-    },
-  ];
-
-  const slotsToDisplay = menu && menu.slots.length > 0 ? menu.slots : fallbackSlots;
+  const slotsToDisplay = menu?.slots ?? [];
   const selectedSlot = slotsToDisplay.find((slot) => slot.slotId === snapshot.slotId) ?? null;
   const allSlotsClosed =
     menu !== null && menu.slots.length > 0 && menu.slots.every((slot) => slot.enabled !== true);
@@ -397,21 +370,13 @@ export default function SlotDiningPage({
     <section className="student-booking" aria-labelledby="student-slot-title">
       <div className="booking-hero">
         <div className="booking-nav">
-          <button type="button" className="booking-nav__back student-back" aria-label="返回菜单" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
+          <button type="button" className="booking-nav__back" aria-label="返回菜单" onClick={onBack}>
             <ChevronLeftIcon />
           </button>
           <h2 id="student-slot-title" className="booking-nav__title">预约取餐</h2>
-          {source.mode === 'sample' ? <span className="booking-nav__mode">样例数据</span> : <span />}
+          <span className="booking-nav__mode">{source.mode === 'sample' ? '样例数据' : '真实接口'}</span>
         </div>
-        <div className="booking-dish">
-          <span className="booking-dish__photo">
-            <span className="booking-dish__photo-img" role="img" aria-label="菜品示例图：黑椒鸡腿饭" />
-          </span>
-          <div className="booking-dish__note">
-            <p className="booking-dish__name">{dishTitle}</p>
-            <p className="booking-dish__meta">{dishMeta}</p>
-          </div>
-        </div>
+        <BookingTicket name={dishTitle} shop={shop.name} quantity={snapshot.totalQuantity} amountFen={snapshot.previewFen} />
       </div>
 
       <div className="booking-body">
@@ -425,7 +390,7 @@ export default function SlotDiningPage({
               onClick={() => selectMode('DINE_IN')}
             >
               <span className="booking-mode__check">
-                <CheckIcon />
+                {snapshot.diningMode === 'DINE_IN' ? <CheckIcon /> : null}
               </span>
               <DineInIcon />
               <span className="booking-mode__label">堂食</span>
@@ -437,7 +402,7 @@ export default function SlotDiningPage({
               onClick={() => selectMode('TAKEAWAY')}
             >
               <span className="booking-mode__check">
-                <CheckIcon />
+                {snapshot.diningMode === 'TAKEAWAY' ? <CheckIcon /> : null}
               </span>
               <TakeawayIcon />
               <span className="booking-mode__label">外带</span>
@@ -479,9 +444,8 @@ export default function SlotDiningPage({
                     disabled={!view.selectable}
                     onClick={() => selectSlot(slot)}
                   >
-                    <span className="booking-slot__dot" aria-hidden="true" />
-                    <span>{view.selectedText}</span>
-                    {!view.selectable ? <span className="booking-slot__meta">{view.metaText}</span> : null}
+                    <span className="booking-slot__copy"><strong>{view.selectedText}</strong><small>{view.metaText}</small></span>
+                    <span className="booking-slot__dot" aria-hidden="true">{selected ? <CheckIcon /> : null}</span>
                   </button>
                 </li>
               );
@@ -506,18 +470,19 @@ export default function SlotDiningPage({
           onClear={clearPresenceRecord}
         />
 
-        <footer>
+        <footer className="booking-footer">
+          <div className="booking-footer__summary"><span>预估金额</span><strong className="booking-footer__amount">{formatYuan(snapshot.previewFen)}</strong></div>
           <button
             type="button"
             className="booking-submit"
-            disabled={!snapshot.canConfirm}
-            onClick={(event) => runAfterPressTransition(event.currentTarget, onConfirm, 'forward')}
+            disabled={!snapshot.canConfirm || status !== 'ready' || !selectedSlot || !toSlotView(selectedSlot).selectable}
+            onClick={onConfirm}
           >
-            去确认订单
+            去确认订单 <ChevronRightIcon />
           </button>
-          <p className="booking-footer__hint">{hint}</p>
-          {source.mode === 'sample' ? <DemoModeNotice /> : null}
         </footer>
+        <p className="booking-footer__hint">{hint} 金额以服务端下单结果为准。</p>
+        {source.mode === 'sample' ? <DemoModeNotice /> : null}
       </div>
     </section>
   );
