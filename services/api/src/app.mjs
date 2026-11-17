@@ -33,6 +33,7 @@ import {
   createDish,
   createMerchantAccount,
   createShop,
+  getMerchantAccount,
   getMerchantProfile,
   getMerchantQualification,
   getMerchantQualificationFile,
@@ -169,6 +170,11 @@ export function createApp({ db, clock, logger = () => {} }) {
       method: 'POST',
       pattern: /^\/api\/v1\/admin\/merchant-accounts$/,
       handler: withBody(['ADMIN'], createMerchantAccount),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/merchant\/account$/,
+      handler: withAuth(['MERCHANT'], getMerchantAccount),
     },
     {
       method: 'PATCH',

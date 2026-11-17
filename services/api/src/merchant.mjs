@@ -497,6 +497,17 @@ export function getMerchantQualificationFile({ db, user, params }) {
   return { status: 200, body: { data: file } };
 }
 
+export function getMerchantAccount({ db, user }) {
+  if (user.role !== 'MERCHANT') {
+    throw forbidden();
+  }
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+  const merchant = user.merchant_id
+    ? db.prepare('SELECT * FROM merchants WHERE id = ?').get(user.merchant_id)
+    : null;
+  return { status: 200, body: { data: merchantAccountView(row, merchant) } };
+}
+
 export function createMerchantAccount({ db, clock, user, body }) {
   if (user.role !== 'ADMIN') {
     throw forbidden();
