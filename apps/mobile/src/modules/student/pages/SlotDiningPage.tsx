@@ -24,7 +24,7 @@ import '../booking.css';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
-const DAY_LABELS = ['今天', '明天'];
+const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 function formatMonthDay(date: string): string {
   const [, month, day] = date.split('-');
@@ -33,7 +33,12 @@ function formatMonthDay(date: string): string {
 
 function dateLabel(date: string, dates: string[]): string {
   const index = dates.indexOf(date);
-  const label = DAY_LABELS[index] ?? '';
+  const label =
+    index === 0
+      ? '今天'
+      : index === 1
+        ? '明天'
+        : WEEKDAY_LABELS[new Date(Date.parse(`${date}T12:00:00+08:00`)).getUTCDay()];
   return `${label} ${formatMonthDay(date)}`.trim();
 }
 

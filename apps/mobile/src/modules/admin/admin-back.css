@@ -1,0 +1,37 @@
+.admin-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  margin: 0 0 0.45rem -0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.45rem;
+  color: #2b5c3f;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.admin-back-link:hover {
+  color: #173e32;
+  background: rgba(43, 92, 63, 0.055);
+}
+
+.admin-back-link:focus-visible {
+  outline: 2px solid rgba(43, 92, 63, 0.22);
+  outline-offset: 2px;
+}
+
+.admin-access > .admin-back-link {
+  position: absolute;
+  top: calc(0.85rem + env(safe-area-inset-top));
+  left: calc(1rem + env(safe-area-inset-left));
+  margin: 0;
+}
+
+@media (max-width: 359px) {
+  .admin-back-link {
+    font-size: 0.75rem;
+  }
+}

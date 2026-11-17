@@ -2,6 +2,20 @@
 
 更新日期：2026-11-17。方案版本：APK-v2（增加开店、选店与学生开放注册后端扩展范围）。维护人：spcuteag。
 
+## 2026-11-17 已实现改动合并与 APK 1.36 构建（versionCode 37）
+
+- 在 `docs/readme-status` 基线上合并当前已实现的未合并项并完成 debug APK 重打：
+  1. **学生端「演示模式 / 真实模式」切换按钮**（合入 `origin/student/day3 @ e334250`）：顶部固定切换栏，状态记忆于 `localStorage`（`xiu.student.modeOverride.v1`）；演示模式直接进入样例点餐流，真实模式走学生会话门禁（`useStudentSessionGate`）与公网服务。
+  2. **学生端样例时段拓宽（8:00—22:00）与 7 天动态日期选择**（合入 `origin/student/day3 @ 8be07ef`）：`sampleDates()` 动态生成起自当天的 7 天日期与每 30 分钟时段（共 28 个时段/天），同时补齐全部 8 道样例菜品（含黑椒鸡腿饭、红烧牛肉面、番茄炒蛋饭）在 7 天内的可售库存映射，并在 `menu-page.css` 兼容双日滑块动效与多日横向滚动。
+  3. **学生开放注册前端与登录页接入**（工作区 `LoginPage.tsx`、`login.css`、`shared/auth.ts`、`utils/authView.ts`）：对接后端 `POST /api/v1/auth/student-register` 与 `POST /api/v1/auth/login`，支持登录/注册切换、4—32 位账号与 8—128 位密码校验及错误映射。
+  4. **管理端重设计页面同步**（合入 `origin/frontend/handoff-2026-11-17 @ 9091620` 的 `modules/admin/`）。
+  5. **已在基线中的商家端开店返回角色选择入口**（`539a6c8`）与 iOS 转场/底栏液态动效（`cc7d59e`、`c8bc2a9`）完整保留。
+- 验证与产物：
+  - `node --test apps/mobile/test/*.mjs`：**11/11 通过**（含新增 7 天动态日期、8:00—22:00 时段与全菜品库存回归断言）。
+  - `npm --prefix apps/mobile run build`（`tsc --noEmit && vite build`）：**通过**（149 modules，`dist/assets/index-BgMHckus.js`）。
+  - `npx cap sync android` + `.\android\gradlew.bat -p android assembleDebug`：**BUILD SUCCESSFUL**，产物 `apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`（`versionName "1.36"` / `versionCode 37`，7,894,837 字节，SHA-256 `4b3a139a242332f76d681f013fd4ce889dd9306445ea98d775d137d81392000f`）。
+  - 当前 `adb devices` 无已连接设备，尚未安装至真机。
+
 ## 2026-11-17 学生开放注册后端增补（DRAFT v0.6，后端与测试已实现）
 
 - 新增公开学生注册接口 `POST /api/v1/auth/student-register` 与通用登录接口 `POST /api/v1/auth/login`（保留 `/api/v1/auth/demo-login` 兼容既有客户端）。

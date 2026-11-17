@@ -18,11 +18,59 @@ import SlotDiningPage from './pages/SlotDiningPage';
 import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import { useStudentSessionGate } from './state/useStudentSessionGate';
-import type { ShopSummary, StudentSource } from './types';
+import type { ShopSummary, StudentMode, StudentSource } from './types';
 import { SHOP_SWITCH_BUSY } from './utils/shopTexts';
 import { todayAndTomorrow } from './utils/dates';
 import './student.css';
 import './student-global.css';
+
+const MODE_OVERRIDE_KEY = 'xiu.student.modeOverride.v1';
+
+function readModeOverride(): StudentMode | null {
+  try {
+    const value = window.localStorage.getItem(MODE_OVERRIDE_KEY);
+    return value === 'real' || value === 'sample' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeModeOverride(mode: StudentMode): void {
+  try {
+    window.localStorage.setItem(MODE_OVERRIDE_KEY, mode);
+  } catch {
+    return;
+  }
+}
+
+function ModeSwitch({
+  mode,
+  onChange,
+}: {
+  mode: StudentMode;
+  onChange: (next: StudentMode) => void;
+}) {
+  return (
+    <div className="student-mode-switch" role="group" aria-label="数据模式切换">
+      <button
+        type="button"
+        className={`student-mode-switch__item${mode === 'sample' ? ' is-active' : ''}`}
+        aria-pressed={mode === 'sample'}
+        onClick={() => onChange('sample')}
+      >
+        演示模式
+      </button>
+      <button
+        type="button"
+        className={`student-mode-switch__item${mode === 'real' ? ' is-active' : ''}`}
+        aria-pressed={mode === 'real'}
+        onClick={() => onChange('real')}
+      >
+        真实模式
+      </button>
+    </div>
+  );
+}
 
 type StudentView = 'shop' | 'menu' | 'slot' | 'confirm' | 'order' | 'orders' | 'profile';
 
@@ -31,16 +79,30 @@ type DetailFrom = 'menu' | 'orders';
 type OrdersBackTo = 'shop' | 'menu';
 
 export default function StudentHome() {
+  const [mode, setMode] = useState<StudentMode>(() => readModeOverride() ?? resolveStudentMode());
   const { gate } = useStudentSessionGate();
 
-  if (!gate.usable) {
-    return <LoginPage gate={gate} />;
+  function switchMode(next: StudentMode): void {
+    if (next === mode) {
+      return;
+    }
+    writeModeOverride(next);
+    setMode(next);
   }
 
-  return <StudentHomeApp />;
+  return (
+    <>
+      <ModeSwitch mode={mode} onChange={switchMode} />
+      {mode === 'real' && !gate.usable ? (
+        <LoginPage gate={gate} />
+      ) : (
+        <StudentHomeApp key={mode} mode={mode} />
+      )}
+    </>
+  );
 }
 
-function StudentHomeApp() {
+function StudentHomeApp({ mode }: { mode: StudentMode }) {
   useEffect(() => {
     document.documentElement.dataset.studentSurface = '';
     return () => {
@@ -48,7 +110,7 @@ function StudentHomeApp() {
     };
   }, []);
 
-  const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
+  const [source] = useState<StudentSource>(() => createStudentSource({ mode }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
     if (source.mode === 'real') {
       return readDraftSnapshot({ allowedDates: todayAndTomorrow(new Date()) });

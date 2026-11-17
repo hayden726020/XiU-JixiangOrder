@@ -1,0 +1,126 @@
+.app-shell:has(.admin-panel--access) {
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.app-shell:has(.admin-panel--access) .app-header,
+.app-shell:has(.admin-panel--access) .app-main > .back-link,
+.app-shell:has(.admin-panel--access) .app-footer {
+  display: none;
+}
+
+.app-shell:has(.admin-panel--access) .app-main {
+  padding: 0;
+}
+
+.admin-panel--access {
+  display: block;
+}
+
+.admin-access {
+  position: relative;
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(2rem + env(safe-area-inset-top)) calc(1.5rem + env(safe-area-inset-right))
+    calc(2.5rem + env(safe-area-inset-bottom)) calc(1.5rem + env(safe-area-inset-left));
+  background: #ffffff;
+  text-align: center;
+}
+
+.admin-access__icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  color: #1b7a43;
+}
+
+.admin-panel--access .admin-access__title {
+  margin: 1rem 0 0;
+  color: #222222;
+  font-size: 1.24rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.45;
+}
+
+.admin-access__description {
+  max-width: 20rem;
+  margin: 0.75rem 0 0;
+  color: #666666;
+  font-size: 0.8rem;
+  line-height: 1.75;
+}
+
+.admin-access__session {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.85rem;
+  margin-top: 1.35rem;
+  padding: 0.25rem 0.72rem;
+  border-radius: 0.42rem;
+  background: #e6f4ea;
+  color: #48755c;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.admin-access__warn {
+  max-width: 20rem;
+  margin: 0.75rem 0 0;
+  color: #9b3c35;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.admin-access__login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 11.5rem;
+  min-height: 3rem;
+  margin-top: 1rem;
+  padding: 0.65rem 1.25rem;
+  border: 1.5px solid #1b7a43;
+  border-radius: 0.55rem;
+  background: #ffffff;
+  color: #1b6b3c;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.admin-access__login:hover {
+  border-color: #145f34;
+  background: #f2faf5;
+}
+
+.admin-access__login:focus-visible {
+  outline: 2px solid rgba(27, 122, 67, 0.26);
+  outline-offset: 3px;
+}
+
+@media (max-width: 359px) {
+  .admin-access {
+    padding-right: calc(1.2rem + env(safe-area-inset-right));
+    padding-left: calc(1.2rem + env(safe-area-inset-left));
+  }
+
+  .admin-panel--access .admin-access__title {
+    font-size: 1.15rem;
+  }
+
+  .admin-access__description {
+    font-size: 0.77rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-access__login {
+    transition: none;
+  }
+}
