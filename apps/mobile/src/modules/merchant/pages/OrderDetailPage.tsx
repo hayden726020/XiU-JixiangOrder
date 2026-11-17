@@ -19,21 +19,37 @@ import {
   statusView,
 } from '../state/orderView';
 import { formatYuan, totalQuantity } from '../utils/money';
+import NewOrderDetailPage from './NewOrderDetailPage';
+import ReadyOrderDetailPage from './ReadyOrderDetailPage';
 
 interface OrderDetailPageProps {
   order: MerchantOrder;
   mode: 'sample' | 'real';
   onBack: () => void;
   onAction: (action: OrderAction, input?: ActionInput) => void;
+  onRefresh: () => void;
+  refreshing?: boolean;
   pendingCode?: string | null;
   actionError?: { code: string; message: string } | null;
 }
 
-export default function OrderDetailPage({
+export default function OrderDetailPage(props: OrderDetailPageProps) {
+  if (props.order.status === 'NEW') {
+    return <NewOrderDetailPage {...props} />;
+  }
+  if (props.order.status === 'READY') {
+    return <ReadyOrderDetailPage {...props} />;
+  }
+  return <OrderDetailContent {...props} />;
+}
+
+function OrderDetailContent({
   order,
   mode,
   onBack,
   onAction,
+  onRefresh,
+  refreshing = false,
   pendingCode = null,
   actionError = null,
 }: OrderDetailPageProps) {
@@ -83,7 +99,22 @@ export default function OrderDetailPage({
 
   return (
     <div className="merchant-view" data-order-id={order.id} data-order-status={order.status}>
-      <button type="button" className="back-link" onClick={onBack}>← 返回订单列表</button>
+      <div className="merchant-order-detail__topbar">
+        <button type="button" className="back-link merchant-order-detail__back" onClick={onBack}>← 返回订单列表</button>
+        {mode === 'real' && (
+          <button
+            type="button"
+            className="merchant-link-button merchant-order-detail__refresh"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing || undefined}
+            title="真实模式下会定时自动刷新"
+            data-refresh-order
+          >
+            {refreshing ? '刷新中…' : '刷新订单'}
+          </button>
+        )}
+      </div>
 
       <header className="detail-header">
         <p className="badge">
@@ -245,16 +276,16 @@ export default function OrderDetailPage({
                 {busyLabel(rejectAction)}
               </button>
             </div>
+            {cancelError && (
+              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
+                {cancelError}
+              </p>
+            )}
             <p className="hint">
               批准会取消订单并模拟退款；申请不等于已取消。
               {mode === 'real' ? '处理结果保存后学生端可读取同一订单。' : ''}
             </p>
           </>
-        )}
-        {cancelError && (
-          <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-            {cancelError}
-          </p>
         )}
       </section>
 

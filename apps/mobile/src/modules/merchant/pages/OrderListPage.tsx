@@ -7,6 +7,7 @@ interface OrderListPageProps {
   orders: MerchantOrder[];
   scenario: MerchantScenario;
   isSample: boolean;
+  onboardingCompleted: boolean;
   loading: boolean;
   error: string | null;
   page: number;
@@ -17,12 +18,17 @@ interface OrderListPageProps {
   onOpenOrder: (id: string) => void;
   onOpenMenu: () => void;
   onOpenSetup: () => void;
+  onRefresh: () => void;
+  refreshing: boolean;
+  lastRefreshedAt: string | null;
+  autoRefreshSeconds: number;
 }
 
 export default function OrderListPage({
   orders,
   scenario,
   isSample,
+  onboardingCompleted,
   loading,
   error,
   page,
@@ -33,12 +39,16 @@ export default function OrderListPage({
   onOpenOrder,
   onOpenMenu,
   onOpenSetup,
+  onRefresh,
+  refreshing,
+  lastRefreshedAt,
+  autoRefreshSeconds,
 }: OrderListPageProps) {
   const groups = groupOrders(orders);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="merchant-view">
+    <div className="merchant-view merchant-order-list">
       <header className="merchant-view__header">
         <div>
           <h2>
@@ -47,19 +57,40 @@ export default function OrderListPage({
           </h2>
           <p className="lead">
             {isSample
-              ? '样例数据；按状态分组，堂食/外带与待处理取消申请一眼可见。'
+              ? '按状态分组：堂食/外带与待处理取消申请一眼可见。'
               : '真实数据；按状态分组。接单、开始制作、标记可取与核销已接入服务端，成功后状态立即更新。'}
           </p>
         </div>
         <div className="merchant-view__actions">
-          <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
-            商家注册 / 开店
-          </button>
+          {!isSample && !onboardingCompleted && (
+            <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
+              商家注册 / 开店
+            </button>
+          )}
           <button type="button" className="merchant-link-button" onClick={onOpenMenu} data-open-menu>
             菜单与库存
           </button>
         </div>
       </header>
+
+      {!isSample && (
+        <div className="merchant-refresh-bar" role="status">
+          <span>
+            每 {autoRefreshSeconds} 秒自动刷新
+            {lastRefreshedAt ? ` · 最近更新 ${lastRefreshedAt}` : ' · 等待首次刷新'}
+          </span>
+          <button
+            type="button"
+            className="merchant-link-button merchant-refresh-bar__button"
+            onClick={onRefresh}
+            disabled={refreshing || loading}
+            aria-busy={refreshing || undefined}
+            data-refresh-orders
+          >
+            {refreshing ? '刷新中…' : '刷新列表'}
+          </button>
+        </div>
+      )}
 
       {isSample && (
         <label className="merchant-scenario">
@@ -95,7 +126,12 @@ export default function OrderListPage({
             </h3>
             <div className="order-group__rows">
               {group.orders.map((order) => (
-                <OrderRow key={order.id} order={order} onOpen={onOpenOrder} />
+                <OrderRow
+                  key={order.id}
+                  order={order}
+                  onOpen={onOpenOrder}
+                  showCancellationDetails={!isSample}
+                />
               ))}
             </div>
           </section>
@@ -106,31 +142,44 @@ export default function OrderListPage({
         <>
           <p className="hint">
             {isSample
-              ? `共 ${total} 笔样例订单，其中本页已取消 ${orders.filter((order) => order.status === 'CANCELLED').length} 笔；已取消订单保留在列表，点击可查看取消原因与模拟退款标记。`
+              ? `共 ${total} 笔样例订单；点击订单进入详情，可查看预约时间、菜品份数、用餐方式与下一步按钮位置。`
               : `档口共 ${total} 笔订单，本页 ${orders.length} 笔；点击查看详情。`}
           </p>
-          <nav className="merchant-pager" aria-label="订单分页">
-            <button
-              type="button"
-              className="merchant-link-button"
-              onClick={() => onPageChange(page - 1)}
-              disabled={page <= 1}
-            >
-              上一页
-            </button>
-            <span className="merchant-pager__status">
-              第 {page} / {totalPages} 页 · 共 {total} 笔
-            </span>
-            <button
-              type="button"
-              className="merchant-link-button"
-              onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages}
-            >
-              下一页
-            </button>
-          </nav>
+          {totalPages > 1 && (
+            <nav className="merchant-pager" aria-label="订单分页">
+              <button
+                type="button"
+                className="merchant-link-button"
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1}
+              >
+                上一页
+              </button>
+              <span className="merchant-pager__status">
+                第 {page} / {totalPages} 页 · 共 {total} 笔
+              </span>
+              <button
+                type="button"
+                className="merchant-link-button"
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages}
+              >
+                下一页
+              </button>
+            </nav>
+          )}
         </>
+      )}
+
+      {isSample && (
+        <button
+          type="button"
+          className="merchant-order-list__setup"
+          onClick={onOpenSetup}
+          data-open-onboarding
+        >
+          商家注册 / 开店
+        </button>
       )}
     </div>
   );

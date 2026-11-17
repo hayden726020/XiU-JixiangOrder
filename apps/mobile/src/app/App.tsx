@@ -70,15 +70,16 @@ export default function App() {
     (module) => route === module.route || route.startsWith(`${module.route}/`),
   );
   const ActiveComponent = activeModule?.Component;
+  const isMerchant = activeModule?.id === 'merchant';
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isMerchant ? ' app-shell--merchant' : ''}`}>
       <header className="app-header">
         <div>
           <p className="app-kicker">单 APK · 三角色共用</p>
           <h1>吉祥点餐</h1>
         </div>
-        <span className="app-version">Day2 联调</span>
+        <span className="app-version">{isMerchant ? 'S1 样例' : 'Day2 联调'}</span>
       </header>
 
       <main className="app-main">
@@ -103,10 +104,12 @@ export default function App() {
         )}
       </main>
 
-      <footer className="app-footer">
-        <p>当前为 Day2 联调版本：学生、档口与管理员模块均已接入真实演示服务，入口默认仍可用样例数据核对。</p>
-        <p>公共层已封装登录、请求与一次性定位；服务地址未配置时明确失败，不回落样例成功。真机结论仅覆盖已记录项，其余按模拟或未验证标注。</p>
-      </footer>
+      {!isMerchant && (
+        <footer className="app-footer">
+          <p>当前为 Day2 联调版本：学生、档口与管理员模块均已接入真实演示服务，入口默认仍可用样例数据核对。</p>
+          <p>公共层已封装登录、请求与一次性定位；服务地址未配置时明确失败，不回落样例成功。真机结论仅覆盖已记录项，其余按模拟或未验证标注。</p>
+        </footer>
+      )}
     </div>
   );
 }
