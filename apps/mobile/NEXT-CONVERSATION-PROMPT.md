@@ -17,8 +17,8 @@
 - 保存后“完成”返回订单列表；第 1 步“取消”返回角色入口 `#/`。
 - 刷新修复提交 `98ff18d` 已通过 `tsc --noEmit` 与 `vite build`；上一轮在 390px 视口验证五个页面与流程。
 - 当前基线 `ddd9785` 合并了 `9cb2926`：学生端订单备注与免登录预览；档口菜品新增、改名、改类别、删除；以及本次订单刷新修复。**不要回退这些功能**。
-- 2026-11-17 已修复档口订单不自动刷新：真实模式下订单列表与详情每 15 秒自动刷新；列表有「刷新列表」按钮和最近更新时间；待接单/可取餐/普通详情有「刷新订单」按钮；发现新单会提示并自动进入「待接单」分组；写操作成功后重新拉取列表。
-- 刷新功能已用 Headless Edge + 本地模拟服务在真实模式验证 13 项全通过；合并基线使用基线版注册页执行 `vite build` 成功。
+- 2026-11-17 已修复档口订单不自动刷新：真实模式下订单列表与详情每 15 秒自动刷新；列表有「刷新列表」按钮和最近更新时间；待接单/可取餐/普通详情有「刷新订单」按钮；发现新单会提示并自动进入「待接单」分组；停留在详情页也会检测其他新单；写操作成功后重新拉取列表。
+- 刷新功能已用 Headless Edge + 本地模拟服务在真实模式验证 13 项全通过；合并基线使用基线版注册页执行 `vite build` 成功；详情页停留检测补充提交 `ca24fed` 另通过 3 项验证。
 - 合并基线后 `tsc --noEmit` 还剩 1 个学生端既有类型错误（`orderCancelView.ts` 的 `CancelRequest.decisionReason`），不是本次档口改动引入；出包先用 `vite build`，不要用会先跑 tsc 的 `npm run build`。
 - `frontend` 工作副本当前有一份并行注册页改动（`OnboardingPage.tsx` 引用缺失的 `wall-*.jpg`），未纳入基线，直接 `vite build` 会失败；并行版本备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`。
 - `dist/` 已更新，但 debug APK 仍是上一轮产物：
@@ -37,8 +37,8 @@
 ## Git 基线
 
 - 远端：`https://github.com/hayden726020/XiU-JixiangOrder.git`，默认分支 `main`。
-- 远端基线分支：`frontend/baseline-2026-11-17`；当前合并提交 `ddd9785 merge: 合并当前前端基线与档口订单刷新修复`（父：`98ff18d` + `9cb2926`）。
-- 本次分支 `frontend/handoff-2026-11-17` 已与基线分支同步到 `ddd9785`（以实际 `git log` / `git ls-remote` 为准）。
+- 远端基线分支：`frontend/baseline-2026-11-17`；提交链 `ddd9785 merge: 合并当前前端基线与档口订单刷新修复`（父：`98ff18d` + `9cb2926`）→ `ca24fed fix(mobile): 订单详情页定时检测新订单并保留当前订单` → 本次 docs 提交。
+- 本次分支 `frontend/handoff-2026-11-17` 已与基线分支同步到同一提交（以实际 `git log` / `git ls-remote` 为准）。
 - GitHub HTTPS 会间歇性超时或 `Connection was reset`；重试即可，或加 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用。
 - 远端没有 `frontend/`；本地副本对应远端 `apps/mobile`。
 

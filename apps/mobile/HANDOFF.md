@@ -7,6 +7,7 @@
 - 远端仓库：`https://github.com/hayden726020/XiU-JixiangOrder.git`，默认分支 `main`。
 - 远端当前前端基线分支：`frontend/baseline-2026-11-17`，包含 `9cb2926 feat(mobile): 增加学生端订单备注与免登录预览，档口菜品新增/改名/改类别/删除`。
 - 当前合并提交：`ddd9785 merge: 合并当前前端基线与档口订单刷新修复`，父提交为 `98ff18d`（刷新修复）与 `9cb2926`（并行前端基线）。
+- 合并后补齐：`ca24fed fix(mobile): 订单详情页定时检测新订单并保留当前订单`；当前分支再后接本次 docs 提交。
 - 远端正式移动端位于 `apps/mobile`，**远端根目录没有 `frontend/` 目录**。本地的 `E:\project\workspace\frontend` 是 `apps/mobile` 的工作副本。
 - 本次通过稀疏克隆建立工作区 `E:\project\workspace\.git-sync`（只检出 `apps/mobile`），在其上创建分支 `frontend/handoff-2026-11-17` 提交并推送。
 - 2026-11-17 刷新修复提交：`98ff18d fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`；随后合并 `9cb2926` 形成 `ddd9785`。
@@ -117,6 +118,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 - 刷新修复提交 `98ff18d`：`tsc --noEmit` 0 错误；`vite build` 成功。
 - Headless Edge + 本地模拟服务（真实模式）自动验证 13 项全部通过：刷新按钮可点击、15 秒自动刷新、最近更新时间更新、新单自动进入「待接单」并提示、详情页刷新按钮与刷新完成、停留在详情页发现新单、无运行时异常或 `console.error`。
 - 合并基线 `ddd9785`：使用基线版注册页执行 `vite build` 成功；合并无冲突。
+- 详情页停留检测提交 `ca24fed`：Headless Edge 3 项通过——停留在详情页能在 15 秒内发现新单、当前订单仍正常显示、无运行时异常或 `console.error`；补齐后 `vite build` 成功。
 - 上一轮：4173 本机与局域网 HTTP 200；`gradlew.bat assembleDebug` `BUILD SUCCESSFUL`。
 - 五个档口端设计页面、两步开店流程、订单详情直达与 390px 布局：上一轮已在 Headless Edge 中验证通过并记录。
 
@@ -166,8 +168,8 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 ## 9 Git 操作约定
 
 - 工作区：`E:\project\workspace\.git-sync`（稀疏检出 `apps/mobile`）。
-- 当前分支：`frontend/handoff-2026-11-17`，HEAD 为 `ddd9785`（合并 `98ff18d` + `9cb2926`）。
-- 远端基线分支 `frontend/baseline-2026-11-17` 已同步到同一 `ddd9785`；只推专用分支，不推 `main`，不强推。
-- 提交信息：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`、`merge: 合并当前前端基线与档口订单刷新修复`、`docs(mobile): 更新基线与交接说明`。
+- 当前分支：`frontend/handoff-2026-11-17`，提交链 `ddd9785`（合并）→ `ca24fed`（详情页检测）→ 本次 docs 提交（以 `git log` 为准）。
+- 远端基线分支 `frontend/baseline-2026-11-17` 已同步到同一提交；只推专用分支，不推 `main`，不强推。
+- 提交信息：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`、`merge: 合并当前前端基线与档口订单刷新修复`、`docs(mobile): 更新当前基线、刷新验收与交接说明`、`fix(mobile): 订单详情页定时检测新订单并保留当前订单`。
 - GitHub 主站连接可能超时或 `Connection was reset`；重试或用 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用，远端与本地 SHA 一致。
 - 推送后用 `git log -1 --oneline`、`git status`、`git ls-remote` 核对。
