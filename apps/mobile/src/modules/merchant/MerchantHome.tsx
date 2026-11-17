@@ -65,7 +65,7 @@ type View =
   | { name: 'menu' }
   | { name: 'setup' }
   | { name: 'source' }
-  | { name: 'my' };
+  | { name: 'my' }
   | { name: 'wallet' };
 
 function merchantRoute(): string {
@@ -204,9 +204,10 @@ export default function MerchantHome() {
       } else if (route === MY_ROUTE) {
         setView({ name: 'my' });
         setNotice(null);
+      } else if (route === WALLET_ROUTE) {
+        setView({ name: 'wallet' });
         setNotice(null);
       }
-      } else if (route === WALLET_ROUTE) {,        setView({ name: 'wallet' });,        setNotice(null);
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -465,7 +466,25 @@ export default function MerchantHome() {
     setView({ name: 'my' });
     setNotice(null);
   }
-  function openWallet() {,    clearActionState();,    window.location.hash = WALLET_ROUTE;,    setView({ name: 'wallet' });,    setNotice(null);,  },,  async function handleWithdrawDemo(amountFen: number) {,    if (withdrawInFlight) return;,    setWithdrawInFlight(true);,    const result = await source.withdrawWallet({ amountFen, requestId: createRequestId('merchant-wallet') });,    setWithdrawInFlight(false);,    if (result.ok) {,      setWallet(result.data);,      setNotice(`演示提现成功：${formatYuan(amountFen)} 已从样例余额扣除。`);,    } else {,      setWalletError(result.error.message);,    },  }
+  function openWallet() {
+    clearActionState();
+    window.location.hash = WALLET_ROUTE;
+    setView({ name: 'wallet' });
+    setNotice(null);
+  }
+
+  async function handleWithdrawDemo(amountFen: number) {
+    if (withdrawInFlight) return;
+    setWithdrawInFlight(true);
+    const result = await source.withdrawWallet({ amountFen, requestId: createRequestId('merchant-wallet') });
+    setWithdrawInFlight(false);
+    if (result.ok) {
+      setWallet(result.data);
+      setNotice(`演示提现成功：${formatYuan(amountFen)} 已从样例余额扣除。`);
+    } else {
+      setWalletError(result.error.message);
+    }
+  }
 
 
   function handleAction(orderId: string, action: OrderAction, input: ActionInput = {}) {
