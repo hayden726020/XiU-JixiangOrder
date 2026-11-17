@@ -34,6 +34,7 @@ import type { DishPatch } from './state/menuEdit';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
 import { formatYuan } from './utils/money';
 import { logout } from '../../shared/auth';
+import { roleLabel } from '../../shared';
 import { getApiBaseInfo } from '../../shared/config';
 import { createRequestId } from '../../shared/requestId';
 import { getSession, subscribeSession, type Session } from '../../shared/session';
@@ -48,12 +49,14 @@ const MENU_ROUTE = `${MERCHANT_ROUTE}/menu`;
 const SETUP_ROUTE = `${MERCHANT_ROUTE}/setup`;
 const ORDERS_ROUTE = `${MERCHANT_ROUTE}/orders`;
 const ORDER_ROUTE_PREFIX = `${ORDERS_ROUTE}/`;
+const MY_ROUTE = `${MERCHANT_ROUTE}/my`;
 
 type View =
   | { name: 'list' }
   | { name: 'detail'; orderId: string }
   | { name: 'menu' }
-  | { name: 'setup' };
+  | { name: 'setup' }
+  | { name: 'my' };
 
 function merchantRoute(): string {
   return window.location.hash.replace(/^#/, '').replace(/\/+$/, '') || '/';
@@ -75,6 +78,7 @@ function viewFromRoute(): View {
   if (route === MERCHANT_ROUTE || route === SETUP_ROUTE) return { name: 'setup' };
   if (route === MENU_ROUTE) return { name: 'menu' };
   if (route === ORDERS_ROUTE) return { name: 'list' };
+  if (route === MY_ROUTE) return { name: 'my' };
   const orderId = orderIdFromRoute(route);
   if (orderId) return { name: 'detail', orderId };
   return { name: 'list' };
@@ -150,6 +154,9 @@ export default function MerchantHome() {
         setNotice(null);
       } else if (route === ORDERS_ROUTE) {
         setView({ name: 'list' });
+      } else if (route === MY_ROUTE) {
+        setView({ name: 'my' });
+        setNotice(null);
         setNotice(null);
       }
     };
@@ -362,6 +369,13 @@ export default function MerchantHome() {
     clearActionState();
     window.location.hash = SETUP_ROUTE;
     setView({ name: 'setup' });
+    setNotice(null);
+  }
+
+  function openMy() {
+    clearActionState();
+    window.location.hash = MY_ROUTE;
+    setView({ name: 'my' });
     setNotice(null);
   }
 
@@ -776,6 +790,79 @@ export default function MerchantHome() {
           onBack={backToList}
           onCancel={exitMerchant}
         />
+      )}
+
+      {view.name === 'my' && (
+        <section className='merchant-my' aria-label='我的'>
+          <div className='merchant-my__card'>
+            <div className='merchant-my__avatar'>{(session?.user.displayName ?? '档').slice(0, 1)}</div>
+            <div className='merchant-my__identity'>
+              <h3>{session?.user.displayName ?? "未登录"}</h3>
+              <p>档口账号 · {roleLabel(session?.user.role ?? 'MERCHANT')}</p>
+            </div>
+          </div>
+          <div className='merchant-my__group'>
+            <div className='merchant-my__row'>
+              <span>数据源</span>
+              <span>{mode === 'sample' ? '样例数据' : '真实 · 演示服务'}</span>
+            </div>
+            <div className='merchant-my__row'>
+              <span>服务地址</span>
+              <span>{apiBase.baseUrl ?? '未配置'}</span>
+            </div>
+            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openSetup}>
+              <span>店铺信息与入驻</span>
+              <span className='merchant-my__arrow'>→</span>
+            </button>
+            {mode === 'real' && merchantLoggedIn && (
+              <button type='button' className='merchant-my__row merchant-my__row--action' onClick={() => void handleMerchantLogout()}>
+                <span>退出登录 / 切换档口账号</span>
+                <span className='merchant-my__arrow'>→</span>
+              </button>
+            )}
+          </div>
+          <button type='button' className='merchant-my__exit' onClick={exitMerchant}>返回角色入口</button>
+        </section>
+      )}
+
+      {merchantLoggedIn && (
+      <nav className='merchant-tabbar' aria-label='底部导航'>
+        <button
+          type='button'
+          className={`merchant-tab-item${view.name === 'menu' ? ' is-active' : ''}`}
+          onClick={openMenu}
+        >
+          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+            <path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20' />
+            <path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z' />
+          </svg>
+          <span>菜单</span>
+        </button>
+        <button
+          type='button'
+          className={`merchant-tab-item${view.name === 'list' || view.name === 'detail' ? ' is-active' : ''}`}
+          onClick={backToList}
+        >
+          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+            <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
+            <polyline points='14 2 14 8 20 8' />
+            <line x1='16' y1='13' x2='8' y2='13' />
+            <line x1='16' y1='17' x2='8' y2='17' />
+          </svg>
+          <span>订单</span>
+        </button>
+        <button
+          type='button'
+          className={`merchant-tab-item${view.name === 'my' || view.name === 'setup' ? ' is-active' : ''}`}
+          onClick={openMy}
+        >
+          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+            <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2' />
+            <circle cx='12' cy='7' r='4' />
+          </svg>
+          <span>我的</span>
+        </button>
+      </nav>
       )}
     </section>
   );
