@@ -7,6 +7,7 @@ import { filterDishesByShop } from '../utils/dishShopFilter';
 import { CURRENT_SHOP_PREFIX, DEMO_DATA_LABEL } from '../utils/shopTexts';
 import { formatYuan } from '../utils/money';
 import { toSubmitErrorView } from '../utils/orderSubmitView';
+import { ORDER_REMARK_MAX_LENGTH } from '../utils/remark';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
 import RealModeNotice from '../components/RealModeNotice';
@@ -26,6 +27,15 @@ const SCENARIO_OPTIONS: Array<{ value: DemoScenario; label: string; hint: string
   { value: 'out-of-stock', label: '菜品不足', hint: '提交返回菜品不足' },
   { value: 'timeout', label: '提交超时', hint: '提交超时，结果待确认' },
 ];
+
+const QUICK_REMARKS = ['不要辣', '少放盐', '不要香菜', '多加饭', '打包带走'] as const;
+
+function splitRemarks(value: string): string[] {
+  return value
+    .split(/[，,、\n]/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
 
 function ChevronLeftIcon() {
   return (
@@ -100,6 +110,7 @@ export default function ConfirmPage({
   const [scenario, setScenario] = useState<DemoScenario>(() => source.getScenario());
   const [busy, setBusy] = useState(false);
   const [queryError, setQueryError] = useState('');
+  const [remark, setRemark] = useState(() => draft.getState().remark);
 
   useEffect(() => {
     if (draft.getState().status === 'success') {
@@ -196,6 +207,22 @@ export default function ConfirmPage({
       setSnapshot(draft.getState());
     }
   }
+
+  function updateRemark(next: string): void {
+    const text = next.slice(0, ORDER_REMARK_MAX_LENGTH);
+    setRemark(text);
+    draft.setRemark(text);
+  }
+
+  function toggleRemarkTag(tag: string): void {
+    const tags = splitRemarks(remark);
+    const next = tags.includes(tag)
+      ? tags.filter((item) => item !== tag)
+      : [...tags, tag];
+    updateRemark(next.join('，'));
+  }
+
+  const activeRemarkTags = splitRemarks(remark);
 
   const selectedSlot = menu?.slots.find((slot) => slot.slotId === snapshot.slotId) ?? null;
   const lines = snapshot.items.map((item) => {
@@ -361,6 +388,54 @@ export default function ConfirmPage({
                 {selectedSlot ? (
                   <p className="confirm-info-note">时段核对：{slotLabel(selectedSlot)}</p>
                 ) : null}
+              </div>
+            </section>
+
+            {/* 订单备注 */}
+            <section className="confirm-remark-card" aria-labelledby="confirm-remark-title">
+              <div className="confirm-remark-head">
+                <h3 id="confirm-remark-title" className="booking-section-title" style={{ margin: 0 }}>
+                  订单备注<span className="confirm-remark-optional">选填</span>
+                </h3>
+                <span className="confirm-remark-count">{remark.length}/{ORDER_REMARK_MAX_LENGTH}</span>
+              </div>
+              <textarea
+                className="confirm-remark-input"
+                value={remark}
+                maxLength={ORDER_REMARK_MAX_LENGTH}
+                rows={3}
+                placeholder="口味、忌口、取餐提醒等，档口会看到"
+                aria-label="订单备注"
+                disabled={busy}
+                onChange={(event) => updateRemark(event.target.value)}
+              />
+              <div className="confirm-remark-tags" role="group" aria-label="常用备注">
+                {QUICK_REMARKS.map((tag) => {
+                  const active = activeRemarkTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`confirm-remark-tag${active ? ' is-active' : ''}`}
+                      aria-pressed={active}
+                      disabled={busy}
+                      onClick={() => toggleRemarkTag(tag)}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="confirm-remark-foot">
+                <span>备注会随订单提交给档口</span>
+                <button
+                  type="button"
+                  className="confirm-remark-clear"
+                  disabled={busy || remark.length === 0}
+                  onClick={() => updateRemark('')}
+                >
+                  清空备注
+                </button>
               </div>
             </section>
 

@@ -42,6 +42,7 @@ function orderBody(input: CreateOrderInput): Record<string, unknown> {
     items: input.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
     slotId: input.slotId,
     diningMode: input.diningMode,
+    ...(input.remark ? { remark: input.remark } : {}),
   };
 }
 
@@ -115,6 +116,7 @@ export function createRealStudentSource(options: RealSourceOptions = {}): Studen
         items: input.items,
         slotId: input.slotId,
         diningMode: input.diningMode,
+        remark: input.remark,
       });
     },
 

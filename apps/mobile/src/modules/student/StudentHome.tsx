@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createStudentSource } from './data/sampleSource';
 import { resolveStudentMode } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
@@ -20,6 +20,7 @@ import { useStudentSessionGate } from './state/useStudentSessionGate';
 import type { ShopSummary, StudentSource } from './types';
 import { SHOP_SWITCH_BUSY } from './utils/shopTexts';
 import { todayAndTomorrow } from './utils/dates';
+import { filterDishesByShop } from './utils/dishShopFilter';
 import './student.css';
 
 type StudentView = 'shop' | 'menu' | 'slot' | 'confirm' | 'order' | 'orders' | 'profile';
@@ -28,18 +29,27 @@ type DetailFrom = 'menu' | 'orders';
 
 type OrdersBackTo = 'shop' | 'menu';
 
+function previewSlotRequested(): boolean {
+  if (new URLSearchParams(window.location.search).get('preview') === 'slot') {
+    return true;
+  }
+  const hashQuery = window.location.hash.split('?')[1] ?? '';
+  return new URLSearchParams(hashQuery).get('preview') === 'slot';
+}
+
 export default function StudentHome() {
   const { gate } = useStudentSessionGate();
   const sampleMode = resolveStudentMode() === 'sample';
+  const previewSlot = sampleMode && previewSlotRequested();
 
   if (!gate.usable && !sampleMode) {
     return <LoginPage gate={gate} />;
   }
 
-  return <StudentHomeApp />;
+  return <StudentHomeApp previewSlot={previewSlot} />;
 }
 
-function StudentHomeApp() {
+function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
   const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
     if (source.mode === 'real') {
@@ -81,6 +91,33 @@ function StudentHomeApp() {
   const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
   const [shopNotice, setShopNotice] = useState('');
+  const previewStarted = useRef(false);
+
+  useEffect(() => {
+    if (!previewSlot || previewStarted.current) return;
+    previewStarted.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const shops = await source.listShops();
+        if (cancelled || shops.length === 0) return;
+        const shop = shops[0];
+        const entered = draft.setShop(shop.merchantId);
+        if (!entered.ok) return;
+        const menu = await source.getMenu(draft.getState().date);
+        if (cancelled) return;
+        const dishes = filterDishesByShop(menu.dishes, shop.merchantId);
+        draft.applyDishCatalog(dishes);
+        const dish = dishes.find((item) => item.onSale === true && item.availableQuantity > 0);
+        if (dish) draft.setQuantity(dish, 1);
+        setCurrentShop(shop);
+        goTo('slot');
+      } catch {
+        setShopNotice('样例预览未能自动进入预约页，请手动选择店铺。');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [previewSlot, source, draft]);
 
   function goTo(next: StudentView): void {
     setView(next);

@@ -2265,3 +2265,58 @@
     width: calc(100% - 2.3rem);
   }
 }
+.menu-item__actions {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.menu-item__delete {
+  border: 1px solid var(--m-danger-line);
+  border-radius: 0.4rem;
+  background: var(--m-card);
+  color: var(--m-danger-ink);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.menu-item__delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.menu-edit__fields select {
+  width: 7.5rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.4rem;
+  font-size: 0.82rem;
+  background: var(--m-card);
+}
+
+.menu-edit__fields .menu-edit__name input {
+  width: 11rem;
+}
+
+.menu-edit--danger {
+  border-color: var(--m-danger-line);
+  background: var(--m-danger-bg);
+}
+
+.menu-edit--danger > p:not(.action-feedback) {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--m-danger-ink);
+}
+
+.menu-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.menu-section-head h3 {
+  margin: 0;
+}

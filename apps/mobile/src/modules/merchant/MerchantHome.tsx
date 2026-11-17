@@ -4,6 +4,7 @@ import { SAMPLE_DATES } from './data/sampleData';
 import { createMerchantSource } from './data/source';
 import type {
   CancelDecision,
+  CreateDishInput,
   DiningMode,
   Dish,
   MenuDay,
@@ -27,6 +28,7 @@ import {
   type OrderAction,
 } from './state/actionMatrix';
 import { formatClock, localInputToZonedIso, shortOrderId, statusView } from './state/orderView';
+import type { DishPatch } from './state/menuEdit';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
 import { formatYuan } from './utils/money';
 import { demoLogin } from '../../shared/auth';
@@ -416,7 +418,7 @@ export default function MerchantHome() {
 
   async function saveDish(
     dish: Dish,
-    patch: { priceFen: number; availableQuantity: number; onSale: boolean },
+    patch: DishPatch,
     requestId: string,
   ) {
     const result = await source.updateDish(menuDate, dish.dishId, {
@@ -434,6 +436,36 @@ export default function MerchantHome() {
       setNotice(
         `已保存菜品「${result.data.name}」：${formatYuan(result.data.unitPriceFen)}，可售 ${result.data.availableQuantity}，${result.data.onSale ? '在售' : '停售'}，版本 v${result.data.version ?? '未返回'}。`,
       );
+    }
+    return result;
+  }
+
+  async function createDish(input: CreateDishInput) {
+    const result = await source.createDish(input);
+    if (result.ok) {
+      setMenu((current) => (current
+        ? { ...current, dishes: [...current.dishes, result.data] }
+        : current));
+      setNotice(
+        `已新增菜品「${result.data.name}」：${formatYuan(result.data.unitPriceFen)}，可售 ${result.data.availableQuantity}，${result.data.onSale ? '在售' : '停售'}，版本 v${result.data.version ?? '未返回'}。`,
+      );
+    }
+    return result;
+  }
+
+  async function deleteDish(dish: Dish, requestId: string) {
+    const result = await source.deleteDish(menuDate, dish.dishId, {
+      requestId,
+      expectedVersion: dish.version,
+    });
+    if (result.ok) {
+      setMenu((current) => (current
+        ? {
+          ...current,
+          dishes: current.dishes.filter((item) => item.dishId !== result.data.dishId),
+        }
+        : current));
+      setNotice(`已删除菜品「${dish.name}」。学生端菜单不再展示该菜品，历史订单保留原菜名。`);
     }
     return result;
   }
@@ -577,6 +609,9 @@ export default function MerchantHome() {
           menu={menu}
           slots={slots}
           onSaveDish={saveDish}
+          onCreateDish={createDish}
+          onDeleteDish={deleteDish}
+          onGoSetup={openSetup}
           onSaveSlot={saveSlot}
           onBack={backToList}
         />
