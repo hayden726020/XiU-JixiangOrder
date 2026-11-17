@@ -231,3 +231,39 @@ test('档口订单列表支持状态筛选分页且不暴露取餐码', async ()
   assert.equal(invalidStatus.status, 400);
   assert.equal(invalidStatus.body.error.code, 'VALIDATION_ERROR');
 });
+test('订单备注随订单保存并在列表与详情返回', async () => {
+  const token = await ctx.login('student');
+  const response = await placeOrder(token, 'remark-1', { remark: '少放盐，多给点汤汁' });
+  assert.equal(response.status, 201);
+  assert.equal(response.body.data.remark, '少放盐，多给点汤汁');
+
+  const list = await ctx.api('GET', '/orders', { token });
+  assert.equal(list.body.data.orders[0].remark, '少放盐，多给点汤汁');
+
+  const detail = await ctx.api('GET', `/orders/${response.body.data.id}`, { token });
+  assert.equal(detail.body.data.remark, '少放盐，多给点汤汁');
+});
+
+test('未填写备注时订单备注为 null', async () => {
+  const token = await ctx.login('student');
+  const response = await placeOrder(token, 'remark-null');
+  assert.equal(response.status, 201);
+  assert.equal(response.body.data.remark, null);
+});
+
+test('订单备注超过 50 字被拒绝且不创建订单', async () => {
+  const token = await ctx.login('student');
+  const response = await placeOrder(token, 'remark-2', { remark: '备'.repeat(51) });
+  assert.equal(response.status, 400);
+  assert.equal(response.body.error.code, 'VALIDATION_ERROR');
+  const count = ctx.db.prepare('SELECT COUNT(*) AS count FROM orders').get().count;
+  assert.equal(count, 0);
+});
+
+test('同一 requestId 修改备注视为不同内容', async () => {
+  const token = await ctx.login('student');
+  await placeOrder(token, 'remark-3', { remark: '少放盐' });
+  const response = await placeOrder(token, 'remark-3', { remark: '不要辣' });
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error.code, 'REQUEST_CONFLICT');
+});

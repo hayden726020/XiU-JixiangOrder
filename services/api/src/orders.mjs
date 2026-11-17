@@ -23,6 +23,21 @@ const ACTIVE_STATUSES = ['NEW', 'ACCEPTED', 'PREPARING', 'READY'];
 const DELAYABLE_STATUSES = ['ACCEPTED', 'PREPARING', 'READY'];
 const UNSTARTED_STATUSES = ['NEW', 'ACCEPTED'];
 const DINING_MODES = ['DINE_IN', 'TAKEAWAY'];
+const DISH_TYPES = ['STAPLE', 'SNACK', 'DRINK', 'SET'];
+
+function parseOrderRemark(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw validationError('remark 必须是字符串。');
+  }
+  const text = value.trim();
+  if (text.length > 50) {
+    throw validationError('remark 不能超过 50 个字。');
+  }
+  return text === '' ? null : text;
+}
 
 export function transaction(db, fn) {
   db.exec('BEGIN IMMEDIATE');
@@ -113,6 +128,7 @@ export function serializeOrder(db, row, user) {
         ? null
         : { reason: row.delay_reason, expectedReadyAt: row.delay_expected_ready_at },
     diningModeReason: row.dining_mode_reason ?? null,
+    remark: row.remark ?? null,
     pickupCode: canSeePickupCode ? row.pickup_code : null,
   };
 }
@@ -193,6 +209,7 @@ export function createOrder({ db, clock, user, body }) {
   const requestId = requireString(input.requestId, 'requestId', { max: 120 });
   const slotId = requireString(input.slotId, 'slotId', { max: 120 });
   const diningMode = requireEnum(input.diningMode, 'diningMode', DINING_MODES);
+  const remark = parseOrderRemark(input.remark);
   if (!Array.isArray(input.items) || input.items.length === 0 || input.items.length > 20) {
     throw validationError('items 必须包含 1 到 20 个菜品。');
   }
@@ -267,12 +284,12 @@ export function createOrder({ db, clock, user, body }) {
       const orderId = newId('ord');
       const merchant = db.prepare('SELECT name FROM merchants WHERE id = ?').get(merchantId);
       db.prepare(
-        `INSERT INTO orders
-         (id, student_id, merchant_id, merchant_name, slot_id, dining_mode, total_fen, status, payment_status, version,
+`INSERT INTO orders
+         (id, student_id, merchant_id, merchant_name, slot_id, dining_mode, remark, total_fen, status, payment_status, version,
           pickup_code, picked_up_at, cancellation_reason, cancel_status, cancel_reason,
           delay_reason, delay_expected_ready_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'NEW', 'SIMULATED_PAID', 1, NULL, NULL, NULL, 'NONE', NULL, NULL, NULL, ?, ?)`,
-      ).run(orderId, user.id, merchantId, merchant?.name ?? null, slot.id, diningMode, totalFen, now, now);
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'NEW', 'SIMULATED_PAID', 1, NULL, NULL, NULL, 'NONE', NULL, NULL, NULL, ?, ?)`,
+      ).run(orderId, user.id, merchantId, merchant?.name ?? null, slot.id, diningMode, remark, totalFen, now, now);
 
       const insertItem = db.prepare(
         `INSERT INTO order_items (order_id, dish_id, name, quantity, unit_price_fen, merchant_id)
@@ -562,6 +579,15 @@ export function updateMerchantDish({ db, clock, user, params, body }) {
   if (!dish || dish.merchant_id !== user.merchant_id) {
     throw notFound('DISH_NOT_FOUND', '菜品不存在或不属于本档口。');
   }
+  const name = input.name === undefined
+    ? dish.name
+    : requireString(input.name, 'name', { min: 1, max: 30 }).trim();
+  if (name.length === 0) {
+    throw validationError('name 不能为空。');
+  }
+  const type = input.type === undefined
+    ? dish.type
+    : requireEnum(input.type, 'type', DISH_TYPES);
   return transaction(db, () =>
     runIdempotent(db, { actorId: user.id, operation: `update-dish:${dish.id}`, requestId, hash, now }, () => {
       assertVersion({ version: dish.version }, input.expectedVersion, {
@@ -569,16 +595,17 @@ export function updateMerchantDish({ db, clock, user, params, body }) {
         message: '菜品已发生变化，请刷新菜单后重试。',
       });
       db.prepare(
-        `UPDATE dishes SET price_fen = ?, available_quantity = ?, on_sale = ?, version = version + 1
+        `UPDATE dishes SET name = ?, type = ?, price_fen = ?, available_quantity = ?, on_sale = ?, version = version + 1
          WHERE id = ? AND version = ?`,
-      ).run(priceFen, availableQuantity, input.onSale ? 1 : 0, dish.id, dish.version);
+      ).run(name, type, priceFen, availableQuantity, input.onSale ? 1 : 0, dish.id, dish.version);
       return {
         status: 200,
         body: {
           data: {
             id: dish.id,
             merchantId: dish.merchant_id,
-            name: dish.name,
+            name,
+            type,
             priceFen,
             availableQuantity,
             onSale: input.onSale,
@@ -586,6 +613,46 @@ export function updateMerchantDish({ db, clock, user, params, body }) {
           },
         },
       };
+    }),
+  );
+}
+
+export function deleteMerchantDish({ db, clock, user, params, body }) {
+  const input = asRecord(body);
+  const now = clock();
+  const requestId = requireString(input.requestId, 'requestId', { max: 120 });
+  const hash = requestHash(input);
+  if (user.role !== 'MERCHANT') {
+    throw forbidden();
+  }
+  const dish = db.prepare('SELECT * FROM dishes WHERE id = ?').get(params.dishId);
+  if (!dish || dish.merchant_id !== user.merchant_id) {
+    throw notFound('DISH_NOT_FOUND', '菜品不存在或不属于本档口。');
+  }
+  return transaction(db, () =>
+    runIdempotent(db, { actorId: user.id, operation: `delete-dish:${dish.id}`, requestId, hash, now }, () => {
+      assertVersion({ version: dish.version }, input.expectedVersion, {
+        code: 'MENU_VERSION_CONFLICT',
+        message: '菜品已发生变化，请刷新菜单后重试。',
+      });
+      const active = db
+        .prepare(
+          `SELECT COUNT(*) AS count FROM orders o
+           JOIN order_items i ON i.order_id = o.id
+           WHERE i.dish_id = ? AND o.merchant_id = ?
+             AND o.status IN ('NEW', 'ACCEPTED', 'PREPARING', 'READY')`,
+        )
+        .get(dish.id, dish.merchant_id);
+      if (active.count > 0) {
+        throw conflict('DISH_IN_USE', '该菜品存在未结束订单，暂不能删除；可先改为停售。');
+      }
+      const removed = db
+        .prepare('DELETE FROM dishes WHERE id = ? AND version = ?')
+        .run(dish.id, dish.version);
+      if (removed.changes !== 1) {
+        throw conflict('MENU_VERSION_CONFLICT', '菜品已发生变化，请刷新菜单后重试。');
+      }
+      return { status: 200, body: { data: { id: dish.id } } };
     }),
   );
 }

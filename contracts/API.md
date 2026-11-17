@@ -4,6 +4,8 @@ DRAFT v0.3（2026-11-13 联调冻结候选）与 v0.4 增补（2026-11-14）分�
 
 **v0.4 增补（2026-11-14）**：在 v0.3 之上新增商家注册、创建店铺、新增菜品、`GET /merchant/profile`、`GET /merchants`（学生店铺列表）与订单 `merchantId/merchantName`，并给 `GET /menu` 的 `dishes[]` 增加 `type`。v0.4 增补已由 `services/api` 实现并通过自动测试（当前 82/82）；三人结论已代签汇总“同意”，本人书面追认待补；v0.3 既有端点口径不变。
 
+**v0.5 增补（2026-11-17，DRAFT，待三人确认）**：订单增加可选 `remark`（≤50 字，未填写返回 null，学生下单写入并在三端订单响应回读）；档口 `PUT /merchant/menu/{dishId}` 增加 `name`、`type` 校验与写入，并新增 `DELETE /merchant/menu/{dishId}`（存在未结束订单返回 409 `DISH_IN_USE`）。演示服务已实现并通过自动测试（90/90）。
+
 ## 基础格式
 
 成功响应为 { "data": ... }，错误为 { "error": { "code": "...", "message": "...", "retryable": false } }。金额为整数分，日期按 Asia/Shanghai，时间戳带 +08:00 或明确的时区。所有 ID 都是不透明字符串。
@@ -31,7 +33,7 @@ DRAFT v0.3（2026-11-13 联调冻结候选）与 v0.4 增补（2026-11-14）分�
 
 ## 订单字段与状态
 
-订单至少包含 id、merchantId、merchantName、items（dishId/name/quantity/unitPriceFen）、slotId、slotStart、slotEnd、diningMode、diningModeReason（未修改为 null）、totalFen、status、paymentStatus、cancelRequest、cancellationReason（未取消为 null）、version、createdAt、updatedAt、pickedUpAt（未取为 null）、delay（无则 null）。`merchantName` 在下单时快照写入，店铺改名不影响历史订单；历史订单若缺失显示 null，客户端不得用样例名补齐。学生订单按权限展示 pickupCode，仅 READY 且未取餐返回可用码，其他状态为 null；档口订单列表和详情、管理查询始终返回 `pickupCode: null`，档口核销时手工输入学生出示的码。
+订单至少包含 id、merchantId、merchantName、items（dishId/name/quantity/unitPriceFen）、slotId、slotStart、slotEnd、diningMode、diningModeReason（未修改为 null）、remark（未填写为 null）、totalFen、status、paymentStatus、cancelRequest、cancellationReason（未取消为 null）、version、createdAt、updatedAt、pickedUpAt（未取为 null）、delay（无则 null）。`merchantName` 在下单时快照写入，店铺改名不影响历史订单；历史订单若缺失显示 null，客户端不得用样例名补齐。学生订单按权限展示 pickupCode，仅 READY 且未取餐返回可用码，其他状态为 null；档口订单列表和详情、管理查询始终返回 `pickupCode: null`，档口核销时手工输入学生出示的码。
 
 status：NEW → ACCEPTED → PREPARING → READY → COMPLETED。
 NEW/ACCEPTED/PREPARING/READY 可在规定权限下取消为 CANCELLED；COMPLETED/CANCELLED 是终态。
@@ -57,7 +59,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | POST /auth/logout | 无 | 204；删除服务端会话，不删除订单 |
 | GET /menu?date=YYYY-MM-DD | 今天或明天菜单及时段 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选 |
 | GET /merchants | 已登录会话读取店铺列表 | `{ merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] }`；只读，不返回联系方式 |
-| POST /orders | requestId, items[{dishId,quantity}], slotId, diningMode | 服务端计价并模拟付款后的订单；字段例子见 create-order.json |
+| POST /orders | requestId, items[{dishId,quantity}], slotId, diningMode, remark?（≤50 字） | 服务端计价并模拟付款后的订单；字段例子见 create-order.json |
 | GET /orders | 学生自己的订单列表 | 不返回其他学生订单 |
 | GET /orders/{id} | 获取有权限的订单 | 三端从同一订单来源读取，字段按角色过滤 |
 | POST /orders/{id}/cancel | requestId, expectedVersion, reason | NEW 直接取消退款；其余可申请状态设 PENDING，不假装已退款 |
@@ -68,7 +70,8 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | POST /merchant/orders/{id}/cancel | requestId, expectedVersion, reason | 缺货等主动取消；NEW/ACCEPTED/PREPARING/READY 才允许；见 cancel-refund.json |
 | POST /merchant/orders/{id}/delay | requestId, expectedVersion, reason, expectedReadyAt | 仅 ACCEPTED/PREPARING/READY 允许；保存延迟信息，主状态不变，学生能查看 |
 | PATCH /merchant/orders/{id}/dining-mode | requestId, expectedVersion, diningMode, reason | 档口确认后更改未结束订单；reason 必填并持久化为 diningModeReason，三端及统计更新 |
-| PUT /merchant/menu/{dishId} | requestId, expectedVersion, priceFen, availableQuantity, onSale | 校验非负价格/数量和档口归属；不修改历史订单价格；成功返回完整菜品与新 version；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
+| PUT /merchant/menu/{dishId} | requestId, expectedVersion, name, type, priceFen, availableQuantity, onSale | 校验名称/类别、非负价格/数量和档口归属；不修改历史订单价格；成功返回完整菜品与新 version；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
+| DELETE /merchant/menu/{dishId} | requestId, expectedVersion | 成功后菜单不再返回该菜品；存在未结束订单（NEW/ACCEPTED/PREPARING/READY）返回 409 `DISH_IN_USE`；不存在或不属于本档口返回 404 `DISH_NOT_FOUND`；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
 | PUT /merchant/slots/{slotId} | requestId, expectedVersion, capacity, enabled | 容量不得低于已占用量；不静默取消既有订单；成功返回时段与新 version；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
 | GET /merchant/profile | 当前会话的商家/店铺状态 | 只返回本人商家；未注册返回 `merchant=null`、`onboardingStep=UNREGISTERED`；见 v0.4 增补 |
 | POST /merchant/registration | requestId, merchantName, contactName, contactPhone | 201 返回与 profile 相同的 `merchant/shop/onboardingStep`；重复注册 409 `MERCHANT_ALREADY_REGISTERED`，手机号冲突 409 `CONTACT_PHONE_TAKEN` |
@@ -189,6 +192,7 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 | 409 | OUT_OF_STOCK / SLOT_FULL / SLOT_CLOSED | 刷新可售信息，保留学生选择供调整 |
 | 409 | REQUEST_CONFLICT / ORDER_VERSION_CONFLICT | 不创建另一单；核对或刷新再确认 |
 | 409 | INVALID_ORDER_STATE / ALREADY_CANCELLED | 显示当前状态，不重复修改或返还 |
+| 409 | DISH_IN_USE | 该菜品存在未结束订单，提示先停售或等待订单结束，不删除菜品 |
 | 409 | MERCHANT_ALREADY_REGISTERED / CONTACT_PHONE_TAKEN / SHOP_ALREADY_EXISTS / DISH_NAME_DUPLICATE / MERCHANT_NOT_REGISTERED | 保留输入并显示明确原因；不重复创建或覆盖已有资料 |
 | 409 | PICKUP_CODE_USED / PICKUP_CODE_INVALID | 核销未成功，不改已取状态 |
 | 503 | SERVICE_UNAVAILABLE | 明确失败或结果待确认，重试同请求；不返回样例成功 |
@@ -206,7 +210,7 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 
 ## 正式确认前仍需补齐
 
-v0.3 已补齐档口菜单、订单列表、分页、延迟、取消审批、用餐方式理由与取餐码过滤，并已由演示服务实现和自动测试覆盖。v0.4 增补的商家注册/创建店铺/新增菜品与 `dishes[].type` 已实现并通过服务端自动测试（82/82），档口端真实调用层已就绪；订单响应（含管理端）已返回 `merchantId/merchantName`，管理端页面字段复验另列。仍需三人本人书面追认（代签汇总“同意”已完成）、档口端真实保存联调记录、真机可访问服务地址、Android 两机联调记录、现场食堂范围/提醒阈值和服务端正式部署方式；在这些完成前不能宣称正式接口或正式联调。
+v0.3 已补齐档口菜单、订单列表、分页、延迟、取消审批、用餐方式理由与取餐码过滤，并已由演示服务实现和自动测试覆盖。v0.4 增补的商家注册/创建店铺/新增菜品与 `dishes[].type` 已实现并通过服务端自动测试（82/82），档口端真实调用层已就绪；订单响应（含管理端）已返回 `merchantId/merchantName`，管理端页面字段复验另列。v0.5 增补的订单备注、菜品改名/改类别与删除菜品已实现，服务端自动测试 90/90；三人确认与档口端真实联调记录仍待补。仍需三人本人书面追认（代签汇总“同意”已完成）、档口端真实保存联调记录、真机可访问服务地址、Android 两机联调记录、现场食堂范围/提醒阈值和服务端正式部署方式；在这些完成前不能宣称正式接口或正式联调。
 
 ## 客户端接入口径（v0.3 延续）
 
