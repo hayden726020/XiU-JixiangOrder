@@ -1,10 +1,12 @@
 # 三端接口草案
 
-DRAFT v0.5（联调冻结候选），仍待三人确认，不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径；三人确认前按“联调候选”使用，不宣称正式上线。
+DRAFT v0.6（学生开放注册增补，仍待三人确认），不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径；三人确认前按“联调候选”使用，不宣称正式上线。
 
 **v0.4 增补（2026-11-14）**：在 v0.3 之上新增商家注册、创建店铺、新增菜品、`GET /merchant/profile`、`GET /merchants`（学生店铺列表）与订单 `merchantId/merchantName`，并给 `GET /menu` 的 `dishes[]` 增加 `type`。v0.4 增补已由 `services/api` 实现并通过自动测试，仍待三人确认；v0.3 既有端点口径不变。
 
 **v0.5 增补（2026-11-16）**：`GET /merchants` 增加 `active` 区分档口启用状态和营业时间提示；未发布阶段不按营业时间或时段结束时间拦截预约下单，但停用档口、手动停用/满额时段、库存和仅今天/明天日期限制仍有效。停用档口下单返回 `MERCHANT_CLOSED`（409）。
+
+**v0.6 增补（2026-11-17）**：公开 `POST /auth/student-register` 与 `POST /auth/login`；只允许以账号、密码注册学生身份，注册不签发会话，用户随后单独登录。保留 `/auth/demo-login` 兼容既有客户端。学生端未来的注册入口与公共登录入口受影响；档口、管理端接口不变。
 
 ## 基础格式
 
@@ -13,16 +15,22 @@ DRAFT v0.5（联调冻结候选），仍待三人确认，不能作为正式发�
 用餐方式 diningMode = DINE_IN（堂食）或 TAKEAWAY（外带），下单必填。
 用户身份由服务端认证上下文获得，禁止客户端传 userId/role 来决定权限。具体演示登录/会话方案见下节，示例不包含真实密码或令牌。后端不接受前端指定总价。
 
-## 演示登录与会话
+## 学生注册、登录与会话
 
-本轮不接真实学生认证。演示账号由 spcuteag 线下分配，密码不写入仓库、示例、日志或 team-context。账号能进入哪个角色由服务端账号数据决定，客户端角色按钮只选择要登录的演示账号，不直接赋权。
+本轮不接校园学籍核验。任何人可创建学生账号，因此 `STUDENT` 只代表服务端分配的应用角色，不能证明在校身份。演示档口和管理员账号仍由 spcuteag 线下分配；密码不写入仓库、示例、日志或 team-context。角色始终由服务端账号数据决定，客户端不能在注册请求中指定角色或学生 ID。
 
 | 方法与路径 | 请求 | 成功响应 |
 | --- | --- | --- |
+| POST /auth/student-register | { "account": "...", "password": "..." } | 201 { "data": { "registered": true } }；不返回令牌 |
+| POST /auth/login | { "account": "...", "password": "..." } | 200；响应与下方演示登录一致 |
 | POST /auth/demo-login | { "account": "...", "password": "..." } | 200 { "data": { "token": "...", "tokenType": "Bearer", "expiresAt": "...", "user": { "id": "...", "displayName": "...", "role": "STUDENT" } } } |
 | GET /me | 无 | 200 { "data": { "user": { ... }, "canteenId": "..." } } |
 | POST /auth/logout | 无 | 204 |
 
+- 注册账号由 4—32 位英文字母、数字或下划线组成，大小写不敏感，保存为小写；与现有所有角色账号共用唯一命名空间。密码为 8—128 位，不去除首尾空格，不能全为空白。服务端生成不透明的 `id` 与 `studentId`，默认 `displayName` 为小写账号。
+- 重名返回 409 `ACCOUNT_TAKEN`；不合法字段返回 400 `VALIDATION_ERROR`。注册成功后必须另调登录接口；错误密码返回 401 `UNAUTHENTICATED`，不签发会话。
+- 公开认证接口（`/auth/student-register`、`/auth/login`、`/auth/demo-login`）带服务端频率限制（15 分钟窗口：注册单地址 20 次 / 全局 100 次，登录单地址 50 次 / 全局 300 次）；超限返回 429 `RATE_LIMITED`（`retryable: true`）。
+- 注册示例见 `auth-student-register.json`；示例密码为说明性占位符，不是真实凭据。
 - role 仅允许 STUDENT、MERCHANT、ADMIN；档口账号另含 merchantId，学生账号另含 studentId（均为不透明字符串）。
 - 客户端此后请求带 Authorization: Bearer <token>；学生令牌在客户端保留至服务端 `expiresAt`，退出登录时清除；不写日志、不进 URL、不出现在错误截图。
 - 服务端逐请求校验会话、角色及对象归属；客户端隐藏入口不构成权限控制。
@@ -54,7 +62,8 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 
 | 方法与路径 | 输入或用途 | 主要输出与限制 |
 | --- | --- | --- |
-| POST /auth/demo-login | account, password | 服务端签发会话令牌并返回服务端认定的角色；见上节 |
+| POST /auth/student-register | account, password | 仅创建 STUDENT；201，无会话；见上节 |
+| POST /auth/login、/auth/demo-login | account, password | 服务端签发会话令牌并返回服务端认定的角色；演示路径保留兼容；见上节 |
 | GET /me | 当前会话身份 | 返回 user 与 canteenId；仅本人信息 |
 | POST /auth/logout | 无 | 204；删除服务端会话，不删除订单 |
 | GET /menu?date=YYYY-MM-DD | 今天或明天菜单及时段 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选 |
@@ -192,7 +201,9 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 | 409 | REQUEST_CONFLICT / ORDER_VERSION_CONFLICT | 不创建另一单；核对或刷新再确认 |
 | 409 | INVALID_ORDER_STATE / ALREADY_CANCELLED | 显示当前状态，不重复修改或返还 |
 | 409 | MERCHANT_ALREADY_REGISTERED / CONTACT_PHONE_TAKEN / SHOP_ALREADY_EXISTS / DISH_NAME_DUPLICATE / MERCHANT_NOT_REGISTERED | 保留输入并显示明确原因；不重复创建或覆盖已有资料 |
+| 409 | ACCOUNT_TAKEN | 注册账号已被使用；请更换账号 |
 | 409 | PICKUP_CODE_USED / PICKUP_CODE_INVALID | 核销未成功，不改已取状态 |
+| 429 | RATE_LIMITED | 请求过于频繁；稍后重试，保留用户输入 |
 | 503 | SERVICE_UNAVAILABLE | 明确失败或结果待确认，重试同请求；不返回样例成功 |
 
 返回错误码和易懂 message。具体是否可重试由 retryable 字段说明；网络超时不代表操作未发生，客户端按同一 requestId 恢复查询或重试。

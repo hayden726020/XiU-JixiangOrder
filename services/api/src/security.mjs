@@ -55,7 +55,12 @@ export function createSession(db, userId, clock) {
 }
 
 export function findUserByAccount(db, account) {
-  return db.prepare('SELECT * FROM users WHERE account = ? AND active = 1').get(account) ?? null;
+  const exact = db.prepare('SELECT * FROM users WHERE account = ? AND active = 1').get(account);
+  if (exact) {
+    return exact;
+  }
+  const matches = db.prepare('SELECT * FROM users WHERE account = ? COLLATE NOCASE AND active = 1 LIMIT 2').all(account);
+  return matches.length === 1 ? matches[0] : null;
 }
 
 export function findUserById(db, userId) {

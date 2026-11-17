@@ -1,6 +1,16 @@
 # 公共开发状态
 
-更新日期：2026-11-14。方案版本：APK-v2（增加开店与选店扩展范围）。维护人：spcuteag。
+更新日期：2026-11-17。方案版本：APK-v2（增加开店、选店与学生开放注册后端扩展范围）。维护人：spcuteag。
+
+## 2026-11-17 学生开放注册后端增补（DRAFT v0.6，后端与测试已实现）
+
+- 新增公开学生注册接口 `POST /api/v1/auth/student-register` 与通用登录接口 `POST /api/v1/auth/login`（保留 `/api/v1/auth/demo-login` 兼容既有客户端）。
+- 注册仅接受 `account`（4—32 位英文字母、数字或下划线，大小写不敏感，保存为小写）和 `password`（8—128 位，不裁剪首尾空格、拒绝全空白）；服务端固定分配 `STUDENT` 角色与 `student_*` 标识，返回 `201 { "data": { "registered": true } }`，不直接签发会话，由用户再调用登录获取令牌。
+- 针对独立复核指出的两项问题已完成修复与验证：
+  1. 数据库索引：`users(account COLLATE NOCASE)` 建立 `idx_users_account_nocase` 索引，大小写不敏感登录查询命中索引。
+  2. 公开认证接口基础限流：`auth-rate-limit.mjs` 按 15 分钟窗口限制注册（单地址 20 次 / 全局 100 次）与登录（单地址 50 次 / 全局 300 次），超限返回 `429 RATE_LIMITED`（`retryable: true`），且单地址超限被拒请求不会消耗全局配额。
+- 契约与文档已同步更新至 DRAFT v0.6（`contracts/API.md`、`contracts/README.md`、`contracts/examples/auth-student-register.json`、`services/api/README.md`）。
+- 服务端自动化测试全量通过：`npm --prefix services/api test` **90/90 通过（0 失败）**。
 
 ## 2026-11-14 新增范围（计划，尚未实现）
 

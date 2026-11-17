@@ -1,6 +1,6 @@
 # 食麦呼演示 API（S2 最小实现）
 
-负责人：spcuteag。状态：**DRAFT v0.3 建议实现，未三人确认，不能宣称正式接口**。本服务已经实际运行并通过自动化测试，但尚未完成 Android 真机联调记录。
+负责人：spcuteag。状态：**DRAFT v0.6，未三人确认，不能宣称正式接口**。本服务已经实际运行并通过自动化测试，但新增学生注册尚未完成客户端或 Android 真机联调。
 
 技术选择（本轮统一确定）：
 
@@ -43,6 +43,12 @@ npm start
 
 密码由首次启动生成到 `.runtime/demo-accounts.json`，或由上述环境变量提供。密码只线下交付，不写入 Git、示例、日志或 team-context。删除该文件后重启会生成新密码，旧会话仍可使用至过期。
 
+## 学生自行注册
+
+公开 `POST /api/v1/auth/student-register`，请求体仅含 `account`、`password`。账号由 4—32 位英文字母、数字或下划线组成，大小写不敏感（配 `COLLATE NOCASE` 索引）；密码 8—128 位。成功返回 `201 { "data": { "registered": true } }`，不签发令牌。随后调用 `POST /api/v1/auth/login` 获取会话；既有 `POST /api/v1/auth/demo-login` 保留兼容。重名返回 409 `ACCOUNT_TAKEN`，非法字段返回 400 `VALIDATION_ERROR`，超出进程内基础限流（15 分钟窗口：注册单地址 20 次 / 全局 100 次，登录单地址 50 次 / 全局 300 次）返回 429 `RATE_LIMITED`（`retryable: true`）。
+
+注册账号始终由服务端赋予 `STUDENT` 角色并生成学生标识。此功能不验证校园身份，不能据此认定账号持有人是在校学生。进程内限流仅覆盖单实例，公开部署前仍需在入口网关配置注册和登录请求频率限制，并核对 HTTPS 与监控告警。
+
 ## 真机联调
 
 1. 电脑与手机在同一可信 WiFi。
@@ -60,9 +66,10 @@ cd services/api
 npm test
 ```
 
-2026-11-13 实际结果：**47 项通过、0 失败**（5 个测试文件，约 3.4 秒）。覆盖：
+2026-11-17 实际结果：**90 项通过、0 失败**（7 个测试文件，约 4.7 秒）。覆盖：
 
 - 未登录、错误密码、会话过期、退出登录；
+- 学生开放注册（仅允许 STUDENT、不直接签发会话、大小写不敏感唯一性及 NOCASE 索引、并发去重、越权字段拒绝、密码首尾空格保留、公开认证接口 429 频率限制与窗口恢复）；
 - 学生/档口/管理员角色边界与对象归属；
 - 服务端计价、库存扣减、时段容量；
 - 同 requestId 重试、同键不同内容、库存/容量并发；
@@ -82,7 +89,7 @@ npm test
 
 统一前缀 `/api/v1`，成功 `{ "data": ... }`，错误 `{ "error": { "code", "message", "retryable" } }`。
 
-无需登录：`GET /health`、`POST /auth/demo-login`、`GET /dining/config`、`GET /menu`、`GET /crowd`。
+无需登录：`GET /health`、`POST /auth/student-register`、`POST /auth/login`、`POST /auth/demo-login`、`GET /dining/config`、`GET /menu`、`GET /crowd`。
 
 需要登录（Bearer）：
 
@@ -129,5 +136,6 @@ npm test
 ## 当前验证状态
 
 - 2026-11-13：`npm test` 47/47 通过（含 NEW 延迟拒绝、用餐方式理由持久化、档口列表分页与取餐码过滤、READY 取消和取消处理理由分离）。
+- 2026-11-17：`npm test` 90/90 通过（含商家开店与选店、学生开放注册 `/auth/student-register`、通用登录 `/auth/login`、`idx_users_account_nocase` 索引与公开认证接口 429 限流）。
 - 2026-11-13：浏览器 `#/system-check` 实际保存 `http://127.0.0.1:8790/api/v1`、登录 `demo-student`、读取服务端食堂配置、定位无法判断时上报 UNKNOWN 成功（服务端返回 observedAt/expiresAt）。
 - 未完成：Android 真机 S2 联调（设备在联调前断开），两机下单/接单/核销，现场食堂边界校准。

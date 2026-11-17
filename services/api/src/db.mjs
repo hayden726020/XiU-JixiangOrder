@@ -169,6 +169,7 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE INDEX IF NOT EXISTS idx_orders_student ON orders(student_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_merchant ON orders(merchant_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_slot ON orders(slot_id, status);
+CREATE INDEX IF NOT EXISTS idx_users_account_nocase ON users(account COLLATE NOCASE);
 `;
 
 export function createDatabase(path = ':memory:') {

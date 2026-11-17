@@ -29,6 +29,8 @@ import {
 } from './location.mjs';
 import { getAdminSettings, putAdminSettings } from './admin.mjs';
 import { createDish, createShop, getMerchantProfile, listMerchants, registerMerchant } from './merchant.mjs';
+import { registerStudent } from './student-registration.mjs';
+import { createAuthRateLimiter } from './auth-rate-limit.mjs';
 
 function withAuth(roles, handler) {
   return async (ctx) => {
@@ -55,7 +57,10 @@ async function demoLogin(ctx) {
   const body = asRecord(await readJsonBody(ctx.req));
   requireOnlyFields(body, ['account', 'password']);
   const account = requireString(body.account, 'account', { max: 120 });
-  const password = requireString(body.password, 'password', { min: 1, max: 200 });
+  if (typeof body.password !== 'string' || body.password.length < 1 || body.password.length > 200) {
+    throw new ApiError('VALIDATION_ERROR', 'password 长度应在 1 到 200 之间。', 400, false);
+  }
+  const password = body.password;
   const user = findUserByAccount(ctx.db, account);
   if (!user || !verifyPassword(password, user.password_stored)) {
     throw new ApiError('UNAUTHENTICATED', '账号或密码不正确。', 401, false);
@@ -97,9 +102,21 @@ function me(ctx) {
 }
 
 export function createApp({ db, clock, logger = () => {} }) {
+  const checkAuthRateLimit = createAuthRateLimiter(clock);
   const routes = [
     { method: 'GET', pattern: /^\/api\/v1\/health$/, handler: getHealth },
-    { method: 'POST', pattern: /^\/api\/v1\/auth\/demo-login$/, handler: demoLogin },
+    { method: 'POST', pattern: /^\/api\/v1\/auth\/student-register$/, handler: (ctx) => {
+      checkAuthRateLimit(ctx.req, 'register');
+      return registerStudent(ctx);
+    } },
+    { method: 'POST', pattern: /^\/api\/v1\/auth\/login$/, handler: (ctx) => {
+      checkAuthRateLimit(ctx.req, 'login');
+      return demoLogin(ctx);
+    } },
+    { method: 'POST', pattern: /^\/api\/v1\/auth\/demo-login$/, handler: (ctx) => {
+      checkAuthRateLimit(ctx.req, 'login');
+      return demoLogin(ctx);
+    } },
     { method: 'POST', pattern: /^\/api\/v1\/auth\/logout$/, handler: withAuth(null, logout) },
     { method: 'GET', pattern: /^\/api\/v1\/me$/, handler: withAuth(null, me) },
 
