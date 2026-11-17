@@ -1348,6 +1348,67 @@
   text-align: left;
 }
 
+.merchant-order-detail__topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.merchant-order-detail__topbar .merchant-order-detail__back {
+  flex: 1;
+  width: auto;
+  margin: 0;
+}
+
+.merchant-order-detail__refresh {
+  flex: none;
+  min-height: 2.65rem;
+  padding: 0.55rem 0.9rem;
+  border-color: var(--m-brand-line);
+  border-radius: 0.65rem;
+  color: var(--m-brand-ink);
+  font-size: 0.8rem;
+}
+
+.merchant-order-detail__refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.merchant-refresh-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.7rem;
+  background: var(--m-card);
+  color: var(--m-muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.merchant-refresh-bar__button {
+  flex: none;
+  min-height: 2.2rem;
+  padding: 0.35rem 0.65rem;
+  border-color: var(--m-brand-line);
+  border-radius: 0.6rem;
+  color: var(--m-brand-ink);
+  font-size: 0.76rem;
+}
+
+.merchant-refresh-bar__button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.merchant-order-list .merchant-refresh-bar__button {
+  min-height: 2.2rem;
+  font-size: 0.76rem;
+}
+
 .merchant-order-detail--new .detail-header,
 .merchant-order-detail--new .detail-block {
   padding: 1rem;

@@ -8,6 +8,7 @@
 - 远端最新提交基线：`e08292d docs(contract): 修 C1—C3 并更新契约确认状态`。
 - 远端正式移动端位于 `apps/mobile`，**远端根目录没有 `frontend/` 目录**。本地的 `E:\project\workspace\frontend` 是 `apps/mobile` 的工作副本。
 - 本次通过稀疏克隆建立工作区 `E:\project\workspace\.git-sync`（只检出 `apps/mobile`），在其上创建分支 `frontend/handoff-2026-11-17` 提交并推送。
+- 2026-11-17 刷新修复提交在同一分支：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`。
 - 实际提交哈希与推送结果以本次回复中的 `git log -1` / `git ls-remote` 输出为准。
 - GitHub HTTPS 连接在当前网络下间歇性 `Connection was reset`；重试可成功，不要据此判定仓库不可达。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
@@ -36,6 +37,21 @@
 - 应用信息：`appId com.xiujixiang.order`，`appName 吉祥点餐`，`versionCode 2`，`versionName "0.1.0"`。
 - Manifest 已加入 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，供 `@capacitor/geolocation` 使用。
 - **APK 尚未安装到手机**：`adb devices` 当前为空，用户未连接数据线或未开启 USB 调试。不要宣称已完成真机安装或真机验收。
+
+### 2.4 档口订单刷新与自动发现新单（2026-11-17 本次修复）
+
+- 问题：订单页只在进入时读取一次订单，列表和详情都没有刷新入口；商家停留在页面上时，服务端新增订单不会出现。
+- 修复：
+  - 真实模式每 15 秒自动刷新：列表页刷新当前分页，详情页刷新当前订单；页面回到前台时立即补刷一次。
+  - 订单列表新增「刷新列表」按钮，并显示“每 15 秒自动刷新 · 最近更新 HH:MM:SS”。
+  - 待接单、可取餐和普通详情页在“返回订单列表”右侧新增「刷新订单」按钮。
+  - 轮询发现新的 `NEW` 订单时提示“发现 N 笔新订单，已在「待接单」分组显示”。
+  - 接单、制作、可取、核销等写操作成功后重新拉取订单列表。
+- 涉及文件（未改公共层、学生端或管理端）：
+  `src/modules/merchant/MerchantHome.tsx`、`src/modules/merchant/merchant.css`、
+  `src/modules/merchant/pages/OrderListPage.tsx`、`pages/OrderDetailPage.tsx`、
+  `pages/NewOrderDetailPage.tsx`、`pages/ReadyOrderDetailPage.tsx`。
+- 边界：样例模式不轮询、不显示刷新按钮；真实模式未登录时不发起订单请求。
 
 ## 3 本次安装的工具链
 
@@ -94,20 +110,21 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 
 已通过：
 
-- `tsc --noEmit`：0 错误。
-- `vite build`：成功，dist 更新。
-- `http://127.0.0.1:4173/` 与 `http://192.168.110.16:4173/`：HTTP 200。
-- `gradlew.bat assembleDebug`：`BUILD SUCCESSFUL`，产出 `app-debug.apk`。
-- 五个档口端设计页面、两步开店流程、订单详情直达与 390px 布局：上一轮已在 Headless Edge 中验证通过并记录，本轮未重复回归。
+- 本轮（刷新修复）：`tsc --noEmit` 0 错误；`vite build` 成功。
+- 本轮 Headless Edge + 本地模拟服务（真实模式）自动验证 13 项全部通过：刷新按钮可点击、15 秒自动刷新、最近更新时间更新、新单自动进入「待接单」并提示、详情页刷新按钮与刷新完成、停留在详情页发现新单、无运行时异常或 `console.error`。
+- 上一轮：`vite build` 成功；4173 本机与局域网 HTTP 200；`gradlew.bat assembleDebug` `BUILD SUCCESSFUL`。
+- 五个档口端设计页面、两步开店流程、订单详情直达与 390px 布局：上一轮已在 Headless Edge 中验证通过并记录。
 
 尚未验证：
 
+- **本次刷新修复未重打 APK**：现有 `app-debug.apk` 仍是上一轮构建，手机安装后不会包含本轮代码。
+- 公网真实后端的新单轮询联调；本轮使用本地模拟服务验证前端行为，不能当作真实接口联调证据。
 - APK 真机安装、首次启动、WebView 内页面渲染。
 - 原生 App 内的真实定位授权与后端联调。
 
 ## 7 新对话应优先做的事
 
-1. **把 APK 装到手机**：手机开启“开发者选项 → USB 调试”，连接数据线后执行：
+1. **先重打 APK**（本次修复只在源码，旧包不含）：在 `E:\project\workspace\frontend` 执行 `vite build`，再按第 3 节命令执行 `gradlew.bat assembleDebug`；随后安装：
 
    ```powershell
    & "D:\AndroidSdk\platform-tools\adb.exe" devices
@@ -116,10 +133,10 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 
    不能用数据线时，直接把 `app-debug.apk` 复制到手机存储，在文件管理器中点击安装（需允许“安装未知来源应用”）。
 
-2. 打开 App 验证：角色入口、档口端五个页面、地图定位授权弹窗、页面无白屏。
-3. 原生 App 里 `window.location.origin` 不是 `http://192.168.110.16:4173`，`/api/v1` 相对地址不可用；需在应用内配置可访问的后端绝对地址。
+2. 打开 App 验证：角色入口、档口端五个页面、地图定位授权弹窗、页面无白屏；在真实模式进入订单列表，确认「刷新列表」、15 秒自动刷新与新单提示；进入详情确认「刷新订单」。
+3. 原生 App 里 `window.location.origin` 不是预览地址，`/api/v1` 相对地址不可用；需在应用内配置可访问的后端绝对地址。
 4. 若要发正式版本，应在远端 `apps/mobile/android`（versionCode 14 / 1.13）上构建并递增版本号，不要使用本地临时工程。
-5. 浏览器验收可继续使用局域网地址；服务需重新启动。
+5. 浏览器验收可用局域网预览：`vite dev --host 0.0.0.0 --port 5176` 或 `vite preview --host 0.0.0.0 --port 4173`；服务需重新启动，不要假定后台进程仍在运行。若要验收真实模式，需先准备可达的公共后端；仅用样例数据看不到刷新按钮。
 
 ## 8 运行与预览命令
 
@@ -139,5 +156,5 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 - 工作区：`E:\project\workspace\.git-sync`（稀疏检出 `apps/mobile`）。
 - 分支：`frontend/handoff-2026-11-17`。
 - 只推该专用分支，不推 `main`，不强推。
-- 提交信息建议：`feat(mobile): 同步档口端与后台页面并补充 APK 构建交接`。
+- 提交信息建议：本轮 `fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`；上一轮 `feat(mobile): 同步档口端与后台页面并补充 APK 构建交接`。
 - 推送后用 `git log -1 --oneline`、`git status`、`git ls-remote` 核对。

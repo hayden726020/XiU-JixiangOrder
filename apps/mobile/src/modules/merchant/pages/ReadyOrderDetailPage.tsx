@@ -22,6 +22,8 @@ interface ReadyOrderDetailPageProps {
   mode: 'sample' | 'real';
   onBack: () => void;
   onAction: (action: OrderAction, input?: ActionInput) => void;
+  onRefresh: () => void;
+  refreshing?: boolean;
   pendingCode?: string | null;
   actionError?: { code: string; message: string } | null;
 }
@@ -33,6 +35,8 @@ export default function ReadyOrderDetailPage({
   mode,
   onBack,
   onAction,
+  onRefresh,
+  refreshing = false,
   pendingCode = null,
   actionError = null,
 }: ReadyOrderDetailPageProps) {
@@ -79,9 +83,24 @@ export default function ReadyOrderDetailPage({
       data-order-id={order.id}
       data-order-status={order.status}
     >
-      <button type="button" className="back-link merchant-order-detail__back" onClick={onBack}>
-        ← 返回订单列表
-      </button>
+      <div className="merchant-order-detail__topbar">
+        <button type="button" className="back-link merchant-order-detail__back" onClick={onBack}>
+          ← 返回订单列表
+        </button>
+        {mode === 'real' && (
+          <button
+            type="button"
+            className="merchant-link-button merchant-order-detail__refresh"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing || undefined}
+            title="真实模式下会定时自动刷新"
+            data-refresh-order
+          >
+            {refreshing ? '刷新中…' : '刷新订单'}
+          </button>
+        )}
+      </div>
 
       <header className="detail-header">
         <p className="badge">

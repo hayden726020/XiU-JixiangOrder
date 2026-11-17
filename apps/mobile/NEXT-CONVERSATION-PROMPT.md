@@ -16,7 +16,9 @@
 - 开店流程只有“商家注册 → 创建店铺”两步；商家名称和新增菜品已彻底删除。
 - 保存后“完成”返回订单列表；第 1 步“取消”返回角色入口 `#/`。
 - TypeScript、Vite 构建已通过；上一轮已在 390px 视口验证五个页面与流程。
-- 本次已重新构建 `dist/`，并成功产出 debug APK：
+- 2026-11-17 已修复档口订单不自动刷新：真实模式下订单列表与详情每 15 秒自动刷新；列表有「刷新列表」按钮和最近更新时间；待接单/可取餐/普通详情有「刷新订单」按钮；发现新单会提示并自动进入「待接单」分组；写操作成功后重新拉取列表。
+- 本次修复已用 Headless Edge + 本地模拟服务在真实模式验证 13 项全通过；尚未重打 APK，也未做公网真实后端联调。
+- 本次已重新构建 `dist/`，但 debug APK 仍是上一轮产物：
   `E:\project\workspace\frontend\android\app\build\outputs\apk\debug\app-debug.apk`
 - APK 尚未安装到手机，`adb devices` 为空；不要宣称已完成真机验收。
 
@@ -32,8 +34,8 @@
 ## Git 基线
 
 - 远端：`https://github.com/hayden726020/XiU-JixiangOrder.git`，默认分支 `main`，基线提交 `e08292d`。
-- 本次分支：`frontend/handoff-2026-11-17`，已提交并推送（以实际 `git log` 为准）。
-- GitHub HTTPS 会间歇性 `Connection was reset`，重试即可，不要因此判定不可达。
+- 本次分支：`frontend/handoff-2026-11-17`；本轮刷新修复提交为 `fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`，已推送（以实际 `git log` / `git ls-remote` 为准）。
+- GitHub HTTPS 会间歇性 `Connection was reset`；重试即可，仍失败时加 `-c http.version=HTTP/1.1` 或稍后重试。
 - 远端没有 `frontend/`；本地副本对应远端 `apps/mobile`。
 
 ## 关键约束
@@ -45,20 +47,21 @@
 
 ## 新对话优先事项
 
-1. 连接手机并开启 USB 调试，执行：
+1. **先重打 APK**（本次刷新修复只在源码，旧包不含）：先 `vite build`，再按 HANDOFF 第 3 节执行 `gradlew.bat assembleDebug`；然后安装：
    ```powershell
    & "D:\AndroidSdk\platform-tools\adb.exe" devices
    & "D:\AndroidSdk\platform-tools\adb.exe" install -r "E:\project\workspace\frontend\android\app\build\outputs\apk\debug\app-debug.apk"
    ```
    无法连线时，把 APK 复制到手机存储手动安装。
 2. 打开 App 验证角色入口、档口端页面、定位权限弹窗、无白屏与运行时错误。
-3. 原生 App 内 `/api/v1` 相对地址不可用，需配置可访问的后端绝对地址。
-4. 正式发布应在远端 `apps/mobile/android` 上递增版本构建，不用本地临时工程。
-5. 浏览器验收可用局域网预览，先启动：
+3. 在真实模式验收订单刷新：列表显示「刷新列表」并每 15 秒更新；用学生端或接口新增订单，确认 15 秒内自动进入「待接单」并提示；详情页「刷新订单」可用。
+4. 原生 App 内 `/api/v1` 相对地址不可用，需配置可访问的后端绝对地址。
+5. 正式发布应在远端 `apps/mobile/android` 上递增版本构建，不用本地临时工程。
+6. 浏览器验收可用局域网预览，先启动：
    ```powershell
-   & $node "node_modules\vite\bin\vite.js" preview --host 0.0.0.0 --port 4173
+   & $node "node_modules\vite\bin\vite.js" dev --host 0.0.0.0 --port 5176
    ```
-   手机访问 `http://192.168.110.16:4173/#/`（IP 变化时以 `ipconfig` WLAN IPv4 为准）。
+   手机访问 `http://192.168.110.16:5176/?mode=real#/merchant/orders`（IP 变化时以 `ipconfig` WLAN IPv4 为准）。样例模式不显示刷新按钮，必须切到“真实 · 演示服务”并登录档口账号。
 
 ## 数据与兼容边界
 
@@ -80,7 +83,9 @@
 1. `#/merchant` 默认进入注册页，页面无商家名称、无新增菜品。
 2. 联系人、联系电话校验与两步开店流程。
 3. `#/merchant/orders` 列表及详情返回。
-4. 390px 视口无横向溢出、无运行时异常。
-5. APK 安装后可正常启动。
+4. 真实模式订单列表显示「刷新列表」与自动刷新说明；等待 15 秒或手动刷新，最近更新时间变化。
+5. 新增订单后 15 秒内自动进入「待接单」并出现“发现 N 笔新订单”提示；详情页「刷新订单」可用且无错误。
+6. 390px 视口无横向溢出、无运行时异常。
+7. APK 安装后可正常启动。
 
 请先汇报从 HANDOFF 和实际工作区核实到的状态，不要重复询问已确认的远端与工具链路径。

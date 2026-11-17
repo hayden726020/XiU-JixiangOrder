@@ -38,6 +38,7 @@ import './merchant.css';
 type DataMode = 'sample' | 'real';
 
 const ORDERS_PAGE_SIZE = 20;
+const AUTO_REFRESH_MS = 15000;
 const MERCHANT_ROUTE = '/merchant';
 const MENU_ROUTE = `${MERCHANT_ROUTE}/menu`;
 const SETUP_ROUTE = `${MERCHANT_ROUTE}/setup`;
@@ -105,11 +106,17 @@ export default function MerchantHome() {
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshingOrder, setRefreshingOrder] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [loginHint, setLoginHint] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
   const autoLoginStarted = useRef(false);
   const listScrollTop = useRef(0);
   const restoreListScroll = useRef(false);
+  const listRefreshInFlight = useRef(false);
+  const orderRefreshInFlight = useRef(false);
+  const knownOrderIds = useRef<Set<string>>(new Set());
 
   const source = useMemo(() => createMerchantSource({ mode, scenario }), [mode, scenario]);
   const [session, setSession] = useState<Session | null>(getSession);
@@ -195,6 +202,7 @@ export default function MerchantHome() {
       ]);
       if (!alive) return;
       if (ordersResult.ok) {
+        rememberOrders(ordersResult.data.orders, false);
         setOrders(ordersResult.data.orders);
         setOrderPageInfo({
           page: ordersResult.data.page,
@@ -224,6 +232,52 @@ export default function MerchantHome() {
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
     : null;
+
+  function rememberOrders(next: MerchantOrder[], announce: boolean) {
+    if (announce) {
+      const fresh = next.filter(
+        (order) => order.status === 'NEW' && !knownOrderIds.current.has(order.id),
+      );
+      if (fresh.length > 0) {
+        setNotice(`发现 ${fresh.length} 笔新订单，已在「待接单」分组显示。`);
+      }
+    }
+    for (const order of next) {
+      knownOrderIds.current.add(order.id);
+    }
+  }
+
+  function markRefreshed() {
+    const now = new Date();
+    setLastRefreshedAt(
+      `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`,
+    );
+  }
+
+  async function refreshOrders(options: { silent?: boolean } = {}) {
+    if (listRefreshInFlight.current) return;
+    listRefreshInFlight.current = true;
+    if (!options.silent) setRefreshing(true);
+    try {
+      const result = await source.getOrders(orderPage, ORDERS_PAGE_SIZE);
+      if (result.ok) {
+        rememberOrders(result.data.orders, true);
+        setOrders(result.data.orders);
+        setOrderPageInfo({
+          page: result.data.page,
+          pageSize: result.data.pageSize,
+          total: result.data.total,
+        });
+        setOrdersError(null);
+        markRefreshed();
+      } else if (!options.silent) {
+        setNotice(`刷新订单列表失败：${result.error.message}`);
+      }
+    } finally {
+      listRefreshInFlight.current = false;
+      if (!options.silent) setRefreshing(false);
+    }
+  }
 
   function clearActionState() {
     if (actionTimer.current !== null) {
@@ -329,12 +383,48 @@ export default function MerchantHome() {
     }, 600);
   }
 
-  async function refreshOrder(id: string) {
-    const result = await source.getOrder(id);
-    if (result.ok) {
-      setOrders((current) => current.map((item) => (item.id === id ? result.data : item)));
+  async function refreshOrder(id: string, options: { silent?: boolean } = {}) {
+    if (orderRefreshInFlight.current) return;
+    orderRefreshInFlight.current = true;
+    if (!options.silent) setRefreshingOrder(true);
+    try {
+      const result = await source.getOrder(id);
+      if (result.ok) {
+        setOrders((current) => (current.some((item) => item.id === result.data.id)
+          ? current.map((item) => (item.id === result.data.id ? result.data : item))
+          : current));
+        markRefreshed();
+      } else if (!options.silent) {
+        setNotice(`刷新订单失败：${result.error.message}`);
+      }
+    } finally {
+      orderRefreshInFlight.current = false;
+      if (!options.silent) setRefreshingOrder(false);
     }
   }
+
+  useEffect(() => {
+    if (mode !== 'real' || !merchantLoggedIn || loading) return undefined;
+    if (view.name !== 'list' && view.name !== 'detail') return undefined;
+    const detailId = view.name === 'detail' ? view.orderId : null;
+    const tick = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (detailId) {
+        void refreshOrder(detailId, { silent: true });
+        return;
+      }
+      void refreshOrders({ silent: true });
+    };
+    const timer = setInterval(tick, AUTO_REFRESH_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [mode, merchantLoggedIn, loading, view, orderPage, source]);
 
   async function runRealWrite(order: MerchantOrder, action: OrderAction, input: ActionInput) {
     const key = `${order.id}:${action.code}`;
@@ -397,6 +487,7 @@ export default function MerchantHome() {
       setNotice(
         `${action.label}成功：订单 ${shortOrderId(updated.id)} 状态为「${statusView(updated.status).label}」，版本 v${updated.version}。`,
       );
+      void refreshOrders({ silent: true });
       return;
     }
     setActionError({
@@ -545,6 +636,10 @@ export default function MerchantHome() {
           onOpenOrder={openOrder}
           onOpenMenu={openMenu}
           onOpenSetup={openSetup}
+          onRefresh={refreshOrders}
+          refreshing={refreshing}
+          lastRefreshedAt={lastRefreshedAt}
+          autoRefreshSeconds={AUTO_REFRESH_MS / 1000}
         />
       )}
 
@@ -555,6 +650,8 @@ export default function MerchantHome() {
             mode={mode}
             onBack={backToList}
             onAction={(action, input) => handleAction(activeOrder.id, action, input)}
+            onRefresh={() => void refreshOrder(activeOrder.id)}
+            refreshing={refreshingOrder}
             pendingCode={pendingCode}
             actionError={actionError}
           />
