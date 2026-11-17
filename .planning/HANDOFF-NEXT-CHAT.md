@@ -1,42 +1,58 @@
 # 新对话交接：食麦呼当前基线
 
-更新时间：2026-11-16（Asia/Shanghai）
+更新时间：2026-11-17（Asia/Shanghai）
 
 ## 当前基线
 
 - 仓库：`D:\Jixiang\workspace\campus-meal`
-- 分支：`docs/readme-status`
-- 当前提交：`f0411f8 fix(mobile): commit back route inside view transition`
-- 当前分支相对 `origin/docs/readme-status`：本次交接前 ahead 10、behind 0；交接提交并推送后应重新核对。
-- 已确认工作区干净；不要重置、强推或覆盖历史。
-- 唯一移动应用位于 `apps/mobile`，Capacitor Android；包名 `com.xiujixiang.order`。
-- 最新 APK：`apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`，版本 `1.25` / `versionCode 26`。
-- 最新 APK 已成功构建并由 ADB 安装到已连接的 A024 手机。随后 ADB daemon 意外无法启动，最新安装状态尚未再次读取确认；先重连检查。
-- Java 21 可用：`D:\Jixiang\.runtime\jdk21-full\jdk-21.0.13+9`。构建时设置 `JAVA_HOME` 并将其 `bin` 加到 `PATH`。
+- 当前分支：`docs/readme-status`（已与 `origin/docs/readme-status` 同步，工作区在写入本交接文件前干净）
+- 最新提交：`cc7d59e feat(student): unify tabbar height, add liquid tabbar and date switch animations, bump APK 1.33`
+- 之前基线提交：`942a483 feat(mobile): refine iOS push/pop transitions and bump APK 1.28`（另见远端 `origin/main` 最新为 `e08292d`，`origin/integration/merchant-shimaifu-1.17` 最新为 `48d3b31`，`origin/frontend/admin-redesign-2026-11-16` 最新为 `7fb3194`）
+- 唯一移动应用：`apps/mobile`（Capacitor Android，包名 `com.xiujixiang.order`）
+- 最新 APK：[app-debug.apk](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk)，版本 **`1.33` / `versionCode 34`**（已安装至 A024 真机 `00018158R001923` 并校验通过）
+- Java 21 路径：`D:\Jixiang\.runtime\jdk21-full\jdk-21.0.13+9`（Gradle 构建时需设置 `JAVA_HOME` 并将 `$env:JAVA_HOME\bin` 加入 `PATH`；PowerShell 5.1 不支持 `&&`，需使用 `; if ($LASTEXITCODE -eq 0) { ... }`）
 
-## 本轮主要改动
+## 已完成改动（相对 `942a483` → `cc7d59e`）
 
-- `90dff4f` 合并 `integration/merchant-shimaifu-1.17` 商家前端和本会话学生按钮/取餐时段动效。
-- `539a6c8` 按另一台电脑 agent 的验收约定修复商家路由：`#/merchant` 与 `#/merchant/setup` 均显示注册页；注册页取消及返回进入 `#/` 角色首页；订单列表在 `#/merchant/orders`，详情和菜单继续使用各自子路由。
-- `4f9efc8`、`9fe656d`、`fcdb333`、`d6db957`、`f0411f8` 改善返回按钮反馈：按钮保持按下约 280ms 后触发导航；使用 View Transitions 做旧页模糊淡出、新页淡入；通过 `flushSync` 同步 React 更新；减少动态效果偏好下立即切换；等待期间拦截其他点击，地址变化会取消旧返回动作。
-- 全局按钮禁用系统蓝色触摸高亮、文字选择和长按菜单样式。
-- 最近遇到的问题：用户反馈 `1.23` APK 中页面过渡仍未显示。之后以 `flushSync` 和同步导航事件修正，`1.25` 已构建安装，但用户尚未复验过渡视觉。**下一位 agent 应先在手机实际点击返回键，确认旧页模糊离场与新页顺滑进入可见；若仍不可见，优先检查 Android WebView View Transition 实际执行情况并提供可见的兼容 CSS 回退。**
+1. **零停顿 iOS Push/Pop 页面过渡（已包含于 `942a483`）**
+   - [backPress.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/shared/backPress.ts)、[styles.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/shared/styles.css)、[App.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/app/App.tsx) 等实现了原生侧滑感前向（`forward`）与返回（`back`）View Transitions，移除点击后等待卡顿；测试覆盖见 [backPress.test.mjs](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/test/backPress.test.mjs)。
+2. **底部边栏高度统一与“我的”页横向防溢出**
+   - [student-global.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/student-global.css)：将学生端所有带底栏页面的 `.student-tabbar` 统一为 `min-height: 4.15rem`（约 `66.39px`），与“我的”页高度一致。
+   - [profile.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/profile.css)：`.student-profile` 增加 `overflow-x: hidden`，`.profile-hero` 收口对齐，避免“我的”页在移动端出现横向滚动条。
+3. **“今天 / 明天”日期切换弹性动效**
+   - [MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/MenuPage.tsx) & [menu-page.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/menu-page.css)：为 `.student-date-switch` 加入跟随切换方向（`data-anim-dir`、`data-active-index`）的弹性拉伸滑块过渡，保持 `reduced-motion` 回退。
+4. **底部导航栏液态切换动效**
+   - [StudentTabBar.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/components/StudentTabBar.tsx) & [student-global.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/student-global.css)：通过 `lastCommittedTab` + 双 `requestAnimationFrame` 实现切换时的液态双胶囊滑块过渡。
+5. **版本与视觉回退说明**
+   - 本轮中途曾尝试对学生端做全量“商业去 AI 化”界面改版（`1.32 / vc33`），用户真机体验后要求回退。已按用户要求将学生端页面完整回退至改版前视觉状态并保留上述第 2—4 项修复与动效，再升级打包为 `1.33 / vc34` 提交推送为 `cc7d59e`。后续除非用户再次明确要求大改视觉风格，否则请保留现有手账/卡片风格。
 
-## 最近验证证据
+## 关键文件清单（`cc7d59e` 涉及文件）
 
-- 最近一次 `npm run build`：通过（TypeScript 编译与 Vite 构建均成功，140 modules）。
-- 最近一次 `npx cap sync android`：通过。
-- 最近一次 `gradlew -p android assembleDebug`：BUILD SUCCESSFUL。
-- 最近一次 `adb install -r ...app-debug.apk`：Success，ADB 当时确认安装版本 `1.25` / `versionCode 26`。
-- 设备 WebView 查询返回 `com.google.android.webview 157.0.8103.38`；它具备 View Transitions API 的现代 Chromium 基础，但目前没有实际动画录屏或人工复验。
-- TypeScript reviewer 检查 `f0411f8`，未发现过渡、路由同步、等待取消或点击拦截方面的可操作问题；`npm run typecheck` 通过。
-- 构建保留 Vite 大 chunk（约 538kB）和动态导入无效警告；不影响本次构建成功。
-- 学生端登录问题未取得真实账号/服务端复现证据，不能宣称已修好或已验收。之前检查的商家前端合入没有直接改学生认证逻辑；手机端登录仍依赖可访问的服务地址和有效学生演示账号。
+- [StudentTabBar.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/components/StudentTabBar.tsx)
+- [student-global.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/student-global.css)
+- [profile.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/profile.css)
+- [MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/MenuPage.tsx)
+- [menu-page.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/menu-page.css)
+- [build.gradle](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/build.gradle)（`versionCode 34` / `versionName "1.33"`）
 
-## 建议下一步
+## 已验证证据（`cc7d59e` 对应产物）
 
-1. `git status -sb` 确认交接提交与推送状态；不要覆盖新 agent 或用户的更改。
-2. 在 A024 上打开当前 APK，复验学生页面返回、商家注册取消，以及返回时模糊/淡入过渡确实可见；按用户授权再操作真实登录。
-3. 如果动画仍不明显，给 Android WebView 157 的实际行为优先级高于 API 支持推断；加无需 View Transitions API 的兼容实现，并再次安装、人工核验。
-4. 真实学生登录需记录服务地址配置情况、脱敏错误码及有效演示账号验证结果；不把凭据写入代码或交接文件。
-5. 代码行为改动按根 `AGENTS.md`、`apps/mobile/AGENTS.md` 和对应模块说明执行；保护协作者成果，完成构建并安排 reviewer。
+- `node --test D:/Jixiang/workspace/campus-meal/apps/mobile/test/backPress.test.mjs`：**4/4 通过**。
+- `npm --prefix D:/Jixiang/workspace/campus-meal/apps/mobile run build`（含 `tsc --noEmit` 与 `vite build`）：**通过**（140 模块，耗时 `495ms`）。
+- `npx cap sync android`：**通过**（耗时 `0.143s`）。
+- `.\android\gradlew.bat -p android assembleDebug`：**BUILD SUCCESSFUL**（耗时 `26s`）。
+- `adb -s 00018158R001923 install -r .../app-debug.apk`：**`Success`**；真机 `dumpsys package com.xiujixiang.order` 实测确认 **`versionCode=34` / `versionName=1.33`**。
+- 注：无头浏览器的专门像素级复验仅针对 `1.29`—`1.31` 单项与中断的 `1.32` 做过；最终合并版 `1.33` 已完成构建测试与真机安装，**真机肉眼点按“首页/点餐/订单/我的”底栏液态动效、“今天/明天”切换与页面返回过渡仍待用户在 A024 上实际操作确认**。
+- 学生端真实登录联调仍依赖外部服务地址配置与有效学生账号，本轮未做新的真实服务端下单全链路重测。
+
+## 协作者与模块边界注意事项
+
+- 遵循仓库根 `AGENTS.md` 与 `apps/mobile/src/modules/student/AGENTS.md`：
+  - `student/` 归属 **魈嘶**，`merchant/` 归属 **漪x3**，`shared/`、`app/`、`admin/`、`android/` 归属 **spcuteag**。
+  - 修改任何端页面时严禁破坏既有路由、接口字段、幂等/定位/轮询业务契约与测试选择器，也不要擅自覆盖其他并行分支（如 `main`、`integration/merchant-shimaifu-1.17`、`frontend/admin-redesign-2026-11-16`）。
+
+## 建议新 Agent 下一步
+
+1. 先检查 `git status -sb`（注意本交接文件本身处于本地已修改状态，按需决定是否提交或忽略）。
+2. 向用户确认 **A024 真机（`1.33 / vc34`）** 上各动效与布局是否满意（底栏高度一致性、底栏液态过渡、“今天/明天”滑块过渡、iOS 进出转场是否丝滑无卡顿）。
+3. 若需继续推进并行分支集成或管理端/商家端/真实联调，先拉取并对比 `origin/main`（`e08292d`）、`origin/integration/merchant-shimaifu-1.17`（`48d3b31`）与 `origin/frontend/admin-redesign-2026-11-16`（`7fb3194`），确认整合范围后再动手，每次发包记得递增 `build.gradle` 的 `versionCode` / `versionName`。

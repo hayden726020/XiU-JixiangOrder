@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createStudentSource } from './data/sampleSource';
 import { resolveStudentMode } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
@@ -40,6 +41,13 @@ export default function StudentHome() {
 }
 
 function StudentHomeApp() {
+  useEffect(() => {
+    document.documentElement.dataset.studentSurface = '';
+    return () => {
+      delete document.documentElement.dataset.studentSurface;
+    };
+  }, []);
+
   const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
     if (source.mode === 'real') {
@@ -84,8 +92,42 @@ function StudentHomeApp() {
   const [shopNotice, setShopNotice] = useState('');
 
   function goTo(next: StudentView): void {
-    setView(next);
-    window.scrollTo(0, 0);
+    const commit = () => {
+      setView(next);
+      window.scrollTo(0, 0);
+    };
+    if (
+      next === view ||
+      document.documentElement.dataset.navDirection ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      commit();
+      return;
+    }
+
+    if (document.startViewTransition) {
+      const root = document.documentElement;
+      const transitionId = String(performance.now());
+      root.dataset.studentPageAnimating = transitionId;
+      try {
+        const transition = document.startViewTransition(() => flushSync(commit));
+        const clearMarker = () => {
+          if (root.dataset.studentPageAnimating === transitionId) {
+            delete root.dataset.studentPageAnimating;
+          }
+        };
+        void transition.finished.then(clearMarker, clearMarker);
+      } catch {
+        delete root.dataset.studentPageAnimating;
+        commit();
+      }
+    } else {
+      commit();
+      document.documentElement.dataset.studentNavFallback = '';
+      window.setTimeout(() => {
+        delete document.documentElement.dataset.studentNavFallback;
+      }, 220);
+    }
   }
 
   function goToShop(tab: 'home' | 'order' = 'home'): void {

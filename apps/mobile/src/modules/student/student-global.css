@@ -1,4 +1,45 @@
 /* Student pages provide their own branded header and navigation. */
+html[data-student-surface]::view-transition-group(root),
+html[data-student-surface]::view-transition-old(root),
+html[data-student-surface]::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: ease-out;
+}
+
+html[data-student-surface]::view-transition-old(root),
+html[data-student-surface][data-nav-direction]::view-transition-old(root) {
+  z-index: 1;
+  animation-name: student-page-out;
+}
+
+html[data-student-surface]::view-transition-new(root),
+html[data-student-surface][data-nav-direction]::view-transition-new(root) {
+  z-index: 2;
+  animation-name: student-page-in;
+}
+
+html[data-student-surface][data-nav-fallback] .app-shell,
+html[data-student-surface][data-student-nav-fallback] .app-shell {
+  animation: student-page-in 220ms ease-out both;
+}
+
+@keyframes student-page-out {
+  from { opacity: 1; }
+  to { opacity: 0.72; }
+}
+
+@keyframes student-page-in {
+  from { transform: translate3d(12px, 0, 0); opacity: 0; }
+  to { transform: translate3d(0, 0, 0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-student-surface][data-nav-fallback] .app-shell,
+  html[data-student-surface][data-student-nav-fallback] .app-shell {
+    animation: none;
+  }
+}
+
 .app-shell:has(.app-main [class*="student-"]) > .app-header,
 .app-shell:has(.app-main [class*="student-"]) > .app-footer,
 .app-main:has([class*="student-"]) > .back-link {

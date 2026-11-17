@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { runAfterPressTransition } from '../../../shared/backPress';
 
 export type StudentTab = 'home' | 'order' | 'orders' | 'profile';
 
@@ -84,15 +85,25 @@ export default function StudentTabBar({
     const nextDir = tabIndexOf(active) > tabIndexOf(fromTab) ? 'forward' : 'backward';
     setAnimDir(nextDir);
 
+    let frame1 = 0;
     let frame2 = 0;
-    const frame1 = window.requestAnimationFrame(() => {
-      frame2 = window.requestAnimationFrame(() => {
-        lastCommittedTab = active;
-        setDisplayTab(active);
+    const startIndicatorMotion = () => {
+      frame1 = window.requestAnimationFrame(() => {
+        frame2 = window.requestAnimationFrame(() => {
+          lastCommittedTab = active;
+          setDisplayTab(active);
+        });
       });
-    });
+    };
+    const waitForPage = document.documentElement.dataset.navDirection !== undefined
+      || document.documentElement.dataset.studentPageAnimating !== undefined;
+    const timer = waitForPage
+      ? window.setTimeout(startIndicatorMotion, 220)
+      : 0;
+    if (!waitForPage) startIndicatorMotion();
 
     return () => {
+      window.clearTimeout(timer);
       window.cancelAnimationFrame(frame1);
       window.cancelAnimationFrame(frame2);
     };
@@ -124,11 +135,10 @@ export default function StudentTabBar({
           type="button"
           className={`student-tabbar__item${active === id ? ' is-active' : ''}`}
           aria-current={active === id ? 'page' : undefined}
-          onClick={() => {
-            if (id !== active) {
-              lastCommittedTab = active;
-            }
-            actions[id]();
+          onClick={(event) => {
+            if (id === active) return;
+            lastCommittedTab = active;
+            runAfterPressTransition(event.currentTarget, actions[id]);
           }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

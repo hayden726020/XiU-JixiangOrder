@@ -18,6 +18,7 @@ import {
 } from '../utils/shopTexts';
 import { formatYuan } from '../utils/money';
 import { todayAndTomorrow } from '../utils/dates';
+import { addRecommendedDish, canAddRecommendedDish } from '../utils/recommendationAction';
 import DemoModeNotice from '../components/DemoModeNotice';
 import StudentTabBar from '../components/StudentTabBar';
 import stallDazhong from '../assets/stall-dazhong.png';
@@ -43,7 +44,7 @@ const STALL_PHOTOS = {
   mianshi: stallMianshi,
 };
 
-function Icon({ name }: { name: 'home' | 'bowl' | 'orders' | 'user' | 'arrow' | 'clock' }) {
+function Icon({ name }: { name: 'home' | 'bowl' | 'orders' | 'user' | 'arrow' }) {
   const paths = {
     home: <path d="m3 10 9-7 9 7v10H3zM9 21v-7h6v7" />,
     bowl: (
@@ -65,12 +66,6 @@ function Icon({ name }: { name: 'home' | 'bowl' | 'orders' | 'user' | 'arrow' | 
       </>
     ),
     arrow: <path d="m9 5 7 7-7 7" />,
-    clock: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </>
-    ),
   };
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
@@ -80,6 +75,7 @@ function Icon({ name }: { name: 'home' | 'bowl' | 'orders' | 'user' | 'arrow' | 
 }
 
 function pictureClass(name: string, index: number): string {
+  if (/香菇|菌菇|蘑菇/.test(name)) return 'mushroom';
   if (/面|粉|汤/.test(name)) return 'noodles';
   if (/鸡|饭|肉/.test(name)) return 'rice';
   return index % 2 === 0 ? 'rice' : 'noodles';
@@ -110,6 +106,9 @@ export default function ShopSelectPage({
   const [activeSlide, setActiveSlide] = useState(1);
   const [carouselPaused, setCarouselPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
+  const recommendationDate = source.mode === 'real'
+    ? todayAndTomorrow(new Date())[0]
+    : draft.getState().date;
 
   useEffect(() => {
     let cancelled = false;
@@ -140,8 +139,6 @@ export default function ShopSelectPage({
     let cancelled = false;
     setMenuError(false);
     setMenuLoading(true);
-    const recommendationDate =
-      source.mode === 'real' ? todayAndTomorrow(new Date())[0] : draft.getState().date;
     source.getMenu(recommendationDate).then(
       (menu) => {
         if (!cancelled) {
@@ -160,7 +157,7 @@ export default function ShopSelectPage({
     return () => {
       cancelled = true;
     };
-  }, [source, draft, reloadToken]);
+  }, [source, draft, reloadToken, recommendationDate]);
 
   async function loadDerivedShops(): Promise<void> {
     if (derivedBusy) return;
@@ -192,6 +189,7 @@ export default function ShopSelectPage({
   const featuredDishes = dishes
     .filter((dish) => shopOf(dish.merchantId)?.active !== false)
     .slice(0, 3);
+  const canAddRecommendation = canAddRecommendedDish(draft, featuredDishes[0], recommendationDate);
   const carouselCards = Array.from({ length: 3 }, (_, index) => picker.cards[index] ?? null);
 
   useEffect(() => {
@@ -512,21 +510,35 @@ export default function ShopSelectPage({
               </section>
 
               <section className="student-home__section student-home__recommend" aria-labelledby="student-home-recommend-title">
-                <div className="student-home__heading"><h3 id="student-home-recommend-title" className="student-home__section-title">{source.mode === 'sample' ? '样例推荐' : '今日推荐'}<span className="student-home__spark" aria-hidden="true">✳</span></h3><span className="student-home__section-aside">图片仅供参考</span></div>
+                <div className="student-home__heading"><h3 id="student-home-recommend-title" className="student-home__section-title">{source.mode === 'sample' ? '样例推荐' : '今日推荐'}</h3><span className="student-home__section-aside">图片仅供参考</span></div>
                 {menuLoading ? <p className="student-home__empty">正在读取今日菜单…</p> : menuError ? <p className="student-home__empty">菜单暂时无法读取，请稍后再试。</p> : featuredDishes.length === 0 ? <p className="student-home__empty">暂无可推荐的菜品，选择店铺看看菜单吧。</p> : (
                   <div className="student-home__dishes">
                     {featuredDishes.map((dish, index) => {
                       const shop = shopOf(dish.merchantId);
+                      const photoClass = pictureClass(dish.name, index);
+                      if (index === 0) {
+                        return (
+                          <article key={dish.dishId} className="student-home__featured">
+                            <button type="button" className={`student-home__featured-photo student-home__dish-photo student-home__dish-photo--${photoClass}`} disabled={!shop || shop.active === false} onClick={() => { if (shop) onEnterShop(shop); }} aria-label={`查看${dish.name}所属店铺`} />
+                            <div className="student-home__featured-detail">
+                              <div className="student-home__featured-copy"><strong>{dish.name}</strong><small>{shop?.name ?? '进入店铺查看'}</small></div>
+                              <span className="student-home__featured-price">{formatYuan(dish.unitPriceFen)}</span>
+                              <button type="button" className="student-home__add" disabled={!shop || shop.active === false} onClick={() => { if (shop) addRecommendedDish(draft, dish, recommendationDate, () => onEnterShop(shop)); }}>{canAddRecommendation ? '加入订单' : '进店点餐'}</button>
+                            </div>
+                          </article>
+                        );
+                      }
                       return (
-                        <button key={dish.dishId} type="button" className={`student-home__dish ${index === 0 ? 'student-home__dish--featured' : ''}`} disabled={!shop || shop.active === false} onClick={() => { if (shop && shop.active !== false) onEnterShop(shop); }}>
-                          <span className={`student-home__dish-photo student-home__dish-photo--${pictureClass(dish.name, index)}`} aria-hidden="true" />
-                          <span className="student-home__dish-info"><strong>{dish.name}</strong><small>{shop?.name ?? '进入店铺查看'}</small><span className="student-home__dish-price">{formatYuan(dish.unitPriceFen)}</span></span>
+                        <button key={dish.dishId} type="button" className="student-home__dish" disabled={!shop || shop.active === false} onClick={() => { if (shop) onEnterShop(shop); }} aria-label={`${dish.name}，${formatYuan(dish.unitPriceFen)}，进店点餐`}>
+                          <span className={`student-home__dish-photo student-home__dish-photo--${photoClass}`} aria-hidden="true" />
+                          <span className="student-home__dish-info"><strong>{dish.name}</strong><small>{shop?.name ?? '进入店铺查看'}</small></span>
+                          <span className="student-home__dish-price">{formatYuan(dish.unitPriceFen)}</span>
                         </button>
                       );
                     })}
                   </div>
                 )}
-                <div className="student-home__meal-time"><Icon name="clock" /><span>午餐时段请在店内选择</span></div>
+                <button type="button" className="student-home__see-more" onClick={() => { setActiveTab('order'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>查看更多 <Icon name="arrow" /></button>
               </section>
               {source.mode === 'sample' ? <DemoModeNotice /> : null}
             </div>
