@@ -240,6 +240,12 @@ export interface MerchantRegistrationInput {
   contactPhone: string;
 }
 
+export interface MerchantProfileUpdateInput {
+  requestId: string;
+  contactName?: string;
+  contactPhone?: string;
+}
+
 export interface CreateShopInput {
   requestId: string;
   shopName: string;
@@ -266,6 +272,7 @@ export interface MerchantSource {
   setDailyMenu: (date: string, input: SetDailyMenuInput) => Promise<SourceResult<MenuDay>>;
   getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
   getProfile: () => Promise<SourceResult<MerchantProfile>>;
+  updateProfile: (input: MerchantProfileUpdateInput) => Promise<SourceResult<MerchantProfile>>;
   registerMerchant: (input: MerchantRegistrationInput) => Promise<SourceResult<MerchantProfile>>;
   createShop: (input: CreateShopInput) => Promise<SourceResult<MerchantProfile>>;
   createDish: (input: CreateDishInput) => Promise<SourceResult<Dish>>;
@@ -278,4 +285,28 @@ export interface MerchantSource {
   updateDish: (date: string, dishId: string, input: UpdateDishInput) => Promise<SourceResult<Dish>>;
   deleteDish: (date: string, dishId: string, input: DeleteDishInput) => Promise<SourceResult<DeletedDish>>;
   updateSlot: (date: string, slotId: string, input: UpdateSlotInput) => Promise<SourceResult<Slot>>;
+  getWallet: () => Promise<SourceResult<WalletSummary>>;
+  withdrawWallet: (input: WalletWithdrawInput) => Promise<SourceResult<WalletSummary>>;
+}
+
+export type WalletEntryKind = 'income' | 'withdraw';
+
+export interface WalletEntry {
+  id: string;
+  kind: WalletEntryKind;
+  label: string;
+  amountFen: number;
+  createdAt: string;
+}
+
+export interface WalletSummary {
+  balanceFen: number;
+  totalIncomeFen: number;
+  totalWithdrawnFen: number;
+  entries: WalletEntry[];
+}
+
+export interface WalletWithdrawInput {
+  amountFen: number;
+  requestId: string;
 }

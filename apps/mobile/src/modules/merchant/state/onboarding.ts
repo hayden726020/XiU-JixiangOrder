@@ -13,6 +13,7 @@ export const DISH_TYPE_OPTIONS: ReadonlyArray<{ value: DishType; label: string }
 ];
 
 export type OnboardingField =
+  | 'merchantName'
   | 'contactName'
   | 'contactPhone'
   | 'shopName'
@@ -24,8 +25,19 @@ export type OnboardingField =
   | 'quantityText';
 
 export interface MerchantRegistrationDraft {
+  merchantName: string;
   contactName: string;
   contactPhone: string;
+}
+
+export interface MerchantContactDraft {
+  contactName: string;
+  contactPhone: string | null;
+}
+
+export interface MerchantContactValue {
+  contactName: string;
+  contactPhone: string | null;
 }
 
 export interface ShopDraft {
@@ -92,8 +104,53 @@ export function validateMerchantRegistration(
   draft: MerchantRegistrationDraft,
 ): OnboardingResult<MerchantRegistrationDraft> {
   const errors: OnboardingErrors = {};
+  const merchantName = trimText(draft.merchantName);
+  const contact = validateContactFields(draft.contactName, draft.contactPhone);
+
+  if (merchantName.length < 2 || merchantName.length > 20) {
+    errors.merchantName = '商家名称需为 2—20 个字符。';
+  }
+  Object.assign(errors, contact.errors);
+
+  if (Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
+  return {
+    ok: true,
+    value: {
+      merchantName,
+      contactName: contact.contactName,
+      contactPhone: contact.contactPhone,
+    },
+  };
+}
+
+export function validateMerchantContact(
+  draft: MerchantContactDraft,
+): OnboardingResult<MerchantContactValue> {
+  const errors: OnboardingErrors = {};
   const contactName = trimText(draft.contactName);
-  const contactPhone = normalizePhone(draft.contactPhone);
+  const contactPhone = draft.contactPhone === null ? null : normalizePhone(draft.contactPhone);
+
+  if (contactName.length < 2 || contactName.length > 20) {
+    errors.contactName = '店铺负责人需为 2—20 个字符。';
+  }
+  if (contactPhone !== null && !/^1[3-9]\d{9}$/.test(contactPhone)) {
+    errors.contactPhone = '请输入 11 位手机号。';
+  }
+  if (Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, value: { contactName, contactPhone } };
+}
+
+function validateContactFields(
+  contactNameInput: unknown,
+  contactPhoneInput: unknown,
+): { errors: OnboardingErrors; contactName: string; contactPhone: string } {
+  const errors: OnboardingErrors = {};
+  const contactName = trimText(contactNameInput);
+  const contactPhone = normalizePhone(contactPhoneInput);
 
   if (contactName.length < 2 || contactName.length > 20) {
     errors.contactName = '店铺负责人需为 2—20 个字符。';
@@ -101,11 +158,7 @@ export function validateMerchantRegistration(
   if (!/^1[3-9]\d{9}$/.test(contactPhone)) {
     errors.contactPhone = '请输入 11 位手机号。';
   }
-
-  if (Object.keys(errors).length > 0) {
-    return { ok: false, errors };
-  }
-  return { ok: true, value: { contactName, contactPhone } };
+  return { errors, contactName, contactPhone };
 }
 
 export function validateShop(draft: ShopDraft): OnboardingResult<ShopDraft> {

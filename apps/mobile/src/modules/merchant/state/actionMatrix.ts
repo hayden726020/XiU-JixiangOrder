@@ -1,4 +1,4 @@
-import type { DiningMode, MerchantOrder, OrderStatus } from '../data/types';
+import type { MerchantOrder, OrderStatus } from '../data/types';
 
 export interface OrderAction {
   code: string;
@@ -10,14 +10,14 @@ export interface OrderAction {
   needsReason?: boolean;
   needsPickupCode?: boolean;
   needsExpectedReadyAt?: boolean;
-  needsDiningMode?: boolean;
+
 }
 
 export interface ActionInput {
   pickupCode?: string;
   reason?: string;
   expectedReadyAt?: string;
-  diningMode?: DiningMode;
+
 }
 
 const ORDER_PATH = '/merchant/orders/{id}';
@@ -90,22 +90,14 @@ const ACTIONS: Record<string, OrderAction> = {
     action: 'REJECT',
     needsReason: true,
   },
-  CHANGE_DINING_MODE: {
-    code: 'CHANGE_DINING_MODE',
-    label: '变更用餐方式',
-    kind: 'secondary',
-    method: 'PATCH',
-    path: `${ORDER_PATH}/dining-mode`,
-    needsReason: true,
-    needsDiningMode: true,
-  },
+
 };
 
 const CODES_BY_STATUS: Record<OrderStatus, string[]> = {
-  NEW: ['ACCEPT', 'CANCEL_ORDER', 'CHANGE_DINING_MODE'],
-  ACCEPTED: ['START_PREPARING', 'SET_DELAY', 'CANCEL_ORDER', 'CHANGE_DINING_MODE'],
-  PREPARING: ['MARK_READY', 'SET_DELAY', 'CANCEL_ORDER', 'CHANGE_DINING_MODE'],
-  READY: ['VERIFY', 'SET_DELAY', 'CANCEL_ORDER', 'CHANGE_DINING_MODE'],
+  NEW: ['ACCEPT', 'CANCEL_ORDER'],
+  ACCEPTED: ['START_PREPARING', 'SET_DELAY', 'CANCEL_ORDER'],
+  PREPARING: ['MARK_READY', 'SET_DELAY', 'CANCEL_ORDER'],
+  READY: ['VERIFY', 'SET_DELAY', 'CANCEL_ORDER'],
   COMPLETED: [],
   CANCELLED: [],
 };
@@ -142,7 +134,7 @@ const REAL_WRITE_CODES = new Set([
   'CANCEL_ORDER',
   'APPROVE_CANCEL',
   'REJECT_CANCEL',
-  'CHANGE_DINING_MODE',
+
 ]);
 
 export function isRealWriteAction(action: OrderAction): boolean {
@@ -202,11 +194,7 @@ export function validateActionInput(
       return '预计可取时间格式不正确，请重新选择。';
     }
   }
-  if (mode === 'real' && action.needsDiningMode) {
-    if (input.diningMode !== 'DINE_IN' && input.diningMode !== 'TAKEAWAY') {
-      return '请选择变更后的用餐方式。';
-    }
-  }
+
   return null;
 }
 
@@ -237,7 +225,7 @@ export function actionPrompt(
     fields.push(reason ? `reason=${reason}` : 'reason=处理理由');
   }
   if (action.needsExpectedReadyAt) fields.push('expectedReadyAt=带时区的 ISO 时间');
-  if (action.needsDiningMode) fields.push('diningMode=DINE_IN 或 TAKEAWAY');
+
   const fieldText = fields.length > 0 ? `（${fields.join('，')}）` : '';
   if (mode === 'real') {
     return `真实模式：该写操作尚未接入，这里将调用 ${action.method} ${path}${fieldText}，当前不产生真实变更。`;
