@@ -13,6 +13,9 @@ import type {
   MerchantProfile,
   MerchantRegistrationInput,
   MerchantScenario,
+  WalletEntry,
+  WalletSummary,
+  WalletWithdrawInput,
   MerchantSource,
   OrderPage,
   Slot,
@@ -408,6 +411,18 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return toOnboardingFailure(error, '商家资料查询');
       }
     },
+    getWallet: async (): Promise<SourceResult<WalletSummary>> => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取钱包。');
+      }
+      return fail('NOT_IMPLEMENTED', '钱包暂未接入共同服务；余额与提现暂不可用。');
+    },
+    withdrawWallet: async (): Promise<SourceResult<WalletSummary>> => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不操作钱包。');
+      }
+      return fail('NOT_IMPLEMENTED', '钱包暂未接入共同服务；提现暂不可用。');
+    },
     registerMerchant: async (input: MerchantRegistrationInput) => {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送注册请求。');
@@ -691,6 +706,29 @@ export function createMerchantSource(options: {
     const base = libraryDishes(date).find((dish) => dish.dishId === dishId);
     return base ? applyDishOverride(date, base) : null;
   }
+  let walletEntries: WalletEntry[] = [
+    { id: 'wallet-in-1', kind: 'income', label: '订单收入 · 演示鸡肉饭', amountFen: 1800, createdAt: '2026-11-13T12:05:00+08:00' },
+    { id: 'wallet-in-2', kind: 'income', label: '订单收入 · 演示素面', amountFen: 1600, createdAt: '2026-11-13T12:10:00+08:00' },
+    { id: 'wallet-in-3', kind: 'income', label: '订单收入 · 演示素面 ×2', amountFen: 3200, createdAt: '2026-11-13T11:55:00+08:00' },
+    { id: 'wallet-out-1', kind: 'withdraw', label: '演示提现到银行卡', amountFen: 2000, createdAt: '2026-11-13T18:00:00+08:00' },
+  ];
+  const walletBalance = (): number => walletEntries.reduce(
+    (sum, entry) => (entry.kind === 'income' ? sum + entry.amountFen : sum - entry.amountFen),
+    0,
+  );
+  const walletSummary = (): WalletSummary => ({
+    balanceFen: walletBalance(),
+    totalIncomeFen: walletEntries
+      .filter((entry) => entry.kind === 'income')
+      .reduce((sum, entry) => sum + entry.amountFen, 0),
+    totalWithdrawnFen: walletEntries
+      .filter((entry) => entry.kind === 'withdraw')
+      .reduce((sum, entry) => sum + entry.amountFen, 0),
+    entries: [...walletEntries]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((entry) => ({ ...entry })),
+  });
+
   let sampleProfile: MerchantProfile = {
     merchant: null,
     shop: null,
@@ -769,6 +807,24 @@ export function createMerchantSource(options: {
         return override ? { ...slot, ...override } : slot;
       });
       return { ok: true, data: { ...day, slots } };
+    },
+    getWallet: async (): Promise<SourceResult<WalletSummary>> => ({ ok: true, data: walletSummary() }),
+    withdrawWallet: async (input: WalletWithdrawInput): Promise<SourceResult<WalletSummary>> => {
+      if (!Number.isSafeInteger(input.amountFen) || input.amountFen <= 0) {
+        return fail('VALIDATION_ERROR', '提现金额必须是大于 0 的整数（单位：分）。');
+      }
+      const balance = walletBalance();
+      if (input.amountFen > balance) {
+        return fail('VALIDATION_ERROR', '演示提现金额超出样例余额，请调整金额。');
+      }
+      walletEntries.push({
+        id: `wallet-out-${Date.now()}`,
+        kind: 'withdraw',
+        label: '演示提现到银行卡',
+        amountFen: input.amountFen,
+        createdAt: new Date().toISOString(),
+      });
+      return { ok: true, data: walletSummary() };
     },
     getProfile: async (): Promise<SourceResult<MerchantProfile>> => (
       { ok: true, data: structuredClone(sampleProfile) }

@@ -16,12 +16,15 @@ import type {
   Slot,
   SlotDay,
   SourceResult,
+  WalletSummary,
+
 } from './data/types';
 import MenuPage from './pages/MenuPage';
 import MerchantLoginPage from './pages/MerchantLoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
+import WalletPage from './pages/WalletPage';
 import {
   actionErrorText,
   actionPrompt,
@@ -51,13 +54,15 @@ const SETUP_ROUTE = `${MERCHANT_ROUTE}/setup`;
 const ORDERS_ROUTE = `${MERCHANT_ROUTE}/orders`;
 const ORDER_ROUTE_PREFIX = `${ORDERS_ROUTE}/`;
 const MY_ROUTE = `${MERCHANT_ROUTE}/my`;
+const WALLET_ROUTE = `${MERCHANT_ROUTE}/wallet`;
 
 type View =
   | { name: 'list' }
   | { name: 'detail'; orderId: string }
   | { name: 'menu' }
   | { name: 'setup' }
-  | { name: 'my' };
+  | { name: 'my' }
+  | { name: 'wallet' };
 
 function merchantRoute(): string {
   return window.location.hash.replace(/^#/, '').replace(/\/+$/, '') || '/';
@@ -81,6 +86,7 @@ function viewFromRoute(): View {
   if (route === MENU_ROUTE) return { name: 'menu' };
   if (route === ORDERS_ROUTE) return { name: 'list' };
   if (route === MY_ROUTE) return { name: 'my' };
+  if (route === WALLET_ROUTE) return { name: 'wallet' };
   const orderId = orderIdFromRoute(route);
   if (orderId) return { name: 'detail', orderId };
   return { name: 'list' };
@@ -107,6 +113,10 @@ export default function MerchantHome() {
   const [profile, setProfile] = useState<MerchantProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<WalletSummary | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [withdrawInFlight, setWithdrawInFlight] = useState(false);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{ code: string; message: string } | null>(null);
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,6 +144,7 @@ export default function MerchantHome() {
 
   const source = useMemo(() => createMerchantSource({ mode, scenario }), [mode, scenario]);
   const isSetupView = view.name === 'setup';
+  const isFlowView = view.name === 'setup';
   const [session, setSession] = useState<Session | null>(getSession);
   const merchantLoggedIn = session?.user.role === 'MERCHANT';
   const apiBase = getApiBaseInfo();
@@ -167,11 +178,34 @@ export default function MerchantHome() {
         setView({ name: 'my' });
         setNotice(null);
         setNotice(null);
+      } else if (route === WALLET_ROUTE) {
+        setView({ name: 'wallet' });
+        setNotice(null);
       }
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  useEffect(() => {
+    if (view.name !== 'wallet') return;
+    let cancelled = false;
+    setWalletLoading(true);
+    setWalletError(null);
+    void (async () => {
+      const result = await source.getWallet();
+      if (cancelled) return;
+      setWalletLoading(false);
+      if (result.ok) {
+        setWallet(result.data);
+      } else {
+        setWalletError(result.error.message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [view.name, source]);
 
   function handleMerchantLoggedIn() {
     clearActionState();
@@ -270,6 +304,8 @@ export default function MerchantHome() {
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
     : null;
+  const merchantName = profile?.merchant?.name ?? null;
+  const myDisplayName = merchantName ?? session?.user.displayName ?? '未登录';
 
   function rememberOrders(next: MerchantOrder[], announce: boolean) {
     if (announce) {
@@ -405,6 +441,26 @@ export default function MerchantHome() {
     window.location.hash = MY_ROUTE;
     setView({ name: 'my' });
     setNotice(null);
+  }
+
+  function openWallet() {
+    clearActionState();
+    window.location.hash = WALLET_ROUTE;
+    setView({ name: 'wallet' });
+    setNotice(null);
+  }
+
+  async function handleWithdrawDemo(amountFen: number) {
+    if (withdrawInFlight) return;
+    setWithdrawInFlight(true);
+    const result = await source.withdrawWallet({ amountFen, requestId: createRequestId('merchant-wallet') });
+    setWithdrawInFlight(false);
+    if (result.ok) {
+      setWallet(result.data);
+      setNotice(`演示提现成功：${formatYuan(amountFen)} 已从样例余额扣除。`);
+    } else {
+      setWalletError(result.error.message);
+    }
   }
 
   function exitMerchant() {
@@ -711,8 +767,8 @@ export default function MerchantHome() {
       </div>
 
       {mode === 'sample' ? (
-        view.name === 'setup' ? null : <SampleBanner />
-      ) : (
+        isFlowView || isSetupView ? null : <SampleBanner />
+      ) : isFlowView || isSetupView ? null : (
         <div className="merchant-real-banner" role="status">
           <strong>真实数据 · 演示服务（DRAFT v0.3 联调候选）</strong>
           <span>服务地址：{apiBase.baseUrl ?? '未配置'}{apiBase.problem ? `（${apiBase.problem}）` : ''}</span>
@@ -825,16 +881,32 @@ export default function MerchantHome() {
         />
       )}
 
+      {view.name === 'wallet' && (
+        <WalletPage
+          mode={mode}
+          wallet={wallet}
+          loading={walletLoading}
+          error={walletError}
+          withdrawInFlight={withdrawInFlight}
+          onWithdraw={(amountFen) => void handleWithdrawDemo(amountFen)}
+          onBack={openMy}
+        />
+      )}
+
       {view.name === 'my' && (
         <section className='merchant-my' aria-label='我的'>
           <div className='merchant-my__card'>
             <div className='merchant-my__avatar'>{(session?.user.displayName ?? '档').slice(0, 1)}</div>
             <div className='merchant-my__identity'>
-              <h3>{session?.user.displayName ?? "未登录"}</h3>
+              <h3>{myDisplayName}</h3>
               <p>档口账号 · {roleLabel(session?.user.role ?? 'MERCHANT')}</p>
             </div>
           </div>
           <div className='merchant-my__group'>
+            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openWallet}>
+              <span>钱包 · 余额与提现</span>
+              <span className='merchant-my__arrow'>→</span>
+            </button>
             <div className='merchant-my__row'>
               <span>数据源</span>
               <span>{mode === 'sample' ? '样例数据' : '真实 · 演示服务'}</span>
@@ -858,7 +930,7 @@ export default function MerchantHome() {
         </section>
       )}
 
-      {(merchantLoggedIn || mode === 'sample') && !isSetupView && (
+      {(merchantLoggedIn || mode === 'sample') && !isFlowView && !isSetupView && (
       <nav className='merchant-tabbar' aria-label='底部导航'>
         <button
           type='button'

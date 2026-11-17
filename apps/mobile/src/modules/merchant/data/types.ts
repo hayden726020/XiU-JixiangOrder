@@ -278,4 +278,27 @@ export interface MerchantSource {
   updateDish: (date: string, dishId: string, input: UpdateDishInput) => Promise<SourceResult<Dish>>;
   deleteDish: (date: string, dishId: string, input: DeleteDishInput) => Promise<SourceResult<DeletedDish>>;
   updateSlot: (date: string, slotId: string, input: UpdateSlotInput) => Promise<SourceResult<Slot>>;
+  getWallet: () => Promise<SourceResult<WalletSummary>>;
+  withdrawWallet: (input: WalletWithdrawInput) => Promise<SourceResult<WalletSummary>>;
+}
+export type WalletEntryKind = 'income' | 'withdraw';
+
+export interface WalletEntry {
+  id: string;
+  kind: WalletEntryKind;
+  label: string;
+  amountFen: number;
+  createdAt: string;
+}
+
+export interface WalletSummary {
+  balanceFen: number;
+  totalIncomeFen: number;
+  totalWithdrawnFen: number;
+  entries: WalletEntry[];
+}
+
+export interface WalletWithdrawInput {
+  amountFen: number;
+  requestId: string;
 }
