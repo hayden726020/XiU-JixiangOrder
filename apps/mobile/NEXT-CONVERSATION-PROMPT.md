@@ -20,7 +20,7 @@
 - 2026-11-17 已修复档口订单不自动刷新：真实模式下订单列表与详情每 15 秒自动刷新；列表有「刷新列表」按钮和最近更新时间；待接单/可取餐/普通详情有「刷新订单」按钮；发现新单会提示并自动进入「待接单」分组；停留在详情页也会检测其他新单；写操作成功后重新拉取列表。
 - 刷新功能已用 Headless Edge + 本地模拟服务在真实模式验证 13 项全通过；合并基线使用基线版注册页执行 `vite build` 成功；详情页停留检测补充提交 `ca24fed` 另通过 3 项验证。
 - 合并基线后 `tsc --noEmit` 还剩 1 个学生端既有类型错误（`orderCancelView.ts` 的 `CancelRequest.decisionReason`），不是本次档口改动引入；出包先用 `vite build`，不要用会先跑 tsc 的 `npm run build`。
-- `frontend` 工作副本当前有一份并行注册页改动（`OnboardingPage.tsx` 引用缺失的 `wall-*.jpg`），未纳入基线，直接 `vite build` 会失败；并行版本备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`。
+- `frontend` 工作副本当前有未纳入基线的并行注册页改动（照片墙，引用 `wall-*.webp`，可构建）；基线版注册页在 `.git-sync/apps/mobile`，并行版本备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`。
 - `dist/` 已更新，但 debug APK 仍是上一轮产物：
   `E:\project\workspace\frontend\android\app\build\outputs\apk\debug\app-debug.apk`
 - APK 尚未安装到手机，`adb devices` 为空；不要宣称已完成真机验收。
@@ -56,7 +56,7 @@
    & "D:\AndroidSdk\platform-tools\adb.exe" devices
    & "D:\AndroidSdk\platform-tools\adb.exe" install -r "E:\project\workspace\frontend\android\app\build\outputs\apk\debug\app-debug.apk"
    ```
-   无法连线时，把 APK 复制到手机存储手动安装。`frontend` 当前并行注册页改动会导致 `wall-*.jpg` 缺失，构建前先确认使用基线版 `OnboardingPage.tsx`（备份在 `.runtime/OnboardingPage.parallel.tsx`）；本次不要跑 `npm run build`，因为它会先执行 tsc 并触发学生端既有类型错误。
+   无法连线时，把 APK 复制到手机存储手动安装。`frontend` 当前有未纳入基线的并行注册页改动，构建前先确认使用基线版 `OnboardingPage.tsx`（备份在 `.runtime/OnboardingPage.parallel.tsx`）；本次不要跑 `npm run build`，因为它会先执行 tsc 并触发学生端既有类型错误。
 2. 打开 App 验证角色入口、档口端页面、定位权限弹窗、无白屏与运行时错误。
 3. 在真实模式验收订单刷新：列表显示「刷新列表」并每 15 秒更新；用学生端或接口新增订单，确认 15 秒内自动进入「待接单」并提示；详情页「刷新订单」可用。
 4. 原生 App 内 `/api/v1` 相对地址不可用，需配置可访问的后端绝对地址。

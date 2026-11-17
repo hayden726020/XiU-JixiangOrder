@@ -125,7 +125,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 已知问题（不属于本次档口改动）：
 
 - 合并基线后 `tsc --noEmit` 剩 1 个学生端既有类型错误：`src/modules/student/utils/orderCancelView.ts` 引用 `CancelRequest.decisionReason`，但 `student/types.ts` 的 `CancelRequest` 未声明该字段。需学生端负责人补类型；在修复前请用 `vite build` 出包，不要用会先跑 tsc 的 `npm run build`。
-- 本地 `frontend` 工作副本当前有一份并行中的注册页改动（`OnboardingPage.tsx` 引用 `wall-*.jpg`，实际资源是 `.webp`），**未纳入本次基线**；直接在本副本 `vite build` 会报 5 个资源缺失。并行版本已备份到 `frontend/.runtime/OnboardingPage.parallel.tsx`，基线版注册页可正常构建。不要把它当作本次基线的一部分推送。
+- 本地 `frontend` 工作副本正在被并行同步改动；当前注册页 `OnboardingPage.tsx` 已引用 `wall-*.webp` 并带照片墙改动，可 `vite build`，但该改动**未纳入本次基线**（基线版注册页在 `.git-sync/apps/mobile`）。并行版本备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`；不要把未提交的并行改动当作基线推送。
 
 尚未验证：
 
@@ -145,7 +145,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 
    不能用数据线时，直接把 `app-debug.apk` 复制到手机存储，在文件管理器中点击安装（需允许“安装未知来源应用”）。
 
-   注意：`frontend` 当前有一份并行注册页改动引用缺失的 `wall-*.jpg`，直接构建会失败；基线版注册页在 `.git-sync/apps/mobile`，备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`。合并基线还有 1 个学生端 tsc 类型错误，出包请直接跑 `vite build`，不要跑含 tsc 的 `npm run build`。
+   注意：`frontend` 当前有未纳入基线的并行注册页改动（照片墙），构建前确认使用基线版 `OnboardingPage.tsx`（在 `.git-sync/apps/mobile`，备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`）。合并基线还有 1 个学生端 tsc 类型错误，出包请直接跑 `vite build`，不要跑含 tsc 的 `npm run build`。
 
 2. 打开 App 验证：角色入口、档口端五个页面、地图定位授权弹窗、页面无白屏；在真实模式进入订单列表，确认「刷新列表」、15 秒自动刷新与新单提示；进入详情确认「刷新订单」。
 3. 原生 App 里 `window.location.origin` 不是预览地址，`/api/v1` 相对地址不可用；需在应用内配置可访问的后端绝对地址。
