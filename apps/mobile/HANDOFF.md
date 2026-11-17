@@ -17,6 +17,10 @@
 - 2026-11-17 入驻状态提交：远端 `ef68433 feat(mobile): 档口端注册完成后不再重复注册`（本地同内容提交 `9e59744`，文档提交 `12da07a`）；档口登录后读取 `GET /merchant/profile`，已开店账号不再显示“商家注册 / 开店”入口，进入入驻页显示只读资料；已有商家但未开店时跳过注册第 1 步。
 - 本次推送因 `github.com:443` 直连被阻断，改用 GitHub API 创建同内容提交并更新分支引用（功能提交 `ef68433`，其后接文档提交）；远端分支头提交树与本地同内容提交一致。
 - GitHub HTTPS 连接在当前网络下间歇性 `Connection was reset`；重试可成功，不要据此判定仓库不可达。
+- 2026-11-17 22:50 最新基线：分支 `frontend/handoff-2026-11-17` 已推送，远端分支头 `ba4bdc3 feat(mobile): 学生端订单与菜单页拆分组件并同步最新样式`；本次提交链 `82044d9 fix(mobile): 恢复管理端横幅与导航并统一学生端金色配色` → `19902d0 feat(mobile): 档口端增加数据模式选择、钱包页与注册页账号名回填` → `ba4bdc3`。
+- 本次基线内容：档口端新增数据模式选择页（`#/merchant/source`）、钱包页与「我的」页；注册第 1 步删除「商家名称」输入，服务端仍要求 `merchantName`，页面自动取当前档口账号名（`session.user.displayName`，截断 20 字符，兜底「档口商家」）；学生端订单/菜单页拆分为 `BookingTicket`、`OrderDishCard`、`OrderListIcons`、`OrderMenuIcons`、`OrderTicketCard` 组件；管理端恢复非订单详情页的横幅与导航。
+- 本次验证：`tsc --noEmit` 0 错误、`vite build` 成功；无头浏览器 390px 确认注册页无商家名称输入、表单仅「店铺负责人」「联系电话」两项、空表单 2 项校验、填写后可进入第 2 步。本次未重打 APK、未做真机验收。
+- 本地 `frontend/src` 与 `.git-sync/apps/mobile/src` 已逐文件一致；`README.md`、`package.json`、`capacitor.config.ts`、`android/` 仍以远端为准，不用本地临时副本覆盖。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
 - **本地 `frontend/android` 与 `frontend/capacitor.config.ts` 是本次为出包新生成的临时模板**：`versionCode 2`、`versionName "0.1.0"`，未覆盖远端正式工程。禁止把本地 `android/` 整目录覆盖到远端 `apps/mobile/android`。
 
