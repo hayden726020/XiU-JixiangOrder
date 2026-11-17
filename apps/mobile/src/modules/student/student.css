@@ -1238,3 +1238,39 @@
   color: #35543a;
   font-size: 0.8rem;
 }
+.student-mode-switch {
+  position: sticky;
+  top: 0.4rem;
+  z-index: 40;
+  display: flex;
+  gap: 0.3rem;
+  width: min(16rem, calc(100% - 1rem));
+  margin: 0.5rem auto 0.4rem;
+  padding: 0.28rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(23, 48, 31, 0.12);
+  backdrop-filter: blur(4px);
+}
+
+.student-mode-switch__item {
+  flex: 1 1 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.student-mode-switch__item.is-active {
+  background: var(--surface);
+  border-color: var(--green-700);
+  color: var(--green-900);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(23, 48, 31, 0.08);
+}
