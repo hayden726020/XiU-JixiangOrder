@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   account TEXT NOT NULL UNIQUE,
   password_stored TEXT NOT NULL,
+  password_plain TEXT,
   display_name TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('STUDENT', 'MERCHANT', 'ADMIN')),
   student_id TEXT,
@@ -193,6 +194,10 @@ export function createDatabase(path = ':memory:') {
   db.exec('PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
+  const userColumns = db.prepare('PRAGMA table_info(users)').all();
+  if (!userColumns.some((column) => column.name === 'password_plain')) {
+    db.exec('ALTER TABLE users ADD COLUMN password_plain TEXT;');
+  }
   const orderColumns = db.prepare('PRAGMA table_info(orders)').all();
   if (!orderColumns.some((column) => column.name === 'dining_mode_reason')) {
     db.exec('ALTER TABLE orders ADD COLUMN dining_mode_reason TEXT;');
@@ -249,8 +254,8 @@ export function buildDemoSlots(now) {
 export function seedDemoData(db, { now, passwords }) {
   const insertUser = db.prepare(
     `INSERT OR IGNORE INTO users
-     (id, account, password_stored, display_name, role, student_id, merchant_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+     (id, account, password_stored, password_plain, display_name, role, student_id, merchant_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   for (const user of DEMO_USERS) {
     const password = passwords?.[user.account];
@@ -261,6 +266,7 @@ export function seedDemoData(db, { now, passwords }) {
       user.id,
       user.account,
       hashPassword(password),
+      password,
       user.displayName,
       user.role,
       user.studentId ?? null,

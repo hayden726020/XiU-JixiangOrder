@@ -31,14 +31,17 @@ import {
 import { getAdminSettings, putAdminSettings } from './admin.mjs';
 import {
   createDish,
+  createMerchantAccount,
   createShop,
   getMerchantProfile,
   getMerchantQualification,
   getMerchantQualificationFile,
+  listMerchantAccounts,
   listMerchantQualifications,
   listMerchants,
   registerMerchant,
   reviewMerchantQualification,
+  updateMerchantAccount,
   uploadMerchantQualification,
 } from './merchant.mjs';
 
@@ -156,6 +159,21 @@ export function createApp({ db, clock, logger = () => {} }) {
       method: 'GET',
       pattern: /^\/api\/v1\/merchant\/qualifications\/files\/(?<kind>business-license|food-permit)$/,
       handler: withAuth(['MERCHANT'], (ctx) => getMerchantQualificationFile({ ...ctx, params: decodeParams(ctx.params) })),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/admin\/merchant-accounts$/,
+      handler: withAuth(['ADMIN'], listMerchantAccounts),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/admin\/merchant-accounts$/,
+      handler: withBody(['ADMIN'], createMerchantAccount),
+    },
+    {
+      method: 'PATCH',
+      pattern: /^\/api\/v1\/merchant\/account$/,
+      handler: withBody(['MERCHANT'], updateMerchantAccount),
     },
     {
       method: 'GET',
