@@ -174,16 +174,17 @@
 
 .home-polaroid-stage {
   position: relative;
-  height: 206px;
-  margin: 0 -0.85rem;
+  height: 196px;
+  margin: 0 -0.85rem 8px;
   padding: 0;
   list-style: none;
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .home-polaroid-slide {
   position: absolute;
-  top: 4px;
+  top: 6px;
   left: 50%;
   width: min(50vw, 198px);
   transition: transform 0.45s cubic-bezier(0.22, 0.78, 0.26, 1), opacity 0.45s ease;
@@ -198,13 +199,13 @@
 .home-polaroid-slide.is-left {
   z-index: 1;
   opacity: 0.96;
-  transform: translateX(calc(-50% - 54%)) translateY(12px) rotate(-5.5deg) scale(0.84);
+  transform: translateX(calc(-50% - 54%)) translateY(10px) rotate(-5.5deg) scale(0.84);
 }
 
 .home-polaroid-slide.is-right {
   z-index: 2;
   opacity: 0.96;
-  transform: translateX(calc(-50% + 54%)) translateY(12px) rotate(5.5deg) scale(0.84);
+  transform: translateX(calc(-50% + 54%)) translateY(10px) rotate(5.5deg) scale(0.84);
 }
 
 .home-polaroid-card {
@@ -232,15 +233,20 @@
 }
 
 .home-polaroid-card__frame {
+  position: relative;
   display: block;
+  flex: none;
   width: 100%;
-  aspect-ratio: 1.72 / 1;
+  height: 0;
+  padding-top: 62%;
   overflow: hidden;
   border-radius: 2px;
   background: #ede6d6;
 }
 
 .home-polaroid-card__frame img {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;

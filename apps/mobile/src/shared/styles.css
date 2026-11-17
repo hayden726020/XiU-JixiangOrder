@@ -377,3 +377,196 @@ code {
   background: #fef2f2;
   color: #7f1d1d;
 }
+/* ---------- 角色入口：食麦呼暖色纸感 ---------- */
+
+.app-shell--home {
+  background: #fbf7ea;
+  box-shadow: 0 0 0 1px #ece3cf;
+}
+
+.app-header--home {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid #ece3cf;
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 100, 60, 0.028) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120, 100, 60, 0.02) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 14% 8%, rgba(255, 213, 37, 0.34), transparent 42%),
+    radial-gradient(circle at 92% 18%, rgba(255, 246, 221, 0.9), transparent 48%),
+    linear-gradient(180deg, #fdf8e9 0%, #fbf5e6 60%, #f7f1df 100%);
+  color: #14243f;
+}
+
+.app-header--home::before {
+  content: "";
+  position: absolute;
+  top: -2.6rem;
+  right: -2.2rem;
+  width: 9rem;
+  height: 9rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 213, 37, 0.35), rgba(255, 213, 37, 0) 70%);
+  pointer-events: none;
+}
+
+.app-header--home::after {
+  content: "";
+  position: absolute;
+  top: 0.55rem;
+  left: 38%;
+  width: 4.2rem;
+  height: 1rem;
+  background: rgba(255, 213, 37, 0.38);
+  border-left: 1px dashed rgba(163, 125, 16, 0.32);
+  border-right: 1px dashed rgba(163, 125, 16, 0.32);
+  transform: rotate(-4deg);
+  pointer-events: none;
+}
+
+.app-header--home h1 {
+  font-family: "Ma Shan Zheng", "FZShuti", "STXingkai", "华文行楷", "STKaiti", "KaiTi", "Kaiti SC", serif;
+  color: #123b4e;
+  font-size: 2.15rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.25;
+}
+
+.app-header--home .app-kicker {
+  color: #7a6a3f;
+  opacity: 1;
+  letter-spacing: 0.16em;
+}
+
+.app-header--home .app-version {
+  border-color: rgba(18, 59, 78, 0.22);
+  background: rgba(255, 253, 247, 0.78);
+  color: #5c5335;
+}
+
+.app-shell--home .app-footer {
+  border-top-color: #ece3cf;
+  background: #fdf8e9;
+}
+
+.app-shell--home .app-footer p {
+  color: #766f5a;
+}
+
+.home-panel--brand {
+  position: relative;
+}
+
+.home-eyebrow {
+  margin: 0 0 0.3rem;
+  color: #8a7440;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+}
+
+.home-panel--brand h2 {
+  color: #14243f;
+  font-size: 1.35rem;
+}
+
+.home-panel--brand .lead {
+  color: #5c5a4e;
+}
+
+.home-polaroids {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  position: relative;
+  height: 3.5rem;
+  margin: 0 -0.15rem 0.55rem 0;
+  pointer-events: none;
+}
+
+.home-polaroids__tape {
+  position: absolute;
+  top: 0.1rem;
+  left: 0.35rem;
+  width: 3.6rem;
+  height: 1.05rem;
+  background: rgba(255, 213, 37, 0.34);
+  border-left: 1px dashed rgba(163, 125, 16, 0.3);
+  border-right: 1px dashed rgba(163, 125, 16, 0.3);
+  transform: rotate(-7deg);
+}
+
+.home-polaroids__item {
+  flex: none;
+  width: 2.45rem;
+  height: 3.05rem;
+  border: 3px solid #fffdf7;
+  border-radius: 2px;
+  box-shadow: 0 5px 12px rgba(20, 36, 63, 0.13);
+}
+
+.home-polaroids__item--a {
+  background: linear-gradient(160deg, #f2c94c, #e0913c 55%, #b4552f);
+  transform: rotate(-7deg);
+}
+
+.home-polaroids__item--b {
+  background: linear-gradient(160deg, #8fb7a2, #4f7d66 60%, #22483a);
+  transform: rotate(4deg) translateY(3px);
+}
+
+.home-polaroids__item--c {
+  background: linear-gradient(160deg, #f6e7c8, #d6b37b 60%, #8d6a3a);
+  transform: rotate(-2deg) translateY(-2px);
+}
+
+.home-polaroids__seal {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-left: 0.1rem;
+  border: 2px dashed rgba(163, 125, 16, 0.55);
+  border-radius: 50%;
+  color: #a37d10;
+  font-size: 0.55rem;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  text-align: center;
+  transform: rotate(10deg);
+}
+
+.home-panel--brand .module-card {
+  border-color: #ece2cc;
+  border-radius: 1.05rem;
+  background: #fffdf7;
+  box-shadow: 0 10px 22px rgba(20, 36, 63, 0.07);
+}
+
+.home-panel--brand .module-card:hover,
+.home-panel--brand .module-card:focus-visible {
+  border-color: #2f7a2c;
+  box-shadow: 0 12px 26px rgba(20, 36, 63, 0.11);
+}
+
+.home-panel--brand .module-card__title {
+  color: #14243f;
+}
+
+.home-panel--brand .module-card__desc {
+  color: #6b6a5e;
+}
+
+.home-panel--brand .check-entry {
+  border: 0;
+  border-radius: 13px;
+  background: #2f7a2c;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(47, 122, 44, 0.2);
+}
+
+.home-panel--brand .check-entry:hover,
+.home-panel--brand .check-entry:focus-visible {
+  background: #276b25;
+}
