@@ -25,6 +25,10 @@
   2. 公开认证接口基础限流：`auth-rate-limit.mjs` 按 15 分钟窗口限制注册（单地址 20 次 / 全局 100 次）与登录（单地址 50 次 / 全局 300 次），超限返回 `429 RATE_LIMITED`（`retryable: true`），且单地址超限被拒请求不会消耗全局配额。
 - 契约与文档已同步更新至 DRAFT v0.6（`contracts/API.md`、`contracts/README.md`、`contracts/examples/auth-student-register.json`、`services/api/README.md`）。
 - 服务端自动化测试全量通过：`npm --prefix services/api test` **90/90 通过（0 失败）**。
+- **线上阿里云 ECS 后端已同步部署（2026-11-17 20:15）**：
+  - 部署前于 ECS `/root/backup-api-20261117-2009/` 完整备份原有 `/opt/jixiang-order/services/api` 与 `/opt/jixiang-order/data/orders.sqlite*`（持久化数据完好保留）。
+  - 同步 `services/api/src/*.mjs`、`test/*.mjs`、`package.json`、`README.md` 至 `/opt/jixiang-order/services/api/`，在 ECS 以低权限 `jixiang` 用户实测 `npm test` **90/90 通过**，重启 `jixiang-api.service`（状态 `active`）。
+  - 公网 HTTPS 实测验证：`GET https://39.96.195.158/api/v1/health` 返回 200，`POST https://39.96.195.158/api/v1/auth/login` 与 `POST https://39.96.195.158/api/v1/auth/student-register` 均已就绪生效（不再返回 404 `NOT_FOUND`）。
 
 ## 2026-11-14 新增范围（计划，尚未实现）
 
