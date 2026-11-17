@@ -1,6 +1,21 @@
+import { addDays, toShanghaiDate } from '../utils/dates';
 import type { CrowdReference, DishDto, ShopSummary, SlotDto, StudentOrder } from '../types';
 
-export const DATES = ['2026-11-13', '2026-11-14'];
+function pad(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+export const SAMPLE_DATE_RANGE_DAYS = 7;
+
+export function sampleDates(base: Date = new Date()): string[] {
+  const today = toShanghaiDate(base);
+  return Array.from({ length: SAMPLE_DATE_RANGE_DAYS }, (_, index) => addDays(today, index));
+}
+
+export const DATES = sampleDates();
+
+export const SLOT_DAY_START_HOUR = 8;
+export const SLOT_DAY_END_HOUR = 22;
 
 export const DEMO_SHOPS: ShopSummary[] = [
   {
@@ -49,133 +64,149 @@ export interface SampleSlot {
   enabled: boolean;
 }
 
+function availabilityFor(...values: number[]): Record<string, number> {
+  return Object.fromEntries(
+    DATES.map((date, index) => [date, values[index % values.length]]),
+  );
+}
+
+function onSalePattern(...values: boolean[]): Record<string, boolean> {
+  return Object.fromEntries(
+    DATES.map((date, index) => [date, values[index % values.length]]),
+  );
+}
+
 export const DISHES: SampleDish[] = [
   {
     dishId: 'demo-dish-01',
     name: '演示鸡肉饭',
     unitPriceFen: 1800,
-    availability: { '2026-11-13': 40, '2026-11-14': 35 },
-    onSale: { '2026-11-13': true, '2026-11-14': true },
+    availability: availabilityFor(40, 35),
+    onSale: onSalePattern(true),
   },
   {
     dishId: 'demo-dish-02',
     name: '演示番茄炒蛋',
     unitPriceFen: 900,
-    availability: { '2026-11-13': 35, '2026-11-14': 30 },
-    onSale: { '2026-11-13': true, '2026-11-14': true },
+    availability: availabilityFor(35, 30),
+    onSale: onSalePattern(true),
   },
   {
     dishId: 'demo-dish-03',
     name: '演示青椒肉丝',
     unitPriceFen: 1500,
-    availability: { '2026-11-13': 0, '2026-11-14': 20 },
-    onSale: { '2026-11-13': false, '2026-11-14': true },
+    availability: availabilityFor(0, 20),
+    onSale: onSalePattern(false, true),
   },
   {
     dishId: 'demo-dish-04',
     name: '演示紫菜蛋花汤',
     unitPriceFen: 500,
-    availability: { '2026-11-13': 50, '2026-11-14': 45 },
-    onSale: { '2026-11-13': true, '2026-11-14': true },
+    availability: availabilityFor(50, 45),
+    onSale: onSalePattern(true),
   },
   {
     dishId: 'demo-dish-05',
     name: '演示卤蛋',
     unitPriceFen: 300,
-    availability: { '2026-11-13': 0, '2026-11-14': 10 },
-    onSale: { '2026-11-13': true, '2026-11-14': true },
+    availability: availabilityFor(0, 10),
+    onSale: onSalePattern(true),
   },
 ];
 
-export const SLOTS: SampleSlot[] = [
-  { slotId: 'demo-slot-20261113-lunch', date: '2026-11-13', start: '11:30', end: '12:00', capacity: 30, occupied: 12, enabled: true },
-  { slotId: 'demo-slot-20261113-late', date: '2026-11-13', start: '12:00', end: '12:30', capacity: 30, occupied: 18, enabled: true },
-  { slotId: 'demo-slot-20261113-tail', date: '2026-11-13', start: '12:30', end: '13:00', capacity: 20, occupied: 20, enabled: true },
-  { slotId: 'demo-slot-20261114-lunch', date: '2026-11-14', start: '11:30', end: '12:00', capacity: 30, occupied: 10, enabled: true },
-  { slotId: 'demo-slot-20261114-late', date: '2026-11-14', start: '12:00', end: '12:30', capacity: 30, occupied: 5, enabled: true },
-  { slotId: 'demo-slot-20261114-tail', date: '2026-11-14', start: '12:30', end: '13:00', capacity: 20, occupied: 20, enabled: true },
-];
+const SLOT_STEP_MINUTES = 30;
+const SLOT_CAPACITY = 30;
+const OCCUPIED_PATTERN = [12, 18, 26, 30, 8, 5, 14, 22, 30, 10, 16, 24, 30, 9];
 
-export const CROWD_REFERENCE: Record<string, CrowdReference> = {
-  'demo-slot-20261113-lunch': {
-    canteenId: 'demo-canteen-01',
-    slotId: 'demo-slot-20261113-lunch',
-    referenceScope: 'PLATFORM_ONLY',
-    reservedDineInUsers: 5,
-    currentReferenceUsers: 3,
+function buildSlots(dates: string[]): SampleSlot[] {
+  const slots: SampleSlot[] = [];
+  for (const date of dates) {
+    const compact = date.split('-').join('');
+    let index = 0;
+    for (let hour = SLOT_DAY_START_HOUR; hour < SLOT_DAY_END_HOUR; hour += 1) {
+      for (let minute = 0; minute < 60; minute += SLOT_STEP_MINUTES) {
+        const endTotal = hour * 60 + minute + SLOT_STEP_MINUTES;
+        index += 1;
+        slots.push({
+          slotId: `demo-slot-${compact}-${pad(hour)}${pad(minute)}`,
+          date,
+          start: `${pad(hour)}:${pad(minute)}`,
+          end: `${pad(Math.floor(endTotal / 60))}:${pad(endTotal % 60)}`,
+          capacity: SLOT_CAPACITY,
+          occupied: OCCUPIED_PATTERN[(index - 1) % OCCUPIED_PATTERN.length],
+          enabled: true,
+        });
+      }
+    }
+  }
+  return slots;
+}
+
+export const SLOTS: SampleSlot[] = buildSlots(DATES);
+
+function isoShanghai(date: Date): string {
+  const shifted = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}T${pad(
+    shifted.getUTCHours(),
+  )}:${pad(shifted.getUTCMinutes())}:${pad(shifted.getUTCSeconds())}+08:00`;
+}
+
+const CROWD_UPDATED_AT = isoShanghai(new Date());
+const CROWD_EXPIRES_AT = isoShanghai(new Date(Date.now() + 5 * 60 * 1000));
+
+const CROWD_TEMPLATES: Array<{
+  level: CrowdReference['level'];
+  reserved: number | null;
+  current: number | null;
+  basis: CrowdReference['basis'];
+  message: string;
+}> = [
+  {
     level: 'CROWDED',
+    reserved: 5,
+    current: 3,
     basis: ['RESERVATION', 'LOCATION', 'PICKUP'],
-    updatedAt: '2026-11-13T11:45:00+08:00',
-    expiresAt: '2026-11-13T11:50:00+08:00',
-    demo: true,
     message: '演示数据：当前堂食可能较拥挤。仍可选择堂食，不保证座位；仅为本平台参考。',
   },
-  'demo-slot-20261113-late': {
-    canteenId: 'demo-canteen-01',
-    slotId: 'demo-slot-20261113-late',
-    referenceScope: 'PLATFORM_ONLY',
-    reservedDineInUsers: 4,
-    currentReferenceUsers: 2,
+  {
     level: 'NO_ALERT',
+    reserved: 4,
+    current: 2,
     basis: ['RESERVATION', 'LOCATION'],
-    updatedAt: '2026-11-13T11:45:00+08:00',
-    expiresAt: '2026-11-13T11:50:00+08:00',
-    demo: true,
     message: '演示数据：暂未触发拥挤提醒，不代表有座位；仅为本平台参考。',
   },
-  'demo-slot-20261113-tail': {
-    canteenId: 'demo-canteen-01',
-    slotId: 'demo-slot-20261113-tail',
-    referenceScope: 'PLATFORM_ONLY',
-    reservedDineInUsers: null,
-    currentReferenceUsers: null,
+  {
     level: 'UNKNOWN',
+    reserved: null,
+    current: null,
     basis: [],
-    updatedAt: '2026-11-13T11:45:00+08:00',
-    expiresAt: '2026-11-13T11:50:00+08:00',
-    demo: true,
     message: '暂无足够信息判断堂食人数，请以现场为准。',
   },
-  'demo-slot-20261114-lunch': {
-    canteenId: 'demo-canteen-01',
-    slotId: 'demo-slot-20261114-lunch',
-    referenceScope: 'PLATFORM_ONLY',
-    reservedDineInUsers: 4,
-    currentReferenceUsers: null,
-    level: 'CROWDED',
-    basis: ['RESERVATION'],
-    updatedAt: '2026-11-13T11:45:00+08:00',
-    expiresAt: '2026-11-13T11:50:00+08:00',
-    demo: true,
-    message: '演示数据：明天所选时段预约堂食需求较集中，不代表明天现场实测人数。',
-  },
-  'demo-slot-20261114-late': {
-    canteenId: 'demo-canteen-01',
-    slotId: 'demo-slot-20261114-late',
-    referenceScope: 'PLATFORM_ONLY',
-    reservedDineInUsers: 2,
-    currentReferenceUsers: null,
-    level: 'NO_ALERT',
-    basis: ['RESERVATION'],
-    updatedAt: '2026-11-13T11:45:00+08:00',
-    expiresAt: '2026-11-13T11:50:00+08:00',
-    demo: true,
-    message: '演示数据：明天所选时段预约堂食需求较少，不代表明天现场人数。',
-  },
-  'demo-slot-20261114-tail': {
-    canteenId: 'demo-canteen-01',
-    slotId: 'demo-slot-20261114-tail',
-    referenceScope: 'PLATFORM_ONLY',
-    reservedDineInUsers: null,
-    currentReferenceUsers: null,
-    level: 'UNKNOWN',
-    basis: [],
-    updatedAt: '2026-11-13T11:45:00+08:00',
-    expiresAt: '2026-11-13T11:50:00+08:00',
-    demo: true,
-    message: '暂无足够信息判断堂食人数，请以现场为准。',
-  },
-};
+];
+
+function buildCrowdReference(slots: SampleSlot[]): Record<string, CrowdReference> {
+  const reference: Record<string, CrowdReference> = {};
+  for (let index = 0; index < slots.length; index += 1) {
+    const slot = slots[index];
+    const template = CROWD_TEMPLATES[index % CROWD_TEMPLATES.length];
+    reference[slot.slotId] = {
+      canteenId: 'demo-canteen-01',
+      slotId: slot.slotId,
+      referenceScope: 'PLATFORM_ONLY',
+      reservedDineInUsers: template.reserved,
+      currentReferenceUsers: template.current,
+      level: template.level,
+      basis: [...template.basis],
+      updatedAt: CROWD_UPDATED_AT,
+      expiresAt: CROWD_EXPIRES_AT,
+      demo: true,
+      message: template.message,
+    };
+  }
+  return reference;
+}
+
+export const CROWD_REFERENCE: Record<string, CrowdReference> = buildCrowdReference(SLOTS);
 
 export const DEMO_ORDER_001: StudentOrder = {
   id: 'demo-order-001',

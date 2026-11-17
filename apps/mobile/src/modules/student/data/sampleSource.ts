@@ -34,7 +34,9 @@ import type { DraftItemInput } from '../types';
 
 const DINING_MODES = new Set<DiningMode>(['DINE_IN', 'TAKEAWAY']);
 const SCENARIOS = new Set<DemoScenario>(['normal', 'slot-full', 'out-of-stock', 'timeout']);
-const SAME_ORDER_SLOT = 'demo-slot-20261113-lunch';
+const SAME_ORDER_SLOT =
+  SLOTS.find((slot) => slot.date === DATES[0] && slot.start === '11:30' && slot.end === '12:00')
+    ?.slotId ?? '';
 const SAME_ORDER_ITEMS = JSON.stringify([{ dishId: 'demo-dish-01', quantity: 1 }]);
 
 export interface StudentSourceOptions {

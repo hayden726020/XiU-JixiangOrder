@@ -14,9 +14,10 @@ import { SHOP_FOREIGN_ITEM_NOTICE, SHOP_SWITCH_NOTICE } from '../utils/shopTexts
 import { filterDishesByShop } from '../utils/dishShopFilter';
 import { createRequestIdKeeper, requestIdPrefixOf, type RequestIdKeeper } from '../utils/requestId';
 import type { DraftSelection } from './draftSnapshot';
+import { sampleDates } from '../data/sampleData';
 
 const MODES = new Set<DiningMode>(['DINE_IN', 'TAKEAWAY']);
-const SAMPLE_DATE_LIST = ['2026-11-13', '2026-11-14'];
+const SAMPLE_DATE_LIST = sampleDates();
 
 export type DraftStatus = 'idle' | 'submitting' | 'success' | 'timeout' | 'error';
 

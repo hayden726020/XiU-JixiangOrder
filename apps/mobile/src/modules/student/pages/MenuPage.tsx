@@ -20,11 +20,19 @@ import SampleBanner from '../components/SampleBanner';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
-const DAY_LABELS = ['今天', '明天'];
+const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 function formatMonthDay(date: string): string {
   const [, month, day] = date.split('-');
   return `${month}-${day}`;
+}
+
+function dayLabel(date: string, allowedDates: string[]): string {
+  const index = allowedDates.indexOf(date);
+  if (index === 0) return '今天';
+  if (index === 1) return '明天';
+  const weekday = new Date(Date.parse(`${date}T12:00:00+08:00`)).getUTCDay();
+  return WEEKDAY_LABELS[weekday];
 }
 
 export interface MenuPageProps {
@@ -148,7 +156,7 @@ export default function MenuPage({
       ) : null}
 
       <div className="student-date-switch" role="group" aria-label="选择菜单日期">
-        {snapshot.allowedDates.map((item, index) => (
+        {snapshot.allowedDates.map((item) => (
           <button
             key={item}
             type="button"
@@ -156,7 +164,7 @@ export default function MenuPage({
             aria-pressed={date === item}
             onClick={() => changeDate(item)}
           >
-            {DAY_LABELS[index]} {formatMonthDay(item)}
+            {dayLabel(item, snapshot.allowedDates)} {formatMonthDay(item)}
           </button>
         ))}
       </div>

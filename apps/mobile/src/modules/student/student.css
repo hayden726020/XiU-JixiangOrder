@@ -42,17 +42,21 @@
 }
 
 .student-date-switch {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  padding: 0.25rem;
+  display: flex;
+  overflow-x: auto;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  scrollbar-width: none;
   background: var(--canvas);
   border: 1px solid var(--line);
   border-radius: 0.75rem;
 }
 
 .student-date-switch__item {
-  padding: 0.55rem 0.4rem;
+  flex: 0 0 auto;
+  min-width: 5.2rem;
+  padding: 0.55rem 0.5rem;
+  white-space: nowrap;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 0.55rem;
