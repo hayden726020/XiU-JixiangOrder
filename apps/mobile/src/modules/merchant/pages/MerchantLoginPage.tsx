@@ -114,7 +114,7 @@ export default function MerchantLoginPage({
       <header className="merchant-login-hero">
         <div className="merchant-login-hero__top">
           <p className="merchant-login-brand">吉祥点餐</p>
-          <span className="merchant-login-hero__tag">档口端 · 真实模式</span>
+          <span className="merchant-login-hero__tag">档口端 · 先登录再入驻</span>
         </div>
         <h2 id="merchant-login-heading">档口工作台</h2>
         <p className="merchant-login-hero__lead">

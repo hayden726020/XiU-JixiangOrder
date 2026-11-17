@@ -21,6 +21,7 @@ import type {
 } from './data/types';
 import MenuPage from './pages/MenuPage';
 import MerchantLoginPage from './pages/MerchantLoginPage';
+import MerchantMyInfoPage from './pages/MerchantMyInfoPage';
 import OnboardingPage from './pages/OnboardingPage';
 import SourceSelectPage from './pages/SourceSelectPage';
 import WalletPage from './pages/WalletPage';
@@ -57,6 +58,7 @@ const SOURCE_ROUTE = `${MERCHANT_ROUTE}/source`;
 const ORDERS_ROUTE = `${MERCHANT_ROUTE}/orders`;
 const ORDER_ROUTE_PREFIX = `${ORDERS_ROUTE}/`;
 const MY_ROUTE = `${MERCHANT_ROUTE}/my`;
+const MY_INFO_ROUTE = `${MERCHANT_ROUTE}/my/info`;
 const WALLET_ROUTE = `${MERCHANT_ROUTE}/wallet`;
 
 type View =
@@ -66,6 +68,7 @@ type View =
   | { name: 'setup' }
   | { name: 'source' }
   | { name: 'my' }
+  | { name: 'my-info' }
   | { name: 'wallet' };
 
 function merchantRoute(): string {
@@ -91,6 +94,7 @@ function viewFromRoute(): View {
   if (route === MENU_ROUTE) return { name: 'menu' };
   if (route === ORDERS_ROUTE) return { name: 'list' };
   if (route === MY_ROUTE) return { name: 'my' };
+  if (route === MY_INFO_ROUTE) return { name: 'my-info' };
   if (route === WALLET_ROUTE) return { name: 'wallet' };
   const orderId = orderIdFromRoute(route);
   if (orderId) return { name: 'detail', orderId };
@@ -99,10 +103,12 @@ function viewFromRoute(): View {
 
 export default function MerchantHome() {
   const initialMode: DataMode = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).get('mode') === 'real'
-    ? 'real'
-    : 'sample';
+    && new URLSearchParams(window.location.search).get('mode') === 'sample'
+    ? 'sample'
+    : 'real';
   const [mode, setMode] = useState<DataMode>(initialMode);
+  const [sampleEntry, setSampleEntry] = useState(false);
+  const [entryGate, setEntryGate] = useState(true);
   const [scenario, setScenario] = useState<MerchantScenario>('normal');
   const [view, setView] = useState<View>(viewFromRoute);
   const today = useMemo(() => todayIso(), []);
@@ -204,6 +210,9 @@ export default function MerchantHome() {
       } else if (route === MY_ROUTE) {
         setView({ name: 'my' });
         setNotice(null);
+      } else if (route === MY_INFO_ROUTE) {
+        setView({ name: 'my-info' });
+        setNotice(null);
       } else if (route === WALLET_ROUTE) {
         setView({ name: 'wallet' });
         setNotice(null);
@@ -213,7 +222,22 @@ export default function MerchantHome() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
+  function enterSampleMode() {
+    setSampleEntry(true);
+    if (mode !== 'sample') {
+      changeMode('sample');
+      return;
+    }
+    clearActionState();
+    if (merchantRoute() !== ORDERS_ROUTE) {
+      window.location.hash = ORDERS_ROUTE;
+    }
+    setView({ name: 'list' });
+    setNotice(null);
+  }
+
   function handleMerchantLoggedIn() {
+    setEntryGate(false);
     clearActionState();
     setNotice(null);
     setView({ name: 'setup' });
@@ -470,6 +494,13 @@ export default function MerchantHome() {
     clearActionState();
     window.location.hash = WALLET_ROUTE;
     setView({ name: 'wallet' });
+    setNotice(null);
+  }
+
+  function openMyInfo() {
+    clearActionState();
+    window.location.hash = MY_INFO_ROUTE;
+    setView({ name: 'my-info' });
     setNotice(null);
   }
 
@@ -759,7 +790,9 @@ export default function MerchantHome() {
     window.scrollTo(0, listScrollTop.current);
   }, [view.name]);
 
-  if (mode === 'real' && !merchantLoggedIn) {
+  const needsMerchantLogin = entryGate || (mode === 'real' && !merchantLoggedIn);
+
+  if (needsMerchantLogin && !(mode === 'sample' && sampleEntry)) {
     return (
       <MerchantLoginPage
         session={session}
@@ -767,7 +800,7 @@ export default function MerchantHome() {
         apiBaseUrl={apiBase.baseUrl}
         apiBaseProblem={apiBase.problem}
         onLoggedIn={handleMerchantLoggedIn}
-        onUseSample={() => changeMode('sample')}
+        onUseSample={enterSampleMode}
       />
     );
   }
@@ -927,6 +960,20 @@ export default function MerchantHome() {
 
             </div>
           </div>
+          <div className='merchant-my__group' data-my-profile>
+            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openMyInfo}>
+              <span>我的信息</span>
+              <span className='merchant-my__arrow'>→</span>
+            </button>
+            <div className='merchant-my__row'>
+              <span>店铺负责人</span>
+              <span>{profileLoading ? '读取中…' : profile?.merchant?.contactName ?? '未填写'}</span>
+            </div>
+            <div className='merchant-my__row'>
+              <span>联系电话</span>
+              <span>{profileLoading ? '读取中…' : profile?.merchant?.contactPhone ?? '未填写'}</span>
+            </div>
+          </div>
           <div className='merchant-my__group'>
             <div className='merchant-my__row'>
               <span>数据源</span>
@@ -936,11 +983,11 @@ export default function MerchantHome() {
               <span>服务地址</span>
               <span>{apiBase.baseUrl ?? '未配置'}</span>
             </div>
-            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openSetup}>
             <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openWallet}>
               <span>钱包</span>
               <span className='merchant-my__arrow'>→</span>
             </button>
+            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openSetup}>
               <span>{profile?.onboardingStep === 'SHOP_CREATED' ? '店铺信息' : '店铺信息与入驻'}</span>
               <span className='merchant-my__arrow'>→</span>
             </button>
@@ -954,6 +1001,16 @@ export default function MerchantHome() {
             </button>
           </div>
         </section>
+      )}
+      {view.name === 'my-info' && (
+        <MerchantMyInfoPage
+          mode={mode}
+          session={session}
+          source={source}
+          profile={profile}
+          onProfileChange={setProfile}
+          onBack={openMy}
+        />
       )}
       {view.name === 'wallet' && (
         <WalletPage

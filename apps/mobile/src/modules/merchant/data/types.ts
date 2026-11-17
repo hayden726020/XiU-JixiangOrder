@@ -240,6 +240,15 @@ export interface MerchantRegistrationInput {
   contactPhone: string;
 }
 
+export interface MerchantProfileUpdateInput {
+  requestId: string;
+  contactName?: string;
+  contactPhone?: string;
+  shopName?: string;
+  location?: string;
+  description?: string | null;
+}
+
 export interface CreateShopInput {
   requestId: string;
   shopName: string;
@@ -266,6 +275,7 @@ export interface MerchantSource {
   setDailyMenu: (date: string, input: SetDailyMenuInput) => Promise<SourceResult<MenuDay>>;
   getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
   getProfile: () => Promise<SourceResult<MerchantProfile>>;
+  updateProfile: (input: MerchantProfileUpdateInput) => Promise<SourceResult<MerchantProfile>>;
   registerMerchant: (input: MerchantRegistrationInput) => Promise<SourceResult<MerchantProfile>>;
   createShop: (input: CreateShopInput) => Promise<SourceResult<MerchantProfile>>;
   createDish: (input: CreateDishInput) => Promise<SourceResult<Dish>>;

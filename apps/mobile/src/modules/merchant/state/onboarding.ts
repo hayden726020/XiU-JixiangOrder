@@ -186,3 +186,31 @@ export function validateNewDish(draft: NewDishDraft): OnboardingResult<NewDishVa
     },
   };
 }
+export interface MerchantContactDraft {
+  contactName: string;
+  contactPhone: string | null;
+}
+
+export interface MerchantContactValue {
+  contactName: string;
+  contactPhone: string | null;
+}
+
+export function validateMerchantContact(
+  draft: MerchantContactDraft,
+): OnboardingResult<MerchantContactValue> {
+  const errors: OnboardingErrors = {};
+  const contactName = trimText(draft.contactName);
+  const contactPhone = draft.contactPhone === null ? null : normalizePhone(draft.contactPhone);
+
+  if (contactName.length < 2 || contactName.length > 20) {
+    errors.contactName = '店铺负责人需为 2—20 个字符。';
+  }
+  if (contactPhone !== null && !/^1[3-9]\d{9}$/.test(contactPhone)) {
+    errors.contactPhone = '请输入 11 位手机号。';
+  }
+  if (Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, value: { contactName, contactPhone } };
+}

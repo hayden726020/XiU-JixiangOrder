@@ -3303,6 +3303,152 @@
 .merchant-my__row--danger span:first-child {
   color: #8a3b2f;
 }
+
+.merchant-my-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 0.4rem 0.2rem;
+}
+
+.merchant-my-info__back {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: #1f4a33;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.2rem 0;
+  font-family: inherit;
+}
+
+.merchant-my-info__title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #12301f;
+}
+
+.merchant-my-info__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 0.9rem;
+  background: #ffffff;
+  border: 1px solid rgba(31, 74, 51, 0.12);
+  border-radius: 14px;
+}
+
+.merchant-my-info__readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.8rem;
+  background: #f4f6f3;
+  border: 1px solid rgba(31, 74, 51, 0.1);
+  border-radius: 12px;
+}
+
+.merchant-my-info__readonly span {
+  font-size: 0.75rem;
+  color: #5b6b5f;
+}
+
+.merchant-my-info__readonly strong {
+  font-size: 0.98rem;
+  color: #12301f;
+}
+
+.merchant-my-info__readonly p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #8a957f;
+}
+
+.merchant-my-info__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.merchant-my-info__field label {
+  font-size: 0.85rem;
+  color: #233528;
+  font-weight: 600;
+}
+
+.merchant-my-info__field input,
+.merchant-my-info__field textarea {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(31, 74, 51, 0.25);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.merchant-my-info__field textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.merchant-my-info__section {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  color: #1f4a33;
+}
+
+.merchant-my-info__error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #8a3b2f;
+}
+
+.merchant-my-info__submit {
+  padding: 0.7rem 0.9rem;
+  border: 0;
+  border-radius: 12px;
+  background: #1f4a33;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.merchant-my-info__submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.merchant-my-info__notice,
+.merchant-my-info__feedback {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+.merchant-my-info__notice {
+  background: #fef7e7;
+  border: 1px solid rgba(180, 130, 20, 0.35);
+  color: #7a5410;
+}
+
+.merchant-my-info__feedback {
+  background: #eef6ef;
+  border: 1px solid rgba(31, 74, 51, 0.2);
+  color: #1f4a33;
+}
+
+.merchant-my-info__feedback--error {
+  background: #fdecea;
+  border-color: rgba(138, 59, 47, 0.35);
+  color: #8a3b2f;
+}
+
+.merchant-my-info__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #8a957f;
+}
 .app-shell--merchant:has(.source-select-page) .app-main {
   background:
     repeating-linear-gradient(0deg, rgba(120, 100, 60, 0.026) 0 1px, transparent 1px 3px),

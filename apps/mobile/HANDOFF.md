@@ -90,6 +90,31 @@
 - 涉及文件：`src/modules/merchant/MerchantHome.tsx`、`pages/OnboardingPage.tsx`、`pages/OrderListPage.tsx`、`merchant.css`。
 - 边界：店铺资料修改服务端暂未提供接口，已完成页面只读展示；退出登录只清除本地会话，不清除服务端商家与店铺数据。
 
+### 2.7 「我的信息」与注册资料同步（2026-11-17 本次新增）
+
+- 需求：档口端登录并注册商家后，「我的」页展示的个人信息要与注册时填写的内容一致，并可在「我的信息」页修改。
+- 实现：
+  - 新增 `pages/MerchantMyInfoPage.tsx` 与路由 `#/merchant/my/info`，与“已完成商家注册与开店”的 6 项资料对齐：商家名称只读（跟随档口账号），店铺负责人、联系电话、店铺名称、档口位置、店铺简介可编辑；
+  - 「我的」页新增资料组：我的信息入口、店铺负责人、联系电话（数据取 `GET /merchant/profile` 或样例档案）；
+  - `MerchantSource` 新增 `updateProfile`：样例模式写本机样例档案；真实模式调用 `PATCH /merchant/profile`（含店铺字段），服务端未提供时显示失败，不显示成功；
+  - 保存成功后同时更新页面 `profile` 状态，入驻完成页、注册摘要与「我的」页立即同步；
+  - 样例模式商家档案写入 `localStorage`（键 `merchant-sample-profile-v1`），刷新或重新进入样例模式不再要求重复注册。
+- 涉及文件：`data/types.ts`、`data/source.ts`、`state/onboarding.ts`、`pages/MerchantMyInfoPage.tsx`、`MerchantHome.tsx`、`merchant.css`、`pages/SourceSelectPage.tsx`。
+- 验证：样例模式下注册 → 开店 → 我的信息回填 6 项 → 修改全部字段 → 入驻完成页与「我的」页同步、刷新保持，全部通过；真实模式用本地模拟服务验证保存成功与保存失败两条路径，入驻完成页同步新店铺名称/位置/简介，全部通过。
+- 真实验证边界：真实服务当前只有 `GET /merchant/profile`，`PATCH /merchant/profile` 返回 404，店铺资料也没有单独的更新接口；需公共服务补接口后才能真实保存，页面会明确提示失败而不是假成功。
+
+### 2.8 进入档口端先显示登录页（2026-11-17 本次修复）
+
+- 问题：进入档口端后直接显示“已完成商家注册与开店”或上次登录后的工作台，跳过登录账号页；用户要求每次进入先看到登录页，再登录、注册/入驻。
+- 修复：
+  - 档口端默认进入真实模式登录页（开发环境需要样例时用 `?mode=sample`）；
+  - `MerchantHome.tsx` 新增入口门 `entryGate`：每次挂载档口模块都先显示登录页，即使浏览器仍保留上次档口会话；登录成功后本次会话内不再重复拦截，刷新或重新进入会再次要求登录；
+  - 登录页「先看样例数据」改为 `enterSampleMode`：标记样例入口后进入订单列表，不再落到入驻完成页；
+  - 登录页顶部标注改为“档口端 · 先登录再入驻”；
+  - 未登录且切到真实模式时仍回登录页，避免空身份发起请求。
+- 并行冲突处理：本次合并了另一会话在 `MerchantHome.tsx` 的底部「首页」tab、`setup.from` 来源区分改动；同时给 `state/actionMatrix.ts` 的 `ActionInput` 补回 `diningMode` 字段，恢复类型检查通过。
+- 验证：390px 视口下，入口显示登录页、登录页不出现“已完成商家注册与开店”；点「先看样例数据」进入订单列表；已登录后刷新仍回到登录页；真实登录 → 入驻页 → 我的信息保存 → 刷新回登录页，全部通过。
+
 ## 3 本次安装的工具链
 
 均位于 `D:\AndroidSdk`，可从命令行直接复用：

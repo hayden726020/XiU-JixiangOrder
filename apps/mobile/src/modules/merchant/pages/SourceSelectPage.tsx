@@ -37,7 +37,7 @@ export default function SourceSelectPage({
             <span className="source-option__badge">样例模式</span>
             <strong className="source-option__title">立即体验完整流程</strong>
             <span className="source-option__desc">
-              内置样例订单、菜单与时段，数据只保存在本机内存，不写入共同服务。
+              内置样例订单、菜单与时段保存在本机内存；商家资料保存在本机浏览器，不写入共同服务。
             </span>
             <span className="source-option__meta">
               {mode === 'sample' ? '当前已选' : '无需登录，随时体验'}
