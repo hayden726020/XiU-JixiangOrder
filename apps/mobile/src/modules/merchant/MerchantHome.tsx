@@ -38,12 +38,42 @@ import './merchant.css';
 type DataMode = 'sample' | 'real';
 
 const ORDERS_PAGE_SIZE = 20;
+const MERCHANT_ROUTE = '/merchant';
+const MENU_ROUTE = `${MERCHANT_ROUTE}/menu`;
+const SETUP_ROUTE = `${MERCHANT_ROUTE}/setup`;
+const ORDERS_ROUTE = `${MERCHANT_ROUTE}/orders`;
+const ORDER_ROUTE_PREFIX = `${ORDERS_ROUTE}/`;
 
 type View =
   | { name: 'list' }
   | { name: 'detail'; orderId: string }
   | { name: 'menu' }
   | { name: 'setup' };
+
+function merchantRoute(): string {
+  return window.location.hash.replace(/^#/, '').replace(/\/+$/, '') || '/';
+}
+
+function orderIdFromRoute(route: string): string | null {
+  if (!route.startsWith(ORDER_ROUTE_PREFIX)) return null;
+  const encodedId = route.slice(ORDER_ROUTE_PREFIX.length);
+  if (!encodedId || encodedId.includes('/')) return null;
+  try {
+    return decodeURIComponent(encodedId);
+  } catch {
+    return null;
+  }
+}
+
+function viewFromRoute(): View {
+  const route = merchantRoute();
+  if (route === MERCHANT_ROUTE || route === SETUP_ROUTE) return { name: 'setup' };
+  if (route === MENU_ROUTE) return { name: 'menu' };
+  if (route === ORDERS_ROUTE) return { name: 'list' };
+  const orderId = orderIdFromRoute(route);
+  if (orderId) return { name: 'detail', orderId };
+  return { name: 'list' };
+}
 
 export default function MerchantHome() {
   const initialMode: DataMode = import.meta.env.DEV
@@ -52,7 +82,7 @@ export default function MerchantHome() {
     : 'sample';
   const [mode, setMode] = useState<DataMode>(initialMode);
   const [scenario, setScenario] = useState<MerchantScenario>('normal');
-  const [view, setView] = useState<View>({ name: 'list' });
+  const [view, setView] = useState<View>(viewFromRoute);
   const today = useMemo(() => todayIso(), []);
   const dates = useMemo(
     () => (mode === 'sample' ? [...SAMPLE_DATES] : menuDatesFor(today)),
@@ -93,6 +123,29 @@ export default function MerchantHome() {
     : undefined;
 
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const route = merchantRoute();
+      const orderId = orderIdFromRoute(route);
+      if (orderId) {
+        clearActionState();
+        setView({ name: 'detail', orderId });
+        setNotice(null);
+      } else if (route === MENU_ROUTE) {
+        setView({ name: 'menu' });
+        setNotice(null);
+      } else if (route === MERCHANT_ROUTE || route === SETUP_ROUTE) {
+        setView({ name: 'setup' });
+        setNotice(null);
+      } else if (route === ORDERS_ROUTE) {
+        setView({ name: 'list' });
+        setNotice(null);
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   async function loginDemo() {
     if (!devPassword) return;
@@ -185,6 +238,9 @@ export default function MerchantHome() {
   function changeMode(next: DataMode) {
     if (next === mode) return;
     clearActionState();
+    if (merchantRoute() !== ORDERS_ROUTE) {
+      window.location.hash = ORDERS_ROUTE;
+    }
     setMode(next);
     setView({ name: 'list' });
     setNotice(null);
@@ -211,12 +267,16 @@ export default function MerchantHome() {
   function openOrder(id: string) {
     clearActionState();
     listScrollTop.current = window.scrollY;
+    window.location.hash = `${ORDER_ROUTE_PREFIX}${encodeURIComponent(id)}`;
     setView({ name: 'detail', orderId: id });
     setNotice(null);
   }
 
   function backToList() {
     clearActionState();
+    if (merchantRoute() !== ORDERS_ROUTE) {
+      window.location.hash = ORDERS_ROUTE;
+    }
     restoreListScroll.current = true;
     setView({ name: 'list' });
     setNotice(null);
@@ -225,14 +285,21 @@ export default function MerchantHome() {
   function openMenu() {
     clearActionState();
     setDataVersion((current) => current + 1);
+    window.location.hash = MENU_ROUTE;
     setView({ name: 'menu' });
     setNotice(null);
   }
 
   function openSetup() {
     clearActionState();
+    window.location.hash = SETUP_ROUTE;
     setView({ name: 'setup' });
     setNotice(null);
+  }
+
+  function exitMerchant() {
+    clearActionState();
+    window.location.hash = '/';
   }
 
   function handleAction(orderId: string, action: OrderAction, input: ActionInput = {}) {
@@ -410,7 +477,7 @@ export default function MerchantHome() {
   }, [view.name]);
 
   return (
-    <section className="module-panel merchant-panel">
+    <section className={`module-panel merchant-panel${view.name === 'list' ? ' merchant-panel--order-list' : ''}${view.name === 'detail' && activeOrder?.status === 'NEW' ? ' merchant-panel--new-order-detail' : ''}${view.name === 'menu' && mode === 'sample' ? ' merchant-panel--sample-menu' : ''}${view.name === 'setup' ? ' merchant-panel--onboarding' : ''}`}>
       <div className="merchant-source">
         <span className="merchant-source__label">数据源</span>
         <button
@@ -520,8 +587,9 @@ export default function MerchantHome() {
           mode={mode}
           session={session}
           source={source}
-          onDataChanged={() => setDataVersion((current) => current + 1)}
+
           onBack={backToList}
+          onCancel={exitMerchant}
         />
       )}
     </section>

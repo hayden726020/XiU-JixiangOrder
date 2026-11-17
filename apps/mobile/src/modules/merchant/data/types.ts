@@ -181,7 +181,7 @@ export interface MerchantProfile {
 
 export interface MerchantRegistrationInput {
   requestId: string;
-  merchantName: string;
+  merchantName?: string;
   contactName: string;
   contactPhone: string;
 }

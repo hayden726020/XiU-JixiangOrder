@@ -43,7 +43,7 @@ export default function MenuPage({
   onSaveSlot,
   onBack,
 }: MenuPageProps) {
-  const dateOptions = menuDateOptions(dates, today);
+  const dateOptions = menuDateOptions(dates, isSample ? (dates[0] ?? today) : today);
   const [editingDishId, setEditingDishId] = useState<string | null>(null);
   const [dishPrice, setDishPrice] = useState('');
   const [dishQuantity, setDishQuantity] = useState('');
@@ -130,6 +130,103 @@ export default function MenuPage({
       return;
     }
     setSlotError(menuWriteErrorText(result.error.code, result.error.message));
+  }
+
+  if (isSample) {
+    return (
+      <div className="merchant-view merchant-menu-page merchant-menu-page--sample" data-menu-readonly="true">
+        <button type="button" className="back-link merchant-menu-page__back" onClick={onBack}>
+          ← 返回订单列表
+        </button>
+        <header className="merchant-view__header merchant-menu-page__header">
+          <div>
+            <h2>
+              菜单与库存
+              <span className="merchant-readonly-tag">只读样例</span>
+            </h2>
+            <p className="lead">
+              价格与可售数量来自样例数据源，页面不写死；档口读取接口在契约中缺失，第 2—3 天接入服务后才可修改。
+            </p>
+          </div>
+        </header>
+
+        <div className="date-switch merchant-menu-page__dates" role="group" aria-label="菜单日期">
+          {dateOptions.map((option) => (
+            <button
+              key={option.date}
+              type="button"
+              className={option.date === date ? 'date-switch__button date-switch__button--active' : 'date-switch__button'}
+              onClick={() => onDateChange(option.date)}
+              aria-pressed={option.date === date}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <p className="merchant-empty">正在读取菜单与时段…</p>
+        ) : error ? (
+          <p className="merchant-empty">菜单读取失败：{error}</p>
+        ) : !menu || !slots ? (
+          <p className="merchant-empty">这一天没有数据。</p>
+        ) : (
+          <>
+            <section className="detail-block merchant-menu-card">
+              <h3>菜品（{menu.dishes.length}）</h3>
+              <ul className="menu-list merchant-menu-page__dishes">
+                {menu.dishes.map((dish) => (
+                  <li
+                    key={dish.dishId}
+                    className={dish.onSale ? 'menu-item' : 'menu-item menu-item--off'}
+                    data-dish-id={dish.dishId}
+                  >
+                    <span className="menu-item__name">
+                      {dish.name}
+                      {!dish.onSale && <span className="merchant-flag">已停售</span>}
+                    </span>
+                    <span className="menu-item__price">{formatYuan(dish.unitPriceFen)}</span>
+                    <span className="menu-item__qty">可售 {dish.availableQuantity}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <button type="button" className="merchant-menu-page__readonly-action" disabled>
+              第 2—3 天接入服务后可修改
+            </button>
+
+            <section className="detail-block merchant-menu-card">
+              <h3>时段（接单名额）</h3>
+              <ul className="slot-list merchant-menu-page__slots">
+                {slots.slots.map((slot) => {
+                  const closed = !slot.enabled;
+                  return (
+                    <li
+                      key={slot.slotId}
+                      className={slot.full || closed ? 'slot-item slot-item--full' : 'slot-item'}
+                      data-slot-id={slot.slotId}
+                    >
+                      <span className="slot-item__time">
+                        {formatClock(slot.slotStart)}—{formatClock(slot.slotEnd)}
+                      </span>
+                      <span className="slot-item__stats">
+                        名额 {slot.capacity}　已占 {slot.occupied}　剩余 {slot.remaining}
+                        {slot.full ? '（已满）' : closed ? '（已关闭）' : ''}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <p className="hint merchant-menu-page__note">
+              “接单名额”指订单笔数上限，不是食堂座位数；页面不出现“座位/空位”。
+            </p>
+          </>
+        )}
+      </div>
+    );
   }
 
   return (

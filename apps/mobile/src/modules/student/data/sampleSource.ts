@@ -20,6 +20,10 @@ import {
   CROWD_REFERENCE,
   DATES,
   DEMO_ORDER_001,
+  DEMO_ORDER_CANCEL_PENDING,
+  DEMO_ORDER_READY_001,
+  DEMO_ORDER_PREPARING_002,
+  DEMO_ORDER_COMPLETED_003,
   DEMO_SHOPS,
   DISH_SHOP,
   DISHES,
@@ -34,7 +38,9 @@ import type { DraftItemInput } from '../types';
 
 const DINING_MODES = new Set<DiningMode>(['DINE_IN', 'TAKEAWAY']);
 const SCENARIOS = new Set<DemoScenario>(['normal', 'slot-full', 'out-of-stock', 'timeout']);
-const SAME_ORDER_SLOT = 'demo-slot-20261113-lunch';
+const SAME_ORDER_SLOT =
+  SLOTS.find((slot) => slot.date === DATES[0] && slot.start === '11:30' && slot.end === '12:00')
+    ?.slotId ?? '';
 const SAME_ORDER_ITEMS = JSON.stringify([{ dishId: 'demo-dish-01', quantity: 1 }]);
 
 export interface StudentSourceOptions {
@@ -91,7 +97,13 @@ export function createStudentSource({
   let localSeq = 2;
   const createdByRequest = new Map<string, { fingerprint: string; order: StudentOrder }>();
   const pendingByRequest = new Map<string, StudentOrder>();
-  const ordersById = new Map<string, StudentOrder>([[DEMO_ORDER_001.id, clone(DEMO_ORDER_001)]]);
+  const ordersById = new Map<string, StudentOrder>([
+    [DEMO_ORDER_READY_001.id, clone(DEMO_ORDER_READY_001)],
+    [DEMO_ORDER_PREPARING_002.id, clone(DEMO_ORDER_PREPARING_002)],
+    [DEMO_ORDER_COMPLETED_003.id, clone(DEMO_ORDER_COMPLETED_003)],
+    [DEMO_ORDER_001.id, clone(DEMO_ORDER_001)],
+    [DEMO_ORDER_CANCEL_PENDING.id, clone(DEMO_ORDER_CANCEL_PENDING)],
+  ]);
 
   function assertInput(input: CreateOrderInput): void {
     if (!input || typeof input !== 'object') {
@@ -183,7 +195,7 @@ export function createStudentSource({
       totalFen,
       status: 'NEW',
       paymentStatus: 'SIMULATED_PAID',
-      cancelRequest: { status: 'NONE', reason: null, decisionReason: null },
+      cancelRequest: { status: 'NONE', reason: null },
       cancellationReason: null,
       version: 1,
       createdAt: timestamp,
@@ -292,10 +304,6 @@ export function createStudentSource({
         .slice()
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map(clone);
-    },
-
-    async cancelOrder(): Promise<StudentOrder> {
-      throw apiError('SAMPLE_MODE_ONLY', '样例模式下不提供真实取消。', false);
     },
 
     setScenario(next: DemoScenario): DemoScenario {
