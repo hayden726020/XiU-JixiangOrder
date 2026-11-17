@@ -1,58 +1,97 @@
-# 新对话交接：食麦呼当前基线
+# 新对话交接：食麦呼三分支合流基线（APK 1.37）与待修 3 项根因
 
-更新时间：2026-11-17（Asia/Shanghai）
+更新时间：2026-11-17 22:18（Asia/Shanghai）
 
-## 当前基线
+---
 
-- 仓库：`D:\Jixiang\workspace\campus-meal`
-- 当前分支：`docs/readme-status`（已与 `origin/docs/readme-status` 同步，工作区在写入本交接文件前干净）
-- 最新提交：`cc7d59e feat(student): unify tabbar height, add liquid tabbar and date switch animations, bump APK 1.33`
-- 之前基线提交：`942a483 feat(mobile): refine iOS push/pop transitions and bump APK 1.28`（另见远端 `origin/main` 最新为 `e08292d`，`origin/integration/merchant-shimaifu-1.17` 最新为 `48d3b31`，`origin/frontend/admin-redesign-2026-11-16` 最新为 `7fb3194`）
-- 唯一移动应用：`apps/mobile`（Capacitor Android，包名 `com.xiujixiang.order`）
-- 最新 APK：[app-debug.apk](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk)，版本 **`1.33` / `versionCode 34`**（已安装至 A024 真机 `00018158R001923` 并校验通过）
-- Java 21 路径：`D:\Jixiang\.runtime\jdk21-full\jdk-21.0.13+9`（Gradle 构建时需设置 `JAVA_HOME` 并将 `$env:JAVA_HOME\bin` 加入 `PATH`；PowerShell 5.1 不支持 `&&`，需使用 `; if ($LASTEXITCODE -eq 0) { ... }`）
+## 1. 当前基线与环境状态
 
-## 已完成改动（相对 `942a483` → `cc7d59e`）
+- **主代码仓库**：`D:\Jixiang\workspace\campus-meal`
+- **资料同步工作区**：`D:\Jixiang\workspace\team-context`（注意：正式移动端工程在 `campus-meal\apps\mobile`，后端在 `campus-meal\services\api`）
+- **当前分支与远端**：`docs/readme-status`（已推送至 `origin/docs/readme-status`，最新代码提交 `d558f2a`）
+- **最新 APK 产物**：
+  - 路径：[app-debug.apk](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk)
+  - 版本：**`1.37` / `versionCode 38`**（包名 `com.xiujixiang.order`）
+  - 大小：`8,274,146` 字节（约 7.89 MB）
+  - SHA-256：`cf2df765078abb7f2ec600be6f5abe709a3be06daadfe937b576ce31cf5c3134`
+- **构建工具链**：
+  - Java 21：`D:\Jixiang\.runtime\jdk21-full\jdk-21.0.13+9`（Gradle 构建需设置 `$env:JAVA_HOME` 并加入 `$env:PATH`）
+  - Android SDK：`C:\Users\SPcuteAG\AppData\Local\Android\Sdk`（或 `D:\AndroidSdk`）
+- **阿里云 ECS 公网演示服务**：
+  - 地址：`https://39.96.195.158/api/v1`（已写入 `apps/mobile/.env.production`）
+  - 部署目录：`/opt/jixiang-order/services/api/`（回滚备份位于 `/root/backup-api-20261117-2132`；持久化 SQLite 位于 `/opt/jixiang-order/data/orders.sqlite`，严禁清空覆盖）
+  - 状态：`jixiang-api.service` `active`，已同步 `d558f2a` 的全部后端代码，服务器低权限账号 `jixiang` 实跑 `npm test` **98/98 通过**。
+  - SSH 运维红线：详见 `D:\Jixiang\workspace\team-context\backend\交接\HANDOFF-FOR-NEXT-AGENT.md`（仅通过 `-i "D:\Jixiang\.runtime\server-keys\jixiang_aliyun_ecs_20261114"` 与 `StrictHostKeyChecking=yes` 调用 `E:\Git\usr\bin\ssh.exe`，严禁读取或泄露私钥内容）。
 
-1. **零停顿 iOS Push/Pop 页面过渡（已包含于 `942a483`）**
-   - [backPress.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/shared/backPress.ts)、[styles.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/shared/styles.css)、[App.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/app/App.tsx) 等实现了原生侧滑感前向（`forward`）与返回（`back`）View Transitions，移除点击后等待卡顿；测试覆盖见 [backPress.test.mjs](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/test/backPress.test.mjs)。
-2. **底部边栏高度统一与“我的”页横向防溢出**
-   - [student-global.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/student-global.css)：将学生端所有带底栏页面的 `.student-tabbar` 统一为 `min-height: 4.15rem`（约 `66.39px`），与“我的”页高度一致。
-   - [profile.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/profile.css)：`.student-profile` 增加 `overflow-x: hidden`，`.profile-hero` 收口对齐，避免“我的”页在移动端出现横向滚动条。
-3. **“今天 / 明天”日期切换弹性动效**
-   - [MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/MenuPage.tsx) & [menu-page.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/menu-page.css)：为 `.student-date-switch` 加入跟随切换方向（`data-anim-dir`、`data-active-index`）的弹性拉伸滑块过渡，保持 `reduced-motion` 回退。
-4. **底部导航栏液态切换动效**
-   - [StudentTabBar.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/components/StudentTabBar.tsx) & [student-global.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/student-global.css)：通过 `lastCommittedTab` + 双 `requestAnimationFrame` 实现切换时的液态双胶囊滑块过渡。
-5. **版本与视觉回退说明**
-   - 本轮中途曾尝试对学生端做全量“商业去 AI 化”界面改版（`1.32 / vc33`），用户真机体验后要求回退。已按用户要求将学生端页面完整回退至改版前视觉状态并保留上述第 2—4 项修复与动效，再升级打包为 `1.33 / vc34` 提交推送为 `cc7d59e`。后续除非用户再次明确要求大改视觉风格，否则请保留现有手账/卡片风格。
+---
 
-## 关键文件清单（`cc7d59e` 涉及文件）
+## 2. 本轮已合并完成并验证的内容（`d6111e6` → `d558f2a`）
 
-- [StudentTabBar.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/components/StudentTabBar.tsx)
-- [student-global.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/student-global.css)
-- [profile.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/profile.css)
-- [MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/MenuPage.tsx)
-- [menu-page.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/menu-page.css)
-- [build.gradle](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/build.gradle)（`versionCode 34` / `versionName "1.33"`）
+已将此前分散在 `docs/readme-status`、`origin/student/day3`、`origin/frontend/handoff-2026-11-17`（及 `origin/integration/baseline-2026-11-17`）三条分支上的功能整合进同一分支：
 
-## 已验证证据（`cc7d59e` 对应产物）
+1. **学生端（`apps/mobile/src/modules/student/`）**：
+   - **演示/真实模式切换按钮**（合入 `e334250`）：[StudentHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/StudentHome.tsx)、[student.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/student.css)，顶部常驻切换胶囊，`localStorage` 记忆键 `xiu.student.modeOverride.v1`。演示模式免登录直接进样例流；真实模式走 `useStudentSessionGate` 登录门禁。
+   - **7 天动态日期与 08:00–22:00 时段**（合入 `8be07ef`）：[sampleData.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/data/sampleData.ts)、[MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/MenuPage.tsx)、[menu-page.css](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/menu-page.css)、[SlotDiningPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/SlotDiningPage.tsx)，修复旧样例日期过期导致的「暂无可用时段」，补齐全部 8 道样例菜品 7 天库存。
+   - **学生开放注册与登录页**：[LoginPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/LoginPage.tsx)、[authView.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/utils/authView.ts)、[auth.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/shared/auth.ts)，对接 `POST /api/v1/auth/student-register` 与 `POST /api/v1/auth/login`。
+   - **确认订单页备注输入**（合入 `9cb2926`）：[ConfirmPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/ConfirmPage.tsx)、[OrderDetailPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/pages/OrderDetailPage.tsx)、[orderDraft.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/state/orderDraft.ts)、[remark.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/utils/remark.ts)，50 字上限 + 5 个常用口味快捷标签。
+   - **前端 History 路由栈**（合入 `138279a`）：[StudentHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/StudentHome.tsx) 接入 `pushState` / `popstate` 并保留手账/卡片风格视觉与 iOS View Transition 转场（未合入被用户否决的 `HomeFeed.tsx` 去 AI 化改版）。
+2. **商家端（`apps/mobile/src/modules/merchant/`，合入 `3e1710d`）**：
+   - 菜品新增、改名、改类别、删除（[MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/MenuPage.tsx)、[source.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/data/source.ts)）。
+   - 菜品口味/加料编辑器与预览（[DishCustomizeEditor.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/components/DishCustomizeEditor.tsx)）。
+   - 订单列表与详情页 15s 定时刷新并自动发现新单（[MerchantHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/MerchantHome.tsx)）。
+   - 真实模式档口登录页（[MerchantLoginPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/MerchantLoginPage.tsx)）与底部「菜单 / 订单 / 我的」导航栏。
+3. **管理端（`apps/mobile/src/modules/admin/`，合入 `9091620`）**：
+   - 管理端概览、订单、配置页重设计同步。
+4. **后端服务（`services/api/`，合入 `8cc9838` + `445f22c` + `85ed5b2`）**：
+   - 支持学生开放注册、认证限流、订单备注（`remark`）、商家菜品改名/改类别/删除（`DELETE /api/v1/merchant/menu/:dishId`），并取消学生下单时的时段名额上限（不再抛 `SLOT_FULL`）。
+5. **已执行测试证据**：
+   - 移动端单测：`node --test apps/mobile/test/*.mjs` -> **12/12 通过**
+   - 服务端单测：`npm --prefix services/api test` -> **98/98 通过**（本地与 ECS 均通过）
+   - 前端构建：`npm --prefix apps/mobile run build` -> **通过**（164 modules）
 
-- `node --test D:/Jixiang/workspace/campus-meal/apps/mobile/test/backPress.test.mjs`：**4/4 通过**。
-- `npm --prefix D:/Jixiang/workspace/campus-meal/apps/mobile run build`（含 `tsc --noEmit` 与 `vite build`）：**通过**（140 模块，耗时 `495ms`）。
-- `npx cap sync android`：**通过**（耗时 `0.143s`）。
-- `.\android\gradlew.bat -p android assembleDebug`：**BUILD SUCCESSFUL**（耗时 `26s`）。
-- `adb -s 00018158R001923 install -r .../app-debug.apk`：**`Success`**；真机 `dumpsys package com.xiujixiang.order` 实测确认 **`versionCode=34` / `versionName=1.33`**。
-- 注：无头浏览器的专门像素级复验仅针对 `1.29`—`1.31` 单项与中断的 `1.32` 做过；最终合并版 `1.33` 已完成构建测试与真机安装，**真机肉眼点按“首页/点餐/订单/我的”底栏液态动效、“今天/明天”切换与页面返回过渡仍待用户在 A024 上实际操作确认**。
-- 学生端真实登录联调仍依赖外部服务地址配置与有效学生账号，本轮未做新的真实服务端下单全链路重测。
+---
 
-## 协作者与模块边界注意事项
+## 3. 下一对话待解决的 3 个问题（已定位根因，待修改并打 APK 1.38）
 
-- 遵循仓库根 `AGENTS.md` 与 `apps/mobile/src/modules/student/AGENTS.md`：
-  - `student/` 归属 **魈嘶**，`merchant/` 归属 **漪x3**，`shared/`、`app/`、`admin/`、`android/` 归属 **spcuteag**。
-  - 修改任何端页面时严禁破坏既有路由、接口字段、幂等/定位/轮询业务契约与测试选择器，也不要擅自覆盖其他并行分支（如 `main`、`integration/merchant-shimaifu-1.17`、`frontend/admin-redesign-2026-11-16`）。
+用户在收尾前指出 3 个待修复问题（多为「演示端修了但真实端没修，或只改了 JS 没改 Android 原生层」），根因与精确修改位置如下：
 
-## 建议新 Agent 下一步
+### 问题 A：手机左划手势退出会直接退出 App（而非返回上一页）
+- **根因**：
+  1. `138279a` 只在学生端前端 JS（[StudentHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/StudentHome.tsx)）加了 `window.history.pushState` / `popstate`。
+  2. 但 Capacitor Android 工程既未安装 `@capacitor/app` 插件，[MainActivity.java](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/src/main/java/com/xiujixiang/order/MainActivity.java) 也只是空的 `public class MainActivity extends BridgeActivity {}`。
+  3. 查看 [BridgeActivity.java](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/BridgeActivity.java) 可知，Capacitor 默认不注册 `OnBackPressedCallback`。在 Android 13–16 真机上左划返回会直接触发 Activity 默认 `finish()` 关闭整个 App，根本不会调用 `webView.goBack()`。
+- **修复方案**：
+  1. 在 [MainActivity.java](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/src/main/java/com/xiujixiang/order/MainActivity.java) 的 `onCreate` 中通过 `getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) { ... })` 拦截系统返回：
+     - 若 `bridge != null && bridge.getWebView() != null`：先通过 `bridge.getWebView().evaluateJavascript` 或 `canGoBack()` 处理前端内页返回；若处于子模块顶层（`#/student`、`#/merchant`、`#/admin`、`#/system-check`）且无历史可退，则跳回 `#/`（角色选择入口）；**仅当当前已在 `#/`（或空 hash）且不可后退时，才调用 `setEnabled(false)` / `finish()` 退出 App**。
+  2. 检查商家端 [MerchantHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/MerchantHome.tsx) 与管理端 [AdminHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/admin/AdminHome.tsx) 的子页面切换（全部走 `window.location.hash` / `history`），确保三端左划都能逐级返回上一页。
 
-1. 先检查 `git status -sb`（注意本交接文件本身处于本地已修改状态，按需决定是否提交或忽略）。
-2. 向用户确认 **A024 真机（`1.33 / vc34`）** 上各动效与布局是否满意（底栏高度一致性、底栏液态过渡、“今天/明天”滑块过渡、iOS 进出转场是否丝滑无卡顿）。
-3. 若需继续推进并行分支集成或管理端/商家端/真实联调，先拉取并对比 `origin/main`（`e08292d`）、`origin/integration/merchant-shimaifu-1.17`（`48d3b31`）与 `origin/frontend/admin-redesign-2026-11-16`（`7fb3194`），确认整合范围后再动手，每次发包记得递增 `build.gradle` 的 `versionCode` / `versionName`。
+### 问题 B：档口端「菜单与库存」页面时段仍有人数限制
+- **根因**：
+  1. 魈嘶的 `85ed5b2` 只在后端 [orders.mjs](file:///D:/Jixiang/workspace/campus-meal/services/api/src/orders.mjs#L256-L261) 去掉了学生下单时的 `booked_count < capacity` 限制。
+  2. 但档口端前端 [MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/MenuPage.tsx#L934-L1025) 仍展示 `<h3>时段（接单名额）</h3>`、`名额 {slot.capacity}`、`剩余 {slot.remaining}（已满）` 以及「接单名额」输入框和 `“接单名额”指订单笔数上限...名额不能低于已占用`（对应 [menuEdit.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/state/menuEdit.ts) 的 `parseSlotPatch` 与后端 [orders.mjs](file:///D:/Jixiang/workspace/campus-meal/services/api/src/orders.mjs#L664-L685) 的 `updateMerchantSlot`）。
+- **修复方案**：
+  1. 在 [MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/MenuPage.tsx#L933-L1025) 将时段区块改为无名额上限展示（显示时段范围、已接单笔数、开放/关闭状态；编辑时段仅切换「开放接单」开关或不再限制名额下限，去掉「（已满）」红字警告与名额上限提示）。
+  2. 在 [menuEdit.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/state/menuEdit.ts) 与后端 [orders.mjs](file:///D:/Jixiang/workspace/campus-meal/services/api/src/orders.mjs#L682) 放开 `capacity < slot.booked_count` 的报错限制。
+
+### 问题 C：商家注册小概率能进去（演示模式能进、真实模式被踢走或找不到入口）
+- **根因**：
+  1. 从角色页点「商家端」进入 `#/merchant` 时默认是 `sample` 模式，此时 `viewFromRoute()` 返回 `{ name: 'setup' }`（商家注册/开店页），所以在演示模式下能看到注册页。
+  2. 但当用户点顶部「**真实 · 演示服务**」切换到真实模式时，[MerchantHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/MerchantHome.tsx#L313-L325) 的 `changeMode('real')` **强制执行了 `window.location.hash = ORDERS_ROUTE; setView({ name: 'list' })`**，直接把用户从 `setup` 注册页踢到了订单列表！
+  3. 切到真实模式后若未登录，会渲染 [MerchantLoginPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/MerchantLoginPage.tsx)，而该登录页上**没有「商家注册 / 开店」入口**；登录成功后 `handleMerchantLoggedIn()`（第 170–175 行）又强制跳去 `list`（订单列表）。
+  4. 此外，[MerchantHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/MerchantHome.tsx#L828) 的底部导航栏写了 `{merchantLoggedIn && <nav className='merchant-tabbar'>}`，导致演示模式下未登录真实账号时底栏（含「我的 → 店铺信息与入驻」）不显示。
+- **修复方案**：
+  1. 在 [MerchantHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/MerchantHome.tsx) 中：`changeMode()` 若当前已在 `setup`（`#/merchant` 或 `#/merchant/setup`），保持 `setup` 视图不跳走；底部导航栏在 `mode === 'sample' || merchantLoggedIn` 时均显示，并可直接进「开店/入驻」。
+  2. 在 [MerchantLoginPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/MerchantLoginPage.tsx) 增加醒目的「商家注册 / 开店」入口（或在登录成功后若原路由为 `setup` 则留在 `setup`），确保真实模式与演示模式都能 100% 稳定进入商家注册页。
+
+---
+
+## 4. 新对话直接复制的开场提示词（Prompt）
+
+```text
+请先阅读 D:\Jixiang\workspace\campus-meal\.planning\HANDOFF-NEXT-CHAT.md 与 .planning\STATE.md。
+当前基线在 D:\Jixiang\workspace\campus-meal 的 docs/readme-status 分支（已打 APK 1.37 / versionCode 38 并同步 ECS 39.96.195.158）。
+请按 HANDOFF-NEXT-CHAT.md 第 3 节已定位的根因，依次修复以下 3 个问题并打包 APK 1.38（versionCode 39）：
+1. 手机左划手势直接退出 App（在 MainActivity.java 增加 OnBackPressedCallback 联动 WebView 后退与角色首页回退，不再直接 finish App）；
+2. 档口端「菜单与库存」页面时段仍有人数/名额限制（移除档口端 MenuPage 时段名额限制展示与校验）；
+3. 商家注册小概率能进去（修复 MerchantHome 切换真实模式/登录时强制把 setup 跳回 list 的问题，补齐真实模式登录页与底栏的商家注册开店入口）。
+```

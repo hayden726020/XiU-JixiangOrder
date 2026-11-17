@@ -19,6 +19,10 @@
   - `npm --prefix services/api test`：**98/98 通过**。
   - `npm --prefix apps/mobile run build`（`tsc --noEmit && vite build`）：**通过**（164 modules，`dist/assets/index-DTJnadPC.js`）。
   - **APK 1.37（`versionCode 38`）**：[app-debug.apk](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk)，大小 `8,274,146` 字节，SHA-256 `cf2df765078abb7f2ec600be6f5abe709a3be06daadfe937b576ce31cf5c3134`。
+- **下一会话待修 3 项（已定位根因，详见 `HANDOFF-NEXT-CHAT.md` 第 3 节）**：
+  1. Android 原生左划返回直接退出 App：`MainActivity.java` 需注册 `OnBackPressedCallback` 联动 WebView `canGoBack()/goBack()` 与子模块回 `#/` 角色入口。
+  2. 档口端 `MenuPage.tsx` 时段仍显示接单名额上限与「已满」限制：需移除档口端时段名额限制展示与校验。
+  3. 商家注册仅在刚进演示模式时可见：`MerchantHome.tsx` 切换真实模式/登录时强制把 `setup` 重置为 `list`，需保留 `setup` 视图并在真实模式登录页与底栏常驻开放商家注册入口。
 
 ## 2026-11-17 已实现改动合并与 APK 1.36 构建（versionCode 37）
 
