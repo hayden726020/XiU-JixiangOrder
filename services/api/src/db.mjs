@@ -86,6 +86,22 @@ CREATE TABLE IF NOT EXISTS shops (
   updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS merchant_qualifications (
+  merchant_id TEXT PRIMARY KEY REFERENCES merchants(id),
+  business_license_name TEXT NOT NULL,
+  business_license_mime TEXT NOT NULL,
+  business_license_data TEXT NOT NULL,
+  food_permit_name TEXT NOT NULL,
+  food_permit_mime TEXT NOT NULL,
+  food_permit_data TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+  review_reason TEXT,
+  submitted_at INTEGER NOT NULL,
+  reviewed_at INTEGER,
+  reviewed_by TEXT,
+  version INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS dishes (
   id TEXT PRIMARY KEY,
   merchant_id TEXT NOT NULL REFERENCES merchants(id),

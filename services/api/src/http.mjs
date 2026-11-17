@@ -1,6 +1,6 @@
 import { ApiError, unavailable, validationError } from './errors.mjs';
 
-const MAX_BODY_BYTES = 64 * 1024;
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 export function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
