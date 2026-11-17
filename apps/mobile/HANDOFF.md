@@ -12,6 +12,7 @@
 - 本次通过稀疏克隆建立工作区 `E:\project\workspace\.git-sync`（只检出 `apps/mobile`），在其上创建分支 `frontend/handoff-2026-11-17` 提交并推送。
 - 2026-11-17 刷新修复提交：`98ff18d fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`；随后合并 `9cb2926` 形成 `ddd9785`。
 - 实际提交哈希与推送结果以本次回复中的 `git log -1` / `git ls-remote` 输出为准。
+- 2026-11-17 档口登录页提交：`81113c3 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`；同时把 19:10 基线之后并行完成的菜品自定义、品牌图片与档口视觉样式纳入远端。
 - GitHub HTTPS 连接在当前网络下间歇性 `Connection was reset`；重试可成功，不要据此判定仓库不可达。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
 - **本地 `frontend/android` 与 `frontend/capacitor.config.ts` 是本次为出包新生成的临时模板**：`versionCode 2`、`versionName "0.1.0"`，未覆盖远端正式工程。禁止把本地 `android/` 整目录覆盖到远端 `apps/mobile/android`。
@@ -53,7 +54,21 @@
   `src/modules/merchant/MerchantHome.tsx`、`src/modules/merchant/merchant.css`、
   `src/modules/merchant/pages/OrderListPage.tsx`、`pages/OrderDetailPage.tsx`、
   `pages/NewOrderDetailPage.tsx`、`pages/ReadyOrderDetailPage.tsx`。
-- 边界：样例模式不轮询、不显示刷新按钮；真实模式未登录时不发起订单请求。
+- 边界：样例模式不轮询、不显示刷新按钮；真实模式未登录时进入档口登录页，登录前不发起订单请求。
+
+### 2.5 档口端登录页与真实模式登录门（2026-11-17 本次新增）
+
+- 问题：真实模式此前只能依赖开发环境注入的演示密码一键登录；没有登录页面，未登录时页面只显示一条错误提示。
+- 新增档口登录页 `src/modules/merchant/pages/MerchantLoginPage.tsx` 与独立样式 `login.css`：
+  - 真实模式且未登录时直接渲染全屏登录页，不再展示订单与菜单区域；
+  - 提交后调用公共 `demoLogin`，并校验返回角色必须为 `MERCHANT`；学生/管理员账号会提示角色不匹配并清除会话；
+  - 错误提示区分账号密码错误、服务地址未配置、网络/服务不可用；
+  - 页面提供服务地址展示、「先看样例数据」「服务与登录自检」「返回角色入口」入口。
+- `MerchantHome.tsx` 调整：
+  - 登录成功自动跳转 `#/merchant/orders` 并加载真实菜单与订单；
+  - 真实横幅显示当前档口账号，新增「退出登录 / 切换档口账号」，调用公共 `logout` 并清除本地会话；
+  - 移除开发环境自动登录，登录页保留「使用本地演示凭据一键登录（开发环境）」（仅 `VITE_DEMO_MERCHANT_PASSWORD` 存在时显示）。
+- 边界：样例模式仍免登录；未登录不发起任何订单/菜单请求；接口失败不回退样例。
 
 ## 3 本次安装的工具链
 
@@ -88,6 +103,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 
 | 页面 | 地址 | 状态 |
 | --- | --- | --- |
+| 档口登录（真实模式未登录） | `#/merchant/orders?mode=real`（入口带 `?mode=real`） | 全屏登录页；登录成功才加载真实数据 |
 | 商家注册开店 | `#/merchant` | 档口端默认入口，直接进入注册第 1 步 |
 | 商家注册开店（别名） | `#/merchant/setup` | 与默认入口一致 |
 | 订单列表 | `#/merchant/orders` | 独立列表地址 |
@@ -115,6 +131,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 
 已通过：
 
+- 档口登录页提交 `81113c3`：`tsc --noEmit` 0 错误；Headless Edge + 本地模拟服务 11 项全部通过——真实模式未登录直接进入登录页、显示服务地址与样例/自检入口、不展示订单；登录成功进入真实订单列表并读到订单、横幅显示账号与退出入口；退出回登录页；样例模式免登录；样例切回真实重新要求登录。
 - 刷新修复提交 `98ff18d`：`tsc --noEmit` 0 错误；`vite build` 成功。
 - Headless Edge + 本地模拟服务（真实模式）自动验证 13 项全部通过：刷新按钮可点击、15 秒自动刷新、最近更新时间更新、新单自动进入「待接单」并提示、详情页刷新按钮与刷新完成、停留在详情页发现新单、无运行时异常或 `console.error`。
 - 合并基线 `ddd9785`：使用基线版注册页执行 `vite build` 成功；合并无冲突。
@@ -125,7 +142,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 已知问题（不属于本次档口改动）：
 
 - 合并基线后 `tsc --noEmit` 剩 1 个学生端既有类型错误：`src/modules/student/utils/orderCancelView.ts` 引用 `CancelRequest.decisionReason`，但 `student/types.ts` 的 `CancelRequest` 未声明该字段。需学生端负责人补类型；在修复前请用 `vite build` 出包，不要用会先跑 tsc 的 `npm run build`。
-- 本地 `frontend` 工作副本正在被并行同步改动；当前注册页 `OnboardingPage.tsx` 已引用 `wall-*.webp` 并带照片墙改动，可 `vite build`，但该改动**未纳入本次基线**（基线版注册页在 `.git-sync/apps/mobile`）。并行版本备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`；不要把未提交的并行改动当作基线推送。
+- 本地 `frontend` 工作副本与远端档口模块已同步到 `81113c3`；此前并行完成的注册页照片墙、菜品自定义与品牌图片改动均已纳入该提交，不再存在“只在本机未提交”的注册页版本。
 
 尚未验证：
 
@@ -136,7 +153,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 
 ## 7 新对话应优先做的事
 
-1. **先重打 APK**（本次修复只在源码，旧包不含）：在基线目录（`E:\project\workspace\.git-sync\apps\mobile` 或去掉并行注册页改动后的 `frontend`）执行 `vite build`，再按第 3 节命令执行 `gradlew.bat assembleDebug`；随后安装：
+1. **先重打 APK**（登录页与刷新修复均只在源码，旧包不含）：在基线目录（`E:\project\workspace\.git-sync\apps\mobile`）或已同步的 `frontend` 执行 `vite build`，再按第 3 节命令执行 `gradlew.bat assembleDebug`；随后安装：
 
    ```powershell
    & "D:\AndroidSdk\platform-tools\adb.exe" devices
@@ -145,9 +162,9 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 
    不能用数据线时，直接把 `app-debug.apk` 复制到手机存储，在文件管理器中点击安装（需允许“安装未知来源应用”）。
 
-   注意：`frontend` 当前有未纳入基线的并行注册页改动（照片墙），构建前确认使用基线版 `OnboardingPage.tsx`（在 `.git-sync/apps/mobile`，备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`）。合并基线还有 1 个学生端 tsc 类型错误，出包请直接跑 `vite build`，不要跑含 tsc 的 `npm run build`。
+   注意：合并基线还有 1 个学生端 tsc 类型错误，出包请直接跑 `vite build`，不要跑含 tsc 的 `npm run build`。
 
-2. 打开 App 验证：角色入口、档口端五个页面、地图定位授权弹窗、页面无白屏；在真实模式进入订单列表，确认「刷新列表」、15 秒自动刷新与新单提示；进入详情确认「刷新订单」。
+2. 打开 App 验证：角色入口、档口端登录页、地图定位授权弹窗、页面无白屏；带 `?mode=real` 进入真实模式时先出现档口登录页，登录成功后才读取真实菜单与订单；在订单列表确认「刷新列表」、15 秒自动刷新与新单提示；进入详情确认「刷新订单」；横幅「退出登录 / 切换档口账号」可回到登录页。
 3. 原生 App 里 `window.location.origin` 不是预览地址，`/api/v1` 相对地址不可用；需在应用内配置可访问的后端绝对地址。
 4. 若要发正式版本，应在远端 `apps/mobile/android`（versionCode 14 / 1.13）上构建并递增版本号，不要使用本地临时工程。
 5. 浏览器验收可用局域网预览：`vite dev --host 0.0.0.0 --port 5176` 或 `vite preview --host 0.0.0.0 --port 4173`；服务需重新启动，不要假定后台进程仍在运行。若要验收真实模式，需先准备可达的公共后端；仅用样例数据看不到刷新按钮。
@@ -168,8 +185,8 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 ## 9 Git 操作约定
 
 - 工作区：`E:\project\workspace\.git-sync`（稀疏检出 `apps/mobile`）。
-- 当前分支：`frontend/handoff-2026-11-17`，提交链 `ddd9785`（合并）→ `ca24fed`（详情页检测）→ 本次 docs 提交（以 `git log` 为准）。
-- 远端基线分支 `frontend/baseline-2026-11-17` 已同步到同一提交；只推专用分支，不推 `main`，不强推。
-- 提交信息：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`、`merge: 合并当前前端基线与档口订单刷新修复`、`docs(mobile): 更新当前基线、刷新验收与交接说明`、`fix(mobile): 订单详情页定时检测新订单并保留当前订单`。
+- 当前分支：`frontend/handoff-2026-11-17`，提交链 `ddd9785`（合并）→ `ca24fed`（详情页检测）→ `c02046c`（docs）→ `81113c3 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` → 本次 docs 提交（以 `git log` 为准）。
+- 远端基线分支 `frontend/baseline-2026-11-17` 已快进到同一提交；只推专用分支，不推 `main`，不强推。
+- 提交信息：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`、`merge: 合并当前前端基线与档口订单刷新修复`、`docs(mobile): 更新当前基线、刷新验收与交接说明`、`fix(mobile): 订单详情页定时检测新订单并保留当前订单`、`feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`。
 - GitHub 主站连接可能超时或 `Connection was reset`；重试或用 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用，远端与本地 SHA 一致。
 - 推送后用 `git log -1 --oneline`、`git status`、`git ls-remote` 核对。

@@ -5,6 +5,7 @@ import { createMerchantSource } from './data/source';
 import type {
   CancelDecision,
   CreateDishInput,
+  DailyMenuSelection,
   DiningMode,
   Dish,
   MenuDay,
@@ -16,6 +17,7 @@ import type {
   SourceResult,
 } from './data/types';
 import MenuPage from './pages/MenuPage';
+import MerchantLoginPage from './pages/MerchantLoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
@@ -31,8 +33,8 @@ import { formatClock, localInputToZonedIso, shortOrderId, statusView } from './s
 import type { DishPatch } from './state/menuEdit';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
 import { formatYuan } from './utils/money';
-import { demoLogin } from '../../shared/auth';
-import { getApiBaseInfo, saveStoredApiBaseUrl } from '../../shared/config';
+import { logout } from '../../shared/auth';
+import { getApiBaseInfo } from '../../shared/config';
 import { createRequestId } from '../../shared/requestId';
 import { getSession, subscribeSession, type Session } from '../../shared/session';
 import './merchant.css';
@@ -105,15 +107,16 @@ export default function MerchantHome() {
   const [orderPageInfo, setOrderPageInfo] = useState({ page: 1, pageSize: ORDERS_PAGE_SIZE, total: 0 });
   const [menu, setMenu] = useState<MenuDay | null>(null);
   const [slots, setSlots] = useState<SlotDay | null>(null);
+  const [dishLibrary, setDishLibrary] = useState<Dish[]>([]);
+  const [dishLibraryLoading, setDishLibraryLoading] = useState(false);
+  const [dishLibraryError, setDishLibraryError] = useState<string | null>(null);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingOrder, setRefreshingOrder] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
-  const [loginHint, setLoginHint] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
-  const autoLoginStarted = useRef(false);
   const listScrollTop = useRef(0);
   const restoreListScroll = useRef(false);
   const listRefreshInFlight = useRef(false);
@@ -127,9 +130,7 @@ export default function MerchantHome() {
   const devPassword = import.meta.env.DEV
     ? (import.meta.env.VITE_DEMO_MERCHANT_PASSWORD as string | undefined)
     : undefined;
-  const devApiBase = import.meta.env.DEV
-    ? (import.meta.env.VITE_API_BASE_URL as string | undefined)
-    : undefined;
+
 
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
 
@@ -156,28 +157,28 @@ export default function MerchantHome() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  async function loginDemo() {
-    if (!devPassword) return;
-    setLoginHint('正在使用本地演示凭据登录档口账号…');
-    try {
-      const loggedIn = await demoLogin('demo-merchant', devPassword);
-      setSession(loggedIn);
-      setLoginHint(null);
-    } catch {
-      setLoginHint('本地演示账号自动登录失败；请确认服务地址为 8787、演示密码已注入。');
+  function handleMerchantLoggedIn() {
+    clearActionState();
+    setNotice(null);
+    setView({ name: 'list' });
+    setOrderPage(1);
+    setDataVersion((current) => current + 1);
+    if (merchantRoute() !== ORDERS_ROUTE) {
+      window.location.hash = ORDERS_ROUTE;
     }
   }
 
-  useEffect(() => {
-    if (!import.meta.env.DEV || !devPassword || autoLoginStarted.current) {
-      return;
+  async function handleMerchantLogout() {
+    clearActionState();
+    setNotice(null);
+    try {
+      await logout();
+    } catch {
+      // logout 已在 finally 清除本地会话；服务端不可达时同样回到登录页。
     }
-    autoLoginStarted.current = true;
-    if (devApiBase && getApiBaseInfo().baseUrl !== devApiBase) {
-      saveStoredApiBaseUrl(devApiBase);
-    }
-    void loginDemo();
-  }, [devPassword, devApiBase]);
+    setView({ name: 'list' });
+    setDataVersion((current) => current + 1);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -556,6 +557,29 @@ export default function MerchantHome() {
     return result;
   }
 
+  async function loadDishLibrary() {
+    setDishLibraryLoading(true);
+    setDishLibraryError(null);
+    const result = await source.getDishLibrary(menuDate);
+    setDishLibraryLoading(false);
+    if (!result.ok) {
+      setDishLibraryError(result.error.message);
+      return;
+    }
+    setDishLibrary(result.data);
+  }
+
+  async function saveDailyMenu(items: DailyMenuSelection[], requestId: string) {
+    const result = await source.setDailyMenu(menuDate, { requestId, dishes: items });
+    if (result.ok) {
+      setMenu(result.data);
+      setNotice(
+        `今日菜单已保存：上架 ${result.data.dishes.length} 道菜；未勾选的菜品不会出现在学生端。`,
+      );
+    }
+    return result;
+  }
+
   async function deleteDish(dish: Dish, requestId: string) {
     const result = await source.deleteDish(menuDate, dish.dishId, {
       requestId,
@@ -611,6 +635,19 @@ export default function MerchantHome() {
     window.scrollTo(0, listScrollTop.current);
   }, [view.name]);
 
+  if (mode === 'real' && !merchantLoggedIn) {
+    return (
+      <MerchantLoginPage
+        session={session}
+        devDemoPassword={devPassword}
+        apiBaseUrl={apiBase.baseUrl}
+        apiBaseProblem={apiBase.problem}
+        onLoggedIn={handleMerchantLoggedIn}
+        onUseSample={() => changeMode('sample')}
+      />
+    );
+  }
+
   return (
     <section className={`module-panel merchant-panel${view.name === 'list' ? ' merchant-panel--order-list' : ''}${view.name === 'detail' && activeOrder?.status === 'NEW' ? ' merchant-panel--new-order-detail' : ''}${view.name === 'menu' && mode === 'sample' ? ' merchant-panel--sample-menu' : ''}${view.name === 'setup' ? ' merchant-panel--onboarding' : ''}`}>
       <div className="merchant-source">
@@ -632,23 +669,22 @@ export default function MerchantHome() {
       </div>
 
       {mode === 'sample' ? (
-        <SampleBanner />
+        view.name === 'setup' ? null : <SampleBanner />
       ) : (
         <div className="merchant-real-banner" role="status">
           <strong>真实数据 · 演示服务（DRAFT v0.3 联调候选）</strong>
           <span>服务地址：{apiBase.baseUrl ?? '未配置'}{apiBase.problem ? `（${apiBase.problem}）` : ''}</span>
-          {loginHint && <span>{loginHint}</span>}
-          {!merchantLoggedIn && devPassword && (
-            <button type="button" className="merchant-link-button" onClick={() => void loginDemo()}>
-              一键登录演示档口
-            </button>
-          )}
           <span>
             读取 GET /menu 与 GET /merchant/orders，失败不回退样例。
-            {merchantLoggedIn
-              ? ` 当前档口账号：${session?.user.displayName ?? ''}`
-              : ' 菜单与订单都需先登录档口演示账号；未登录不展示任何档口数据。'}
+            当前档口账号：{session?.user.displayName ?? ''}
           </span>
+          <button
+            type="button"
+            className="merchant-link-button merchant-logout-button"
+            onClick={() => void handleMerchantLogout()}
+          >
+            退出登录 / 切换档口账号
+          </button>
         </div>
       )}
 
@@ -720,6 +756,11 @@ export default function MerchantHome() {
           onSaveDish={saveDish}
           onCreateDish={createDish}
           onDeleteDish={deleteDish}
+          dishLibrary={dishLibrary}
+          dishLibraryLoading={dishLibraryLoading}
+          dishLibraryError={dishLibraryError}
+          onLoadDishLibrary={loadDishLibrary}
+          onSaveDailyMenu={saveDailyMenu}
           onGoSetup={openSetup}
           onSaveSlot={saveSlot}
           onBack={backToList}
