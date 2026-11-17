@@ -233,14 +233,17 @@ export default function HomeFeed({
   const [carouselPaused, setCarouselPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
-  const shopOf = (id: string) => shops.find((shop) => shop.merchantId === id && shop.active !== false) ?? null;
+  const shopOf = (id: string) =>
+    picker.cards.some((card) => card.merchantId === id && card.enterable)
+      ? shops.find((shop) => shop.merchantId === id && shop.active !== false) ?? null
+      : null;
   const slides = buildPolaroidSlides(picker.cards, shopOf);
   const recommendedDishes = pickHomeDishes(dishes, shopOf);
   const featuredDish = recommendedDishes[0] ?? null;
   const secondaryDishes = recommendedDishes.slice(1, 3);
   const noodleShop =
-    shops.find((shop) => /面|粉|饺/.test(shop.name) && shop.active !== false) ??
-    shops.find((shop) => shop.active !== false) ??
+    shops.find((shop) => /面|粉|饺/.test(shop.name) && shopOf(shop.merchantId) !== null) ??
+    shops.find((shop) => shopOf(shop.merchantId) !== null) ??
     null;
 
   useEffect(() => {

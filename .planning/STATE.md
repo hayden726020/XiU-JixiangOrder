@@ -2,6 +2,25 @@
 
 更新日期：2026-11-17。方案版本：APK-v2（增加开店、选店与学生开放注册后端扩展范围）。维护人：spcuteag。
 
+## 2026-11-17 四项体验与真实模式对齐修复、ECS 同步及 APK 1.38 构建（versionCode 39）
+
+- 按 `HANDOFF-NEXT-CHAT.md` 根因与用户补充项完成 4 项修复并重打 APK 1.38（`versionCode 39`）：
+  1. **手机左划手势逐级返回上一页（不再直接退出 App）**：
+     - [MainActivity.java](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/src/main/java/com/xiujixiang/order/MainActivity.java) 注册 `OnBackPressedCallback`，通过 `evaluateJavascript` 调用前端全局 `window.__xiuHandleBackPress()`。
+     - [backPress.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/shared/backPress.ts)、[StudentHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/StudentHome.tsx)、[MerchantHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/MerchantHome.tsx)、[AdminHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/admin/AdminHome.tsx) 接入 `registerModuleBackHandler`：先退回模块内上一级页面，在各端顶层再退回 `#/` 角色选择首页，仅在 `#/` 根入口才调用 `finish()` 退出 App。
+  2. **档口端「菜单与库存」移除时段名额限制展示与校验**：
+     - [MenuPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/MenuPage.tsx) 时段区改为「取餐时段（开放接单 · 不限名额）」展示与开关编辑，移除名额输入框与「（已满）」限制；[menuEdit.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/state/menuEdit.ts)、[source.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/data/source.ts)、[orders.mjs](file:///D:/Jixiang/workspace/campus-meal/services/api/src/orders.mjs) 移除 `capacity < occupied` 报错限制。
+  3. **商家注册 / 开店入口在演示与真实模式下均稳定可达**：
+     - [MerchantHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/MerchantHome.tsx) 修复切换模式（`changeMode`）和档口登录成功（`handleMerchantLoggedIn`）时强制把 `setup` 重置为 `list` 的问题；底部导航栏在样例与真实模式下均常驻显示并新增「注册开店」直达项；[MerchantLoginPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/MerchantLoginPage.tsx) 与 [OrderListPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/OrderListPage.tsx) 补齐「商家注册 / 开店」入口；[OnboardingPage.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/pages/OnboardingPage.tsx) 兼容已注册账号直接推进开店步骤。
+  4. **学生端与服务端真实演示模式合并 7 天动态日期与 08:00—22:00 时段**：
+     - [StudentHome.tsx](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/student/StudentHome.tsx) 真实模式 `allowedDates` 改为 `sampleDates(new Date())`（7 天）；[menuView.ts](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/src/modules/merchant/state/menuView.ts) 同步扩展为 7 天。
+     - 后端 [db.mjs](file:///D:/Jixiang/workspace/campus-meal/services/api/src/db.mjs) 与 [orders.mjs](file:///D:/Jixiang/workspace/campus-meal/services/api/src/orders.mjs) 将真实演示时段扩展为未来 7 天、每天 08:00—22:00 每 30 分钟共 28 个时段（`ensureDateSlots` 动态补齐 SQLite 时段，保留既有 `lunch` / `lunch-2` / `lunch-3` 时段 ID 兼容），已同步部署至阿里云 ECS `https://39.96.195.158/api/v1` 并实测 `2026-11-17` 至 `2026-11-23` 均返回 28 个时段。
+- 验证与产物：
+  - 移动端单测：`node --test apps/mobile/test/*.mjs` -> **14/14 通过**。
+  - 服务端单测：`npm --prefix services/api test` -> **98/98 通过**（本地与阿里云 ECS 均通过）。
+  - 前端生产构建：`npm --prefix apps/mobile run build` -> **通过**（164 modules，`dist/assets/index-BuoiRZtD.js`）。
+  - **APK 1.38（`versionCode 39`）**：[app-debug.apk](file:///D:/Jixiang/workspace/campus-meal/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk)，大小 `8,276,306` 字节，SHA-256 `1d4ff325583ee382ffc39bc5b617a1a0ccd19cad3b5e3c16589c1e73dae08ef7`。
+
 ## 2026-11-17 学生端订单详情已完成/已取消状态移除取消订单按键修复
 
 - 在 `orderStatusView.ts` 增加 `canShowCancelAction: boolean`（仅 `order.status !== 'COMPLETED' && order.status !== 'CANCELLED'` 时为 `true`），并在 `OrderDetailPage.tsx` 操作栏按 `statusView.canShowCancelAction` 条件渲染「申请取消」按钮，修复已完成/已取消订单详情仍显示取消订单按键的问题（同步更新 `team-context/frontend/src/modules/student/` 副本）。
