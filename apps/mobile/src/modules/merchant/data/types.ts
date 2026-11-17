@@ -147,9 +147,20 @@ export interface ChangeDiningModeInput {
 export interface UpdateDishInput {
   requestId: string;
   expectedVersion: number | null;
+  name: string;
+  type: DishType;
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+}
+
+export interface DeleteDishInput {
+  requestId: string;
+  expectedVersion: number | null;
+}
+
+export interface DeletedDish {
+  dishId: string;
 }
 
 export interface UpdateSlotInput {
@@ -220,5 +231,6 @@ export interface MerchantSource {
   setDelay: (id: string, input: SetDelayInput) => Promise<SourceResult<MerchantOrder>>;
   changeDiningMode: (id: string, input: ChangeDiningModeInput) => Promise<SourceResult<MerchantOrder>>;
   updateDish: (date: string, dishId: string, input: UpdateDishInput) => Promise<SourceResult<Dish>>;
+  deleteDish: (date: string, dishId: string, input: DeleteDishInput) => Promise<SourceResult<DeletedDish>>;
   updateSlot: (date: string, slotId: string, input: UpdateSlotInput) => Promise<SourceResult<Slot>>;
 }

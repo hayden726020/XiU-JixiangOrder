@@ -462,6 +462,7 @@ export function mapOrderResponse(payload: unknown, options: MapOrderOptions): St
     delay: requireDelay(payload, 'delay', where),
     pickupCode: requireNullableText(payload, 'pickupCode', where),
     demo: options.demo,
+    remark: readNullableText(payload, 'remark'),
   };
 }
 export interface MapOrdersOptions {

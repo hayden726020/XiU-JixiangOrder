@@ -15,6 +15,7 @@ import { apiError, apiErrorWithDishNames } from '../types';
 import { createRealStudentSource, type RealRequest } from './realSource';
 import { resolveStudentMode } from './mode';
 import { sumFen } from '../utils/money';
+import { ORDER_REMARK_MAX_LENGTH, sanitizeOrderRemark } from '../utils/remark';
 import { DISH_SHORTAGE_SUBMIT, SLOT_UNAVAILABLE_MESSAGE } from '../utils/submitTexts';
 import {
   CROWD_REFERENCE,
@@ -38,9 +39,7 @@ import type { DraftItemInput } from '../types';
 
 const DINING_MODES = new Set<DiningMode>(['DINE_IN', 'TAKEAWAY']);
 const SCENARIOS = new Set<DemoScenario>(['normal', 'slot-full', 'out-of-stock', 'timeout']);
-const SAME_ORDER_SLOT =
-  SLOTS.find((slot) => slot.date === DATES[0] && slot.start === '11:30' && slot.end === '12:00')
-    ?.slotId ?? '';
+const SAME_ORDER_SLOT = 'demo-slot-20261113-lunch';
 const SAME_ORDER_ITEMS = JSON.stringify([{ dishId: 'demo-dish-01', quantity: 1 }]);
 
 export interface StudentSourceOptions {
@@ -126,6 +125,12 @@ export function createStudentSource({
     if (!findSlot(input.slotId)) {
       throw apiError('VALIDATION_ERROR', '时段不存在。', false);
     }
+    if (
+      input.remark !== undefined
+      && (typeof input.remark !== 'string' || input.remark.length > ORDER_REMARK_MAX_LENGTH)
+    ) {
+      throw apiError('VALIDATION_ERROR', `备注不能超过 ${ORDER_REMARK_MAX_LENGTH} 个字。`, false);
+    }
   }
 
   function assertBusiness(input: CreateOrderInput): void {
@@ -174,7 +179,8 @@ export function createStudentSource({
     const isSameOrder =
       JSON.stringify(normalizeItems(input.items)) === SAME_ORDER_ITEMS &&
       input.slotId === SAME_ORDER_SLOT &&
-      input.diningMode === 'DINE_IN';
+      input.diningMode === 'DINE_IN' &&
+      !input.remark;
 
     if (isSameOrder) {
       return clone(DEMO_ORDER_001);
@@ -205,6 +211,7 @@ export function createStudentSource({
       pickupCode: null,
       demo: true,
       local: true,
+      remark: input.remark ? sanitizeOrderRemark(input.remark) : null,
     };
   }
 
@@ -213,6 +220,7 @@ export function createStudentSource({
       items: normalizeItems([...order.items].map(({ dishId, quantity }) => ({ dishId, quantity }))),
       slotId: order.slotId,
       diningMode: order.diningMode,
+      remark: order.remark ?? '',
     });
     createdByRequest.set(requestId, { fingerprint, order });
     pendingByRequest.set(requestId, order);
@@ -252,6 +260,7 @@ export function createStudentSource({
         items: normalizeItems(input.items),
         slotId: input.slotId,
         diningMode: input.diningMode,
+        remark: input.remark ?? '',
       });
 
       const prior = createdByRequest.get(input.requestId);

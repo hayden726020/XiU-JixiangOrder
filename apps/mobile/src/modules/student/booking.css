@@ -897,6 +897,105 @@
   color: var(--booking-blue);
 }
 
+.confirm-remark-card {
+  margin: 0.9rem 0 0;
+  padding: 0.85rem;
+  border: 1px solid #e7e0cf;
+  border-radius: 0.85rem;
+  background: #fffdf6;
+}
+
+.confirm-remark-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.confirm-remark-optional {
+  margin-left: 0.35rem;
+  color: #8a8377;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.confirm-remark-count {
+  color: #8a8377;
+  font-size: 0.7rem;
+}
+
+.confirm-remark-input {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #e3dccb;
+  border-radius: 0.6rem;
+  background: #fff;
+  color: #33404f;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.confirm-remark-input:disabled {
+  opacity: 0.6;
+}
+
+.confirm-remark-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.confirm-remark-tag {
+  padding: 0.28rem 0.6rem;
+  border: 1px solid #e3dccb;
+  border-radius: 999px;
+  background: #fff;
+  color: #6b6355;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.confirm-remark-tag.is-active {
+  border-color: #25834c;
+  background: #eaf5ec;
+  color: #1f6b3e;
+  font-weight: 600;
+}
+
+.confirm-remark-tag:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirm-remark-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+  color: #8a8377;
+  font-size: 0.7rem;
+}
+
+.confirm-remark-clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #a3302a;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.confirm-remark-clear:disabled {
+  color: #b9b2a6;
+  cursor: not-allowed;
+}
+
 .confirm-rule-card ul {
   margin: 0;
   padding-left: 1.15rem;

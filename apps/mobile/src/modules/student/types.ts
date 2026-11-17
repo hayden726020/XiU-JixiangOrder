@@ -107,6 +107,7 @@ export interface StudentOrder {
   pickupCode: string | null;
   demo: boolean;
   local?: boolean;
+  remark?: string | null;
 }
 
 export interface DraftItemInput {
@@ -119,6 +120,7 @@ export interface CreateOrderInput {
   items: DraftItemInput[];
   slotId: string;
   diningMode: DiningMode;
+  remark?: string;
 }
 
 export interface QueryOrderResultInput {
@@ -126,6 +128,7 @@ export interface QueryOrderResultInput {
   items?: DraftItemInput[];
   slotId?: string | null;
   diningMode?: DiningMode | null;
+  remark?: string;
 }
 
 export interface StudentSource {

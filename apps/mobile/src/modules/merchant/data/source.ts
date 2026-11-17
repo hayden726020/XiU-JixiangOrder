@@ -4,6 +4,8 @@ import { sampleMenu, sampleOrders, sampleSlots, SAMPLE_DATES } from './sampleDat
 import type {
   CreateDishInput,
   CreateShopInput,
+
+  DeletedDish,
   Dish,
   DishType,
   MenuDay,
@@ -533,6 +535,8 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
           body: {
             requestId: input.requestId,
             expectedVersion: input.expectedVersion,
+            name: input.name,
+            type: input.type,
             priceFen: input.priceFen,
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
@@ -544,6 +548,33 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return { ok: true, data: mapDish(data) };
       } catch (error) {
         return toFailure(error, '菜品保存失败，请重新读取菜单后重试。');
+      }
+    },
+    deleteDish: async (_date, dishId, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送删除请求。');
+      }
+      if (input.expectedVersion === null || !Number.isFinite(input.expectedVersion)) {
+        return fail(
+          'MENU_VERSION_MISSING',
+          '服务端 GET /menu 未返回菜品 version，暂不能安全删除；已记录给后端补字段。',
+        );
+      }
+      try {
+        const data = await apiRequest<{ id?: string } | undefined>(
+          `/merchant/menu/${encodeURIComponent(dishId)}`,
+          {
+            method: 'DELETE',
+            body: {
+              requestId: input.requestId,
+              expectedVersion: input.expectedVersion,
+            },
+          },
+        );
+        const returnedId = typeof data?.id === 'string' ? data.id : dishId;
+        return { ok: true, data: { dishId: returnedId } };
+      } catch (error) {
+        return toFailure(error, '删除菜品失败，请重新读取菜单后重试。');
       }
     },
     updateSlot: async (_date, slotId, input) => {
@@ -589,10 +620,24 @@ export function createMerchantSource(options: {
   }
 
   const orders = sampleOrders(scenario);
-  const dishWrites = new Map<string, { priceFen: number; availableQuantity: number; onSale: boolean; version: number }>();
+  const dishWrites = new Map<string, { name: string; type: DishType; unitPriceFen: number; availableQuantity: number; onSale: boolean; version: number }>();
   const slotWrites = new Map<string, { capacity: number; enabled: boolean; version: number }>();
   const addedDishes = new Map<string, Dish[]>();
+  const deletedDishes = new Set<string>();
   let nextDishId = 1;
+
+  function applyDishOverride(date: string, dish: Dish): Dish {
+    const override = dishWrites.get(`${date}:${dish.dishId}`);
+    return override ? { ...dish, ...override } : dish;
+  }
+
+  function findSampleDish(date: string, dishId: string): Dish | null {
+    const key = `${date}:${dishId}`;
+    if (deletedDishes.has(key)) return null;
+    const base = sampleMenu(date)?.dishes.find((dish) => dish.dishId === dishId)
+      ?? (addedDishes.get(date) ?? []).find((dish) => dish.dishId === dishId);
+    return base ? applyDishOverride(date, base) : null;
+  }
   let sampleProfile: MerchantProfile = {
     merchant: null,
     shop: null,
@@ -624,19 +669,11 @@ export function createMerchantSource(options: {
     getMenu: async (date: string): Promise<SourceResult<MenuDay>> => {
       const menu = sampleMenu(date);
       if (!menu) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
-      const dishes = menu.dishes.map((dish) => {
-        const override = dishWrites.get(`${date}:${dish.dishId}`);
-        if (!override) return dish;
-        return {
-          ...dish,
-          unitPriceFen: override.priceFen,
-          availableQuantity: override.availableQuantity,
-          onSale: override.onSale,
-          version: override.version,
-        };
-      });
-      const added = (addedDishes.get(date) ?? []).map((dish) => structuredClone(dish));
-      return { ok: true, data: { ...menu, dishes: [...dishes, ...added] } };
+      const all = [...menu.dishes, ...(addedDishes.get(date) ?? [])];
+      const dishes = all
+        .filter((dish) => !deletedDishes.has(`${date}:${dish.dishId}`))
+        .map((dish) => applyDishOverride(date, dish));
+      return { ok: true, data: { ...menu, dishes } };
     },
     getSlots: async (date: string): Promise<SourceResult<SlotDay>> => {
       const day = sampleSlots(date);
@@ -682,9 +719,7 @@ export function createMerchantSource(options: {
       return { ok: true, data: structuredClone(sampleProfile) };
     },
     createDish: async (input: CreateDishInput): Promise<SourceResult<Dish>> => {
-      if (!sampleProfile.shop) {
-        return fail('SHOP_REQUIRED', '请先创建店铺。');
-      }
+
       const dish: Dish = {
         dishId: `demo-dish-onboarding-${nextDishId}`,
         type: input.type,
@@ -721,38 +756,41 @@ export function createMerchantSource(options: {
       fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
     ),
     updateDish: async (date, dishId, input): Promise<SourceResult<Dish>> => {
-      const menu = sampleMenu(date);
-      const base = menu?.dishes.find((dish) => dish.dishId === dishId);
-      if (!base) return fail('DISH_NOT_FOUND', '菜品不存在或不属于当前样例日期。');
-      const key = `${date}:${dishId}`;
-      const override = dishWrites.get(key);
-      const current: Dish = override
-        ? {
-          ...base,
-          unitPriceFen: override.priceFen,
-          availableQuantity: override.availableQuantity,
-          onSale: override.onSale,
-          version: override.version,
-        }
-        : base;
+      const current = findSampleDish(date, dishId);
+      if (!current) return fail('DISH_NOT_FOUND', '菜品不存在、已删除或不属于当前样例日期。');
       const version = current.version ?? 1;
       if (input.expectedVersion === null || input.expectedVersion !== version) {
         return fail('ORDER_VERSION_CONFLICT', '菜品已在其他操作中更新，请重新读取菜单后再保存。');
       }
       const updated: Dish = {
         ...current,
+        name: input.name,
+        type: input.type,
         unitPriceFen: input.priceFen,
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
         version: version + 1,
       };
-      dishWrites.set(key, {
-        priceFen: updated.unitPriceFen,
+      dishWrites.set(`${date}:${dishId}`, {
+        name: updated.name,
+        type: input.type,
+        unitPriceFen: updated.unitPriceFen,
         availableQuantity: updated.availableQuantity,
         onSale: updated.onSale,
         version: updated.version ?? version + 1,
       });
       return { ok: true, data: updated };
+    },
+    deleteDish: async (date, dishId, input): Promise<SourceResult<DeletedDish>> => {
+      const current = findSampleDish(date, dishId);
+      if (!current) return fail('DISH_NOT_FOUND', '菜品不存在或已删除，请重新读取菜单。');
+      const version = current.version ?? 1;
+      if (input.expectedVersion === null || input.expectedVersion !== version) {
+        return fail('ORDER_VERSION_CONFLICT', '菜品已在其他操作中更新，请重新读取菜单后再删除。');
+      }
+      deletedDishes.add(`${date}:${dishId}`);
+      dishWrites.delete(`${date}:${dishId}`);
+      return { ok: true, data: { dishId } };
     },
     updateSlot: async (date, slotId, input): Promise<SourceResult<Slot>> => {
       const day = sampleSlots(date);
