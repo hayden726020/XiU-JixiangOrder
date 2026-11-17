@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createStudentSource } from './data/sampleSource';
 import { resolveStudentMode } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
@@ -110,10 +110,36 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
   const [shopNotice, setShopNotice] = useState('');
 
-  function goTo(next: StudentView): void {
+  function goTo(next: StudentView, nav: 'push' | 'back' = 'push'): void {
+    if (nav === 'back') {
+      window.history.back();
+      return;
+    }
+    window.history.pushState({ module: 'student', studentView: next }, '');
     setView(next);
     window.scrollTo(0, 0);
   }
+
+  function replaceTo(next: StudentView): void {
+    window.history.replaceState({ module: 'student', studentView: next }, '');
+    setView(next);
+    window.scrollTo(0, 0);
+  }
+
+  useEffect(() => {
+    window.history.replaceState({ module: 'student', studentView: 'shop' }, '');
+    const onPopState = (event: PopStateEvent) => {
+      const state = event.state as { module?: string; studentView?: StudentView } | null;
+      if (state && state.module === 'student') {
+        setView(state.studentView ?? 'shop');
+      } else {
+        setView('shop');
+      }
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   function openOrder(id: string): void {
     setOrderId(id);
@@ -156,7 +182,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
     return (
       <OrderListPage
         source={source}
-        onBack={() => goTo(backToShops ? 'shop' : 'menu')}
+        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
         backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
       />
@@ -169,7 +195,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
       <OrderDetailPage
         source={source}
         orderId={orderId}
-        onBack={() => goTo(backTarget)}
+        onBack={() => goTo(backTarget, 'back')}
         backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
       />
     );
@@ -194,7 +220,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
         source={source}
         draft={draft}
         shop={currentShop}
-        onBack={() => goTo('menu')}
+        onBack={() => goTo('menu', 'back')}
         onConfirm={() => goTo('confirm')}
       />
     );
@@ -206,9 +232,9 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
         source={source}
         draft={draft}
         shop={currentShop}
-        onBack={() => goTo('slot')}
-        onBackToMenu={() => goTo('menu')}
-        onSubmitted={(id) => openOrderFrom('menu', id)}
+        onBack={() => goTo('slot', 'back')}
+        onBackToMenu={() => goTo('menu', 'back')}
+        onSubmitted={(id) => { setDetailFrom('menu'); setOrderId(id); replaceTo('order'); }}
       />
     );
   }
@@ -219,7 +245,7 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
       source={source}
       draft={draft}
       shop={currentShop}
-      onBackToShops={() => goTo('shop')}
+      onBackToShops={() => goTo('shop', 'back')}
       onProceed={() => goTo('slot')}
       onViewSampleOrder={() => openOrderFrom('menu', 'demo-order-001')}
       onOpenOrders={() => openOrders('menu')}
