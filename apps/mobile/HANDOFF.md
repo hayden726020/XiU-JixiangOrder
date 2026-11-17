@@ -15,7 +15,7 @@
 - 2026-11-17 档口登录页提交：远端 `ca97747 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`（本地同内容提交 `81113c3`，提交树哈希一致）；随后文档提交远端 `bc114d6`（本地同内容 `44e8653`）。同时把 19:10 基线之后并行完成的菜品自定义、品牌图片与档口视觉样式纳入远端。
 - 2026-11-17 底部导航提交：`3e1710d feat(mobile): 档口端增加底部导航与我的页面`；菜单、订单、我的三个底部入口上线，「我的」页显示档口账号并提供开店、退出登录与返回角色入口。
 - 2026-11-17 入驻状态提交：远端 `ef68433 feat(mobile): 档口端注册完成后不再重复注册`（本地同内容提交 `9e59744`，文档提交 `12da07a`）；档口登录后读取 `GET /merchant/profile`，已开店账号不再显示“商家注册 / 开店”入口，进入入驻页显示只读资料；已有商家但未开店时跳过注册第 1 步。
-- 本次推送因 `github.com:443` 直连被阻断，改用 GitHub API 创建同内容提交并更新分支引用（远端 `ef68433`）；远端提交哈希与本地不同，但提交树内容一致。
+- 本次推送因 `github.com:443` 直连被阻断，改用 GitHub API 创建同内容提交并更新分支引用（功能提交 `ef68433`，其后接文档提交）；远端分支头提交树与本地同内容提交一致。
 - GitHub HTTPS 连接在当前网络下间歇性 `Connection was reset`；重试可成功，不要据此判定仓库不可达。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
 - **本地 `frontend/android` 与 `frontend/capacitor.config.ts` 是本次为出包新生成的临时模板**：`versionCode 2`、`versionName "0.1.0"`，未覆盖远端正式工程。禁止把本地 `android/` 整目录覆盖到远端 `apps/mobile/android`。
