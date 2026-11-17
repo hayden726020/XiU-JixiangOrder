@@ -253,15 +253,12 @@ export function createOrder({ db, clock, user, body }) {
         }
       }
 
-      const slotChanged = db
+      db
         .prepare(
           `UPDATE slots SET booked_count = booked_count + 1, version = version + 1
-           WHERE id = ? AND enabled = 1 AND booked_count < capacity`,
+           WHERE id = ? AND enabled = 1`,
         )
         .run(slot.id);
-      if (slotChanged.changes !== 1) {
-        throw conflict('SLOT_FULL', '该时段名额已满，请选择其他时段。');
-      }
 
       const totalFen = dishes.reduce((sum, { dish, quantity }) => sum + dish.price_fen * quantity, 0);
       const orderId = newId('ord');
@@ -682,7 +679,7 @@ export function listMenu({ db, clock, query }) {
       capacity: slot.capacity,
       booked: slot.booked_count,
       remainingCapacity: Math.max(0, slot.capacity - slot.booked_count),
-      enabled: slot.enabled === 1 && slot.end_at > now && slot.booked_count < slot.capacity,
+      enabled: slot.enabled === 1 && slot.end_at > now,
       version: slot.version,
     }));
   const dishes = db

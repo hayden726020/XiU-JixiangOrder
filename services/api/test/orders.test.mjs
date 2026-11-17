@@ -89,7 +89,7 @@ test('只剩一份时并发下单最多成功一笔', async () => {
   assert.equal(count, 1);
 });
 
-test('只剩一个名额时并发下单最多成功一笔', async () => {
+test('并发下单不受时段名额限制', async () => {
   const token = await ctx.login('student');
   ctx.db.prepare('UPDATE slots SET capacity = 1, booked_count = 0 WHERE id = ?').run(SLOT_TODAY);
   const [first, second] = await Promise.all([
@@ -97,9 +97,9 @@ test('只剩一个名额时并发下单最多成功一笔', async () => {
     placeOrder(token, 'race-slot-2'),
   ]);
   const successes = [first, second].filter((response) => response.status === 201);
-  assert.equal(successes.length, 1);
+  assert.equal(successes.length, 2);
   const slot = ctx.db.prepare('SELECT booked_count FROM slots WHERE id = ?').get(SLOT_TODAY);
-  assert.equal(slot.booked_count, 1);
+  assert.equal(slot.booked_count, 2);
 });
 
 test('已结束时段不能下单', async () => {
@@ -174,14 +174,14 @@ test('菜单只允许今天或明天，并返回剩余名额', async () => {
   assert.equal(today.body.data.slots.length, 3);
   assert.equal(today.body.data.slots[0].remainingCapacity, 20);
   assert.equal(today.body.data.slots[2].remainingCapacity, 0);
-  assert.equal(today.body.data.slots[2].enabled, false);
+  assert.equal(today.body.data.slots[2].enabled, true);
   assert.ok(today.body.data.dishes.length >= 1);
 
   const fullSlot = await placeOrder(await ctx.login('student'), 'full-slot-1', {
     slotId: 'slot-2026-11-13-lunch-3',
   });
-  assert.equal(fullSlot.status, 409);
-  assert.equal(fullSlot.body.error.code, 'SLOT_FULL');
+  assert.equal(fullSlot.status, 201);
+  assert.equal(fullSlot.body.data.slotId, 'slot-2026-11-13-lunch-3');
 
   const tomorrow = await ctx.api('GET', '/menu?date=2026-11-14');
   assert.equal(tomorrow.status, 200);
