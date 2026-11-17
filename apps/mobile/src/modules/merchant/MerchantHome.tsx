@@ -281,6 +281,17 @@ export default function MerchantHome() {
     }
   }
 
+  async function checkNewOrders() {
+    if (listRefreshInFlight.current) return;
+    listRefreshInFlight.current = true;
+    try {
+      const result = await source.getOrders(1, ORDERS_PAGE_SIZE);
+      if (result.ok) rememberOrders(result.data.orders, true);
+    } finally {
+      listRefreshInFlight.current = false;
+    }
+  }
+
   function clearActionState() {
     if (actionTimer.current !== null) {
       clearTimeout(actionTimer.current);
@@ -413,6 +424,7 @@ export default function MerchantHome() {
       if (document.visibilityState === 'hidden') return;
       if (detailId) {
         void refreshOrder(detailId, { silent: true });
+        void checkNewOrders();
         return;
       }
       void refreshOrders({ silent: true });
