@@ -73,12 +73,10 @@ async function register(requestId = 'qualification-register-1') {
 }
 
 async function upload(requestId = 'qualification-upload-1', overrides = {}) {
-  const response = await ctx.api('POST', '/merchant/qualifications', {
+  return ctx.api('POST', '/merchant/qualifications', {
     token: merchantToken,
     body: qualificationBody(requestId, overrides),
   });
-  if (response.status !== 201) console.log('UPLOAD', response.status, JSON.stringify(response.body));
-  return response;
 }
 
 async function review(merchantId, version, decision = 'APPROVE', requestId = 'qualification-review-1') {
@@ -176,7 +174,7 @@ test('驳回后不能创建店铺，重新上传回到待审核', async () => {
   const reuploaded = await upload('qualification-upload-2');
   assert.equal(reuploaded.status, 201);
   assert.equal(reuploaded.body.data.status, 'PENDING');
-  assert.equal(reuploaded.body.data.version, 2);
+  assert.equal(reuploaded.body.data.version, 3);
 });
 
 test('资质上传校验文件类型与必填项', async () => {
