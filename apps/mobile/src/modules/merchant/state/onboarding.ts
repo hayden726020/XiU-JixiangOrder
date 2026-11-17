@@ -13,7 +13,6 @@ export const DISH_TYPE_OPTIONS: ReadonlyArray<{ value: DishType; label: string }
 ];
 
 export type OnboardingField =
-  | 'merchantName'
   | 'contactName'
   | 'contactPhone'
   | 'shopName'
@@ -25,7 +24,6 @@ export type OnboardingField =
   | 'quantityText';
 
 export interface MerchantRegistrationDraft {
-  merchantName: string;
   contactName: string;
   contactPhone: string;
 }
@@ -94,15 +92,11 @@ export function validateMerchantRegistration(
   draft: MerchantRegistrationDraft,
 ): OnboardingResult<MerchantRegistrationDraft> {
   const errors: OnboardingErrors = {};
-  const merchantName = trimText(draft.merchantName);
   const contactName = trimText(draft.contactName);
   const contactPhone = normalizePhone(draft.contactPhone);
 
-  if (merchantName.length < 2 || merchantName.length > 30) {
-    errors.merchantName = '商家名称需为 2—30 个字符。';
-  }
   if (contactName.length < 2 || contactName.length > 20) {
-    errors.contactName = '联系人需为 2—20 个字符。';
+    errors.contactName = '店铺负责人需为 2—20 个字符。';
   }
   if (!/^1[3-9]\d{9}$/.test(contactPhone)) {
     errors.contactPhone = '请输入 11 位手机号。';
@@ -111,7 +105,7 @@ export function validateMerchantRegistration(
   if (Object.keys(errors).length > 0) {
     return { ok: false, errors };
   }
-  return { ok: true, value: { merchantName, contactName, contactPhone } };
+  return { ok: true, value: { contactName, contactPhone } };
 }
 
 export function validateShop(draft: ShopDraft): OnboardingResult<ShopDraft> {
