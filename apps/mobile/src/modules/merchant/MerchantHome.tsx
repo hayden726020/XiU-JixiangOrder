@@ -10,6 +10,7 @@ import type {
   Dish,
   MenuDay,
   MerchantOrder,
+  MerchantProfile,
   MerchantScenario,
   OrderAdvanceAction,
   Slot,
@@ -75,7 +76,8 @@ function orderIdFromRoute(route: string): string | null {
 
 function viewFromRoute(): View {
   const route = merchantRoute();
-  if (route === MERCHANT_ROUTE || route === SETUP_ROUTE) return { name: 'setup' };
+  if (route === SETUP_ROUTE) return { name: 'setup' };
+  if (route === MERCHANT_ROUTE) return { name: 'list' };
   if (route === MENU_ROUTE) return { name: 'menu' };
   if (route === ORDERS_ROUTE) return { name: 'list' };
   if (route === MY_ROUTE) return { name: 'my' };
@@ -102,6 +104,9 @@ export default function MerchantHome() {
     today,
   ));
   const [notice, setNotice] = useState<string | null>(null);
+  const [profile, setProfile] = useState<MerchantProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{ code: string; message: string } | null>(null);
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -128,6 +133,7 @@ export default function MerchantHome() {
   const knownOrderIds = useRef<Set<string>>(new Set());
 
   const source = useMemo(() => createMerchantSource({ mode, scenario }), [mode, scenario]);
+  const isSetupView = view.name === 'setup';
   const [session, setSession] = useState<Session | null>(getSession);
   const merchantLoggedIn = session?.user.role === 'MERCHANT';
   const apiBase = getApiBaseInfo();
@@ -149,7 +155,10 @@ export default function MerchantHome() {
       } else if (route === MENU_ROUTE) {
         setView({ name: 'menu' });
         setNotice(null);
-      } else if (route === MERCHANT_ROUTE || route === SETUP_ROUTE) {
+      } else if (route === SETUP_ROUTE) {
+        setView({ name: 'setup' });
+        setNotice(null);
+      } else if (route === MERCHANT_ROUTE) {
         setView({ name: 'setup' });
         setNotice(null);
       } else if (route === ORDERS_ROUTE) {
@@ -190,25 +199,36 @@ export default function MerchantHome() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+
     setOrdersError(null);
     setMenuError(null);
     setOrders([]);
     setMenu(null);
     setSlots(null);
+    setProfileError(null);
+    setProfileLoading(mode === 'real' && merchantLoggedIn);
+    if (mode === 'sample') {
+      setProfile(null);
+    }
+
     if (mode === 'real' && !merchantLoggedIn) {
+      setProfile(null);
+      setProfileLoading(false);
       setOrdersError('真实模式需要先登录档口演示账号，未登录不读取订单与菜单。');
       setMenuError('真实模式需要先登录档口演示账号，未登录不读取订单与菜单。');
       setOrderPageInfo({ page: 1, pageSize: ORDERS_PAGE_SIZE, total: 0 });
       setLoading(false);
+      setProfileLoading(false);
       return () => {
         alive = false;
       };
     }
     void (async () => {
-      const [ordersResult, menuResult, slotsResult] = await Promise.all([
+      const [ordersResult, menuResult, slotsResult, profileResult] = await Promise.all([
         source.getOrders(orderPage, ORDERS_PAGE_SIZE),
         source.getMenu(menuDate),
         source.getSlots(menuDate),
+        source.getProfile(),
       ]);
       if (!alive) return;
       if (ordersResult.ok) {
@@ -232,7 +252,15 @@ export default function MerchantHome() {
       } else if (menuResult.ok) {
         setMenuError(slotsResult.error.message);
       }
+      if (profileResult.ok) {
+        setProfile(profileResult.data);
+        setProfileError(null);
+      } else {
+        setProfileError(profileResult.error.message);
+      }
+      setProfileLoading(false);
       setLoading(false);
+      setProfileLoading(false);
     })();
     return () => {
       alive = false;
@@ -720,6 +748,7 @@ export default function MerchantHome() {
           orders={orders}
           scenario={scenario}
           isSample={mode === 'sample'}
+          onboardingCompleted={profile?.onboardingStep === 'SHOP_CREATED'}
           loading={loading}
           error={ordersError}
           page={orderPageInfo.page}
@@ -786,6 +815,10 @@ export default function MerchantHome() {
           mode={mode}
           session={session}
           source={source}
+          profile={profile}
+          profileLoading={profileLoading}
+          profileError={profileError}
+          onProfileChange={setProfile}
 
           onBack={backToList}
           onCancel={exitMerchant}
@@ -811,7 +844,7 @@ export default function MerchantHome() {
               <span>{apiBase.baseUrl ?? '未配置'}</span>
             </div>
             <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openSetup}>
-              <span>店铺信息与入驻</span>
+              <span>{profile?.onboardingStep === 'SHOP_CREATED' ? '店铺信息' : '店铺信息与入驻'}</span>
               <span className='merchant-my__arrow'>→</span>
             </button>
             {mode === 'real' && merchantLoggedIn && (
@@ -825,7 +858,7 @@ export default function MerchantHome() {
         </section>
       )}
 
-      {merchantLoggedIn && (
+      {(merchantLoggedIn || mode === 'sample') && !isSetupView && (
       <nav className='merchant-tabbar' aria-label='底部导航'>
         <button
           type='button'
@@ -853,7 +886,7 @@ export default function MerchantHome() {
         </button>
         <button
           type='button'
-          className={`merchant-tab-item${view.name === 'my' || view.name === 'setup' ? ' is-active' : ''}`}
+          className={`merchant-tab-item${view.name === 'my' ? ' is-active' : ''}`}
           onClick={openMy}
         >
           <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>

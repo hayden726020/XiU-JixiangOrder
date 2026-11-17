@@ -132,43 +132,101 @@ export function deriveShopPickerState({
   };
 }
 
+export type StallPhotoKey = 'dazhong' | 'fengwei' | 'mianshi';
+export type CanteenGroup = '一食堂' | '二食堂' | 'other';
+
 export interface StallVisualMeta {
   title: string;
   tag: string;
-  photoKey: 'dazhong' | 'fengwei' | 'mianshi';
+  location: string;
+  specialties: string;
+  statusLabel: string;
+  isOpen: boolean;
+  featureLabel: string;
+  featureKind: 'reservable' | 'popular';
+  canteenGroup: CanteenGroup;
+  photoKey: StallPhotoKey;
   photoAlt: string;
 }
 
-export function resolveStallVisual(card: ShopCardView, index: number): StallVisualMeta {
+function inferCanteenGroup(card: ShopCardView): CanteenGroup {
+  const combined = `${card.title} ${card.canteenText}`;
+  if (/二食堂|canteen-02/i.test(combined)) return '二食堂';
+  if (/一食堂|canteen-01/i.test(combined)) return '一食堂';
+  return 'other';
+}
+
+export function resolveStallVisual(
+  card: ShopCardView,
+  index: number,
+  dishNames: string[] = [],
+): StallVisualMeta {
   const name = card.title;
-  if (/大众|家常/.test(name) || index === 0) {
+  const canteenGroup = inferCanteenGroup(card);
+  const isOpen = card.enterable;
+  const statusLabel = isOpen ? '营业中' : card.orderableText;
+  const dishSummary = dishNames.slice(0, 3).join(' · ');
+
+  if (/面|饺|粉/.test(name)) {
     return {
-      title: '大众窗口',
-      tag: '家常热菜',
-      photoKey: 'dazhong',
-      photoAlt: '大众窗口·家常热菜档口',
-    };
-  }
-  if (/小炒|风味/.test(name) || index === 1) {
-    return {
-      title: '风味小炒',
-      tag: '现做小炒',
-      photoKey: 'fengwei',
-      photoAlt: '风味小炒·现做小炒档口',
-    };
-  }
-  if (/面|饺/.test(name) || index === 2) {
-    return {
-      title: '面食档',
+      title: name,
       tag: '面食 · 饺子',
+      location: canteenGroup === '二食堂' ? '二食堂 · 一楼' : '一食堂 · 一楼',
+      specialties: card.demo ? '手工拉面 · 经典拌面 · 刀削面' : dishSummary || card.orderableText,
+      statusLabel,
+      isOpen,
+      featureLabel: '支持预约取餐',
+      featureKind: 'reservable',
+      canteenGroup,
       photoKey: 'mianshi',
-      photoAlt: '面食档·面食饺子档口',
+      photoAlt: `${name}档口`,
     };
   }
+  if (/大众|家常/.test(name)) {
+    return {
+      title: name,
+      tag: '家常热菜',
+      location: canteenGroup === '二食堂' ? '二食堂 · 一楼' : '一食堂 · 一楼',
+      specialties: card.demo ? '热菜现炒 · 多种套餐 · 经济实惠' : dishSummary || card.orderableText,
+      statusLabel,
+      isOpen,
+      featureLabel: '人气档口',
+      featureKind: 'popular',
+      canteenGroup,
+      photoKey: 'dazhong',
+      photoAlt: `${name}档口`,
+    };
+  }
+  if (/小炒|风味/.test(name)) {
+    return {
+      title: name,
+      tag: '现做小炒',
+      location: canteenGroup === '二食堂' ? '二食堂 · 二楼' : '一食堂 · 二楼',
+      specialties: card.demo ? '现炒盖饭 · 黑椒鸡腿 · 特色小炒' : dishSummary || card.orderableText,
+      statusLabel,
+      isOpen,
+      featureLabel: '支持预约取餐',
+      featureKind: 'reservable',
+      canteenGroup,
+      photoKey: 'fengwei',
+      photoAlt: `${name}档口`,
+    };
+  }
+  const fallbackLocation =
+    canteenGroup !== 'other'
+      ? `${canteenGroup} · 校内档口`
+      : card.canteenText.replace(/^所属食堂：/, '') || '校内食堂';
   return {
     title: name,
     tag: card.demo ? '样例档口' : '校内档口',
-    photoKey: index % 3 === 0 ? 'dazhong' : index % 3 === 1 ? 'fengwei' : 'mianshi',
+    location: fallbackLocation,
+    specialties: dishSummary || card.orderableText,
+    statusLabel,
+    isOpen,
+    featureLabel: isOpen ? '支持预约取餐' : '暂不可预约',
+    featureKind: 'reservable',
+    canteenGroup,
+    photoKey: index % 3 === 0 ? 'mianshi' : index % 3 === 1 ? 'dazhong' : 'fengwei',
     photoAlt: `${name}档口`,
   };
 }

@@ -11,17 +11,18 @@
 
 ## 当前已完成状态
 
-- 档口端默认入口 `#/merchant` 是商家注册第 1 步；`#/merchant/setup` 为同一页面。
+- 档口端默认入口 `#/merchant` 进入订单列表；`#/merchant/setup` 是商家注册 / 开店页。
 - 订单列表 `#/merchant/orders`，待接单详情 `#/merchant/orders/demo-order-001`，可取餐详情 `#/merchant/orders/demo-order-003`，菜单 `#/merchant/menu`。
 - 开店流程只有“商家注册 → 创建店铺”两步；商家名称和新增菜品已彻底删除。
 - 保存后“完成”返回订单列表；第 1 步“取消”返回角色入口 `#/`。
 - 刷新修复提交 `98ff18d` 已通过 `tsc --noEmit` 与 `vite build`；上一轮在 390px 视口验证五个页面与流程。
 - 2026-11-17 新增档口登录页 `src/modules/merchant/pages/MerchantLoginPage.tsx`：真实模式未登录时直接进入全屏登录页，登录成功后才读取真实菜单与订单；真实横幅显示当前档口账号，并提供「退出登录 / 切换档口账号」。登录页同时提供「先看样例数据」「服务与登录自检」「返回角色入口」。
-- 当前基线 `81113c3 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` 已纳入登录页、并行完成的注册页照片墙、菜品自定义、品牌图片与档口视觉样式。**不要回退这些功能**。
+- 当前基线 `ca97747`（本地同内容 `81113c3`）已纳入登录页、并行完成的注册页照片墙、菜品自定义、品牌图片与档口视觉样式；`3e1710d feat(mobile): 档口端增加底部导航与我的页面` 增加菜单/订单/我的三个底部入口，我的页显示档口账号并提供开店、退出登录与返回角色入口。**不要回退这些功能**。
+- 最新提交 `9e59744 feat(mobile): 档口端注册完成后不再重复注册`：真实模式登录后读取 `GET /merchant/profile`；已开店账号不再显示“商家注册 / 开店”入口，入驻页显示只读资料；已有商家未开店时跳过注册第 1 步；退出登录只清除会话，服务端注册数据保留。
 - 登录页已用 Headless Edge + 本地模拟服务验证 11 项全通过：未登录进入登录页、显示服务地址与入口、不展示订单；登录成功进入真实订单列表并读到订单；退出回登录页；样例模式免登录；切回真实模式重新要求登录。
 - 订单刷新：真实模式下订单列表与详情每 15 秒自动刷新；列表有「刷新列表」按钮和最近更新时间；待接单/可取餐/普通详情有「刷新订单」按钮；发现新单会提示并自动进入「待接单」分组；写操作成功后重新拉取列表。
-- 合并基线后 `tsc --noEmit` 还剩 1 个学生端既有类型错误（`orderCancelView.ts` 的 `CancelRequest.decisionReason`），不是档口改动引入；出包先用 `vite build`，不要用会先跑 tsc 的 `npm run build`。
-- `frontend` 工作副本当前有未纳入基线的并行注册页改动（照片墙，引用 `wall-*.webp`，可构建）；基线版注册页在 `.git-sync/apps/mobile`，并行版本备份在 `frontend/.runtime/OnboardingPage.parallel.tsx`。
+- 当前工作副本 `tsc --noEmit` 0 错误；`vite build` 成功。出包仍优先直接执行 `vite build`。
+- `frontend` 工作副本与远端已同步注册页照片墙、学生端首页改动与本次入驻状态改动；`.runtime/OnboardingPage.parallel.tsx` 只是历史备份，不参与构建。
 - `dist/` 已更新，但 debug APK 仍是上一轮产物：
   `E:\project\workspace\frontend\android\app\build\outputs\apk\debug\app-debug.apk`
 - APK 尚未安装到手机，`adb devices` 为空；不要宣称已完成真机验收。
@@ -38,7 +39,7 @@
 ## Git 基线
 
 - 远端：`https://github.com/hayden726020/XiU-JixiangOrder.git`，默认分支 `main`。
-- 远端基线分支：`frontend/baseline-2026-11-17`；提交链 `ddd9785 merge` → `ca24fed fix(mobile): 订单详情页定时检测新订单并保留当前订单` → `ca97747 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` → `bc114d6 docs(mobile): 记录档口登录页、基线提交与验收步骤`。
+- 远端基线分支：`frontend/baseline-2026-11-17`；提交链 `ddd9785 merge` → `ca24fed fix(mobile): 订单详情页定时检测新订单并保留当前订单` → `ca97747 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` → `3e1710d feat(mobile): 档口端增加底部导航与我的页面` → 本次 docs 提交。
 - 本次分支 `frontend/handoff-2026-11-17` 已与基线分支同步到同一远端提交。远端哈希与本地同内容提交（`81113c3`/`44e8653`）不同但提交树一致；下次操作前先 `git fetch` 核对，不要直接强推本地提交。
 - GitHub HTTPS 会间歇性超时或 `Connection was reset`；重试即可，或加 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用。
 - 远端没有 `frontend/`；本地副本对应远端 `apps/mobile`。
@@ -79,16 +80,16 @@
 ## 验证要求
 
 ```powershell
-& $node "node_modules\typescript\bin\tsc" --noEmit   # 当前会剩 1 个学生端既有类型错误
-& $node "node_modules\vite\bin\vite.js" build        # 基线版注册页可通过
+& $node "node_modules\typescript\bin\tsc" --noEmit   # 当前 0 错误
+& $node "node_modules\vite\bin\vite.js" build        # 通过
 ```
 
 至少验证：
 
-1. `#/merchant` 默认进入注册页，页面无商家名称、无新增菜品。
-2. 联系人、联系电话校验与两步开店流程。
+1. `#/merchant` 默认进入订单列表；`#/merchant/setup` 进入注册页，页面无商家名称、无新增菜品。
+2. 未注册账号：联系人、联系电话校验与两步开店流程；已有商家未开店：第 1 步只读、直接创建店铺；已开店：入驻页只读展示且订单列表无注册入口。
 3. `#/merchant/orders` 列表及详情返回。
-4. 带 `?mode=real` 时未登录进入档口登录页，不展示订单；登录成功进入真实订单列表；退出后回登录页。
+4. 带 `?mode=real` 时未登录进入档口登录页，不展示订单；登录成功进入真实订单列表；退出后回登录页，再次登录仍识别已注册状态。
 5. 真实模式订单列表显示「刷新列表」与自动刷新说明；等待 15 秒或手动刷新，最近更新时间变化。
 6. 新增订单后 15 秒内自动进入「待接单」并出现“发现 N 笔新订单”提示；详情页「刷新订单」可用且无错误。
 7. 390px 视口无横向溢出、无运行时异常。

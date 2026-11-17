@@ -78,6 +78,7 @@ export interface OrderItem {
 export interface CancelRequest {
   status: CancelRequestStatus;
   reason: string | null;
+  decisionReason?: string | null;
 }
 
 export interface OrderDelay {

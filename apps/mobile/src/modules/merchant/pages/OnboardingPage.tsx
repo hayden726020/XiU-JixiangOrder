@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createRequestId } from '../../../shared/requestId';
 import type { Session } from '../../../shared/session';
-import type { MerchantSource } from '../data/types';
+import type { MerchantProfile, MerchantSource } from '../data/types';
 import {
   canUseOnboarding,
   validateMerchantRegistration,
@@ -26,6 +26,10 @@ interface OnboardingPageProps {
   mode: 'sample' | 'real';
   session: Session | null;
   source: MerchantSource;
+  profile: MerchantProfile | null;
+  profileLoading: boolean;
+  profileError: string | null;
+  onProfileChange: (profile: MerchantProfile) => void;
   onBack: () => void;
   onCancel: () => void;
 }
@@ -101,6 +105,10 @@ export default function OnboardingPage({
   mode,
   session,
   source,
+  profile,
+  profileLoading,
+  profileError,
+  onProfileChange,
   onBack,
   onCancel,
 }: OnboardingPageProps) {
@@ -110,7 +118,6 @@ export default function OnboardingPage({
   const [errors, setErrors] = useState<OnboardingErrors>({});
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState(false);
-  const [profileHint, setProfileHint] = useState<string | null>(null);
   const [saving, setSaving] = useState<'merchant' | 'shop' | null>(null);
   const [completed, setCompleted] = useState({ merchant: false, shop: false });
 
@@ -120,6 +127,18 @@ export default function OnboardingPage({
       session?.user.merchantId,
       session?.expiresAt ?? null,
     );
+
+  const serverMerchant = mode === 'real' ? profile?.merchant ?? null : null;
+  const serverShop = mode === 'real' ? profile?.shop ?? null : null;
+  const serverCompleted = mode === 'real' && profile?.onboardingStep === 'SHOP_CREATED';
+
+  const profileHint = mode !== 'real' || !profile
+    ? null
+    : profile.onboardingStep === 'SHOP_CREATED'
+      ? '服务端已有店铺资料。'
+      : profile.onboardingStep === 'REGISTERED'
+        ? '服务端已有商家资料，尚未创建店铺。'
+        : '服务端尚未注册商家。';
 
   function info(text: string) {
     setFeedback(text);
@@ -147,31 +166,15 @@ export default function OnboardingPage({
   }
 
   useEffect(() => {
-    let alive = true;
-    if (mode !== 'real') {
-      setProfileHint(null);
-      return () => {
-        alive = false;
-      };
+    if (!profile) return;
+    if (profile.merchant) {
+      setCompleted((current) => (current.merchant ? current : { ...current, merchant: true }));
+      if (!profile.shop) setStep(2);
     }
-    void source.getProfile().then((result) => {
-      if (!alive) return;
-      if (!result.ok) {
-        setProfileHint(`共同服务 /merchant/profile 不可用：${result.error.message}`);
-        return;
-      }
-      setProfileHint(
-        result.data.onboardingStep === 'SHOP_CREATED'
-          ? '服务端已有店铺资料。'
-          : result.data.onboardingStep === 'REGISTERED'
-            ? '服务端已有商家资料，尚未创建店铺。'
-            : '服务端尚未注册商家。',
-      );
-    });
-    return () => {
-      alive = false;
-    };
-  }, [mode, source]);
+    if (profile.shop) {
+      setCompleted({ merchant: profile.merchant !== null, shop: true });
+    }
+  }, [profile]);
 
   function clearError(field: OnboardingField) {
     setErrors((current) => {
@@ -183,7 +186,7 @@ export default function OnboardingPage({
   }
 
   function goToStep(target: Step) {
-    if (target === 2 && !completed.merchant) return;
+    if (target === 2 && !completed.merchant && serverMerchant === null) return;
     setStep(target);
     setErrors({});
     clearFeedback();
@@ -223,6 +226,9 @@ export default function OnboardingPage({
         error(onboardingErrorText(saved.error, '商家注册'));
         return;
       }
+      if (mode === 'real') {
+        onProfileChange(saved.data);
+      }
       setMerchant(result.value);
       setErrors({});
       info(mode === 'sample'
@@ -238,18 +244,20 @@ export default function OnboardingPage({
   async function submitShop(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
-    if (!completed.merchant) {
+    if (!completed.merchant && serverMerchant === null) {
       error('请先完成商家注册资料。');
       setStep(1);
       return;
     }
-    const merchantCheck = validateMerchantRegistration(merchant);
-    if (!merchantCheck.ok) {
-      setErrors(merchantCheck.errors);
-      error('商家资料已修改且不再有效，请重新检查。');
-      setCompleted({ merchant: false, shop: false });
-      setStep(1);
-      return;
+    if (serverMerchant === null) {
+      const merchantCheck = validateMerchantRegistration(merchant);
+      if (!merchantCheck.ok) {
+        setErrors(merchantCheck.errors);
+        error('商家资料已修改且不再有效，请重新检查。');
+        setCompleted({ merchant: false, shop: false });
+        setStep(1);
+        return;
+      }
     }
     const result = validateShop(shop);
     if (!result.ok) {
@@ -267,6 +275,9 @@ export default function OnboardingPage({
       if (!saved.ok) {
         error(onboardingErrorText(saved.error, '店铺创建'));
         return;
+      }
+      if (mode === 'real') {
+        onProfileChange(saved.data);
       }
       setShop(result.value);
       setErrors({});
@@ -304,6 +315,93 @@ export default function OnboardingPage({
     );
   }
 
+  if (mode === 'real' && profileLoading) {
+    return (
+      <div className="merchant-view onboarding-page">
+        <OnboardingHero />
+        <OnboardingWall />
+        <section className="onboarding-overview" data-onboarding-loading="true">
+          <header className="merchant-view__header">
+            <div>
+              <h2>商家注册 / 开店</h2>
+              <p className="lead">正在读取当前档口账号的入驻状态…</p>
+            </div>
+          </header>
+        </section>
+      </div>
+    );
+  }
+
+  if (serverCompleted && profile?.merchant && profile.shop) {
+    return (
+      <div className="merchant-view onboarding-page">
+        <OnboardingHero />
+        <OnboardingWall />
+        <section className="onboarding-overview onboarding-completed" data-onboarding-completed="true">
+          <header className="merchant-view__header">
+            <div>
+              <h2>已完成商家注册与开店</h2>
+              <p className="lead">当前档口账号已在服务端完成入驻，退出后重新登录也不需要再次注册。</p>
+            </div>
+          </header>
+
+          <dl className="onboarding-profile" data-onboarding-profile>
+            <div>
+              <dt>商家名称</dt>
+              <dd>{profile.merchant.name}</dd>
+            </div>
+            <div>
+              <dt>店铺负责人</dt>
+              <dd>{profile.merchant.contactName ?? '未填写'}</dd>
+            </div>
+            <div>
+              <dt>联系电话</dt>
+              <dd>{profile.merchant.contactPhone ?? '未填写'}</dd>
+            </div>
+            <div>
+              <dt>店铺名称</dt>
+              <dd>{profile.shop.name}</dd>
+            </div>
+            <div>
+              <dt>档口位置</dt>
+              <dd>{profile.shop.location ?? '未填写'}</dd>
+            </div>
+            <div>
+              <dt>店铺简介</dt>
+              <dd>{profile.shop.description ?? '未填写'}</dd>
+            </div>
+          </dl>
+
+          <p className="hint" data-onboarding-completed-hint>
+            以上资料直接读取服务端 /merchant/profile；本页不再提交注册与开店请求。
+          </p>
+
+          <div className="onboarding-actions">
+            <button
+              type="button"
+              className="action-button action-button--primary"
+              onClick={onBack}
+              data-action="leave-onboarding"
+            >
+              返回订单列表
+            </button>
+          </div>
+        </section>
+
+        {feedback && (
+          <p
+            className={feedbackError ? 'onboarding-feedback onboarding-feedback--error' : 'onboarding-feedback'}
+            role={feedbackError ? 'alert' : 'status'}
+            data-onboarding-feedback
+            data-feedback-tone={feedbackError ? 'error' : 'info'}
+          >
+            {feedback}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="merchant-view onboarding-page">
       <OnboardingHero />
@@ -318,9 +416,11 @@ export default function OnboardingPage({
 
         <ol className="onboarding-steps" aria-label="开店步骤">
           {STEPS.map((item) => {
-            const done = item.id === 1 ? completed.merchant : completed.shop;
-            const disabled = item.id === 2 && !completed.merchant;
-            return (
+            const done = item.id === 1
+              ? completed.merchant || serverMerchant !== null
+              : completed.shop || serverShop !== null;
+            const disabled = item.id === 2 && !completed.merchant && serverMerchant === null;
+return (
               <li key={item.id}>
                 <button
                   type="button"
@@ -349,70 +449,116 @@ export default function OnboardingPage({
             当前档口：{session?.user.displayName ?? ''}（{session?.user.merchantId ?? '无 merchantId'}）
           </span>
           {profileHint && <span data-onboarding-profile-hint>{profileHint}</span>}
+          {profileError && (
+            <span data-onboarding-profile-error>
+              共同服务 /merchant/profile 不可用：{profileError}
+            </span>
+          )}
         </div>
       )}
 
       {step === 1 && (
-        <>
-          <form
-            id="onboarding-merchant-form"
-            className="onboarding-form onboarding-form--merchant"
-            data-onboarding-step="1"
-            onSubmit={submitMerchant}
-            noValidate
-          >
-            <div className="onboarding-field">
+        serverMerchant !== null ? (
+          <>
+            <section className="onboarding-form onboarding-form--merchant" data-onboarding-server-merchant="true">
+              <h3>1 商家注册</h3>
+              <p className="hint">服务端已有当前档口账号的商家资料，无需再次注册；下一步只需创建店铺。</p>
+              <dl className="onboarding-profile">
+                <div>
+                  <dt>商家名称</dt>
+                  <dd>{serverMerchant.name}</dd>
+                </div>
+                <div>
+                  <dt>店铺负责人</dt>
+                  <dd>{serverMerchant.contactName ?? '未填写'}</dd>
+                </div>
+                <div>
+                  <dt>联系电话</dt>
+                  <dd>{serverMerchant.contactPhone ?? '未填写'}</dd>
+                </div>
+              </dl>
+            </section>
+            <div className="onboarding-actions">
+              <button
+                type="button"
+                className="action-button action-button--primary"
+                onClick={() => goToStep(2)}
+                data-action="continue-shop"
+              >
+                下一步：创建店铺
+              </button>
+              <button
+                type="button"
+                className="action-button onboarding-cancel"
+                onClick={onCancel}
+                data-action="cancel-onboarding"
+              >
+                取消
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <form
+              id="onboarding-merchant-form"
+              className="onboarding-form onboarding-form--merchant"
+              data-onboarding-step="1"
+              onSubmit={submitMerchant}
+              noValidate
+            >
+              <div className="onboarding-field">
 
-              <label htmlFor="onboarding-contact-name">店铺负责人</label>
-              <input
-                id="onboarding-contact-name"
-                value={merchant.contactName}
-                onChange={(event) => updateMerchant('contactName', event.target.value)}
-                maxLength={20}
-                placeholder="店铺负责人，2—20 个字符"
-                autoComplete="name"
-                data-field="contactName"
-              />
-              {errors.contactName && <p className="field-error" role="alert" data-error="contactName">{errors.contactName}</p>}
+                <label htmlFor="onboarding-contact-name">店铺负责人</label>
+                <input
+                  id="onboarding-contact-name"
+                  value={merchant.contactName}
+                  onChange={(event) => updateMerchant('contactName', event.target.value)}
+                  maxLength={20}
+                  placeholder="店铺负责人，2—20 个字符"
+                  autoComplete="name"
+                  data-field="contactName"
+                />
+                {errors.contactName && <p className="field-error" role="alert" data-error="contactName">{errors.contactName}</p>}
+              </div>
+              <div className="onboarding-field">
+                <label htmlFor="onboarding-contact-phone">联系电话</label>
+                <input
+                  id="onboarding-contact-phone"
+                  value={merchant.contactPhone}
+                  onChange={(event) => updateMerchant('contactPhone', event.target.value)}
+                  inputMode="tel"
+                  maxLength={11}
+                  placeholder="11 位手机号"
+                  autoComplete="tel"
+                  data-field="contactPhone"
+                />
+                {errors.contactPhone && <p className="field-error" role="alert" data-error="contactPhone">{errors.contactPhone}</p>}
+              </div>
+              <p className="onboarding-privacy">注册信息仅用于合同主体与联系，不展示给学生端。</p>
+            </form>
+            <div className="onboarding-actions">
+              <button
+                type="submit"
+                form="onboarding-merchant-form"
+                className="action-button action-button--primary"
+                data-action="save-merchant"
+                disabled={saving !== null}
+                aria-busy={saving === 'merchant' || undefined}
+              >
+                {saving === 'merchant' ? '保存中…' : '下一步'}
+              </button>
+              <button
+                type="button"
+                className="action-button onboarding-cancel"
+                onClick={onCancel}
+                disabled={saving !== null}
+                data-action="cancel-onboarding"
+              >
+                取消
+              </button>
             </div>
-            <div className="onboarding-field">
-              <label htmlFor="onboarding-contact-phone">联系电话</label>
-              <input
-                id="onboarding-contact-phone"
-                value={merchant.contactPhone}
-                onChange={(event) => updateMerchant('contactPhone', event.target.value)}
-                inputMode="tel"
-                maxLength={11}
-                placeholder="11 位手机号"
-                autoComplete="tel"
-                data-field="contactPhone"
-              />
-              {errors.contactPhone && <p className="field-error" role="alert" data-error="contactPhone">{errors.contactPhone}</p>}
-            </div>
-            <p className="onboarding-privacy">注册信息仅用于合同主体与联系，不展示给学生端。</p>
-          </form>
-          <div className="onboarding-actions">
-            <button
-              type="submit"
-              form="onboarding-merchant-form"
-              className="action-button action-button--primary"
-              data-action="save-merchant"
-              disabled={saving !== null}
-              aria-busy={saving === 'merchant' || undefined}
-            >
-              {saving === 'merchant' ? '保存中…' : '下一步'}
-            </button>
-            <button
-              type="button"
-              className="action-button onboarding-cancel"
-              onClick={onCancel}
-              disabled={saving !== null}
-              data-action="cancel-onboarding"
-            >
-              取消
-            </button>
-          </div>
-        </>
+          </>
+        )
       )}
 
       {step === 2 && (
@@ -420,7 +566,9 @@ export default function OnboardingPage({
           <h3>2 创建店铺</h3>
           <p className="hint">店铺会绑定当前档口账号；页面不填写 merchantId，避免替别的店操作。</p>
           <p className="onboarding-summary" data-merchant-preview>
-            商家草稿：{merchant.contactName} · {merchant.contactPhone}
+            {serverMerchant !== null
+              ? `商家：${serverMerchant.name} · 负责人 ${serverMerchant.contactName ?? '未填写'} · ${serverMerchant.contactPhone ?? '未填写'}`
+              : `商家草稿：${merchant.contactName} · ${merchant.contactPhone}`}
           </p>
           <div className="onboarding-field">
             <label htmlFor="onboarding-shop-name">店铺名称</label>

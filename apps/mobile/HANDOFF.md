@@ -13,6 +13,8 @@
 - 2026-11-17 刷新修复提交：`98ff18d fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`；随后合并 `9cb2926` 形成 `ddd9785`。
 - 实际提交哈希与推送结果以本次回复中的 `git log -1` / `git ls-remote` 输出为准。
 - 2026-11-17 档口登录页提交：远端 `ca97747 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`（本地同内容提交 `81113c3`，提交树哈希一致）；随后文档提交远端 `bc114d6`（本地同内容 `44e8653`）。同时把 19:10 基线之后并行完成的菜品自定义、品牌图片与档口视觉样式纳入远端。
+- 2026-11-17 底部导航提交：`3e1710d feat(mobile): 档口端增加底部导航与我的页面`；菜单、订单、我的三个底部入口上线，「我的」页显示档口账号并提供开店、退出登录与返回角色入口。
+- 2026-11-17 入驻状态提交：`9e59744 feat(mobile): 档口端注册完成后不再重复注册`；档口登录后读取 `GET /merchant/profile`，已开店账号不再显示“商家注册 / 开店”入口，进入入驻页显示只读资料；已有商家但未开店时跳过注册第 1 步。
 - 本次推送因 `github.com:443` 直连被阻断，改用 GitHub API 创建同内容提交并更新分支引用；远端提交哈希与本地不同，但提交树与本地一致（`0b50d58`）。
 - GitHub HTTPS 连接在当前网络下间歇性 `Connection was reset`；重试可成功，不要据此判定仓库不可达。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
@@ -71,6 +73,19 @@
   - 移除开发环境自动登录，登录页保留「使用本地演示凭据一键登录（开发环境）」（仅 `VITE_DEMO_MERCHANT_PASSWORD` 存在时显示）。
 - 边界：样例模式仍免登录；未登录不发起任何订单/菜单请求；接口失败不回退样例。
 
+### 2.6 注册完成后不再重复注册（2026-11-17 本次新增）
+
+- 问题：档口注册并开店后退出登录，再次登录进入“店铺信息与入驻”仍看到空白注册表单，容易被误认为需要重新注册。
+- 修复：
+  - `MerchantHome.tsx` 在真实模式登录后与订单/菜单/时段一起读取 `source.getProfile()`，把入驻状态保存到 `profile`。
+  - `OrderListPage.tsx` 在 `profile.onboardingStep === 'SHOP_CREATED'` 时隐藏“商家注册 / 开店”入口；“我的”入口文案改为“店铺信息”。
+  - `OnboardingPage.tsx` 读取 profile 期间显示“正在读取当前档口账号的入驻状态…”，避免先闪出注册表单。
+  - 已开店（`SHOP_CREATED`）：展示只读的商家名称、店铺负责人、联系电话、店铺名称、档口位置与简介，不再提交注册或开店请求。
+  - 已有商家但未开店（`REGISTERED`）：第 1 步只读展示服务端商家资料，直接进入第 2 步创建店铺，不要求重新填写负责人与手机号。
+  - 未注册（`NONE`）：保留原两步流程。
+- 涉及文件：`src/modules/merchant/MerchantHome.tsx`、`pages/OnboardingPage.tsx`、`pages/OrderListPage.tsx`、`merchant.css`。
+- 边界：店铺资料修改服务端暂未提供接口，已完成页面只读展示；退出登录只清除本地会话，不清除服务端商家与店铺数据。
+
 ## 3 本次安装的工具链
 
 均位于 `D:\AndroidSdk`，可从命令行直接复用：
@@ -105,14 +120,14 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 | 页面 | 地址 | 状态 |
 | --- | --- | --- |
 | 档口登录（真实模式未登录） | `#/merchant/orders?mode=real`（入口带 `?mode=real`） | 全屏登录页；登录成功才加载真实数据 |
-| 商家注册开店 | `#/merchant` | 档口端默认入口，直接进入注册第 1 步 |
-| 商家注册开店（别名） | `#/merchant/setup` | 与默认入口一致 |
+| 订单列表（档口默认入口） | `#/merchant`、`#/merchant/orders` | 登录后默认进入；已开店不显示注册入口 |
+| 商家注册开店 | `#/merchant/setup` | 已开店显示只读资料；已有商家直接创建店铺 |
 | 订单列表 | `#/merchant/orders` | 独立列表地址 |
 | 订单详情－待接单 | `#/merchant/orders/demo-order-001` | 可直达、刷新保持 |
 | 订单详情－可取餐 | `#/merchant/orders/demo-order-003` | 可直达、刷新保持 |
 | 菜单与库存 | `#/merchant/menu` | 保留既有页面 |
 
-- 开店流程只有两步：商家注册（联系人、联系电话）→ 创建店铺（店铺名称、档口位置、店铺简介可选）。
+- 开店流程只有两步：商家注册（联系人、联系电话）→ 创建店铺（店铺名称、档口位置、店铺简介可选）；服务端已有商家资料时第 1 步只读，已有店铺时整页只读，不重复注册。
 - 已删除“商家名称”字段、 “新增菜品”第三步及其表单、提示与提交逻辑。
 - 保存成功后“完成”返回订单列表；第 1 步“取消”返回角色入口 `#/`。
 - 注册数据边界：`MerchantRegistrationDraft` 只有 `contactName`、`contactPhone`；`MerchantRegistrationInput.merchantName` 为可选。
@@ -139,10 +154,12 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 - 详情页停留检测提交 `ca24fed`：Headless Edge 3 项通过——停留在详情页能在 15 秒内发现新单、当前订单仍正常显示、无运行时异常或 `console.error`；补齐后 `vite build` 成功。
 - 上一轮：4173 本机与局域网 HTTP 200；`gradlew.bat assembleDebug` `BUILD SUCCESSFUL`。
 - 五个档口端设计页面、两步开店流程、订单详情直达与 390px 布局：上一轮已在 Headless Edge 中验证通过并记录。
+- 入驻状态提交：`tsc --noEmit` 0 错误；`vite build` 成功；Headless Edge + 本地模拟服务 8/8 通过——已开店账号登录后不显示“商家注册 / 开店”入口、「我的」显示“店铺信息”、入驻页只读展示且不出现注册表单；已有商家资料时直接进入创建店铺；无运行时异常与 `console.error`。
 
 已知问题（不属于本次档口改动）：
 
 - 合并基线后 `tsc --noEmit` 剩 1 个学生端既有类型错误：`src/modules/student/utils/orderCancelView.ts` 引用 `CancelRequest.decisionReason`，但 `student/types.ts` 的 `CancelRequest` 未声明该字段。需学生端负责人补类型；在修复前请用 `vite build` 出包，不要用会先跑 tsc 的 `npm run build`。
+- 当前工作副本执行 `tsc --noEmit` 已通过；若检出远端旧提交仍出现上述学生端类型错误，以实际代码为准。
 - 本地 `frontend` 工作副本与远端档口模块已同步到 `81113c3`；此前并行完成的注册页照片墙、菜品自定义与品牌图片改动均已纳入该提交，不再存在“只在本机未提交”的注册页版本。
 
 尚未验证：
@@ -166,6 +183,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
    注意：合并基线还有 1 个学生端 tsc 类型错误，出包请直接跑 `vite build`，不要跑含 tsc 的 `npm run build`。
 
 2. 打开 App 验证：角色入口、档口端登录页、地图定位授权弹窗、页面无白屏；带 `?mode=real` 进入真实模式时先出现档口登录页，登录成功后才读取真实菜单与订单；在订单列表确认「刷新列表」、15 秒自动刷新与新单提示；进入详情确认「刷新订单」；横幅「退出登录 / 切换档口账号」可回到登录页。
+3. 验证注册状态持久化：用已完成开店的档口账号登录后，订单列表不显示“商家注册 / 开店”，从「我的 → 店铺信息」进入应看到只读商家与店铺资料；退出登录再登录仍保持该行为。已有商家未开店的账号应直接进入创建店铺步骤。
 3. 原生 App 里 `window.location.origin` 不是预览地址，`/api/v1` 相对地址不可用；需在应用内配置可访问的后端绝对地址。
 4. 若要发正式版本，应在远端 `apps/mobile/android`（versionCode 14 / 1.13）上构建并递增版本号，不要使用本地临时工程。
 5. 浏览器验收可用局域网预览：`vite dev --host 0.0.0.0 --port 5176` 或 `vite preview --host 0.0.0.0 --port 4173`；服务需重新启动，不要假定后台进程仍在运行。若要验收真实模式，需先准备可达的公共后端；仅用样例数据看不到刷新按钮。
@@ -186,7 +204,7 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 ## 9 Git 操作约定
 
 - 工作区：`E:\project\workspace\.git-sync`（稀疏检出 `apps/mobile`）。
-- 当前分支：`frontend/handoff-2026-11-17`，远端提交链 `ddd9785`（合并）→ `ca24fed`（详情页检测）→ `c02046c`（docs）→ `ca97747 feat(mobile): 档口端登录页接通真实模式并同步最新档口页面` → 本次 docs 提交（`bc114d6`，以 `git ls-remote` 为准；本地同内容提交为 `81113c3` → `44e8653`）。
+- 当前分支：`frontend/handoff-2026-11-17`，远端提交链 `ddd9785`（合并）→ `ca24fed`（详情页检测）→ `c02046c`（docs）→ `ca97747`（档口登录页）→ `3e1710d feat(mobile): 档口端增加底部导航与我的页面` → 本次 docs 提交（以 `git ls-remote` 为准；登录页本地同内容提交为 `81113c3` → `44e8653`）。
 - 远端基线分支 `frontend/baseline-2026-11-17` 已快进到同一提交；只推专用分支，不推 `main`，不强推。注意远端哈希与本地哈希不同但树一致，下一次操作前先 `git fetch` 核对，不要用本地提交直接强推。
 - 提交信息：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`、`merge: 合并当前前端基线与档口订单刷新修复`、`docs(mobile): 更新当前基线、刷新验收与交接说明`、`fix(mobile): 订单详情页定时检测新订单并保留当前订单`、`feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`。
 - GitHub 主站连接可能超时或 `Connection was reset`；重试或用 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用，远端与本地 SHA 一致。

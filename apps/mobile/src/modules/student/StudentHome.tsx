@@ -86,6 +86,7 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
     return createOrderDraft({ source });
   });
   const [view, setView] = useState<StudentView>('shop');
+  const [shopTab, setShopTab] = useState<'home' | 'order'>('home');
   const [currentShop, setCurrentShop] = useState<ShopSummary | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
@@ -119,10 +120,36 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
     return () => { cancelled = true; };
   }, [previewSlot, source, draft]);
 
-  function goTo(next: StudentView): void {
+  function goTo(next: StudentView, nav: 'push' | 'back' = 'push'): void {
+    if (nav === 'back') {
+      window.history.back();
+      return;
+    }
+    window.history.pushState({ module: 'student', studentView: next }, '');
     setView(next);
     window.scrollTo(0, 0);
   }
+
+  function replaceTo(next: StudentView): void {
+    window.history.replaceState({ module: 'student', studentView: next }, '');
+    setView(next);
+    window.scrollTo(0, 0);
+  }
+
+  useEffect(() => {
+    window.history.replaceState({ module: 'student', studentView: 'shop' }, '');
+    const onPopState = (event: PopStateEvent) => {
+      const state = event.state as { module?: string; studentView?: StudentView } | null;
+      if (state && state.module === 'student') {
+        setView(state.studentView ?? 'shop');
+      } else {
+        setView('shop');
+      }
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   function openOrder(id: string): void {
     setOrderId(id);
@@ -165,16 +192,13 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
       <ProfilePage
         source={source}
         onOpenOrders={() => openOrders('shop')}
-        onGoToShop={() => goTo('shop')}
+        onGoToShop={() => {
+          setShopTab('home');
+          goTo('shop');
+        }}
         onGoToMenu={() => {
-          if (currentShop) {
-            goTo('menu');
-          } else {
-            source.listShops().then((shops) => {
-              if (shops.length > 0) enterShop(shops[0]);
-              else goTo('shop');
-            });
-          }
+          setShopTab('order');
+          goTo('shop');
         }}
       />
     );
@@ -187,6 +211,8 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
         draft={draft}
         currentShop={currentShop}
         notice={shopNotice || draft.getState().notice || ''}
+        activeTab={shopTab}
+        onTabChange={setShopTab}
         onEnterShop={enterShop}
         onOpenOrders={() => openOrders('shop')}
         onOpenProfile={() => goTo('profile')}
@@ -200,7 +226,7 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
         source={source}
         draft={draft}
         shop={currentShop}
-        onBack={() => goTo('menu')}
+        onBack={() => goTo('menu', 'back')}
         onConfirm={() => goTo('confirm')}
       />
     );
@@ -212,9 +238,9 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
         source={source}
         draft={draft}
         shop={currentShop}
-        onBack={() => goTo('slot')}
-        onBackToMenu={() => goTo('menu')}
-        onSubmitted={(id) => openOrderFrom('menu', id)}
+        onBack={() => goTo('slot', 'back')}
+        onBackToMenu={() => goTo('menu', 'back')}
+        onSubmitted={(id) => { setDetailFrom('menu'); setOrderId(id); replaceTo('order'); }}
       />
     );
   }
@@ -224,11 +250,17 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
     return (
       <OrderListPage
         source={source}
-        onBack={() => goTo(backToShops ? 'shop' : 'menu')}
+        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
         backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => goTo('shop')}
-        onGoToShop={() => goTo('shop')}
+        onGoToHome={() => {
+          setShopTab('home');
+          goTo('shop');
+        }}
+        onGoToShop={() => {
+          setShopTab('order');
+          goTo('shop');
+        }}
         onGoToProfile={() => goTo('profile')}
       />
     );
@@ -240,10 +272,16 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
       <OrderDetailPage
         source={source}
         orderId={orderId}
-        onBack={() => goTo(backTarget)}
+        onBack={() => goTo(backTarget, 'back')}
         backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
-        onGoToHome={() => goTo('shop')}
-        onGoToShop={() => goTo('shop')}
+        onGoToHome={() => {
+          setShopTab('home');
+          goTo('shop');
+        }}
+        onGoToShop={() => {
+          setShopTab('order');
+          goTo('shop');
+        }}
         onGoToOrders={() => goTo('orders')}
         onGoToProfile={() => goTo('profile')}
       />
@@ -255,7 +293,7 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
       source={source}
       draft={draft}
       shop={currentShop}
-      onBackToShops={() => goTo('shop')}
+      onBackToShops={() => goTo('shop', 'back')}
       onProceed={() => goTo('slot')}
       onViewSampleOrder={() => openOrderFrom('menu', 'demo-order-001')}
       onViewCancelOrder={() => openOrderFrom('menu', 'demo-order-cancel-001')}

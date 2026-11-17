@@ -994,20 +994,14 @@
 }
 
 .app-shell--merchant .app-header {
-  padding-bottom: 2.25rem;
-  background: var(--m-header-bg);
-  color: var(--m-ink);
-}
-
-.app-shell--merchant .app-version {
-  border-color: rgba(26, 26, 26, 0.22);
+  display: none;
 }
 
 .app-shell--merchant .app-main {
   position: relative;
-  margin-top: -0.85rem;
-  padding-top: 1.15rem;
-  border-radius: 1.15rem 1.15rem 0 0;
+  margin-top: 0;
+  padding-top: calc(1.15rem + env(safe-area-inset-top));
+  border-radius: 0;
   background: var(--m-surface-2);
 }
 
@@ -2225,6 +2219,45 @@
   line-height: 1.75;
 }
 
+.onboarding-profile {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+
+.onboarding-profile > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.6rem;
+  background: var(--m-surface-2);
+}
+
+.onboarding-profile dt {
+  flex: none;
+  color: var(--m-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.onboarding-profile dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--m-ink-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.onboarding-completed .onboarding-actions {
+  margin-top: 1rem;
+}
+
 .onboarding-actions {
   display: grid;
   gap: 0.65rem;
@@ -2269,13 +2302,13 @@
 
 .onboarding-hero__wordmark {
   flex: none;
-  width: 10.6rem;
+  width: 10.9rem;
   height: auto;
 }
 
 .onboarding-hero__chef {
   flex: none;
-  width: 4.3rem;
+  width: 4.8rem;
   height: auto;
   margin-bottom: 0.1rem;
   transform: rotate(1.5deg);

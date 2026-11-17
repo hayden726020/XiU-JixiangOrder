@@ -7,6 +7,7 @@ interface OrderListPageProps {
   orders: MerchantOrder[];
   scenario: MerchantScenario;
   isSample: boolean;
+  onboardingCompleted: boolean;
   loading: boolean;
   error: string | null;
   page: number;
@@ -27,6 +28,7 @@ export default function OrderListPage({
   orders,
   scenario,
   isSample,
+  onboardingCompleted,
   loading,
   error,
   page,
@@ -60,7 +62,7 @@ export default function OrderListPage({
           </p>
         </div>
         <div className="merchant-view__actions">
-          {!isSample && (
+          {!isSample && !onboardingCompleted && (
             <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
               商家注册 / 开店
             </button>
