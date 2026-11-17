@@ -398,14 +398,17 @@ async function requestMerchantOrderWrite(
 function createRealSource(scenario: MerchantScenario): MerchantSource {
   const inFlightMenus = new Map<string, Promise<SourceResult<ApiMenu>>>();
 
-  function loadMenu(date: string): Promise<SourceResult<ApiMenu>> {
-    const running = inFlightMenus.get(date);
+  function loadMenu(date: string, merchantId: string): Promise<SourceResult<ApiMenu>> {
+    const key = `${date}:${merchantId}`;
+    const running = inFlightMenus.get(key);
     if (running) return running;
-    const request = apiRequest<ApiMenu>(`/menu?date=${encodeURIComponent(date)}`)
+    const request = apiRequest<ApiMenu>(
+      `/menu?date=${encodeURIComponent(date)}&merchantId=${encodeURIComponent(merchantId)}`,
+    )
       .then((data): SourceResult<ApiMenu> => ({ ok: true, data }))
       .catch((error: unknown): SourceResult<ApiMenu> => toFailure<ApiMenu>(error))
-      .finally(() => inFlightMenus.delete(date));
-    inFlightMenus.set(date, request);
+      .finally(() => inFlightMenus.delete(key));
+    inFlightMenus.set(key, request);
     return request;
   }
 
@@ -471,7 +474,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
           '真实模式需要先登录档口演示账号：请到 #/system-check 登录后重试。',
         );
       }
-      const result = await loadMenu(date);
+      const result = await loadMenu(date, merchantId);
       return result.ok ? mapMenu(result.data, merchantId) : result;
     },
     getDishLibrary: async (_date: string) => (
@@ -487,10 +490,11 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
       )
     ),
     getSlots: async (date: string) => {
-      if (!currentMerchantId()) {
+      const merchantId = currentMerchantId();
+      if (!merchantId) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取时段。');
       }
-      const result = await loadMenu(date);
+      const result = await loadMenu(date, merchantId);
       return result.ok ? mapSlots(result.data) : result;
     },
     getProfile: async () => {

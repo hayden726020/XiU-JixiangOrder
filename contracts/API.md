@@ -8,6 +8,8 @@ DRAFT v0.3（2026-11-13 联调冻结候选）与 v0.4 增补（2026-11-14）分�
 
 **v0.6 增补（2026-11-17，DRAFT，待三人确认）**：档口创建店铺前必须上传营业执照与食品经营许可证，并由管理端审核通过；新增档口资质上传/查询、管理端资质接收/审核、管理端生成商家账号与商家端账号资料修改。演示环境为满足“管理端与商家端账号信息同步”，`users.password_plain` 保存可读密码；正式上线必须移除该字段并改为不可逆哈希与重置密码流程。服务端自动测试 100/100。
 
+**v0.7 增补（2026-11-17，DRAFT，待三人确认）**：`GET /menu` 增加可选 `merchantId` 查询参数，传入时只返回该店铺菜品；档口端菜单与库存页面必须携带本店 `merchantId`，从源头避免拿到别家菜品。不传时仍返回全部菜品，供学生首页推荐与店铺选择页一次加载使用；菜品为常驻菜单，`date` 只筛选时段，不按日期拆分菜品（如要每日菜单，需另行增加每日菜单表与契约）。服务端自动测试 101/101。
+
 ## 基础格式
 
 成功响应为 { "data": ... }，错误为 { "error": { "code": "...", "message": "...", "retryable": false } }。金额为整数分，日期按 Asia/Shanghai，时间戳带 +08:00 或明确的时区。所有 ID 都是不透明字符串。
@@ -59,7 +61,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | POST /auth/demo-login | account, password | 服务端签发会话令牌并返回服务端认定的角色；见上节 |
 | GET /me | 当前会话身份 | 返回 user 与 canteenId；仅本人信息 |
 | POST /auth/logout | 无 | 204；删除服务端会话，不删除订单 |
-| GET /menu?date=YYYY-MM-DD | 今天或明天菜单及时段 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选 |
+| GET /menu?date=YYYY-MM-DD&merchantId= | 今天或明天菜单及时段；merchantId 可选，传入只返回该店菜品 | 菜品价格、可售数量、时段起止与剩余名额；过去/关闭时段不可选；档口端必须传本店 merchantId |
 | GET /merchants | 已登录会话读取店铺列表 | `{ merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] }`；只读，不返回联系方式 |
 | POST /orders | requestId, items[{dishId,quantity}], slotId, diningMode, remark?（≤50 字） | 服务端计价并模拟付款后的订单；字段例子见 create-order.json |
 | GET /orders | 学生自己的订单列表 | 不返回其他学生订单 |
@@ -132,7 +134,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 `GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
 
 - `slots[]` 字段为 `id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled,version`；已结束、已满或服务端停用的时段 `enabled=false`。
-- `dishes[]` 字段为 `id,merchantId,type,name,priceFen,availableQuantity,onSale,version`。`type` 取值 `STAPLE`（主食）/`SNACK`（小吃）/`DRINK`（饮品）/`SET`（套餐），由新增菜品时写入。`GET /menu` 返回全部菜品；档口端必须按登录身份 `merchantId` 过滤展示，未登录不展示档口菜单；服务端写操作按归属校验，不依赖客户端过滤作为安全边界。
+- `dishes[]` 字段为 `id,merchantId,type,name,priceFen,availableQuantity,onSale,version`。`type` 取值 `STAPLE`（主食）/`SNACK`（小吃）/`DRINK`（饮品）/`SET`（套餐），由新增菜品时写入。`GET /menu` 不传 `merchantId` 时返回全部菜品（学生首页/店铺列表）；传 `merchantId` 时只返回该店菜品，档口端菜单与库存必须传本店 ID。服务端写操作仍按归属校验，不依赖客户端过滤作为安全边界。菜品为常驻菜单，`date` 只筛选时段，不按日期拆分菜品。
 - `version` 与 `PUT /merchant/menu/{dishId}`、`PUT /merchant/slots/{slotId}` 的 `expectedVersion` 同源；保存成功后 `version` + 1 并在响应中返回新版本；旧版本返回 `MENU_VERSION_CONFLICT`（409）。
 
 ### 商家注册、创建店铺与新增菜品（v0.4 增补）

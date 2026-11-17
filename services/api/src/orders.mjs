@@ -738,6 +738,10 @@ export function listMenu({ db, clock, query }) {
   if (requested !== today && requested !== tomorrow) {
     throw validationError('只能查询今天或明天的菜单。');
   }
+  const requestedMerchant = query.get('merchantId');
+  if (requestedMerchant !== null && (typeof requestedMerchant !== 'string' || requestedMerchant.length > 64)) {
+    throw validationError('merchantId 取值不正确。');
+  }
   const slots = db
     .prepare('SELECT * FROM slots WHERE date = ? ORDER BY start_at')
     .all(requested)
@@ -752,19 +756,19 @@ export function listMenu({ db, clock, query }) {
       enabled: slot.enabled === 1 && slot.end_at > now && slot.booked_count < slot.capacity,
       version: slot.version,
     }));
-  const dishes = db
-    .prepare('SELECT * FROM dishes ORDER BY merchant_id, id')
-    .all()
-    .map((dish) => ({
-      id: dish.id,
-      merchantId: dish.merchant_id,
-      type: dish.type,
-      name: dish.name,
-      priceFen: dish.price_fen,
-      availableQuantity: dish.available_quantity,
-      onSale: dish.on_sale === 1,
-      version: dish.version,
-    }));
+  const dishRows = requestedMerchant === null
+    ? db.prepare('SELECT * FROM dishes ORDER BY merchant_id, id').all()
+    : db.prepare('SELECT * FROM dishes WHERE merchant_id = ? ORDER BY id').all(requestedMerchant);
+  const dishes = dishRows.map((dish) => ({
+    id: dish.id,
+    merchantId: dish.merchant_id,
+    type: dish.type,
+    name: dish.name,
+    priceFen: dish.price_fen,
+    availableQuantity: dish.available_quantity,
+    onSale: dish.on_sale === 1,
+    version: dish.version,
+  }));
   return { status: 200, body: { data: { date: requested, slots, dishes } } };
 }
 

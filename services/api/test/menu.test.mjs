@@ -249,3 +249,16 @@ test('删除菜品受版本与档口归属约束', async () => {
   });
   assert.equal(forbiddenDelete.status, 403);
 });
+test('GET /menu 可按店铺过滤，避免档口拿到别家菜品', async () => {
+  const all = await ctx.api('GET', '/menu?date=2026-11-13');
+  assert.ok(all.body.data.dishes.some((dish) => dish.merchantId === 'demo-merchant-01'));
+  assert.ok(all.body.data.dishes.some((dish) => dish.merchantId === 'demo-merchant-02'));
+
+  const own = await ctx.api('GET', '/menu?date=2026-11-13&merchantId=demo-merchant-02');
+  assert.equal(own.status, 200);
+  assert.ok(own.body.data.dishes.length > 0);
+  assert.ok(own.body.data.dishes.every((dish) => dish.merchantId === 'demo-merchant-02'));
+
+  const invalid = await ctx.api('GET', `/menu?date=2026-11-13&merchantId=${'x'.repeat(65)}`);
+  assert.equal(invalid.status, 400);
+});
