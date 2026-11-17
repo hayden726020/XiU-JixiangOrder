@@ -931,11 +931,11 @@ export default function MenuPage({
           </section>
 
           <section className="detail-block">
-            <h3>时段（接单名额）</h3>
+            <h3>取餐时段</h3>
             <ul className="slot-list">
               {slots.slots.map((slot) => {
                 const closed = !slot.enabled;
-                const tone = slot.full || closed ? 'slot-item slot-item--full' : 'slot-item';
+                const tone = closed ? 'slot-item slot-item--full' : 'slot-item';
                 return (
                   <li
                     key={slot.slotId}
@@ -946,12 +946,8 @@ export default function MenuPage({
                     <span className="slot-item__time">
                       {formatClock(slot.slotStart)}—{formatClock(slot.slotEnd)}
                     </span>
-                    <span>名额 {slot.capacity}</span>
-                    <span>已占 {slot.occupied}</span>
-                    <span>
-                      剩余 {slot.remaining}
-                      {slot.full ? '（已满）' : closed ? '（已关闭）' : ''}
-                    </span>
+                    <span>已接单 {slot.occupied} 笔</span>
+                    <span>{closed ? '已关闭' : '开放接单 · 不限名额'}</span>
                     <span className="slot-item__version">
                       {canEditVersion(slot.version) ? `v${slot.version}` : 'version 未返回'}
                     </span>
@@ -972,15 +968,6 @@ export default function MenuPage({
                 return (
                   <li className="menu-edit" data-slot-edit={slot.slotId}>
                     <div className="menu-edit__fields">
-                      <label>
-                        接单名额
-                        <input
-                          value={slotCapacity}
-                          onChange={(event) => setSlotCapacity(event.target.value)}
-                          inputMode="numeric"
-                          aria-label="时段接单名额"
-                        />
-                      </label>
                       <label className="menu-edit__check">
                         <input
                           type="checkbox"
@@ -988,7 +975,7 @@ export default function MenuPage({
                           onChange={(event) => setSlotEnabled(event.target.checked)}
                           aria-label="时段开放"
                         />
-                        开放接单
+                        开放接单（不限制接单名额）
                       </label>
                     </div>
                     <div className="action-bar">
@@ -1020,7 +1007,7 @@ export default function MenuPage({
               })()}
             </ul>
             <p className="hint">
-              “接单名额”指订单笔数上限，不是食堂座位数；已占 {slots.slots.reduce((sum, slot) => sum + slot.occupied, 0)} 笔。名额不能低于已占用。
+              各时段均不设接单名额上限，仅通过「开放接单」控制该时段是否可预约；当前合计已接单 {slots.slots.reduce((sum, slot) => sum + slot.occupied, 0)} 笔。
             </p>
           </section>
         </>

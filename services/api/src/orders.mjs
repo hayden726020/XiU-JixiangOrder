@@ -4,6 +4,7 @@ import {
   notFound,
   validationError,
 } from './errors.mjs';
+import { SLOT_DATE_RANGE_DAYS, ensureDateSlots } from './db.mjs';
 import { generatePickupCode } from './security.mjs';
 import {
   asRecord,
@@ -201,11 +202,15 @@ function pageParams(query) {
   return { page, pageSize, offset: (page - 1) * pageSize };
 }
 
+function allowedOrderDates(now) {
+  const today = shanghaiDate(now);
+  return Array.from({ length: SLOT_DATE_RANGE_DAYS }, (_, index) => addDays(today, index));
+}
+
 export function createOrder({ db, clock, user, body }) {
   const input = asRecord(body);
   const now = clock();
-  const today = shanghaiDate(now);
-  const tomorrow = addDays(today, 1);
+  const allowedDates = allowedOrderDates(now);
   const requestId = requireString(input.requestId, 'requestId', { max: 120 });
   const slotId = requireString(input.slotId, 'slotId', { max: 120 });
   const diningMode = requireEnum(input.diningMode, 'diningMode', DINING_MODES);
@@ -230,11 +235,15 @@ export function createOrder({ db, clock, user, body }) {
   const hash = requestHash(input);
   return transaction(db, () =>
     runIdempotent(db, { actorId: user.id, operation: 'create-order', requestId, hash, now }, () => {
+      const slotDateMatch = /^slot-(\d{4}-\d{2}-\d{2})-/.exec(slotId);
+      if (slotDateMatch && allowedDates.includes(slotDateMatch[1])) {
+        ensureDateSlots(db, slotDateMatch[1]);
+      }
       const slot = db.prepare('SELECT * FROM slots WHERE id = ?').get(slotId);
       if (!slot) {
         throw notFound('SLOT_NOT_FOUND', '所选时段不存在。');
       }
-      if (!slot.enabled || (slot.date !== today && slot.date !== tomorrow)) {
+      if (!slot.enabled || !allowedDates.includes(slot.date)) {
         throw conflict('SLOT_CLOSED', '该时段已停用或日期不可预约，请选择其他时段。');
       }
 
@@ -680,9 +689,6 @@ export function updateMerchantSlot({ db, clock, user, params, body }) {
         code: 'MENU_VERSION_CONFLICT',
         message: '时段已发生变化，请刷新菜单后重试。',
       });
-      if (capacity < slot.booked_count) {
-        throw conflict('INVALID_ORDER_STATE', '容量不能低于已占用名额。');
-      }
       db.prepare('UPDATE slots SET capacity = ?, enabled = ?, version = version + 1 WHERE id = ? AND version = ?').run(
         capacity,
         input.enabled ? 1 : 0,
@@ -699,7 +705,7 @@ export function updateMerchantSlot({ db, clock, user, params, body }) {
             endAt: toShanghaiIso(slot.end_at),
             capacity,
             booked: slot.booked_count,
-            remainingCapacity: capacity - slot.booked_count,
+            remainingCapacity: Math.max(0, capacity - slot.booked_count),
             enabled: input.enabled,
             version: slot.version + 1,
           },
@@ -733,12 +739,12 @@ export function listAdminOrders({ db, user, query }) {
 
 export function listMenu({ db, clock, query }) {
   const now = clock();
-  const today = shanghaiDate(now);
-  const tomorrow = addDays(today, 1);
-  const requested = query.get('date') ?? today;
-  if (requested !== today && requested !== tomorrow) {
-    throw validationError('只能查询今天或明天的菜单。');
+  const allowedDates = allowedOrderDates(now);
+  const requested = query.get('date') ?? allowedDates[0];
+  if (!allowedDates.includes(requested)) {
+    throw validationError('只能查询未来 7 天内的菜单。');
   }
+  ensureDateSlots(db, requested);
   const slots = db
     .prepare('SELECT * FROM slots WHERE date = ? ORDER BY start_at')
     .all(requested)

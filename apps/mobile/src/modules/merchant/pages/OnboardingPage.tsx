@@ -220,6 +220,14 @@ export default function OnboardingPage({
         requestId: createRequestId('merchant-registration'),
       });
       if (!saved.ok) {
+        if (saved.error.code === 'MERCHANT_ALREADY_REGISTERED') {
+          setMerchant(result.value);
+          setErrors({});
+          info('该档口账号已完成商家注册，可直接继续创建或核对店铺资料。');
+          setCompleted({ merchant: true, shop: false });
+          setStep(2);
+          return;
+        }
         error(onboardingErrorText(saved.error, '商家注册'));
         return;
       }
@@ -265,6 +273,13 @@ export default function OnboardingPage({
         requestId: createRequestId('merchant-shop'),
       });
       if (!saved.ok) {
+        if (saved.error.code === 'SHOP_ALREADY_EXISTS') {
+          setShop(result.value);
+          setErrors({});
+          info('该档口账号已存在店铺资料；开店流程已完成。');
+          setCompleted((current) => ({ ...current, shop: true }));
+          return;
+        }
         error(onboardingErrorText(saved.error, '店铺创建'));
         return;
       }

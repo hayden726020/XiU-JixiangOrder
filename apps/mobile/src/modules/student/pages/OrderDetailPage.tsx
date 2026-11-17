@@ -535,15 +535,17 @@ export default function OrderDetailPage({
               <RefreshIcon />
               <span>{readState.phase === 'refreshing' ? '正在刷新…' : '刷新订单'}</span>
             </button>
-            <button
-              type="button"
-              className="order-btn-cancel-sub"
-              onClick={() => {
-                alert('已接单或制作中的订单，如需取消请联系档口处理。');
-              }}
-            >
-              申请取消
-            </button>
+            {statusView.canShowCancelAction ? (
+              <button
+                type="button"
+                className="order-btn-cancel-sub"
+                onClick={() => {
+                  alert('已接单或制作中的订单，如需取消请联系档口处理。');
+                }}
+              >
+                申请取消
+              </button>
+            ) : null}
           </div>
 
           {/* 7. 折叠辅助信息与只读技术抽屉 */}

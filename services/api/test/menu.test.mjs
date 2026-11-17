@@ -135,17 +135,16 @@ test('档口保存时段后 version + 1，GET /menu 同步更新', async () => {
   assert.equal(slot.version, 2);
 });
 
-test('容量低于已占名额返回 INVALID_ORDER_STATE', async () => {
+test('容量低于已占名额仍可保存时段开关与配置（无名额下限限制）', async () => {
   const token = await ctx.login('merchant');
   ctx.db.prepare('UPDATE slots SET booked_count = 5 WHERE id = ?').run(SLOT_TODAY);
   const response = await ctx.api('PUT', `/merchant/slots/${SLOT_TODAY}`, {
     token,
-    body: slotBody('menu-slot-too-small', { capacity: 4 }),
+    body: slotBody('menu-slot-no-limit', { capacity: 4, enabled: false }),
   });
-  assert.equal(response.status, 409);
-  assert.equal(response.body.error.code, 'INVALID_ORDER_STATE');
-  const slot = ctx.db.prepare('SELECT capacity FROM slots WHERE id = ?').get(SLOT_TODAY);
-  assert.equal(slot.capacity, 20);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.enabled, false);
+  assert.equal(response.body.data.remainingCapacity, 0);
 });
 
 test('旧 expectedVersion 保存时段返回 MENU_VERSION_CONFLICT', async () => {

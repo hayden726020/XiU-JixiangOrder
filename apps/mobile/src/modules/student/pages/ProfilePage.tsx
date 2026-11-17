@@ -4,7 +4,7 @@ import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { clearSession } from '../../../shared/session';
 import { clearPresence } from '../../../shared/location';
 import SampleBanner from '../components/SampleBanner';
-import StudentTabBar from '../components/StudentTabBar';
+import RealModeNotice from '../components/RealModeNotice';
 import studentAvatar from '../assets/student-avatar.png';
 import '../profile.css';
 
@@ -63,6 +63,41 @@ function ChevronRightIcon() {
   );
 }
 
+function HomeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m3 10 9-7 9 7v10H3zM9 21v-7h6v7" />
+    </svg>
+  );
+}
+
+function BowlIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12h18a9 9 0 0 1-18 0ZM5 21h14" />
+      <path d="M9 8c0-2 2-2 2-4m4 5c0-2 2-2 2-4" />
+    </svg>
+  );
+}
+
+function OrdersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+
 export default function ProfilePage({
   source,
   onOpenOrders,
@@ -108,7 +143,7 @@ export default function ProfilePage({
   return (
     <div className="student-profile" aria-labelledby="profile-title">
       {/* 顶部指示条 */}
-      {source.mode === 'sample' ? <SampleBanner /> : null}
+      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       {/* 顶部封面背景与大标题 */}
       <header className="profile-hero">
@@ -214,18 +249,41 @@ export default function ProfilePage({
 
         {/* 4. 底部品牌页脚 */}
         <footer className="profile-footer">
-          食麦呼 · 校园预约取餐
+          吉祥点餐 · 校园预约取餐
         </footer>
       </main>
 
       {/* 底部导航栏：对齐参考图样式，我的 Tab 具备专属高亮 */}
-      <StudentTabBar
-        active="profile"
-        onGoHome={onGoToShop}
-        onGoOrder={onGoToMenu}
-        onOpenOrders={onOpenOrders}
-        onOpenProfile={() => undefined}
-      />
+      <nav className="student-home__nav" aria-label="学生端导航">
+        <button
+          type="button"
+          onClick={onGoToShop}
+        >
+          <span className="nav-tab-pill"><HomeIcon /><span>首页</span></span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onGoToMenu}
+        >
+          <span className="nav-tab-pill"><BowlIcon /><span>点餐</span></span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenOrders}
+        >
+          <span className="nav-tab-pill"><OrdersIcon /><span>订单</span></span>
+        </button>
+
+        <button
+          type="button"
+          className="is-active-tab"
+          aria-current="page"
+        >
+          <span className="nav-tab-pill"><UserIcon /><span>我的</span></span>
+        </button>
+      </nav>
 
       {/* 弹窗 1：位置信息与隐私 */}
       {modal === 'location' ? (

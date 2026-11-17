@@ -30,13 +30,22 @@
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   position: relative;
   box-sizing: border-box;
-  overflow-x: hidden;
   padding-bottom: calc(5.2rem + env(safe-area-inset-bottom));
 }
 
-.student-profile .student-sample-banner {
-  margin: 0;
-  padding: calc(0.5rem + env(safe-area-inset-top)) 1rem 0.5rem;
+.student-profile > .student-home__nav {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+}
+
+@media (min-width: 520px) {
+  .student-profile > .student-home__nav {
+    max-width: 520px;
+    margin-inline: auto;
+  }
 }
 
 /* 顶部封面背景与大标题区域 */
@@ -46,10 +55,9 @@
   padding: calc(1rem + env(safe-area-inset-top)) 1.25rem 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(244, 246, 248, 0.4) 65%, #f4f6f8 100%),
-    url("./assets/campus-hero.webp") center 35% / cover no-repeat;
+    url("./assets/campus-hero.png") center 35% / cover no-repeat;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   justify-content: flex-start;
 }
 

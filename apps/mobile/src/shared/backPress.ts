@@ -8,10 +8,47 @@ export const IOS_FALLBACK_MS = 280;
 
 const pendingButtons = new WeakSet<HTMLButtonElement>();
 let cleanupTimer = 0;
+let moduleBackHandler: (() => boolean) | null = null;
+
+declare global {
+  interface Window {
+    __xiuHandleBackPress?: () => boolean;
+  }
+}
 
 export function navigateToHash(route: string): void {
   window.location.hash = route;
   window.dispatchEvent(new Event('app:navigate'));
+}
+
+export function registerModuleBackHandler(handler: (() => boolean) | null): () => void {
+  moduleBackHandler = handler;
+  return () => {
+    if (moduleBackHandler === handler) {
+      moduleBackHandler = null;
+    }
+  };
+}
+
+export function handleAppBackPress(): boolean {
+  try {
+    if (moduleBackHandler && moduleBackHandler()) {
+      return true;
+    }
+  } catch {
+    // 忽略子模块返回处理异常，继续按顶层路由回退。
+  }
+  const rawHash = typeof window !== 'undefined' ? (window.location?.hash ?? '') : '';
+  const route = rawHash.replace(/^#/, '').replace(/\/+$/, '') || '/';
+  if (route !== '/') {
+    navigateToHash('/');
+    return true;
+  }
+  return false;
+}
+
+if (typeof window !== 'undefined') {
+  window.__xiuHandleBackPress = handleAppBackPress;
 }
 
 function clearTransitionMarkers(): void {

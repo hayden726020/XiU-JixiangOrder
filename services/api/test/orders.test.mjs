@@ -177,17 +177,22 @@ test('学生只能查看自己的订单，档口只能查看本档口订单', as
   assert.equal(adminView.status, 200);
 });
 
-test('菜单只允许今天或明天，并返回剩余名额', async () => {
+test('菜单允许未来 7 天（08:00-22:00 共 28 个时段）并支持跨日预约下单', async () => {
   const today = await ctx.api('GET', '/menu?date=2026-11-13');
   assert.equal(today.status, 200);
   assert.equal(today.body.data.date, '2026-11-13');
-  assert.equal(today.body.data.slots.length, 3);
-  assert.equal(today.body.data.slots[0].remainingCapacity, 20);
-  assert.equal(today.body.data.slots[2].remainingCapacity, 0);
-  assert.equal(today.body.data.slots[2].enabled, true);
+  assert.equal(today.body.data.slots.length, 28);
+  assert.ok(today.body.data.slots[0].startAt.includes('T08:00:00+08:00'));
+  assert.ok(today.body.data.slots[today.body.data.slots.length - 1].endAt.includes('T22:00:00+08:00'));
+  const lunchSlot = today.body.data.slots.find((item) => item.id === SLOT_TODAY);
+  const lunch3Slot = today.body.data.slots.find((item) => item.id === 'slot-2026-11-13-lunch-3');
+  assert.equal(lunchSlot.remainingCapacity, 20);
+  assert.equal(lunch3Slot.remainingCapacity, 0);
+  assert.equal(lunch3Slot.enabled, true);
   assert.ok(today.body.data.dishes.length >= 1);
 
-  const fullSlot = await placeOrder(await ctx.login('student'), 'full-slot-1', {
+  const studentToken = await ctx.login('student');
+  const fullSlot = await placeOrder(studentToken, 'full-slot-1', {
     slotId: 'slot-2026-11-13-lunch-3',
   });
   assert.equal(fullSlot.status, 201);
@@ -195,7 +200,15 @@ test('菜单只允许今天或明天，并返回剩余名额', async () => {
 
   const tomorrow = await ctx.api('GET', '/menu?date=2026-11-14');
   assert.equal(tomorrow.status, 200);
-  assert.equal(tomorrow.body.data.slots[0].id, SLOT_TOMORROW);
+  assert.equal(tomorrow.body.data.slots.some((item) => item.id === SLOT_TOMORROW), true);
+
+  const day7 = await ctx.api('GET', '/menu?date=2026-11-19');
+  assert.equal(day7.status, 200);
+  assert.equal(day7.body.data.slots.length, 28);
+  const day7Order = await placeOrder(studentToken, 'day7-slot-1', {
+    slotId: 'slot-2026-11-19-1800',
+  });
+  assert.equal(day7Order.status, 201);
 
   const invalid = await ctx.api('GET', '/menu?date=2026-11-20');
   assert.equal(invalid.status, 400);

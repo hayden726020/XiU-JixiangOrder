@@ -60,11 +60,9 @@ export default function OrderListPage({
           </p>
         </div>
         <div className="merchant-view__actions">
-          {!isSample && (
-            <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
-              商家注册 / 开店
-            </button>
-          )}
+          <button type="button" className="merchant-link-button" onClick={onOpenSetup} data-open-onboarding>
+            商家注册 / 开店
+          </button>
           <button type="button" className="merchant-link-button" onClick={onOpenMenu} data-open-menu>
             菜单与库存
           </button>

@@ -200,4 +200,33 @@ describe('backPress instant iOS navigation transition', () => {
     assert.equal(navigated, 1);
     assert.equal(env.getViewTransitionCalls(), 0);
   });
+
+  it('handles Android back gesture via module handler, then falls back to #/, and returns false at root', async () => {
+    const env = createFakeEnvironment({ reduceMotion: true });
+    globalThis.window = env.fakeWindow;
+    globalThis.document = env.fakeDocument;
+    globalThis.Element = env.FakeElement;
+
+    const mod = await import(`../src/shared/backPress.ts?case=android-back-${Date.now()}`);
+    assert.equal(typeof globalThis.window.__xiuHandleBackPress, 'function');
+
+    let step = 1;
+    const unregister = mod.registerModuleBackHandler(() => {
+      if (step > 0) {
+        step -= 1;
+        return true;
+      }
+      return false;
+    });
+
+    assert.equal(mod.handleAppBackPress(), true);
+    assert.equal(step, 0);
+    assert.equal(env.fakeWindow.location.hash, '#/student');
+
+    assert.equal(mod.handleAppBackPress(), true);
+    assert.equal(env.fakeWindow.location.hash, '/');
+
+    unregister();
+    assert.equal(mod.handleAppBackPress(), false);
+  });
 });

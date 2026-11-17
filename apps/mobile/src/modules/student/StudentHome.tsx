@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { registerModuleBackHandler } from '../../shared/backPress';
+import { sampleDates } from './data/sampleData';
 import { createStudentSource } from './data/sampleSource';
 import { resolveStudentMode } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
@@ -19,8 +21,7 @@ import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import { useStudentSessionGate } from './state/useStudentSessionGate';
 import type { ShopSummary, StudentMode, StudentSource } from './types';
-import { SHOP_SWITCH_BUSY } from './utils/shopTexts';
-import { todayAndTomorrow } from './utils/dates';
+import { SHOP_CLOSED_REASON, SHOP_SWITCH_BUSY } from './utils/shopTexts';
 import './student.css';
 import './student-global.css';
 
@@ -76,7 +77,7 @@ type StudentView = 'shop' | 'menu' | 'slot' | 'confirm' | 'order' | 'orders' | '
 
 type DetailFrom = 'menu' | 'orders';
 
-type OrdersBackTo = 'shop' | 'menu';
+type OrdersBackTo = 'shop' | 'menu' | 'profile';
 
 export default function StudentHome() {
   const [mode, setMode] = useState<StudentMode>(() => readModeOverride() ?? resolveStudentMode());
@@ -113,13 +114,13 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
   const [source] = useState<StudentSource>(() => createStudentSource({ mode }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
     if (source.mode === 'real') {
-      return readDraftSnapshot({ allowedDates: todayAndTomorrow(new Date()) });
+      return readDraftSnapshot({ allowedDates: sampleDates(new Date()) });
     }
     return null;
   });
   const [draft] = useState(() => {
     if (source.mode === 'real') {
-      const dates = todayAndTomorrow(new Date());
+      const dates = sampleDates(new Date());
       return createOrderDraft({
         source,
         allowedDates: dates,
@@ -152,6 +153,48 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
   const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
   const [shopNotice, setShopNotice] = useState('');
+
+  useEffect(() => {
+    return registerModuleBackHandler(() => {
+      if (view === 'confirm') {
+        goTo('slot', 'replace');
+        return true;
+      }
+      if (view === 'slot') {
+        goTo('menu', 'replace');
+        return true;
+      }
+      if (view === 'order') {
+        if (currentShop === null || detailFrom === 'orders') {
+          goTo('orders', 'replace');
+        } else {
+          goTo('menu', 'replace');
+        }
+        return true;
+      }
+      if (view === 'orders') {
+        if (ordersBackTo === 'profile') {
+          goTo('profile', 'replace');
+        } else if (currentShop !== null && ordersBackTo === 'menu') {
+          goTo('menu', 'replace');
+        } else {
+          setShopLandingTab('home');
+          goTo('shop', 'replace');
+        }
+        return true;
+      }
+      if (view === 'profile' || view === 'menu') {
+        setShopLandingTab('home');
+        goTo('shop', 'replace');
+        return true;
+      }
+      if (view === 'shop' && shopLandingTab !== 'home') {
+        setShopLandingTab('home');
+        return true;
+      }
+      return false;
+    });
+  }, [view, currentShop, detailFrom, ordersBackTo, shopLandingTab]);
 
   function applyViewTransition(next: StudentView): void {
     const commit = () => {
@@ -236,6 +279,11 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
   }
 
   function enterShop(shop: ShopSummary): void {
+    if (shop.active === false) {
+      setShopNotice(SHOP_CLOSED_REASON);
+      goTo('shop');
+      return;
+    }
     const result = draft.setShop(shop.merchantId);
     if (result.reason === 'busy') {
       setShopNotice(SHOP_SWITCH_BUSY);
@@ -265,8 +313,8 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
     return (
       <OrderListPage
         source={source}
-        onBack={() => goToShop('home', 'back')}
-        backLabel="← 返回店铺选择"
+        onBack={() => ordersBackTo === 'profile' ? goTo('profile', 'back') : goToShop('home', 'back')}
+        backLabel={ordersBackTo === 'profile' ? '← 返回我的' : '← 返回店铺选择'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
         onGoToHome={() => goToShop('home')}
         onGoToShop={() => goToShop('order')}
@@ -294,18 +342,9 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
     return (
       <ProfilePage
         source={source}
-        onOpenOrders={() => openOrders('shop')}
+        onOpenOrders={() => openOrders('profile')}
         onGoToShop={() => goToShop('home')}
-        onGoToMenu={() => {
-          if (currentShop) {
-            goTo('menu');
-          } else {
-            source.listShops().then((shops) => {
-              if (shops.length > 0) enterShop(shops[0]);
-              else goToShop('home');
-            });
-          }
-        }}
+        onGoToMenu={() => goToShop('order')}
       />
     );
   }
@@ -317,7 +356,8 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
         draft={draft}
         currentShop={currentShop}
         notice={shopNotice || draft.getState().notice || ''}
-        initialTab={shopLandingTab}
+        activeTab={shopLandingTab}
+        onTabChange={setShopLandingTab}
         onEnterShop={enterShop}
         onOpenOrders={() => openOrders('shop')}
         onOpenProfile={() => goTo('profile')}
@@ -356,11 +396,12 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
 
   if (view === 'orders') {
     const backToShops = ordersBackTo === 'shop';
+    const backTarget: StudentView = ordersBackTo === 'profile' ? 'profile' : backToShops ? 'shop' : 'menu';
     return (
       <OrderListPage
         source={source}
-        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
-        backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
+        onBack={() => goTo(backTarget, 'back')}
+        backLabel={ordersBackTo === 'profile' ? '← 返回我的' : backToShops ? '← 返回店铺选择' : '← 返回菜单'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
         onGoToHome={() => goToShop('home')}
         onGoToShop={() => goToShop('order')}

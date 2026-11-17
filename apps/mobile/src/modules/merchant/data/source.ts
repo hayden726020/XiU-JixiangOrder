@@ -167,7 +167,7 @@ function mapSlot(slot: ApiSlot): Slot {
     occupied: slot.booked,
     remaining: slot.remainingCapacity,
     enabled: slot.enabled,
-    full: slot.remainingCapacity <= 0,
+    full: false,
     version: apiVersion(slot.version),
   };
 }
@@ -412,12 +412,16 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送注册请求。');
       }
+      const fallbackMerchantName =
+        input.merchantName?.trim()
+        || getSession()?.user.displayName?.trim()
+        || `${input.contactName.trim()}的档口`;
       try {
         const data = await apiRequest<ApiMerchantProfile>('/merchant/registration', {
           method: 'POST',
           body: {
             requestId: input.requestId,
-            merchantName: input.merchantName,
+            merchantName: fallbackMerchantName,
             contactName: input.contactName,
             contactPhone: input.contactPhone,
           },
@@ -897,16 +901,13 @@ export function createMerchantSource(options: {
       if (input.expectedVersion === null || input.expectedVersion !== version) {
         return fail('ORDER_VERSION_CONFLICT', '时段已在其他操作中更新，请重新读取菜单后再保存。');
       }
-      if (input.capacity < current.occupied) {
-        return fail('INVALID_ORDER_STATE', '容量不能低于已占用名额。');
-      }
       const remaining = Math.max(input.capacity - current.occupied, 0);
       const updated: Slot = {
         ...current,
         capacity: input.capacity,
         enabled: input.enabled,
         remaining,
-        full: remaining <= 0,
+        full: false,
         version: version + 1,
       };
       slotWrites.set(slotId, {

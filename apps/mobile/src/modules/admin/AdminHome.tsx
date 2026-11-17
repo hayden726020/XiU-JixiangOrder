@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { registerModuleBackHandler } from '../../shared/backPress';
 import {
   getApiBaseInfo,
   getSession,
@@ -77,6 +78,23 @@ export default function AdminHome() {
   }, []);
 
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
+
+  useEffect(() => {
+    return registerModuleBackHandler(() => {
+      if (session?.user.role !== 'ADMIN') {
+        return false;
+      }
+      if (location.route === 'orderDetail') {
+        window.location.hash = '#/admin/orders';
+        return true;
+      }
+      if (location.route === 'orders' || location.route === 'settings') {
+        window.location.hash = '#/admin';
+        return true;
+      }
+      return false;
+    });
+  }, [location.route, session?.user.role]);
 
   const source = useMemo(
     () => createAdminSource({ mode, simulateError: mode === 'sample' ? simulateError : 'none' }),

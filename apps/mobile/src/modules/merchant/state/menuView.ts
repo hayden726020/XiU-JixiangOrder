@@ -49,5 +49,5 @@ export function addDaysIso(date: string, days: number): string {
 }
 
 export function menuDatesFor(today: string): string[] {
-  return [today, addDaysIso(today, 1)];
+  return Array.from({ length: 7 }, (_, index) => addDaysIso(today, index));
 }

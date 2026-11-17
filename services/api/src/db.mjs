@@ -26,8 +26,8 @@ export const DEMO_USERS = [
 ];
 
 export const DEMO_MERCHANTS = [
-  { id: 'demo-merchant-01', name: '一食堂·家常档', openAt: '08:00', closeAt: '20:00' },
-  { id: 'demo-merchant-02', name: '一食堂·面档', openAt: '08:00', closeAt: '20:00' },
+  { id: 'demo-merchant-01', name: '一食堂·家常档', openAt: '08:00', closeAt: '22:00' },
+  { id: 'demo-merchant-02', name: '一食堂·面档', openAt: '08:00', closeAt: '22:00' },
 ];
 
 export const DEMO_DISHES = [
@@ -36,12 +36,37 @@ export const DEMO_DISHES = [
   { id: 'demo-dish-03', merchantId: 'demo-merchant-01', type: 'SET', name: '演示套餐', priceFen: 2200, quantity: 8 },
 ];
 
-// 契约 2026-11-13 冻结：午餐固定 3 个时段，12:30—13:00 样例为已满。
-const SLOT_TEMPLATES = [
-  { key: 'lunch', start: '11:30', end: '12:00', capacity: 20 },
-  { key: 'lunch-2', start: '12:00', end: '12:30', capacity: 20 },
-  { key: 'lunch-3', start: '12:30', end: '13:00', capacity: 20, demoFull: true },
-];
+export const SLOT_DATE_RANGE_DAYS = 7;
+export const SLOT_DAY_START_HOUR = 8;
+export const SLOT_DAY_END_HOUR = 22;
+const SLOT_STEP_MINUTES = 30;
+
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+function buildSlotTemplates() {
+  const templates = [];
+  for (let hour = SLOT_DAY_START_HOUR; hour < SLOT_DAY_END_HOUR; hour += 1) {
+    for (let minute = 0; minute < 60; minute += SLOT_STEP_MINUTES) {
+      const endTotal = hour * 60 + minute + SLOT_STEP_MINUTES;
+      const start = `${pad2(hour)}:${pad2(minute)}`;
+      const end = `${pad2(Math.floor(endTotal / 60))}:${pad2(endTotal % 60)}`;
+      if (start === '11:30') {
+        templates.push({ key: 'lunch', start, end, capacity: 20 });
+      } else if (start === '12:00') {
+        templates.push({ key: 'lunch-2', start, end, capacity: 20 });
+      } else if (start === '12:30') {
+        templates.push({ key: 'lunch-3', start, end, capacity: 20, demoFull: true });
+      } else {
+        templates.push({ key: `${pad2(hour)}${pad2(minute)}`, start, end, capacity: 30 });
+      }
+    }
+  }
+  return templates;
+}
+
+const SLOT_TEMPLATES = buildSlotTemplates();
 
 const SCHEMA = `
 PRAGMA foreign_keys = ON;
@@ -211,22 +236,36 @@ export function createDatabase(path = ':memory:') {
   return db;
 }
 
+export function buildSlotsForDate(date) {
+  return SLOT_TEMPLATES.map((template) => {
+    const id = template.key === 'lunch' ? `slot-${date}-lunch` : `slot-${date}-${template.key}`;
+    return {
+      id,
+      date,
+      startAt: Date.parse(`${date}T${template.start}:00+08:00`),
+      endAt: Date.parse(`${date}T${template.end}:00+08:00`),
+      capacity: template.capacity,
+      bookedCount: template.demoFull ? template.capacity : 0,
+    };
+  });
+}
+
+export function ensureDateSlots(db, date) {
+  const insertSlot = db.prepare(
+    `INSERT OR IGNORE INTO slots (id, date, start_at, end_at, capacity, booked_count, enabled, version)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1)`,
+  );
+  for (const slot of buildSlotsForDate(date)) {
+    insertSlot.run(slot.id, slot.date, slot.startAt, slot.endAt, slot.capacity, slot.bookedCount);
+  }
+}
+
 export function buildDemoSlots(now) {
   const today = shanghaiDate(now);
-  const dates = [today, addDays(today, 1)];
+  const dates = Array.from({ length: SLOT_DATE_RANGE_DAYS }, (_, index) => addDays(today, index));
   const slots = [];
   for (const date of dates) {
-    for (const template of SLOT_TEMPLATES) {
-      const id = template.key === 'lunch' ? `slot-${date}-lunch` : `slot-${date}-${template.key}`;
-      slots.push({
-        id,
-        date,
-        startAt: Date.parse(`${date}T${template.start}:00+08:00`),
-        endAt: Date.parse(`${date}T${template.end}:00+08:00`),
-        capacity: template.capacity,
-        bookedCount: template.demoFull ? template.capacity : 0,
-      });
-    }
+    slots.push(...buildSlotsForDate(date));
   }
   return slots;
 }
@@ -256,8 +295,12 @@ export function seedDemoData(db, { now, passwords }) {
   const insertMerchant = db.prepare(
     'INSERT OR IGNORE INTO merchants (id, name, open_at, close_at) VALUES (?, ?, ?, ?)',
   );
+  const updateDemoHours = db.prepare(
+    "UPDATE merchants SET close_at = ? WHERE id = ? AND close_at = '20:00'",
+  );
   for (const merchant of DEMO_MERCHANTS) {
     insertMerchant.run(merchant.id, merchant.name, merchant.openAt, merchant.closeAt);
+    updateDemoHours.run(merchant.closeAt, merchant.id);
   }
 
   const insertDish = db.prepare(

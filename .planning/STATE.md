@@ -2,6 +2,11 @@
 
 更新日期：2026-11-17。方案版本：APK-v2（增加开店、选店与学生开放注册后端扩展范围）。维护人：spcuteag。
 
+## 2026-11-17 学生端订单详情已完成/已取消状态移除取消订单按键修复
+
+- 在 `orderStatusView.ts` 增加 `canShowCancelAction: boolean`（仅 `order.status !== 'COMPLETED' && order.status !== 'CANCELLED'` 时为 `true`），并在 `OrderDetailPage.tsx` 操作栏按 `statusView.canShowCancelAction` 条件渲染「申请取消」按钮，修复已完成/已取消订单详情仍显示取消订单按键的问题（同步更新 `team-context/frontend/src/modules/student/` 副本）。
+- 验证：`node --test apps/mobile/test/*.mjs` 全量通过（含新增 `toOrderStatusView and OrderDetailPage hide cancel button for COMPLETED and CANCELLED orders` 回归测试）；`npm --prefix apps/mobile run build` 通过。
+
 ## 2026-11-17 全分支合并、线上 ECS 服务端同步与 APK 1.37 构建（versionCode 38）
 
 - 解决三分支分散与线上服务端未同步两项阻塞，在 `docs/readme-status` 基线上完成全量整合：

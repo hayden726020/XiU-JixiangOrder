@@ -1,5 +1,8 @@
 import type { DishType } from '../data/types';
-import { isDishType } from './onboarding';
+
+function isDishType(value: unknown): value is DishType {
+  return value === 'STAPLE' || value === 'SNACK' || value === 'DRINK' || value === 'SET';
+}
 
 export interface DishPatch {
   name: string;
@@ -53,19 +56,16 @@ export function parseDishPatch(
 
 export function parseSlotPatch(
   capacityText: string,
-  occupied: number,
+  _occupied: number,
   enabled: boolean,
 ): PatchResult<SlotPatch> {
   const text = capacityText.trim();
   if (!/^\d+$/.test(text)) {
-    return { ok: false, error: '接单名额必须是 0 或正整数。' };
+    return { ok: false, error: '名额参数必须是 0 或正整数。' };
   }
   const capacity = Number(text);
   if (!Number.isSafeInteger(capacity) || capacity > 10_000) {
-    return { ok: false, error: '接单名额不能超过 10000。' };
-  }
-  if (capacity < occupied) {
-    return { ok: false, error: `接单名额不能低于已占用 ${occupied} 笔。` };
+    return { ok: false, error: '名额参数不能超过 10000。' };
   }
   return { ok: true, patch: { capacity, enabled } };
 }

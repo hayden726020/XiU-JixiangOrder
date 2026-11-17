@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { registerModuleBackHandler } from '../../shared/backPress';
 import SampleBanner from './components/SampleBanner';
 import { SAMPLE_DATES } from './data/sampleData';
 import { createMerchantSource } from './data/source';
@@ -164,13 +165,26 @@ export default function MerchantHome() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  function handleMerchantLoggedIn() {
+  function handleMerchantLoggedIn(targetView?: 'list' | 'setup') {
     clearActionState();
     setNotice(null);
-    setView({ name: 'list' });
+    const route = merchantRoute();
+    const goSetup =
+      targetView === 'setup'
+      || view.name === 'setup'
+      || route === SETUP_ROUTE
+      || route === MERCHANT_ROUTE;
     setOrderPage(1);
     setDataVersion((current) => current + 1);
-    if (merchantRoute() !== ORDERS_ROUTE) {
+    if (goSetup) {
+      setView({ name: 'setup' });
+      if (route !== SETUP_ROUTE) {
+        window.location.hash = SETUP_ROUTE;
+      }
+      return;
+    }
+    setView({ name: 'list' });
+    if (route !== ORDERS_ROUTE) {
       window.location.hash = ORDERS_ROUTE;
     }
   }
@@ -310,18 +324,30 @@ export default function MerchantHome() {
     setActionError(null);
   }
 
-  function changeMode(next: DataMode) {
-    if (next === mode) return;
+  function changeMode(next: DataMode, targetView?: 'list' | 'setup') {
     clearActionState();
-    if (merchantRoute() !== ORDERS_ROUTE) {
-      window.location.hash = ORDERS_ROUTE;
+    const route = merchantRoute();
+    const keepSetup =
+      targetView === 'setup'
+      || (targetView === undefined && (view.name === 'setup' || route === SETUP_ROUTE || route === MERCHANT_ROUTE));
+    if (next !== mode) {
+      setMode(next);
+      const nextDates = next === 'sample' ? [...SAMPLE_DATES] : menuDatesFor(today);
+      setMenuDate(resolveMenuDate(nextDates, today));
     }
-    setMode(next);
-    setView({ name: 'list' });
+    if (keepSetup) {
+      if (route !== SETUP_ROUTE) {
+        window.location.hash = SETUP_ROUTE;
+      }
+      setView({ name: 'setup' });
+    } else {
+      if (route !== ORDERS_ROUTE) {
+        window.location.hash = ORDERS_ROUTE;
+      }
+      setView({ name: 'list' });
+    }
     setNotice(null);
     setOrderPage(1);
-    const nextDates = next === 'sample' ? [...SAMPLE_DATES] : menuDatesFor(today);
-    setMenuDate(resolveMenuDate(nextDates, today));
   }
 
   function changeScenario(next: MerchantScenario) {
@@ -383,6 +409,26 @@ export default function MerchantHome() {
     clearActionState();
     window.location.hash = '/';
   }
+
+  useEffect(() => {
+    return registerModuleBackHandler(() => {
+      if (mode === 'real' && !merchantLoggedIn) {
+        return false;
+      }
+      if (view.name === 'detail' || view.name === 'menu' || view.name === 'my') {
+        backToList();
+        return true;
+      }
+      if (view.name === 'setup') {
+        if (merchantRoute() === SETUP_ROUTE) {
+          backToList();
+          return true;
+        }
+        return false;
+      }
+      return false;
+    });
+  }, [mode, merchantLoggedIn, view.name]);
 
   function handleAction(orderId: string, action: OrderAction, input: ActionInput = {}) {
     if (pendingCode !== null) return;
@@ -629,7 +675,7 @@ export default function MerchantHome() {
         }
         : current));
       setNotice(
-        `已保存时段 ${formatClock(result.data.slotStart)}—${formatClock(result.data.slotEnd)}：名额 ${result.data.capacity}，${result.data.enabled ? '开放' : '关闭'}，版本 v${result.data.version ?? '未返回'}。`,
+        `已保存时段 ${formatClock(result.data.slotStart)}—${formatClock(result.data.slotEnd)}：${result.data.enabled ? '开放接单' : '已关闭'}，版本 v${result.data.version ?? '未返回'}。`,
       );
     }
     return result;
@@ -656,8 +702,10 @@ export default function MerchantHome() {
         devDemoPassword={devPassword}
         apiBaseUrl={apiBase.baseUrl}
         apiBaseProblem={apiBase.problem}
+        initialIntent={view.name === 'setup' ? 'setup' : 'orders'}
         onLoggedIn={handleMerchantLoggedIn}
         onUseSample={() => changeMode('sample')}
+        onOpenSampleSetup={() => changeMode('sample', 'setup')}
       />
     );
   }
@@ -825,7 +873,6 @@ export default function MerchantHome() {
         </section>
       )}
 
-      {merchantLoggedIn && (
       <nav className='merchant-tabbar' aria-label='底部导航'>
         <button
           type='button'
@@ -853,7 +900,18 @@ export default function MerchantHome() {
         </button>
         <button
           type='button'
-          className={`merchant-tab-item${view.name === 'my' || view.name === 'setup' ? ' is-active' : ''}`}
+          className={`merchant-tab-item${view.name === 'setup' ? ' is-active' : ''}`}
+          onClick={openSetup}
+        >
+          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+            <path d='M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' />
+            <polyline points='9 22 9 12 15 12 15 22' />
+          </svg>
+          <span>注册开店</span>
+        </button>
+        <button
+          type='button'
+          className={`merchant-tab-item${view.name === 'my' ? ' is-active' : ''}`}
           onClick={openMy}
         >
           <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
@@ -863,7 +921,6 @@ export default function MerchantHome() {
           <span>我的</span>
         </button>
       </nav>
-      )}
     </section>
   );
 }
