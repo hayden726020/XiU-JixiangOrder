@@ -21,6 +21,7 @@ export type CrowdBasis = 'RESERVATION' | 'LOCATION' | 'PICKUP';
 export interface ShopSummary {
   merchantId: string;
   name: string;
+  merchantName: string | null;
   canteenId: string | null;
   orderable: boolean | null;
   demo: boolean;

@@ -26,6 +26,7 @@ test('学生读取店铺列表，字段完整且不泄露联系方式', async ()
   for (const merchant of response.body.data.merchants) {
     assert.equal(typeof merchant.merchantId, 'string');
     assert.equal(typeof merchant.name, 'string');
+    assert.equal(typeof merchant.merchantName, 'string');
     assert.equal(typeof merchant.canteenId, 'string');
     assert.equal(typeof merchant.orderable, 'boolean');
     assert.equal(typeof merchant.sortOrder, 'number');
@@ -34,6 +35,7 @@ test('学生读取店铺列表，字段完整且不泄露联系方式', async ()
   }
   assert.equal(response.body.data.merchants[0].merchantId, 'demo-merchant-01');
   assert.equal(response.body.data.merchants[0].name, '一食堂·家常档');
+  assert.equal(response.body.data.merchants[0].merchantName, '一食堂·家常档');
   assert.equal(response.body.data.merchants[0].sortOrder, 1);
   assert.equal(response.body.data.merchants[0].orderable, true);
 });

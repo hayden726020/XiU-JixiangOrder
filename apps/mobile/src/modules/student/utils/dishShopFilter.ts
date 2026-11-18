@@ -25,6 +25,7 @@ export function buildMenuDerivedShops(dishes: DishDto[]): ShopSummary[] {
   return listShopIdsFromDishes(dishes).map((merchantId) => ({
     merchantId,
     name: merchantId,
+    merchantName: null,
     canteenId: null,
     orderable: null,
     demo: false,

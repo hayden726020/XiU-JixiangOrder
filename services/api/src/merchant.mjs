@@ -104,6 +104,7 @@ export function listMerchants({ db, clock }) {
         merchants: rows.map((row, index) => ({
           merchantId: row.id,
           name: row.name,
+          merchantName: row.name,
           canteenId,
           orderable: row.status === 'ACTIVE' && nowHm >= row.open_at && nowHm < row.close_at,
           sortOrder: index + 1,

@@ -221,6 +221,7 @@ export function mapShopListResponse(payload: unknown, { demo }: MapShopListOptio
     return {
       merchantId: requireText(entry, 'merchantId', where),
       name: requireText(entry, 'name', where),
+      merchantName: readNullableText(entry, 'merchantName'),
       canteenId: readNullableText(entry, 'canteenId'),
       orderable: readNullableBoolean(entry, 'orderable'),
       demo,

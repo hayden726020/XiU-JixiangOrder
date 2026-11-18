@@ -21,6 +21,7 @@ export const DEMO_SHOPS: ShopSummary[] = [
   {
     merchantId: 'demo-merchant-01',
     name: '一食堂·家常档',
+    merchantName: '一食堂·家常档',
     canteenId: 'demo-canteen-01',
     orderable: true,
     demo: true,
@@ -29,6 +30,7 @@ export const DEMO_SHOPS: ShopSummary[] = [
   {
     merchantId: 'demo-merchant-02',
     name: '一食堂·面档',
+    merchantName: '一食堂·面档',
     canteenId: 'demo-canteen-01',
     orderable: true,
     demo: true,
