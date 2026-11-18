@@ -12,7 +12,6 @@ import { toSlotView } from '../utils/slotView';
 import { useSourceNowMs } from '../state/useSourceNowMs';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
-import RealModeNotice from '../components/RealModeNotice';
 import SlideToConfirm from '../components/SlideToConfirm';
 import dishChickenLeg from '../assets/dish-chicken-leg.png';
 import '../confirm-order.css';
@@ -280,8 +279,8 @@ export interface ConfirmPageProps {
   source: StudentSource;
   draft: OrderDraft;
   shop: ShopSummary;
-  onBack: () => void;
-  onBackToMenu: () => void;
+  onBack: (trigger?: HTMLElement | null) => void;
+  onBackToMenu: (trigger?: HTMLElement | null) => void;
   onSubmitted: (orderId: string) => void;
   onEditCustomization?: (dishId: string) => void;
   hideSampleTools?: boolean;
@@ -379,6 +378,11 @@ export default function ConfirmPage({
     if (source.mode === 'real' && !gate.usable) {
       refresh();
       throw new Error('NOT_LOGGED_IN');
+    }
+    const currentMs = syncNowMs();
+    const currentSlot = menu?.slots.find((slot) => slot.slotId === snapshot.slotId) ?? null;
+    if (menuStatus !== 'ready' || currentSlot === null || !toSlotView(currentSlot, currentMs).selectable) {
+      throw new Error('SLOT_EXPIRED');
     }
     setQueryError('');
     pendingSubmittedIdRef.current = null;
@@ -532,10 +536,9 @@ export default function ConfirmPage({
   if (realLoggedOut) {
     return (
       <section className="confirm-order-page" aria-labelledby="student-confirm-title">
-        <RealModeNotice />
         <header className="confirm-order__hero">
           <div className="confirm-order__nav">
-            <button type="button" className="confirm-order__back" aria-label="返回时段" onClick={onBack}>
+            <button type="button" className="confirm-order__back" aria-label="返回时段" onClick={(event) => onBack(event.currentTarget)}>
               <ChevronLeftIcon />
             </button>
             <div className="confirm-order__title-wrap">
@@ -548,7 +551,7 @@ export default function ConfirmPage({
           <HeroClocheSvg className="confirm-order__cloche" />
         </header>
         <div className="confirm-order__main">
-          <LoginGuide gate={gate} onRecheck={refresh} onBack={onBackToMenu} />
+          <LoginGuide gate={gate} onRecheck={refresh} onBack={() => onBackToMenu()} />
         </div>
       </section>
     );
@@ -556,11 +559,9 @@ export default function ConfirmPage({
 
   return (
     <section className="confirm-order-page" aria-labelledby="student-confirm-title">
-      {source.mode === 'real' ? <RealModeNotice /> : null}
-
       <header className="confirm-order__hero">
         <div className="confirm-order__nav">
-          <button type="button" className="confirm-order__back" aria-label="返回时段" onClick={onBack}>
+          <button type="button" className="confirm-order__back" aria-label="返回时段" onClick={(event) => onBack(event.currentTarget)}>
             <ChevronLeftIcon />
           </button>
           <div className="confirm-order__title-wrap">
@@ -604,7 +605,7 @@ export default function ConfirmPage({
           <div className="confirm-alert-card" role="alert">
             <p>确认信息读取失败，请返回时段页重试。</p>
             <div className="confirm-alert-card__actions">
-              <button type="button" onClick={onBack}>
+              <button type="button" onClick={(event) => onBack(event.currentTarget)}>
                 返回时段页
               </button>
             </div>
@@ -710,7 +711,7 @@ export default function ConfirmPage({
                         className="confirm-meta-row__slot-btn"
                         aria-label="修改取餐时段"
                         disabled={isBusy}
-                        onClick={onBack}
+                        onClick={(event) => onBack(event.currentTarget)}
                       >
                         <span>{selectedSlot ? slotTimeRange(selectedSlot) : '未选择'}</span>
                         <ChevronRightIcon />
@@ -823,7 +824,11 @@ export default function ConfirmPage({
               ) : (
                 <button
                   type="button"
-                  onClick={errorView.action === 'back-to-slot' ? onBack : onBackToMenu}
+                  onClick={(event) =>
+                    errorView.action === 'back-to-slot'
+                      ? onBack(event.currentTarget)
+                      : onBackToMenu(event.currentTarget)
+                  }
                 >
                   {errorView.actionLabel}
                 </button>
