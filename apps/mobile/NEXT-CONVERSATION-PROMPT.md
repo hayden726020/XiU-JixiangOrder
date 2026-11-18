@@ -104,3 +104,10 @@
 - 待办：演示商家 `contactName` 目前是接口探测写入的 `ProbeName`，需在页面改为真实联系人（服务端不接受 `null`/空串）；钱包仍是前端占位；菜品库与每日菜单接口服务端未提供。
 - 验证要求：`tsc --noEmit` 为 0 错误；真实模式 `#/merchant/my/info` 保存应同时出现 `PATCH /merchant/profile` 200 与 `PATCH /merchant/shops/{id}` 200，且页面提示“我的信息已保存到服务端”。
 - Git 与网络：`github.com:443` 间歇 `Connection was reset`/超时，重试无效时改走 GitHub REST API（上传 blob → 建 tree → 建 commit → PATCH ref），核验用 `tree` 比对而非哈希；只推 `docs/readme-status`，不强推。
+## 2026-11-18 第三轮基线接续（`frontend/handoff-2026-11-18-r3`）
+
+- 当前基线：本地 `872c8e1`（对应远端 `docs/readme-status` 头 `0259aa0`）之上新增 39 个文件改动；新分支 `frontend/handoff-2026-11-18-r3`，远端头以 `git ls-remote` 为准。工作区仍可能被并行会话写入，建基线前先 `git fetch`，再比对 `frontend/src` 与 `.git-sync/apps/mobile/src`。
+- 已完成：学生端订单详情取消申请接入 `POST /orders/{id}/cancel`（NEW 直接取消；ACCEPTED/PREPARING/READY 提交 PENDING 申请，理由 1—200 字；样例模式本地模拟并标注）；档口端打包费设置与订单展示（样例 localStorage，真实读 `packagingFeeFen`）；档口订单行/详情与 v4 视觉；学生端「我的」页改版；订单号按 `orderNo` 展示；`tsconfig.json` 排除 `*.sync-conflict-*`。
+- 待办/需真实联调：用真实学生账号验证线上 `POST /orders/{id}/cancel`（本轮仅验证构建产物与样例模式）；打包费真实字段需服务端支持；演示商家 `contactName` 仍为 `ProbeName`；钱包仍是前端占位；APK 未重打。
+- 验证：`tsc --noEmit` 0 错误、`vite build` 成功；无头 Edge 验证取消弹窗、提交与结果提示。
+- Git：只推专用分支、不强推、不推 `main`；本地 `frontend` 对应远端 `apps/mobile`；`vite.config.ts`、`README.md`、`index.html`、`package.json`、`capacitor.config.ts`、`android/` 一律保持远端版本。

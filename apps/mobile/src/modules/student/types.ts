@@ -88,6 +88,7 @@ export interface OrderDelay {
 
 export interface StudentOrder {
   id: string;
+  orderNo?: number | null;
   merchantId: string | null;
   merchantName: string | null;
   items: OrderItem[];
@@ -132,6 +133,12 @@ export interface QueryOrderResultInput {
   remark?: string;
 }
 
+export interface CancelOrderInput {
+  requestId: string;
+  expectedVersion: number;
+  reason?: string;
+}
+
 export interface StudentSource {
   mode: StudentMode;
   listShops(): Promise<ShopSummary[]>;
@@ -141,6 +148,7 @@ export interface StudentSource {
   queryOrderResult(input: QueryOrderResultInput | string): Promise<StudentOrder>;
   getOrder(id: string): Promise<StudentOrder>;
   listOrders(): Promise<StudentOrder[]>;
+  cancelOrder(id: string, input: CancelOrderInput): Promise<StudentOrder>;
   setScenario(next: DemoScenario): DemoScenario;
   getScenario(): DemoScenario;
 }

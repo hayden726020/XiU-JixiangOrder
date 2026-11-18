@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import type { CrowdView } from '../utils/crowdView';
 import type { SourceError, StudentSource } from '../types';
 import { toSourceError } from '../types';
@@ -16,9 +16,27 @@ import {
 import { useOrderPolling } from '../state/useOrderPolling';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { toCrowdView } from '../utils/crowdView';
+import { orderNoText } from '../utils/orderStatusView';
 import { deriveDetailReadView } from '../utils/detailReadView';
 import { toDetailErrorView } from '../utils/detailErrorView';
 import { CANCEL_RULES, CHANGE_DINING_NOTE } from '../utils/orderDetailTexts';
+import { deriveCancelAreaView } from '../utils/orderCancelView';
+import {
+  CANCEL_APPLY_NOTE,
+  CANCEL_CONFIRM_TEXT,
+  CANCEL_REASON_LABEL,
+  CANCEL_REASON_PLACEHOLDER,
+  cancelErrorText,
+  isCancelAuthCode,
+  isCancelConflictCode,
+  isCancelRetryableCode,
+} from '../utils/cancelTexts';
+import {
+  initialCancelState,
+  reduceCancel,
+  validateCancelReason,
+} from '../state/orderCancel';
+import { createRequestId } from '../../../shared/requestId';
 import { toOrderStatusView } from '../utils/orderStatusView';
 import { derivePollingView } from '../utils/pollingView';
 import DemoModeNotice from '../components/DemoModeNotice';
@@ -110,6 +128,11 @@ export default function OrderDetailPage({
   const [readState, setReadState] = useState<DetailReadState>(() => initialDetailRead());
   const [crowd, setCrowd] = useState<CrowdView | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [cancelState, dispatchCancel] = useReducer(reduceCancel, initialCancelState());
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState('');
+  const [cancelNotice, setCancelNotice] = useState('');
+
   const guardRef = useRef(createReadGuard());
   const stateRef = useRef<DetailReadState>(readState);
   stateRef.current = readState;
@@ -171,6 +194,13 @@ export default function OrderDetailPage({
       guard.reset();
     };
   }, [source, orderId, realLoggedOut, reloadToken]);
+
+  useEffect(() => {
+    setCancelNotice('');
+    setCancelError('');
+    setCancelReason('');
+    dispatchCancel({ type: 'reset' });
+  }, [orderId]);
 
   function settleFromRead(token: number, data: Parameters<typeof settleRead>[1]): void {
     const pending = inFlightRef.current;
@@ -276,6 +306,90 @@ export default function OrderDetailPage({
   });
   const statusView =
     readState.order !== null ? toOrderStatusView(readState.order, { mode: source.mode }) : null;
+  const cancelView =
+    readState.order !== null ? deriveCancelAreaView(readState.order, { mode: source.mode }) : null;
+  const cancelSubmitting = cancelState.phase === 'submitting';
+  const cancelModalOpen =
+    cancelState.phase === 'confirming' ||
+    cancelState.phase === 'submitting' ||
+    cancelState.phase === 'retry-pending' ||
+    cancelState.phase === 'blocked-auth' ||
+    cancelState.phase === 'failed';
+
+  function openCancelDialog(): void {
+    setCancelReason('');
+    setCancelError('');
+    setCancelNotice('');
+
+    dispatchCancel({ type: 'open-confirm' });
+  }
+
+  function closeCancelDialog(): void {
+    if (cancelSubmitting) {
+      return;
+    }
+
+    setCancelError('');
+    dispatchCancel({ type: 'cancel-confirm' });
+  }
+
+  async function submitCancel(): Promise<void> {
+    const order = readState.order;
+    if (order === null || cancelView === null || cancelSubmitting) {
+      return;
+    }
+    const trimmedReason = cancelReason.trim();
+    if (cancelView.reasonRequired || trimmedReason !== '') {
+      const check = validateCancelReason(cancelReason);
+      if (!check.ok) {
+        setCancelError(check.message);
+        return;
+      }
+    }
+    setCancelError('');
+    const requestId =
+      cancelState.requestId ??
+      createRequestId(source.mode === 'real' ? 'stu-cancel' : 'demo-cancel');
+
+    dispatchCancel({ type: 'submit', requestId });
+    try {
+      const updated = await source.cancelOrder(order.id, {
+        requestId,
+        expectedVersion: order.version,
+        ...(trimmedReason ? { reason: trimmedReason } : {}),
+      });
+      setReadState((current) => settleRead(current, updated, new Date()));
+      pollingRef.current.notifyManualSuccess(updated);
+
+      dispatchCancel({ type: 'succeed' });
+      setCancelNotice(
+        updated.status === 'CANCELLED'
+          ? '订单已取消，模拟退款结果以服务端返回为准。'
+          : '取消申请已提交，等待档口处理；申请中不代表订单已取消。',
+      );
+    } catch (failure) {
+      const error = toSourceError(failure);
+      const text = cancelErrorText(error.code);
+      setCancelError(text);
+      if (isCancelAuthCode(error.code)) {
+        dispatchCancel({ type: 'auth-fail' });
+        return;
+      }
+      if (isCancelConflictCode(error.code)) {
+
+        setCancelError('');
+        setCancelNotice(text);
+        dispatchCancel({ type: 'conflict' });
+        runRead('manual');
+        return;
+      }
+      if (isCancelRetryableCode(error.code) || error.retryable) {
+        dispatchCancel({ type: 'retryable-fail' });
+        return;
+      }
+      dispatchCancel({ type: 'terminal-fail', message: text });
+    }
+  }
 
   if (realLoggedOut) {
     return (
@@ -524,7 +638,12 @@ export default function OrderDetailPage({
             如需更改堂食或外带，请联系档口
           </p>
 
-          {/* 6. 双按钮操作栏 */}
+          {/* 6. 取消结果提示与双按钮操作栏 */}
+          {cancelNotice ? (
+            <p className="order-cancel-result" role="status">
+              {cancelNotice}
+            </p>
+          ) : null}
           <div className="order-actions-dual-row">
             <button
               type="button"
@@ -535,15 +654,14 @@ export default function OrderDetailPage({
               <RefreshIcon />
               <span>{readState.phase === 'refreshing' ? '正在刷新…' : '刷新订单'}</span>
             </button>
-            {statusView.canShowCancelAction ? (
+            {cancelView?.actionLabel && cancelView.actionEnabled ? (
               <button
                 type="button"
                 className="order-btn-cancel-sub"
-                onClick={() => {
-                  alert('已接单或制作中的订单，如需取消请联系档口处理。');
-                }}
+                disabled={cancelSubmitting}
+                onClick={openCancelDialog}
               >
-                申请取消
+                {cancelView.actionLabel}
               </button>
             ) : null}
           </div>
@@ -554,7 +672,7 @@ export default function OrderDetailPage({
             <div className="order-extra-details__body">
               <div className="order-extra-row">
                 <span>订单编号：</span>
-                <code>{statusView.orderId}</code>
+                <code>{readState.order ? orderNoText(readState.order) : statusView.orderId}</code>
               </div>
               <div className="order-extra-row">
                 <span>就餐档口：</span>
@@ -655,6 +773,77 @@ export default function OrderDetailPage({
           <span>我的</span>
         </button>
       </nav>
+
+      {cancelModalOpen && cancelView ? (
+        <div className="order-cancel-modal-backdrop" onClick={closeCancelDialog}>
+          <div
+            className="order-cancel-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-cancel-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="order-cancel-modal__head">
+              <h3 id="order-cancel-modal-title" className="order-cancel-modal__title">
+                {cancelView.reasonRequired ? '申请取消订单' : '确认取消订单'}
+              </h3>
+              <button
+                type="button"
+                className="order-cancel-modal__close"
+                onClick={closeCancelDialog}
+                aria-label="关闭"
+              >
+                ×
+              </button>
+            </div>
+            <p className="order-cancel-modal__note">
+              {cancelView.reasonRequired ? CANCEL_APPLY_NOTE : CANCEL_CONFIRM_TEXT}
+            </p>
+            <label className="order-cancel-modal__field">
+              <span>{CANCEL_REASON_LABEL}{cancelView.reasonRequired ? '（必填）' : '（选填）'}</span>
+              <textarea
+                value={cancelReason}
+                maxLength={200}
+                rows={3}
+                placeholder={CANCEL_REASON_PLACEHOLDER}
+                disabled={cancelSubmitting}
+                onChange={(event) => {
+                  setCancelReason(event.target.value);
+                  setCancelError('');
+                }}
+              />
+            </label>
+            {source.mode === 'sample' ? (
+              <p className="order-cancel-modal__hint">样例模式下只在本地模拟，不会调用服务端。</p>
+            ) : null}
+            {cancelError || cancelState.message ? (
+              <p className="order-cancel-modal__error" role="alert">
+                {cancelError || cancelState.message}
+              </p>
+            ) : null}
+            <div className="order-cancel-modal__actions">
+              <button
+                type="button"
+                className="order-cancel-modal__cancel"
+                onClick={closeCancelDialog}
+                disabled={cancelSubmitting}
+              >
+                暂不取消
+              </button>
+              <button
+                type="button"
+                className="order-cancel-modal__submit"
+                onClick={() => {
+                  void submitCancel();
+                }}
+                disabled={cancelSubmitting}
+              >
+                {cancelSubmitting ? '正在提交…' : cancelView.reasonRequired ? '提交申请' : '确认取消'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

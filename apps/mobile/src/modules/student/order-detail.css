@@ -953,3 +953,145 @@
   background: #f8fafc;
   transform: scale(0.97);
 }
+/* --------------------------------------------------------------------------
+   取消结果提示与取消确认弹窗
+   -------------------------------------------------------------------------- */
+.order-cancel-result {
+  margin: 0.2rem 0 0.7rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 14px;
+  background: #fff7ed;
+  border: 1px dashed #fdba74;
+  color: #9a3412;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.order-cancel-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.order-cancel-modal {
+  width: 100%;
+  max-width: 440px;
+  padding: 1.15rem 1.15rem 1.25rem;
+  background: #fffdf7;
+  border-radius: 22px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+}
+
+.order-cancel-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.order-cancel-modal__title {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.order-cancel-modal__close {
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.order-cancel-modal__note {
+  margin: 0.6rem 0 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.order-cancel-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.order-cancel-modal__field textarea {
+  width: 100%;
+  resize: none;
+  padding: 0.7rem 0.8rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  font-family: inherit;
+  outline: none;
+}
+
+.order-cancel-modal__field textarea:focus {
+  border-color: #1971e2;
+}
+
+.order-cancel-modal__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.76rem;
+  color: #b45309;
+}
+
+.order-cancel-modal__error {
+  margin: 0.55rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #dc2626;
+}
+
+.order-cancel-modal__actions {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.order-cancel-modal__cancel,
+.order-cancel-modal__submit {
+  flex: 1;
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.order-cancel-modal__cancel {
+  background: #ffffff;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+}
+
+.order-cancel-modal__submit {
+  background: #1971e2;
+  color: #ffffff;
+  border: 0;
+  box-shadow: 0 4px 14px rgba(25, 113, 226, 0.28);
+}
+
+.order-cancel-modal__cancel:disabled,
+.order-cancel-modal__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

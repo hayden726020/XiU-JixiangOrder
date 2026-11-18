@@ -12,10 +12,12 @@ import {
   diningModeView,
   formatDateTime,
   formatSlot,
+  orderNoLabel,
   paymentText,
   STATUS_TRACK,
   statusView,
 } from '../state/orderView';
+import { orderPackagingFeeFen } from '../state/packagingFee';
 import { fenToYuan, formatYuan, totalQuantity } from '../utils/money';
 
 interface NewOrderDetailPageProps {
@@ -44,6 +46,7 @@ order,
   const [showStockCancelForm, setShowStockCancelForm] = useState(false);
 
 
+  const packagingFeeFen = orderPackagingFeeFen(order);
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
   const approveAction = actions.find((action) => action.code === 'APPROVE_CANCEL');
@@ -95,7 +98,7 @@ order,
           {order.demo || mode === 'sample' ? '样例订单 · demo=true' : '真实数据 · 演示服务'}
         </p>
         <div className="detail-id">
-          <h2 className="detail-id__short">{order.id}</h2>
+          <h2 className="detail-id__short">{orderNoLabel(order)}</h2>
         </div>
         <div className="detail-tags">
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
@@ -105,12 +108,37 @@ order,
           <p className="detail-alert">学生申请取消，请优先处理；申请不等于已取消。</p>
         )}
         <p className="detail-next">下一步：{primary ? primary.label : '当前没有可用的主操作'}</p>
+        {primary && primary.code !== 'VERIFY' && (
+          <div className="detail-primary-action">
+            <button
+              type="button"
+              className="action-button action-button--primary detail-primary-action__button"
+              onClick={() => onAction(primary)}
+              disabled={busy(primary)}
+              aria-busy={busy(primary) || undefined}
+            >
+              {busyLabel(primary)}
+            </button>
+            <span className="detail-primary-action__note">
+              成功后状态以服务端返回为准，失败会保留当前状态。
+            </span>
+          </div>
+        )}
       </header>
 
       <section className="detail-block detail-block--appointment">
         <h3>预约时间</h3>
         <p className="detail-emphasis">{formatSlot(order)}</p>
         <p className="hint">档口应在这个时段内做好，到点不一定已好。</p>
+      </section>
+
+      <section className="detail-block detail-block--remark">
+        <h3>订单备注</h3>
+        {order.remark ? (
+          <p className="detail-remark" data-order-remark={order.remark}>{order.remark}</p>
+        ) : (
+          <p className="merchant-muted detail-remark detail-remark--empty">学生未填写备注</p>
+        )}
       </section>
 
       <section className="detail-block detail-block--items">
@@ -122,11 +150,22 @@ order,
               <span>{fenToYuan(item.unitPriceFen)} 元/份</span>
             </li>
           ))}
+          {packagingFeeFen !== null && (
+            <li className="detail-items__fee" data-order-packaging-fee={packagingFeeFen}>
+              <span>打包盒 ×1（外带）</span>
+              <span>{formatYuan(packagingFeeFen)}</span>
+            </li>
+          )}
         </ul>
         <p className="detail-total">
-          <span>总份数 <strong>{totalQuantity(order.items)}</strong> 份 · 合计</span>
+          <span>总份数 <strong>{totalQuantity(order.items)}</strong> 份</span>
           <strong className="detail-total__amount">合计 {formatYuan(order.totalFen)}</strong>
         </p>
+        {packagingFeeFen !== null && (
+          <p className="hint detail-packaging-note" data-order-packaging-note>
+            合计已含打包盒费 {formatYuan(packagingFeeFen)}；每笔外带订单只收一次。
+          </p>
+        )}
       </section>
 
       <section className="detail-block detail-block--status">

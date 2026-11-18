@@ -35,6 +35,7 @@ export interface OrderDelay {
 
 export interface Order {
   id: string;
+  orderNo?: number | null;
   items: OrderItem[];
   slotId: string;
   slotStart: string;

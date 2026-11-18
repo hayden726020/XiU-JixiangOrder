@@ -3,6 +3,7 @@ import type { AdminSettings, Order, StallSettings } from '../types';
 export const sampleOrders: Order[] = [
   {
     id: 'demo-order-001',
+    orderNo: 1,
     merchantId: 'demo-merchant-01',
     merchantName: '一食堂 · 家常档',
     items: [{ dishId: 'demo-dish-01', name: '演示鸡肉饭', quantity: 1, unitPriceFen: 1800 }],
@@ -25,6 +26,7 @@ export const sampleOrders: Order[] = [
   },
   {
     id: 'demo-order-002',
+    orderNo: 2,
     merchantId: 'demo-merchant-02',
     merchantName: '一食堂 · 面档',
     items: [{ dishId: 'demo-dish-02', name: '演示素面', quantity: 1, unitPriceFen: 1600 }],
@@ -47,6 +49,7 @@ export const sampleOrders: Order[] = [
   },
   {
     id: 'demo-order-003',
+    orderNo: 2,
     merchantId: 'demo-merchant-01',
     merchantName: '一食堂 · 家常档',
     items: [{ dishId: 'demo-dish-03', name: '演示套餐', quantity: 1, unitPriceFen: 2200 }],
@@ -69,6 +72,7 @@ export const sampleOrders: Order[] = [
   },
   {
     id: 'demo-order-004',
+    orderNo: 1,
     merchantId: 'demo-merchant-02',
     merchantName: '一食堂 · 面档',
     items: [{ dishId: 'demo-dish-02', name: '演示素面', quantity: 2, unitPriceFen: 1600 }],

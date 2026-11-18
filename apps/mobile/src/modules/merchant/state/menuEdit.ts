@@ -1,4 +1,4 @@
-import type { DishType, Slot } from '../data/types';
+import type { DishType } from '../data/types';
 import { isDishType } from './onboarding';
 
 export interface DishPatch {
@@ -7,11 +7,7 @@ export interface DishPatch {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
-}
-
-export interface SlotPatch {
-  capacity: number;
-  enabled: boolean;
+  imageUrl?: string | null;
 }
 
 export type PatchResult<T> =
@@ -49,13 +45,6 @@ export function parseDishPatch(
     return { ok: false, error: '可售数量不能超过 10000。' };
   }
   return { ok: true, patch: { name, type: typeText, priceFen, availableQuantity, onSale } };
-}
-
-export function parseSlotPatch(
-  slot: Slot,
-  enabled: boolean,
-): PatchResult<SlotPatch> {
-  return { ok: true, patch: { capacity: slot.capacity, enabled } };
 }
 
 export function menuWriteErrorText(code: string, message: string): string {

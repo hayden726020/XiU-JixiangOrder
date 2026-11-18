@@ -30,6 +30,7 @@ export interface OrderDelay {
 
 export interface MerchantOrder {
   id: string;
+  orderNo: number | null;
   items: OrderItem[];
   slotId: string;
   slotStart: string;
@@ -37,6 +38,7 @@ export interface MerchantOrder {
   diningMode: DiningMode;
   diningModeReason: string | null;
   totalFen: number;
+  packagingFeeFen?: number | null;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   cancelRequest: CancelRequest;
@@ -47,6 +49,7 @@ export interface MerchantOrder {
   pickedUpAt: string | null;
   delay: OrderDelay | null;
   pickupCode: string | null;
+  remark: string | null;
   demo: boolean;
 }
 
@@ -79,6 +82,11 @@ export interface DishCustomization {
   flavorGroups: DishFlavorGroup[];
   sides: DishOption[];
   addOns: DishOption[];
+}
+
+export interface PackagingFeeSetting {
+  enabled: boolean;
+  feeFen: number;
 }
 
 export interface DishCustomizationDraft {
@@ -179,6 +187,7 @@ export interface UpdateDishInput {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
 }
 
 export interface DeleteDishInput {
@@ -284,6 +293,11 @@ export interface CreateDishInput {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+}
+
+export interface UploadedDishImage {
+  imageUrl: string;
 }
 
 export interface MerchantSource {
@@ -303,6 +317,7 @@ export interface MerchantSource {
   getAccount: () => Promise<SourceResult<MerchantAccount>>;
   updateAccount: (input: UpdateMerchantAccountInput) => Promise<SourceResult<MerchantAccount>>;
   createDish: (input: CreateDishInput) => Promise<SourceResult<Dish>>;
+  uploadDishImage: (dataUrl: string, requestId: string) => Promise<SourceResult<UploadedDishImage>>;
   advanceOrder: (id: string, input: AdvanceOrderInput) => Promise<SourceResult<MerchantOrder>>;
   verifyOrder: (id: string, input: VerifyOrderInput) => Promise<SourceResult<MerchantOrder>>;
   decideCancellation: (id: string, input: CancelDecisionInput) => Promise<SourceResult<MerchantOrder>>;

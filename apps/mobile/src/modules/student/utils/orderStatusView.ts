@@ -11,6 +11,10 @@ import { toOrderShopView, type OrderShopView } from './orderShopView';
 
 const STEPS = ['已下单', '已接单', '制作中', '可取餐', '已完成'];
 
+export function orderNoText(order: Pick<StudentOrder, 'orderNo' | 'id'>): string {
+  return typeof order.orderNo === 'number' ? String(order.orderNo) : order.id;
+}
+
 const STATUS_VIEW: Record<OrderStatus, { label: string; activeIndex: number }> = {
   NEW: { label: '待接单', activeIndex: 0 },
   ACCEPTED: { label: '已接单', activeIndex: 1 },

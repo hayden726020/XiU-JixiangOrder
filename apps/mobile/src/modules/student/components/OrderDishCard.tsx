@@ -23,9 +23,10 @@ export default function OrderDishCard({ dish, quantity, index, onQuantityChange 
   const limit = dish.onSale ? Math.max(0, dish.availableQuantity) : 0;
   const atLimit = view.kind === 'ON_SALE' && quantity >= limit;
   const visual = visualForDish(dish.name);
+  const photo = dish.imageUrl ?? visual.photo;
   return <li className={`meal-dish${view.kind === 'OFF_SALE' ? ' is-off' : ''}`} data-dish-id={dish.dishId}>
     <span className="meal-dish__tape" aria-hidden="true" />
-    <div className="meal-dish__photo"><img src={visual.photo} alt="" loading={index > 2 ? 'lazy' : 'eager'} /></div>
+    <div className="meal-dish__photo"><img src={photo} alt="" loading={index > 2 ? 'lazy' : 'eager'} /></div>
     <div className="meal-dish__details">
       <div className="meal-dish__ornament"><OrderMenuIcon name={visual.ornament} size={44} /></div>
       <h3>{dish.name}</h3>

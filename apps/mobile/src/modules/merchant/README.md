@@ -34,4 +34,22 @@
 2. 每日菜单保存：`PUT /merchant/menus/{date}`，body `{ requestId, expectedVersion, dishes: [{ dishId, availableQuantity }] }`；`expectedVersion` 建议按“当天菜单”单独递增，避免两个设备同时改菜单时静默覆盖；返回保存后的当天菜单。
 3. 学生端 `GET /menu?date=...` 只返回当天已上架的菜品；未勾选的菜不可见、不可下单。
 
-在这些接口落地前，“制作今日菜单”只作为样例演示与交互口径，不能对外写成已接通真实服务。
+在这些接口落地前，“制作今日菜单”只作为样例演示与交互口径，不能对外写成已接通真实服务。## 打包盒收费（2026-11-18 新增）
+
+「我的 → 营业设置」新增店铺级「打包盒收费」，商家自己决定外带订单是否收打包盒费、每单收多少：
+
+- **计费口径**：只对外带（`TAKEAWAY`）订单生效，**每笔订单只收一次**，堂食不收；金额由商家填写，范围 0.01—50 元，默认关闭。
+- **设置入口**：`MerchantHome.tsx` 的「我的」页营业设置分组内，展开后填写开关与单价，保存后分组内直接显示「外带每单加收 ¥x.xx」。
+- **订单展示**：`OrderDetailPage` / `NewOrderDetailPage` / `ReadyOrderDetailPage` 在“菜品与金额”中显示「打包盒 ×1（外带）」及金额，并标注合计已含打包盒费；合计仍以服务端返回的 `totalFen` 为准，不在前端二次加价。
+- **样例数据**：外带样例订单（`demo-order-002/004/005`）带 `packagingFeeFen: 100`，总额已含 ¥1.00；样例订单金额按下单时价格固定展示，不会随后台设置重算。
+
+**当前保存范围（必须如实区分）**：设置写入浏览器 `localStorage`（键 `merchant.packaging-fee.v1:real`，样例模式对应 `:sample`），**尚未提交给服务端**。真实模式页面会明确提示“真实服务尚未提供打包费字段，当前设置只保存在本机”，不能写成已同步。
+
+**待共同服务补齐（交给后端 / 学生端协调）**：
+
+1. 店铺字段：`packagingFeeEnabled`（布尔）与 `packagingFeeFen`（整数，分）；由 `GET /merchant/profile` 返回，并允许 `PATCH /merchant/shops/{id}` 保存（带上 `expectedVersion`）。
+2. 学生端下单结算：仅当 `diningMode = TAKEAWAY` 时加收一次 `packagingFeeFen`，并在下单前展示给学生确认；堂食不加。
+3. 订单字段：`GET /merchant/orders` 与 `GET /orders/{id}` 返回 `packagingFeeFen`，档口端已能读取并展示；未返回时按“无打包费”处理。
+4. 学生端 `GET /menu` 或店铺信息接口需把打包盒设置带给学生端展示，避免学生到支付页才知道加价。
+
+在这些字段落地前，打包盒收费只在本机生效，真实学生端不会真的加收，不能对外写成已接通。

@@ -1,5 +1,7 @@
 import { ApiError, apiRequest } from '../../../shared/apiClient';
+import { buildApiUrl } from '../../../shared/config';
 import { getSession } from '../../../shared/session';
+
 import { sampleMenu, sampleOrders, sampleSlots, SAMPLE_DATES } from './sampleData';
 import type {
   CreateDishInput,
@@ -17,6 +19,7 @@ import type {
   MerchantScenario,
   OnboardingStep,
   UpdateMerchantAccountInput,
+  UploadedDishImage,
   WalletEntry,
   WalletSummary,
   WalletWithdrawInput,
@@ -72,6 +75,7 @@ interface ApiCancelRequest {
 
 interface ApiOrder {
   id: string;
+  orderNo?: number | null;
   items: ApiOrderItem[];
   slotId: string;
   slotStart: string;
@@ -79,6 +83,7 @@ interface ApiOrder {
   diningMode: MerchantOrder['diningMode'];
   diningModeReason?: string | null;
   totalFen: number;
+  packagingFeeFen?: number | null;
   status: MerchantOrder['status'];
   paymentStatus: MerchantOrder['paymentStatus'];
   cancelRequest: ApiCancelRequest;
@@ -89,6 +94,7 @@ interface ApiOrder {
   pickedUpAt: string | null;
   delay: MerchantOrder['delay'];
   pickupCode: string | null;
+  remark?: string | null;
 }
 
 interface ApiMerchantOrders {
@@ -163,7 +169,22 @@ function apiDishType(value: unknown): DishType | null {
 }
 
 function apiImageUrl(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) return trimmed;
+  if (trimmed.startsWith('/')) {
+    const base = buildApiUrl('/');
+    if (base) {
+      try {
+        return `${new URL(base).origin}${trimmed}`;
+      } catch {
+        // 落到下面按相对接口路径处理
+      }
+    }
+    return trimmed;
+  }
+  return buildApiUrl(trimmed) ?? trimmed;
 }
 
 function mapDish(dish: ApiDish): Dish {
@@ -304,6 +325,7 @@ function toOnboardingFailure<T>(error: unknown, label: string): SourceResult<T> 
 function mapOrder(order: ApiOrder): MerchantOrder {
   return {
     id: order.id,
+    orderNo: typeof order.orderNo === 'number' ? order.orderNo : null,
     items: Array.isArray(order.items)
       ? order.items.map((item) => ({
         dishId: item.dishId,
@@ -318,6 +340,9 @@ function mapOrder(order: ApiOrder): MerchantOrder {
     diningMode: order.diningMode,
     diningModeReason: order.diningModeReason ?? null,
     totalFen: order.totalFen,
+    packagingFeeFen: typeof order.packagingFeeFen === 'number' && order.packagingFeeFen > 0
+      ? order.packagingFeeFen
+      : null,
     status: order.status,
     paymentStatus: order.paymentStatus,
     cancelRequest: {
@@ -334,6 +359,9 @@ function mapOrder(order: ApiOrder): MerchantOrder {
       ? { reason: order.delay.reason, expectedReadyAt: order.delay.expectedReadyAt }
       : null,
     pickupCode: order.pickupCode ?? null,
+    remark: typeof order.remark === 'string' && order.remark.trim().length > 0
+      ? order.remark
+      : null,
     demo: false,
   };
 }
@@ -626,6 +654,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
             priceFen: input.priceFen,
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
+            ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
           },
         });
         if (typeof data.id !== 'string') {
@@ -634,6 +663,24 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return { ok: true, data: mapDish(data) };
       } catch (error) {
         return toOnboardingFailure(error, '菜品创建');
+      }
+    },
+    uploadDishImage: async (dataUrl: string, requestId: string) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送图片上传请求。');
+      }
+      try {
+        const data = await apiRequest<{ imageUrl?: unknown }>('/merchant/images', {
+          method: 'POST',
+          body: { dataUrl, requestId },
+        });
+        const imageUrl = typeof data.imageUrl === 'string' ? data.imageUrl.trim() : '';
+        if (!imageUrl) {
+          return fail('INVALID_RESPONSE', '图片上传响应缺少 imageUrl。');
+        }
+        return { ok: true, data: { imageUrl } };
+      } catch (error) {
+        return toOnboardingFailure(error, '图片上传');
       }
     },
     advanceOrder: async (id, input) => {
@@ -710,6 +757,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
             priceFen: input.priceFen,
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
+            ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
           },
         });
         if (typeof data.id !== 'string') {
@@ -1127,7 +1175,7 @@ export function createMerchantSource(options: {
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
         version: 1,
-        imageUrl: null,
+        imageUrl: input.imageUrl ?? null,
       };
       nextDishId += 1;
       addedDishes.set(dish.dishId, structuredClone(dish));
@@ -1138,6 +1186,9 @@ export function createMerchantSource(options: {
       }
       return { ok: true, data: structuredClone(dish) };
     },
+    uploadDishImage: async (dataUrl: string): Promise<SourceResult<UploadedDishImage>> => (
+      { ok: true, data: { imageUrl: dataUrl } }
+    ),
     advanceOrder: async (): Promise<SourceResult<MerchantOrder>> => (
       fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
     ),
@@ -1168,6 +1219,7 @@ export function createMerchantSource(options: {
         unitPriceFen: input.priceFen,
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
+        imageUrl: input.imageUrl === undefined ? current.imageUrl : input.imageUrl,
         version: version + 1,
       };
       dishWrites.set(`${date}:${dishId}`, {

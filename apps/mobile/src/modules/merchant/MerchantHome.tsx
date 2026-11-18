@@ -13,7 +13,8 @@ import type {
   MerchantProfile,
   MerchantScenario,
   OrderAdvanceAction,
-  Slot,
+  PackagingFeeSetting,
+
   SlotDay,
   WalletSummary,
 
@@ -36,9 +37,17 @@ import {
   type ActionInput,
   type OrderAction,
 } from './state/actionMatrix';
-import { formatClock, localInputToZonedIso, shortOrderId, statusView } from './state/orderView';
+import { formatClock, localInputToZonedIso, orderNoLabel, statusView } from './state/orderView';
 import type { DishPatch } from './state/menuEdit';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
+import { resolveEffectiveMerchantName } from './state/onboarding';
+import {
+  loadPackagingFeeSetting,
+  parsePackagingFeeText,
+  packagingFeeSummary,
+  savePackagingFeeSetting,
+
+} from './state/packagingFee';
 import { formatYuan } from './utils/money';
 import { logout } from '../../shared/auth';
 
@@ -151,7 +160,8 @@ export default function MerchantHome() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<{ code: string; message: string } | null>(null);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ code: string; message: string; orderId?: string } | null>(null);
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionRequestIds = useRef(new Map<string, string>());
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
@@ -163,6 +173,13 @@ export default function MerchantHome() {
   const [menu, setMenu] = useState<MenuDay | null>(null);
   const [slots, setSlots] = useState<SlotDay | null>(null);
   const [mySlots, setMySlots] = useState<SlotDay | null>(null);
+  const [packagingSetting, setPackagingSetting] = useState<PackagingFeeSetting>(
+    () => loadPackagingFeeSetting(initialMode),
+  );
+  const [packagingOpen, setPackagingOpen] = useState(false);
+  const [packagingDraftEnabled, setPackagingDraftEnabled] = useState(false);
+  const [packagingFeeInput, setPackagingFeeInput] = useState('1.00');
+  const [packagingFeedback, setPackagingFeedback] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
   const [logoutConfirming, setLogoutConfirming] = useState(false);
   const [dishLibrary, setDishLibrary] = useState<Dish[]>([]);
   const [dishLibraryLoading, setDishLibraryLoading] = useState(false);
@@ -195,6 +212,14 @@ export default function MerchantHome() {
 
   useEffect(() => {
     persistDataMode(mode);
+  }, [mode]);
+
+  useEffect(() => {
+    const stored = loadPackagingFeeSetting(mode);
+    setPackagingSetting(stored);
+    setPackagingDraftEnabled(stored.enabled);
+    setPackagingFeeInput((stored.feeFen / 100).toFixed(2));
+    setPackagingFeedback(null);
   }, [mode]);
 
   useEffect(() => {
@@ -334,8 +359,7 @@ export default function MerchantHome() {
       }
       if (slotsResult.ok) {
         setSlots(slotsResult.data);
-      } else if (menuResult.ok) {
-        setMenuError(slotsResult.error.message);
+
       }
       if (profileResult.ok) {
         setProfile(profileResult.data);
@@ -385,8 +409,17 @@ export default function MerchantHome() {
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
     : null;
-  const merchantName = profile?.merchant?.name ?? null;
-  const myShopName = profile?.shop?.name ?? merchantName ?? '我的档口';
+  const accountDisplayName = session?.user.role === 'MERCHANT'
+    ? (session.user.displayName?.trim() || null)
+    : null;
+  const merchantName = profile?.merchant
+    ? resolveEffectiveMerchantName({
+      mode,
+      session,
+      serverMerchantName: profile.merchant.name,
+    })
+    : null;
+  const myShopName = profile?.shop?.name ?? merchantName ?? accountDisplayName ?? '我的档口';
   const hasShop = Boolean(profile?.shop);
   const myOpenSlots = (mySlots?.slots ?? []).filter((slot) => slot.enabled);
   const myIsOpen = myOpenSlots.length > 0;
@@ -577,6 +610,46 @@ export default function MerchantHome() {
     setNotice(null);
   }
 
+  function togglePackagingPanel() {
+    if (!packagingOpen) {
+      setPackagingDraftEnabled(packagingSetting.enabled);
+      setPackagingFeeInput((packagingSetting.feeFen / 100).toFixed(2));
+      setPackagingFeedback(null);
+    }
+    setPackagingOpen((current) => !current);
+  }
+
+  function savePackagingSettings() {
+    const parsed = parsePackagingFeeText(packagingFeeInput);
+    if (!parsed.ok) {
+      setPackagingFeedback({ tone: 'error', text: parsed.error });
+      return;
+    }
+    if (packagingDraftEnabled && parsed.feeFen <= 0) {
+      setPackagingFeedback({
+        tone: 'error',
+        text: '开启收费时，打包盒价格需大于 0 元；不收费请关闭开关。',
+      });
+      return;
+    }
+    const next: PackagingFeeSetting = {
+      enabled: packagingDraftEnabled,
+      feeFen: parsed.feeFen,
+    };
+    const saved = savePackagingFeeSetting(mode, next);
+    if (!saved.ok) {
+      setPackagingFeedback({ tone: 'error', text: saved.error });
+      return;
+    }
+    setPackagingSetting(next);
+    setPackagingFeedback({
+      tone: 'info',
+      text: mode === 'sample'
+        ? `已保存到本机样例设置：${packagingFeeSummary(next)}。样例订单金额不会随设置重算。`
+        : `已保存在本机：${packagingFeeSummary(next)}。真实服务尚未提供打包费字段，本次不会同步到服务端，学生端也暂不会加收。`,
+    });
+  }
+
   async function handleWithdrawDemo(amountFen: number) {
     if (withdrawInFlight) return;
     setWithdrawInFlight(true);
@@ -595,7 +668,7 @@ export default function MerchantHome() {
     if (pendingCode !== null) return;
     const validation = validateActionInput(action, input, mode);
     if (validation) {
-      setActionError({ code: action.code, message: validation });
+      setActionError({ code: action.code, message: validation, orderId });
       setNotice(null);
       return;
     }
@@ -604,16 +677,18 @@ export default function MerchantHome() {
     const order = orders.find((item) => item.id === orderId) ?? null;
     if (mode === 'real' && isRealWriteAction(action)) {
       if (!order) {
-        setActionError({ code: action.code, message: '订单不在当前列表中，请返回列表刷新后重试。' });
+        setActionError({ code: action.code, message: '订单不在当前列表中，请返回列表刷新后重试。', orderId });
         return;
       }
       void runRealWrite(order, action, input);
       return;
     }
     setPendingCode(action.code);
+    setPendingOrderId(orderId);
     actionTimer.current = setTimeout(() => {
       actionTimer.current = null;
       setPendingCode(null);
+      setPendingOrderId(null);
       setNotice(actionPrompt(action, orderId, mode, input));
     }, 600);
   }
@@ -674,6 +749,7 @@ export default function MerchantHome() {
     const requestId = actionRequestIds.current.get(key) ?? createRequestId('merchant-write');
     actionRequestIds.current.set(key, requestId);
     setPendingCode(action.code);
+    setPendingOrderId(order.id);
     const base = { expectedVersion: order.version, requestId };
     let result: SourceResult<MerchantOrder>;
     if (action.code === 'VERIFY') {
@@ -710,10 +786,12 @@ export default function MerchantHome() {
 
     } else {
       setPendingCode(null);
+      setPendingOrderId(null);
       setNotice(actionPrompt(action, order.id, mode, input));
       return;
     }
     setPendingCode(null);
+    setPendingOrderId(null);
     if (result.ok) {
       for (const storedKey of [...actionRequestIds.current.keys()]) {
         if (storedKey.startsWith(`${order.id}:`)) {
@@ -723,7 +801,7 @@ export default function MerchantHome() {
       const updated = result.data;
       setOrders((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       setNotice(
-        `${action.label}成功：订单 ${shortOrderId(updated.id)} 状态为「${statusView(updated.status).label}」，版本 v${updated.version}。`,
+        `${action.label}成功：订单 ${orderNoLabel(updated)} 状态为「${statusView(updated.status).label}」，版本 v${updated.version}。`,
       );
       void refreshOrders({ silent: true });
       return;
@@ -731,6 +809,7 @@ export default function MerchantHome() {
     setActionError({
       code: action.code,
       message: actionErrorText(result.error.code, result.error.message, action),
+      orderId: order.id,
     });
     if (
       ['ORDER_VERSION_CONFLICT', 'INVALID_ORDER_STATE', 'PICKUP_CODE_USED', 'ALREADY_CANCELLED']
@@ -820,29 +899,6 @@ export default function MerchantHome() {
     return result;
   }
 
-  async function saveSlot(
-    slot: Slot,
-    patch: { capacity: number; enabled: boolean },
-    requestId: string,
-  ) {
-    const result = await source.updateSlot(menuDate, slot.slotId, {
-      requestId,
-      expectedVersion: slot.version,
-      ...patch,
-    });
-    if (result.ok) {
-      setSlots((current) => (current
-        ? {
-          ...current,
-          slots: current.slots.map((item) => (item.slotId === result.data.slotId ? result.data : item)),
-        }
-        : current));
-      setNotice(
-        `已保存时段 ${formatClock(result.data.slotStart)}—${formatClock(result.data.slotEnd)}：${result.data.enabled ? '开放接单' : '关闭接单'}，版本 v${result.data.version ?? '未返回'}。`,
-      );
-    }
-    return result;
-  }
 
   useEffect(() => () => {
     if (actionTimer.current !== null) {
@@ -929,10 +985,12 @@ export default function MerchantHome() {
           mode={mode}
           statDate={businessDate}
           profile={profile}
+          merchantDisplayName={accountDisplayName}
           orders={homeOrders}
           slots={slots}
           loading={homeOrdersLoading || loading}
           onOpenOrders={openOrders}
+          onOpenOrder={openOrder}
           onOpenMenu={openMenu}
         />
       )}
@@ -953,6 +1011,10 @@ export default function MerchantHome() {
           onScenarioChange={changeScenario}
           onPageChange={changeOrderPage}
           onOpenOrder={openOrder}
+          onAction={(orderId, action, input) => handleAction(orderId, action, input)}
+          pendingCode={pendingCode}
+          pendingOrderId={pendingOrderId}
+          actionError={actionError}
           onOpenMenu={openMenu}
           onOpenSetup={openSetup}
           onRefresh={refreshOrders}
@@ -991,7 +1053,6 @@ export default function MerchantHome() {
           error={menuError}
           onDateChange={setMenuDate}
           menu={menu}
-          slots={slots}
           onSaveDish={saveDish}
           onCreateDish={createDish}
           onDeleteDish={deleteDish}
@@ -1000,9 +1061,8 @@ export default function MerchantHome() {
           dishLibraryError={dishLibraryError}
           onLoadDishLibrary={loadDishLibrary}
           onSaveDailyMenu={saveDailyMenu}
+          onUploadDishImage={(dataUrl, requestId) => source.uploadDishImage(dataUrl, requestId)}
           onGoSetup={openSetup}
-          onSaveSlot={saveSlot}
-
         />
       )}
 
@@ -1052,7 +1112,7 @@ export default function MerchantHome() {
                 </span>
               </div>
               <small>
-                {merchantName ?? (mode === 'sample' ? '档口演示账号' : session?.user.displayName ?? '未登录')}
+                {accountDisplayName ?? merchantName ?? (mode === 'sample' ? '档口演示账号' : '未登录')}
                 {mode === 'sample' ? ` · 演示日 ${businessDateLabel}` : ' · 今日营业'}
               </small>
             </div>
@@ -1098,8 +1158,75 @@ export default function MerchantHome() {
             </div>
             <div className='merchant-my__row'>
               <span>营业状态</span>
-              <span>{!hasShop ? '未开店' : myIsOpen ? '已开放接单' : '未开放接单'}</span>
+              <span>{myIsOpen ? '已开放接单' : '未开放接单'}</span>
             </div>
+            <div className='merchant-my__row'>
+              <span>打包盒收费</span>
+              <span data-packaging-summary>{packagingFeeSummary(packagingSetting)}</span>
+            </div>
+            <button
+              type='button'
+              className='merchant-my__row merchant-my__row--action'
+              onClick={togglePackagingPanel}
+              aria-expanded={packagingOpen}
+              aria-controls='merchant-packaging-panel'
+            >
+              <span>设置打包盒收费</span>
+              <span className='merchant-my__arrow'>{packagingOpen ? '收起' : '→'}</span>
+            </button>
+            {packagingOpen && (
+              <div className='merchant-my__packaging' id='merchant-packaging-panel' data-packaging-panel>
+                <label className='merchant-my__packaging-switch'>
+                  <input
+                    type='checkbox'
+                    checked={packagingDraftEnabled}
+                    onChange={(event) => {
+                      setPackagingDraftEnabled(event.target.checked);
+                      setPackagingFeedback(null);
+                    }}
+                    data-packaging-enabled
+                  />
+                  <span>外带订单收取打包盒费</span>
+                </label>
+                <label className='merchant-my__packaging-fee'>
+                  <span>打包盒单价</span>
+                  <input
+                    value={packagingFeeInput}
+                    onChange={(event) => {
+                      setPackagingFeeInput(event.target.value);
+                      setPackagingFeedback(null);
+                    }}
+                    inputMode='decimal'
+                    maxLength={5}
+                    disabled={!packagingDraftEnabled}
+                    data-packaging-fee
+                  />
+                  <span>元 / 单</span>
+                </label>
+                <button
+                  type='button'
+                  className='action-button action-button--primary merchant-my__packaging-save'
+                  onClick={savePackagingSettings}
+                  data-packaging-save
+                >
+                  保存打包盒设置
+                </button>
+                <p className='merchant-my__note'>
+                  每笔外带订单只收一次，堂食不收；价格由商家自定（0.01—50 元）。
+                  {mode === 'real' ? ' 真实服务尚未提供打包费字段，当前设置只保存在本机。' : ''}
+                </p>
+                {packagingFeedback && (
+                  <p
+                    className={`merchant-my__packaging-feedback${packagingFeedback.tone === 'error' ? ' is-error' : ''}`}
+                    role={packagingFeedback.tone === 'error' ? 'alert' : 'status'}
+                    data-packaging-feedback
+                    data-feedback-tone={packagingFeedback.tone}
+                  >
+                    {packagingFeedback.text}
+                  </p>
+                )}
+              </div>
+            )}
             <button
               type='button'
               className='merchant-my__row merchant-my__row--action'

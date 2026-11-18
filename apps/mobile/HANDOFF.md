@@ -260,3 +260,15 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 - 验证结果：`frontend` 下 `tsc --noEmit` 退出码 0；真实模式 `#/merchant/my/info` 保存成功（`PATCH /merchant/profile` 200、`PATCH /merchant/shops/s_89e1…` 200，页面提示“我的信息已保存到服务端”），店铺 `version` 由 1 递增到 3；新菜品创建 `POST /merchant/menu` 201 已在前一轮验证。
 - 环境：本地 `.env.local` 指向线上 `https://39.96.195.158/api/v1`，8787 本地 mock 已停止；该 mock 没有 `POST /merchant/menu` 与店铺更新路由，真实模式联调必须连线上 ECS。
 - 已知问题：演示商家 `contactName` 因接口探测被写成 `ProbeName`，服务端不接受 `null`/空串，需在页面改成真实联系人；钱包仍为前端占位（`NOT_IMPLEMENTED`）；菜品库与每日菜单接口服务端未提供，按钮禁用。
+## 11 2026-11-18 第三轮基线（本地 `872c8e1` 之后，`frontend/handoff-2026-11-18-r3`）
+
+- 分支：从远端 `docs/readme-status`（本地对应 `872c8e1`，远端头 `0259aa0`）继续，新建 `frontend/handoff-2026-11-18-r3` 并推送；远端分支头以本次回复中的 `git ls-remote` 输出为准。
+- 变更规模：39 个文件（38 修改、1 新增 `merchant/state/packagingFee.ts`），约 +3328/−835。
+- 学生端取消申请：订单详情「申请取消」不再只弹“请联系档口”，改为理由弹窗并调用 `POST /orders/{id}/cancel`（`requestId`、`expectedVersion`、`reason`）。NEW 直接取消并显示模拟退款结果；ACCEPTED/PREPARING/READY 提交 `cancelRequest=PENDING`；理由必填 1—200 字（NEW 选填）。样例模式在本地模拟并明确标注“不调用服务端”；版本冲突自动重新读取，登录失效与可重试网络错误分开提示。
+- 档口端：新增打包费设置（`state/packagingFee.ts`，样例模式存 localStorage，真实订单读取服务端 `packagingFeeFen`）；订单列表与详情展示外带打包费；`OrderRow.tsx`、`pages/*OrderDetailPage.tsx`、`merchant.v4.css` 视觉与交互改版。
+- 学生端：「我的」页改版（`ProfilePage.tsx`、`profile.css`）并支持从我的订单直接打开指定订单；订单号按服务端 `orderNo` 展示，缺失时回退 `id`。
+- 管理端：订单类型与详情/列表同步 `orderNo`。
+- 同步规则：根配置中 `vite.config.ts`（远端含 `/api/v1` 代理）、`README.md`、`index.html`、`package.json`、`capacitor.config.ts`、`android/` 保持远端版本，不用本地副本覆盖；`tsconfig.json` 纳入 `exclude: ["node_modules","dist","**/*.sync-conflict-*"]`，避免同步冲突副本参与类型检查。未提交 `node_modules/`、`dist/`、`.runtime/`、`preview/`、`photo/`、`*.sync-conflict-*`。
+- 验证：`frontend` 下 `tsc --noEmit` 0 错误；`vite build` 成功；无头 Edge 以构建产物验证两条取消路径——NEW 提交后提示“订单已取消，模拟退款结果以服务端返回为准”，READY 提交后提示“取消申请已提交，等待档口处理；申请中不代表订单已取消”，弹窗自动关闭、原按钮消失。
+- 未做：真实学生账号对线上 `POST /orders/{id}/cancel` 的联调；未重打 APK、未真机验收。
+- 说明：本轮验证期间开发服务器曾因并行会话改动的 `merchant/components/OrderRow.tsx` 语法错误白屏，该文件已恢复并通过类型检查；同一工作区仍可能被其他会话写入，推送前已重新比对。

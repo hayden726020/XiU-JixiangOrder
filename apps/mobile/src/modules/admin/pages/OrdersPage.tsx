@@ -349,10 +349,10 @@ export default function OrdersPage({
                     <a
                       className="admin-order admin-order--link"
                       href={`#/admin/orders/${encodeURIComponent(order.id)}`}
-                      aria-label={`查看订单 ${order.id} 的只读详情`}
+                      aria-label={`查看订单 ${order.orderNo ?? order.id} 的只读详情`}
                     >
                       <div className="admin-order__head">
-                        <code className="admin-order__id">{order.id}</code>
+                        <code className="admin-order__id">{order.orderNo ?? order.id}</code>
                         <span className={`admin-tag admin-tag--${order.status.toLowerCase()}`}>
                           {orderStatusText[order.status]}
                         </span>

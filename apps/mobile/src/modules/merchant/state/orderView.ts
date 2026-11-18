@@ -71,6 +71,12 @@ export function shortOrderId(id: string): string {
   return digits ? `#${digits[1]}` : id;
 }
 
+export function orderNoLabel(order: Pick<MerchantOrder, 'orderNo' | 'id'>): string {
+  return order.orderNo === null || order.orderNo === undefined
+    ? shortOrderId(order.id)
+    : `#${order.orderNo}`;
+}
+
 export function formatClock(iso: string): string {
   return iso.slice(11, 16);
 }

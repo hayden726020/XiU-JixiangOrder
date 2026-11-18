@@ -164,7 +164,7 @@ export default function OrderDetailPage({ source, orderId }: OrderDetailPageProp
       <header className="admin-order-detail__header">
         <h2 id="admin-title">订单详情</h2>
         <div className="admin-order-detail__order-head">
-          <code>{order.id}</code>
+          <code>{order.orderNo ?? order.id}</code>
           <span className={`admin-tag admin-tag--${order.status.toLowerCase()}`}>
             {orderStatusText[order.status]}
           </span>

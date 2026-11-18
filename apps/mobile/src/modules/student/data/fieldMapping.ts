@@ -1,4 +1,5 @@
 import { ApiError } from '../../../shared/apiClient';
+import { buildApiUrl, getApiBaseUrl } from '../../../shared/config';
 import type {
   CancelRequestStatus,
   CrowdBasis,
@@ -90,6 +91,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function optionalImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) return trimmed;
+  if (trimmed.startsWith('/')) {
+    const base = getApiBaseUrl();
+    if (base) {
+      try {
+        return `${new URL(base).origin}${trimmed}`;
+      } catch {
+        // 落到下面按相对接口路径处理
+      }
+    }
+    return trimmed;
+  }
+  return buildApiUrl(trimmed) ?? trimmed;
+}
+
 function invalidResponse(message: string): never {
   throw new ApiError({ code: 'INVALID_RESPONSE', message, status: 0, retryable: false });
 }
@@ -152,6 +172,7 @@ export function mapMenuResponse(payload: unknown): MenuResponse {
       unitPriceFen: requireCount(entry, 'priceFen', where),
       availableQuantity: requireCount(entry, 'availableQuantity', where),
       onSale: requireBoolean(entry, 'onSale', where),
+      imageUrl: optionalImageUrl(entry.imageUrl),
     };
   });
 
@@ -198,6 +219,11 @@ function readNullableBoolean(record: Record<string, unknown>, field: string): bo
 function readNullableInteger(record: Record<string, unknown>, field: string): number | null {
   const value = record[field];
   return typeof value === 'number' && Number.isInteger(value) ? value : null;
+}
+
+function readOrderNo(record: Record<string, unknown>): number | null {
+  const value = record.orderNo;
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
 }
 
 /**
@@ -440,6 +466,7 @@ export function mapOrderResponse(payload: unknown, options: MapOrderOptions): St
 
   return {
     id: requireText(payload, 'id', where),
+    orderNo: readOrderNo(payload),
     merchantId: readNullableText(payload, 'merchantId'),
     merchantName: readNullableText(payload, 'merchantName'),
     items,

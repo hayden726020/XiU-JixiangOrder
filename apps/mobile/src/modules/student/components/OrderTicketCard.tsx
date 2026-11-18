@@ -1,6 +1,6 @@
 import type { StudentOrder } from '../types';
 import { formatYuan } from '../utils/money';
-import { toOrderStatusView } from '../utils/orderStatusView';
+import { orderNoText, toOrderStatusView } from '../utils/orderStatusView';
 import type { StudentMode } from '../types';
 import ricePhoto from '../assets/fried-rice.png';
 import noodlePhoto from '../assets/login-food-noodle.jpg';
@@ -58,7 +58,7 @@ export default function OrderTicketCard({ order, mode, onOpenOrder, onAskMerchan
 
   return <article className={`order-ticket order-ticket--${tone}`}>
     <div className="order-ticket__top">
-      <span className="order-ticket__number"><OrderListIcon name="clipboard" size={16} />订单号 <strong>{order.id}</strong></span>
+      <span className="order-ticket__number"><OrderListIcon name="clipboard" size={16} />订单号 <strong>{orderNoText(order)}</strong></span>
       <span>下单时间：{dateLabel(order.createdAt)}</span>
     </div>
     <div className="order-ticket__body">

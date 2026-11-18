@@ -15,5 +15,6 @@
     "noEmit": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "vite.config.ts", "capacitor.config.ts"]
+  "include": ["src", "vite.config.ts", "capacitor.config.ts"],
+  "exclude": ["node_modules", "dist", "**/*.sync-conflict-*"]
 }
