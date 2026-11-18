@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { DiningMode, MerchantOrder } from '../data/types';
+import { useState } from 'react';
+import type { MerchantOrder } from '../data/types';
 import {
   getOrderActions,
   getPrimaryAction,
@@ -8,13 +8,17 @@ import {
 } from '../state/actionMatrix';
 import {
   cancelRequestLabel,
+  diningModeChangeLabel,
+  diningModeChangeRoute,
   diningModeView,
   formatDateTime,
   formatSlot,
+  orderNoLabel,
   paymentText,
   STATUS_TRACK,
   statusView,
 } from '../state/orderView';
+import { orderPackagingFeeFen } from '../state/packagingFee';
 import { fenToYuan, formatYuan, totalQuantity } from '../utils/money';
 
 interface ReadyOrderDetailPageProps {
@@ -22,6 +26,8 @@ interface ReadyOrderDetailPageProps {
   mode: 'sample' | 'real';
   onBack: () => void;
   onAction: (action: OrderAction, input?: ActionInput) => void;
+  onRefresh: () => void;
+  refreshing?: boolean;
   pendingCode?: string | null;
   actionError?: { code: string; message: string } | null;
 }
@@ -29,10 +35,12 @@ interface ReadyOrderDetailPageProps {
 type CancelDecision = 'APPROVE_CANCEL' | 'REJECT_CANCEL';
 
 export default function ReadyOrderDetailPage({
-  order,
+order,
   mode,
   onBack,
   onAction,
+  onRefresh,
+  refreshing = false,
   pendingCode = null,
   actionError = null,
 }: ReadyOrderDetailPageProps) {
@@ -44,16 +52,9 @@ export default function ReadyOrderDetailPage({
   const [delayReason, setDelayReason] = useState('');
   const [delayExpectedReadyAt, setDelayExpectedReadyAt] = useState('');
   const [showDelayForm, setShowDelayForm] = useState(false);
-  const [showDiningForm, setShowDiningForm] = useState(false);
-  const [diningReason, setDiningReason] = useState('');
-  const [diningModeInput, setDiningModeInput] = useState<DiningMode>(
-    order.diningMode === 'DINE_IN' ? 'TAKEAWAY' : 'DINE_IN',
-  );
 
-  useEffect(() => {
-    setDiningModeInput(order.diningMode === 'DINE_IN' ? 'TAKEAWAY' : 'DINE_IN');
-  }, [order.diningMode]);
 
+  const packagingFeeFen = orderPackagingFeeFen(order);
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
   const verifyAction = actions.find((action) => action.code === 'VERIFY');
@@ -61,7 +62,7 @@ export default function ReadyOrderDetailPage({
   const rejectAction = actions.find((action) => action.code === 'REJECT_CANCEL');
   const stockCancelAction = actions.find((action) => action.code === 'CANCEL_ORDER');
   const delayAction = actions.find((action) => action.code === 'SET_DELAY');
-  const diningAction = actions.find((action) => action.code === 'CHANGE_DINING_MODE');
+
   const cancelDecisionAction = cancelDecision === 'APPROVE_CANCEL'
     ? approveAction
     : cancelDecision === 'REJECT_CANCEL' ? rejectAction : undefined;
@@ -79,21 +80,41 @@ export default function ReadyOrderDetailPage({
       data-order-id={order.id}
       data-order-status={order.status}
     >
-      <button type="button" className="back-link merchant-order-detail__back" onClick={onBack}>
-        ← 返回订单列表
-      </button>
+      <div className="merchant-order-detail__topbar">
+        <button type="button" className="back-link merchant-order-detail__back" onClick={onBack}>
+          ← 返回订单列表
+        </button>
+        {mode === 'real' && (
+          <button
+            type="button"
+            className="merchant-link-button merchant-order-detail__refresh"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing || undefined}
+            title="真实模式下会定时自动刷新"
+            data-refresh-order
+          >
+            {refreshing ? '刷新中…' : '刷新订单'}
+          </button>
+        )}
+      </div>
 
       <header className="detail-header">
         <p className="badge">
           {order.demo || mode === 'sample' ? '样例订单 · demo=true' : '真实数据 · 演示服务'}
         </p>
         <div className="detail-id">
-          <h2 className="detail-id__short">{order.id}</h2>
+          <h2 className="detail-id__short">{orderNoLabel(order)}</h2>
         </div>
         <div className="detail-tags">
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
           <span className={`merchant-tag merchant-tag--${dining.tone}`}>{dining.label}</span>
         </div>
+        {order.diningModeChange.status === 'PENDING' && (
+          <p className="detail-alert" data-dining-mode-change="PENDING">
+            学生申请更改用餐方式：{diningModeChangeRoute(order.diningModeChange)}，取餐前请先确认。
+          </p>
+        )}
         <p className="detail-next">下一步：{primary ? primary.label : '当前没有可用的主操作'}</p>
       </header>
 
@@ -101,6 +122,15 @@ export default function ReadyOrderDetailPage({
         <h3>预约时间</h3>
         <p className="detail-emphasis">{formatSlot(order)}</p>
         <p className="hint">档口应在这个时段内做好，到点不一定已好。</p>
+      </section>
+
+      <section className="detail-block detail-block--remark">
+        <h3>订单备注</h3>
+        {order.remark ? (
+          <p className="detail-remark" data-order-remark={order.remark}>{order.remark}</p>
+        ) : (
+          <p className="merchant-muted detail-remark detail-remark--empty">学生未填写备注</p>
+        )}
       </section>
 
       <section className="detail-block detail-block--items">
@@ -112,11 +142,22 @@ export default function ReadyOrderDetailPage({
               <span>{fenToYuan(item.unitPriceFen)} 元/份</span>
             </li>
           ))}
+          {packagingFeeFen !== null && (
+            <li className="detail-items__fee" data-order-packaging-fee={packagingFeeFen}>
+              <span>打包盒 ×1（外带）</span>
+              <span>{formatYuan(packagingFeeFen)}</span>
+            </li>
+          )}
         </ul>
         <p className="detail-total">
           <span>总份数 <strong>{totalQuantity(order.items)}</strong> 份</span>
           <strong className="detail-total__amount">合计 {formatYuan(order.totalFen)}</strong>
         </p>
+        {packagingFeeFen !== null && (
+          <p className="hint detail-packaging-note" data-order-packaging-note>
+            合计已含打包盒费 {formatYuan(packagingFeeFen)}；每笔外带订单只收一次。
+          </p>
+        )}
       </section>
 
       <section className="detail-block detail-block--status">
@@ -224,6 +265,27 @@ export default function ReadyOrderDetailPage({
             )}
           </div>
         </div>
+
+        {order.diningModeChange.status !== 'NONE' && (
+          <div className="detail-info-row" data-dining-mode-change={order.diningModeChange.status}>
+            <h3>用餐方式申请</h3>
+            <div className="detail-info-row__content">
+              <p className="merchant-muted detail-emphasis">
+                {diningModeChangeRoute(order.diningModeChange)}
+              </p>
+              <p className="merchant-muted">{diningModeChangeLabel(order.diningModeChange)}</p>
+              {order.diningModeChange.reason && (
+                <p className="merchant-muted">申请理由：{order.diningModeChange.reason}</p>
+              )}
+              {order.diningModeChange.decisionReason && (
+                <p className="merchant-muted">处理理由：{order.diningModeChange.decisionReason}</p>
+              )}
+              {order.diningModeChange.status === 'PENDING' && (
+                <p className="hint">请先确认打包或餐具安排；当前订单仍按原用餐方式记录。</p>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {verifyAction && (
@@ -323,59 +385,7 @@ export default function ReadyOrderDetailPage({
         <h3>用餐方式</h3>
         <p className="detail-emphasis">{dining.label} · {dining.description}</p>
         {order.diningModeReason && <p className="merchant-muted">变更理由：{order.diningModeReason}</p>}
-        {diningAction && (
-          <>
-            <button
-              type="button"
-              className="merchant-order-detail__secondary-action"
-              onClick={() => setShowDiningForm((current) => !current)}
-              aria-expanded={showDiningForm}
-              aria-controls="ready-order-dining-form"
-            >
-              {showDiningForm ? '收起用餐方式变更' : '变更用餐方式'}
-            </button>
-            {showDiningForm && (
-              <div className="merchant-order-detail__form" id="ready-order-dining-form">
-                <label>
-                  <span>变更为</span>
-                  <select
-                    value={diningModeInput}
-                    onChange={(event) => setDiningModeInput(event.target.value as DiningMode)}
-                    aria-label="变更后的用餐方式"
-                  >
-                    <option value="DINE_IN">堂食</option>
-                    <option value="TAKEAWAY">外带</option>
-                  </select>
-                </label>
-                <textarea
-                  value={diningReason}
-                  onChange={(event) => setDiningReason(event.target.value)}
-                  placeholder="填写确认变更理由"
-                  rows={2}
-                  aria-label="用餐方式变更理由"
-                />
-                <button
-                  type="button"
-                  className="action-button action-button--secondary"
-                  onClick={() => onAction(diningAction, {
-                    reason: diningReason,
-                    diningMode: diningModeInput,
-                  })}
-                  disabled={busy(diningAction)}
-                  aria-busy={busy(diningAction) || undefined}
-                >
-                  {busy(diningAction) ? '提交中…' : '确认变更'}
-                </button>
-                {errorFor('CHANGE_DINING_MODE') && (
-                  <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-                    {errorFor('CHANGE_DINING_MODE')}
-                  </p>
-                )}
-              </div>
-            )}
-            <p className="hint">需档口明确确认，只有未结束订单才可变更。</p>
-          </>
-        )}
+        <p className="hint">用餐方式由学生选择；学生可申请变更，档口按确认后的方式备餐。</p>
       </section>
 
       <section className="detail-block detail-block--operations">

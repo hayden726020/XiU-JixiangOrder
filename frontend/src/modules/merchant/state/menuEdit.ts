@@ -1,12 +1,16 @@
+import type { DishFlavorGroup, DishOption, DishType } from '../data/types';
+import { isDishType } from './onboarding';
+
 export interface DishPatch {
+  name: string;
+  type: DishType;
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
-}
-
-export interface SlotPatch {
-  capacity: number;
-  enabled: boolean;
+  imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 export type PatchResult<T> =
@@ -14,12 +18,21 @@ export type PatchResult<T> =
   | { ok: false; error: string };
 
 export function parseDishPatch(
+  nameText: string,
+  typeText: DishType | '',
   priceText: string,
   quantityText: string,
   onSale: boolean,
 ): PatchResult<DishPatch> {
+  const name = nameText.trim();
   const price = priceText.trim();
   const quantity = quantityText.trim();
+  if (name.length < 1 || name.length > 30) {
+    return { ok: false, error: '菜品名称需为 1—30 个字符。' };
+  }
+  if (!isDishType(typeText)) {
+    return { ok: false, error: '请选择菜品类别。' };
+  }
   if (!/^\d+(\.\d{1,2})?$/.test(price)) {
     return { ok: false, error: '价格必须是元，最多两位小数。' };
   }
@@ -34,26 +47,7 @@ export function parseDishPatch(
   if (!Number.isSafeInteger(availableQuantity) || availableQuantity > 10_000) {
     return { ok: false, error: '可售数量不能超过 10000。' };
   }
-  return { ok: true, patch: { priceFen, availableQuantity, onSale } };
-}
-
-export function parseSlotPatch(
-  capacityText: string,
-  occupied: number,
-  enabled: boolean,
-): PatchResult<SlotPatch> {
-  const text = capacityText.trim();
-  if (!/^\d+$/.test(text)) {
-    return { ok: false, error: '接单名额必须是 0 或正整数。' };
-  }
-  const capacity = Number(text);
-  if (!Number.isSafeInteger(capacity) || capacity > 10_000) {
-    return { ok: false, error: '接单名额不能超过 10000。' };
-  }
-  if (capacity < occupied) {
-    return { ok: false, error: `接单名额不能低于已占用 ${occupied} 笔。` };
-  }
-  return { ok: true, patch: { capacity, enabled } };
+  return { ok: true, patch: { name, type: typeText, priceFen, availableQuantity, onSale } };
 }
 
 export function menuWriteErrorText(code: string, message: string): string {
@@ -62,6 +56,18 @@ export function menuWriteErrorText(code: string, message: string): string {
       return '服务端未返回 version，暂时无法安全保存；已记录给后端补字段。';
     case 'ORDER_VERSION_CONFLICT':
       return '内容已被其他操作更新，请重新读取菜单后再保存。';
+    case 'DISH_NOT_FOUND':
+      return '菜品不存在或已被删除，请重新读取菜单。';
+    case 'DISH_IN_USE':
+      return '该菜品存在未结束订单，暂不能删除；可先改为停售。';
+    case 'SHOP_REQUIRED':
+      return '请先完成商家注册与开店，再新增菜品。';
+    case 'MERCHANT_REQUIRED':
+      return '请先完成商家注册，再新增菜品。';
+    case 'NOT_FOUND':
+    case 'METHOD_NOT_ALLOWED':
+    case 'UNSUPPORTED':
+      return '服务端暂未提供该操作接口，请先联系后端补接口，或改用“停售”。';
     case 'UNAUTHENTICATED':
     case 'SESSION_EXPIRED':
       return '登录已失效，请重新登录档口演示账号。';

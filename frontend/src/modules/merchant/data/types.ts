@@ -23,6 +23,15 @@ export interface CancelRequest {
   decisionReason: string | null;
 }
 
+export interface DiningModeChangeRequest {
+  status: CancelRequestStatus;
+  reason: string | null;
+  decisionReason: string | null;
+  fromDiningMode: DiningMode | null;
+  toDiningMode: DiningMode | null;
+  requestedAt: string | null;
+}
+
 export interface OrderDelay {
   reason: string;
   expectedReadyAt: string;
@@ -30,6 +39,7 @@ export interface OrderDelay {
 
 export interface MerchantOrder {
   id: string;
+  orderNo: number | null;
   items: OrderItem[];
   slotId: string;
   slotStart: string;
@@ -37,9 +47,11 @@ export interface MerchantOrder {
   diningMode: DiningMode;
   diningModeReason: string | null;
   totalFen: number;
+  packagingFeeFen?: number | null;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   cancelRequest: CancelRequest;
+  diningModeChange: DiningModeChangeRequest;
   cancellationReason: string | null;
   version: number;
   createdAt: string;
@@ -47,6 +59,7 @@ export interface MerchantOrder {
   pickedUpAt: string | null;
   delay: OrderDelay | null;
   pickupCode: string | null;
+  remark: string | null;
   demo: boolean;
 }
 
@@ -58,6 +71,47 @@ export interface Dish {
   availableQuantity: number;
   onSale: boolean;
   version: number | null;
+  imageUrl: string | null;
+  flavorGroups: DishFlavorGroup[];
+  sides: DishOption[];
+  addOns: DishOption[];
+}
+
+export interface DishOption {
+  id: string;
+  name: string;
+  priceFen: number;
+}
+
+export interface DishFlavorGroup {
+  id: string;
+  name: string;
+  required: boolean;
+  options: DishOption[];
+}
+
+export interface DishCustomization {
+  imageUrl: string | null;
+  flavorGroups: DishFlavorGroup[];
+  sides: DishOption[];
+  addOns: DishOption[];
+}
+
+export interface PackagingFeeSetting {
+  enabled: boolean;
+  feeFen: number;
+}
+
+export interface DishCustomizationDraft {
+  imageUrl: string | null;
+  flavorGroups: Array<{
+    id: string;
+    name: string;
+    required: boolean;
+    options: Array<{ id: string; name: string }>;
+  }>;
+  sides: Array<{ id: string; name: string }>;
+  addOns: Array<{ id: string; name: string; priceText: string }>;
 }
 
 export interface MenuDay {
@@ -137,19 +191,38 @@ export interface SetDelayInput {
   requestId: string;
 }
 
-export interface ChangeDiningModeInput {
-  diningMode: DiningMode;
-  reason: string;
-  expectedVersion: number;
-  requestId: string;
-}
 
 export interface UpdateDishInput {
   requestId: string;
   expectedVersion: number | null;
+  name: string;
+  type: DishType;
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
+}
+
+export interface DeleteDishInput {
+  requestId: string;
+  expectedVersion: number | null;
+}
+
+export interface DailyMenuSelection {
+  dishId: string;
+  availableQuantity: number;
+}
+
+export interface SetDailyMenuInput {
+  requestId: string;
+  dishes: DailyMenuSelection[];
+}
+
+export interface DeletedDish {
+  dishId: string;
 }
 
 export interface UpdateSlotInput {
@@ -159,7 +232,33 @@ export interface UpdateSlotInput {
   enabled: boolean;
 }
 
-export type OnboardingStep = 'NONE' | 'REGISTERED' | 'SHOP_CREATED';
+export type OnboardingStep =
+  | 'NONE'
+  | 'UNREGISTERED'
+  | 'REGISTERED'
+  | 'SHOP_CREATED';
+
+export interface MerchantAccount {
+  userId: string;
+  account: string;
+  password: string | null;
+  active: boolean;
+  merchantId: string | null;
+  merchantName: string | null;
+  shopName?: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  createdAt: string | null;
+}
+
+export interface UpdateMerchantAccountInput {
+  requestId: string;
+  account?: string;
+  password?: string;
+  merchantName?: string;
+  contactName?: string;
+  contactPhone?: string;
+}
 
 export interface MerchantProfile {
   merchant: {
@@ -176,14 +275,27 @@ export interface MerchantProfile {
     description: string | null;
     version: number;
   } | null;
+
   onboardingStep: OnboardingStep;
 }
 
 export interface MerchantRegistrationInput {
   requestId: string;
-  merchantName: string;
+  merchantName?: string;
   contactName: string;
   contactPhone: string;
+}
+
+export interface MerchantProfileUpdateInput {
+  requestId: string;
+  merchantName?: string;
+  contactName?: string;
+  contactPhone?: string;
+  shopId?: string;
+  shopVersion?: number;
+  shopName?: string;
+  location?: string;
+  description?: string | null;
 }
 
 export interface CreateShopInput {
@@ -200,6 +312,14 @@ export interface CreateDishInput {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
+}
+
+export interface UploadedDishImage {
+  imageUrl: string;
 }
 
 export interface MerchantSource {
@@ -208,17 +328,49 @@ export interface MerchantSource {
   getOrders: (page?: number, pageSize?: number) => Promise<SourceResult<OrderPage>>;
   getOrder: (id: string) => Promise<SourceResult<MerchantOrder>>;
   getMenu: (date: string) => Promise<SourceResult<MenuDay>>;
+  getDishLibrary: (date: string) => Promise<SourceResult<Dish[]>>;
+  setDailyMenu: (date: string, input: SetDailyMenuInput) => Promise<SourceResult<MenuDay>>;
   getSlots: (date: string) => Promise<SourceResult<SlotDay>>;
   getProfile: () => Promise<SourceResult<MerchantProfile>>;
+  updateProfile: (input: MerchantProfileUpdateInput) => Promise<SourceResult<MerchantProfile>>;
   registerMerchant: (input: MerchantRegistrationInput) => Promise<SourceResult<MerchantProfile>>;
   createShop: (input: CreateShopInput) => Promise<SourceResult<MerchantProfile>>;
+
+  getAccount: () => Promise<SourceResult<MerchantAccount>>;
+  updateAccount: (input: UpdateMerchantAccountInput) => Promise<SourceResult<MerchantAccount>>;
   createDish: (input: CreateDishInput) => Promise<SourceResult<Dish>>;
+  uploadDishImage: (dataUrl: string, requestId: string) => Promise<SourceResult<UploadedDishImage>>;
   advanceOrder: (id: string, input: AdvanceOrderInput) => Promise<SourceResult<MerchantOrder>>;
   verifyOrder: (id: string, input: VerifyOrderInput) => Promise<SourceResult<MerchantOrder>>;
   decideCancellation: (id: string, input: CancelDecisionInput) => Promise<SourceResult<MerchantOrder>>;
   cancelOrder: (id: string, input: MerchantCancelOrderInput) => Promise<SourceResult<MerchantOrder>>;
   setDelay: (id: string, input: SetDelayInput) => Promise<SourceResult<MerchantOrder>>;
-  changeDiningMode: (id: string, input: ChangeDiningModeInput) => Promise<SourceResult<MerchantOrder>>;
+
   updateDish: (date: string, dishId: string, input: UpdateDishInput) => Promise<SourceResult<Dish>>;
+  deleteDish: (date: string, dishId: string, input: DeleteDishInput) => Promise<SourceResult<DeletedDish>>;
   updateSlot: (date: string, slotId: string, input: UpdateSlotInput) => Promise<SourceResult<Slot>>;
+  getWallet: () => Promise<SourceResult<WalletSummary>>;
+  withdrawWallet: (input: WalletWithdrawInput) => Promise<SourceResult<WalletSummary>>;
+}
+
+export type WalletEntryKind = 'income' | 'withdraw';
+
+export interface WalletEntry {
+  id: string;
+  kind: WalletEntryKind;
+  label: string;
+  amountFen: number;
+  createdAt: string;
+}
+
+export interface WalletSummary {
+  balanceFen: number;
+  totalIncomeFen: number;
+  totalWithdrawnFen: number;
+  entries: WalletEntry[];
+}
+
+export interface WalletWithdrawInput {
+  amountFen: number;
+  requestId: string;
 }

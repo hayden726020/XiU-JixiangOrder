@@ -1,0 +1,355 @@
+.app-shell--merchant .merchant-order-list {
+  gap: 0.7rem;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-view__header {
+  align-items: flex-start;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-view__header h2 {
+  font-size: 1.12rem;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-view__header .lead {
+  max-width: none;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.app-shell--merchant .merchant-status-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-shell--merchant .merchant-status-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.app-shell--merchant .merchant-status-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 2.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.375rem;
+  font-size: 0.74rem;
+}
+
+.app-shell--merchant .order-group__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.05rem 0.1rem;
+  font-size: 0.8rem;
+}
+
+.app-shell--merchant .order-group__sort {
+  color: var(--m-muted);
+  font-size: 0.66rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-order-list .order-group__rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.45rem;
+}
+
+.app-shell--merchant .order-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+  padding: 0.65rem 0.7rem;
+  cursor: pointer;
+}
+
+.app-shell--merchant .order-row__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.app-shell--merchant .order-row__ident {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.app-shell--merchant .order-row__id {
+  margin-right: 0.1rem;
+  color: var(--m-ink);
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.app-shell--merchant .order-row__overdue {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.42rem;
+  border: 1px solid var(--m-warn-line);
+  border-radius: 0.35rem;
+  background: var(--m-warn-bg);
+  color: var(--m-warn-ink);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.app-shell--merchant .order-row__time-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.app-shell--merchant .order-row__slot {
+  color: var(--m-ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.app-shell--merchant .order-row__amount {
+  flex: none;
+  color: var(--m-muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.app-shell--merchant .order-row__items {
+  overflow: hidden;
+  color: var(--m-ink-2);
+  font-size: 0.78rem;
+  font-weight: 560;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell--merchant .order-row__remark {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.app-shell--merchant .order-row__remark-text {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.app-shell--merchant .order-row__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.08rem;
+}
+
+.app-shell--merchant .order-row__detail {
+  min-height: 2.5rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--m-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-shell--merchant .order-row__detail:hover {
+  border-color: var(--m-line);
+  color: var(--m-ink);
+}
+
+.app-shell--merchant .order-row__primary {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--m-brand-line-strong);
+  border-radius: 0.375rem;
+  background: var(--m-brand-soft);
+  color: var(--m-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-shell--merchant .order-row__primary--muted {
+  border-color: var(--m-line);
+  background: var(--m-card);
+  color: var(--m-ink-2);
+}
+
+.app-shell--merchant .order-row__primary:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.app-shell--merchant .order-row__verify {
+  display: flex;
+  flex: 1 1 100%;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.app-shell--merchant .order-row__verify input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.app-shell--merchant .order-row__verify .order-row__primary {
+  margin-left: 0;
+}
+
+.app-shell--merchant .order-row__muted {
+  margin-left: auto;
+  color: var(--m-faint);
+  font-size: 0.7rem;
+}
+
+.app-shell--merchant .order-row > .action-feedback {
+  margin: 0;
+}
+
+.app-shell--merchant .merchant-empty--error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.app-shell--merchant .merchant-empty--error p {
+  margin: 0;
+}
+
+.app-shell--merchant .menu-item__sale-toggle {
+  min-height: 1.95rem;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.375rem;
+  background: var(--m-card);
+  color: var(--m-ink);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-shell--merchant .menu-item__sale-toggle:hover:not(:disabled) {
+  border-color: var(--m-brand-line-strong);
+  background: var(--m-brand-soft);
+}
+
+.app-shell--merchant .menu-item__sale-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.app-shell--merchant .menu-item__qty.is-low {
+  color: var(--m-warn-ink);
+  font-weight: 700;
+}
+
+.app-shell--merchant .menu-item__qty.is-soldout {
+  color: var(--m-danger-ink);
+  font-weight: 700;
+}
+
+.app-shell--merchant .menu-item__stock-warning {
+  margin-left: 0.2rem;
+  color: var(--m-warn-ink);
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.app-shell--merchant .menu-item__feedback {
+  flex: 1 1 100%;
+  margin: 0.1rem 0 0;
+  font-size: 0.68rem;
+}
+
+.app-shell--merchant .menu-item {
+  flex-wrap: wrap;
+}
+
+.app-shell--merchant .menu-item__sale-toggle {
+  min-height: 2.1rem;
+}
+
+.app-shell--merchant .menu-item--soldout {
+  opacity: 0.66;
+}
+
+.app-shell--merchant .menu-card {
+  border-radius: 0.5rem;
+  box-shadow: none;
+}
+
+.app-shell--merchant .menu-item {
+  padding: 0.58rem 0.05rem;
+}
+
+.app-shell--merchant .menu-item__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.app-shell--merchant .date-switch__button--active {
+  font-weight: 800;
+}
+
+.app-shell--merchant .merchant-my__group-title {
+  padding: 0.6rem 0.85rem 0.4rem;
+  font-size: 0.68rem;
+}
+
+.app-shell--merchant .merchant-my__row {
+  min-height: 2.7rem;
+  padding: 0.55rem 0.85rem;
+}
+
+.app-shell--merchant .merchant-my__status {
+  font-size: 0.62rem;
+}
+
+@media (min-width: 1000px) {
+  .app-shell--merchant .merchant-status-bar {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .app-shell--merchant .merchant-order-list .order-group__rows {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .app-shell--merchant .order-row__verify {
+    flex: 1 1 auto;
+    margin-left: auto;
+  }
+
+  .app-shell--merchant .order-row__verify input {
+    flex: 0 1 6.5rem;
+  }
+}

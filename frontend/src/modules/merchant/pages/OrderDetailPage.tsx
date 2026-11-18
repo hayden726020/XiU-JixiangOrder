@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import ActionBar from '../components/ActionBar';
-import type { DiningMode, MerchantOrder } from '../data/types';
+import type { MerchantOrder } from '../data/types';
 import {
   getOrderActions,
   getPrimaryAction,
@@ -10,11 +10,13 @@ import {
 import {
   cancelRequestLabel,
   cancellationNote,
+  diningModeChangeLabel,
+  diningModeChangeRoute,
   diningModeView,
   formatDateTime,
   formatSlot,
+  orderNoLabel,
   paymentText,
-  shortOrderId,
   STATUS_TRACK,
   statusView,
 } from '../state/orderView';
@@ -27,6 +29,8 @@ interface OrderDetailPageProps {
   mode: 'sample' | 'real';
   onBack: () => void;
   onAction: (action: OrderAction, input?: ActionInput) => void;
+  onRefresh: () => void;
+  refreshing?: boolean;
   pendingCode?: string | null;
   actionError?: { code: string; message: string } | null;
 }
@@ -42,10 +46,12 @@ export default function OrderDetailPage(props: OrderDetailPageProps) {
 }
 
 function OrderDetailContent({
-  order,
+order,
   mode,
   onBack,
   onAction,
+  onRefresh,
+  refreshing = false,
   pendingCode = null,
   actionError = null,
 }: OrderDetailPageProps) {
@@ -54,14 +60,7 @@ function OrderDetailContent({
   const [stockCancelReason, setStockCancelReason] = useState('');
   const [delayReason, setDelayReason] = useState('');
   const [delayExpectedReadyAt, setDelayExpectedReadyAt] = useState('');
-  const [diningReason, setDiningReason] = useState('');
-  const [diningModeInput, setDiningModeInput] = useState<DiningMode>(
-    order.diningMode === 'DINE_IN' ? 'TAKEAWAY' : 'DINE_IN',
-  );
 
-  useEffect(() => {
-    setDiningModeInput(order.diningMode === 'DINE_IN' ? 'TAKEAWAY' : 'DINE_IN');
-  }, [order.diningMode]);
 
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
@@ -70,7 +69,7 @@ function OrderDetailContent({
   const rejectAction = actions.find((action) => action.code === 'REJECT_CANCEL');
   const stockCancelAction = actions.find((action) => action.code === 'CANCEL_ORDER');
   const delayAction = actions.find((action) => action.code === 'SET_DELAY');
-  const diningAction = actions.find((action) => action.code === 'CHANGE_DINING_MODE');
+
   const mainActions = actions.filter(
     (action) => action.kind === 'primary' && action.code !== 'VERIFY' && action.code !== 'CANCEL_ORDER',
   );
@@ -79,7 +78,7 @@ function OrderDetailContent({
   const errorFor = (code: string) => (actionError?.code === code ? actionError.message : null);
   const cancelError = errorFor('APPROVE_CANCEL') ?? errorFor('REJECT_CANCEL');
   const otherError = actionError
-    && !['VERIFY', 'APPROVE_CANCEL', 'REJECT_CANCEL', 'CANCEL_ORDER', 'SET_DELAY', 'CHANGE_DINING_MODE']
+    && !['VERIFY', 'APPROVE_CANCEL', 'REJECT_CANCEL', 'CANCEL_ORDER', 'SET_DELAY']
       .includes(actionError.code)
     ? actionError.message
     : null;
@@ -95,15 +94,30 @@ function OrderDetailContent({
 
   return (
     <div className="merchant-view" data-order-id={order.id} data-order-status={order.status}>
-      <button type="button" className="back-link" onClick={onBack}>← 返回订单列表</button>
+      <div className="merchant-order-detail__topbar">
+        <button type="button" className="back-link merchant-order-detail__back" onClick={onBack}>← 返回订单列表</button>
+        {mode === 'real' && (
+          <button
+            type="button"
+            className="merchant-link-button merchant-order-detail__refresh"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing || undefined}
+            title="真实模式下会定时自动刷新"
+            data-refresh-order
+          >
+            {refreshing ? '刷新中…' : '刷新订单'}
+          </button>
+        )}
+      </div>
 
       <header className="detail-header">
         <p className="badge">
           {order.demo || mode === 'sample' ? '样例订单 · demo=true' : '真实数据 · 演示服务'}
         </p>
         <div className="detail-id">
-          <h2 className="detail-id__short">{shortOrderId(order.id)}</h2>
-          <p className="detail-id__full">订单号：{order.id}</p>
+          <h2 className="detail-id__short">{orderNoLabel(order)}</h2>
+          <p className="detail-id__full">当天第 {order.orderNo ?? '—'} 单</p>
         </div>
         <div className="detail-tags">
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
@@ -121,6 +135,11 @@ function OrderDetailContent({
         {order.cancelRequest.status === 'PENDING' && (
           <p className="detail-alert">学生申请取消，请优先处理；申请不等于已取消。</p>
         )}
+        {order.diningModeChange.status === 'PENDING' && (
+          <p className="detail-alert" data-dining-mode-change="PENDING">
+            学生申请更改用餐方式：{diningModeChangeRoute(order.diningModeChange)}，请优先确认。
+          </p>
+        )}
         <p className="detail-next">下一步：{primary ? primary.label : emptyText}</p>
       </header>
 
@@ -128,6 +147,15 @@ function OrderDetailContent({
         <h3>预约时间</h3>
         <p className="detail-emphasis">{formatSlot(order)}</p>
         <p className="hint">档口应在这个时段内做好，到点不一定已好。</p>
+      </section>
+
+      <section className="detail-block detail-block--remark">
+        <h3>订单备注</h3>
+        {order.remark ? (
+          <p className="detail-remark" data-order-remark={order.remark}>{order.remark}</p>
+        ) : (
+          <p className="merchant-muted detail-remark detail-remark--empty">学生未填写备注</p>
+        )}
       </section>
 
       <section className="detail-block">
@@ -270,6 +298,23 @@ function OrderDetailContent({
         )}
       </section>
 
+      {order.diningModeChange.status !== 'NONE' && (
+        <section className="detail-block" data-dining-mode-change={order.diningModeChange.status}>
+          <h3>用餐方式申请</h3>
+          <p className="detail-emphasis">{diningModeChangeRoute(order.diningModeChange)}</p>
+          <p className="merchant-muted">{diningModeChangeLabel(order.diningModeChange)}</p>
+          {order.diningModeChange.reason && (
+            <p className="merchant-muted">申请理由：{order.diningModeChange.reason}</p>
+          )}
+          {order.diningModeChange.decisionReason && (
+            <p className="merchant-muted">处理理由：{order.diningModeChange.decisionReason}</p>
+          )}
+          {order.diningModeChange.status === 'PENDING' && (
+            <p className="hint">请先确认打包或餐具安排；当前订单仍按原用餐方式记录。</p>
+          )}
+        </section>
+      )}
+
       {stockCancelAction && (
         <section className="detail-block">
           <h3>缺货取消</h3>
@@ -362,46 +407,8 @@ function OrderDetailContent({
         {order.diningModeReason && (
           <p className="merchant-muted">变更理由：{order.diningModeReason}</p>
         )}
-        {diningAction && (
-          <>
-            <p className="merchant-muted">变更为</p>
-            <select
-              value={diningModeInput}
-              onChange={(event) => setDiningModeInput(event.target.value as DiningMode)}
-              aria-label="变更后的用餐方式"
-            >
-              <option value="DINE_IN">堂食</option>
-              <option value="TAKEAWAY">外带</option>
-            </select>
-            <textarea
-              value={diningReason}
-              onChange={(event) => setDiningReason(event.target.value)}
-              placeholder="填写确认变更理由"
-              rows={2}
-              aria-label="用餐方式变更理由"
-            />
-            <button
-              type="button"
-              className="action-button action-button--secondary"
-              onClick={() => onAction(diningAction, {
-                reason: diningReason,
-                diningMode: diningModeInput,
-              })}
-              disabled={busy(diningAction)}
-              aria-busy={busy(diningAction) || undefined}
-            >
-              {busyLabel(diningAction)}
-            </button>
-            {errorFor('CHANGE_DINING_MODE') && (
-              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-                {errorFor('CHANGE_DINING_MODE')}
-              </p>
-            )}
-            <p className="hint">
-              需档口明确确认，只有未结束订单才可变更；保存后学生端读取同一结果。
-            </p>
-          </>
-        )}
+        <p className="hint">用餐方式由学生下单时选择，档口不可修改。</p>
+
       </section>
 
       <section className="detail-block">

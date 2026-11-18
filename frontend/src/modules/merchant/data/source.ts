@@ -1,16 +1,30 @@
 import { ApiError, apiRequest } from '../../../shared/apiClient';
+import { buildApiUrl } from '../../../shared/config';
 import { getSession } from '../../../shared/session';
+
 import { sampleMenu, sampleOrders, sampleSlots, SAMPLE_DATES } from './sampleData';
 import type {
   CreateDishInput,
   CreateShopInput,
+
+  DeletedDish,
   Dish,
+  DishFlavorGroup,
+  DishOption,
   DishType,
   MenuDay,
+  MerchantAccount,
   MerchantOrder,
   MerchantProfile,
+  MerchantProfileUpdateInput,
   MerchantRegistrationInput,
   MerchantScenario,
+  OnboardingStep,
+  UpdateMerchantAccountInput,
+  UploadedDishImage,
+  WalletEntry,
+  WalletSummary,
+  WalletWithdrawInput,
   MerchantSource,
   OrderPage,
   Slot,
@@ -27,6 +41,10 @@ interface ApiDish {
   availableQuantity: number;
   onSale: boolean;
   version?: number;
+  imageUrl?: string | null;
+  flavorGroups?: unknown;
+  sides?: unknown;
+  addOns?: unknown;
 }
 
 interface ApiSlot {
@@ -62,6 +80,7 @@ interface ApiCancelRequest {
 
 interface ApiOrder {
   id: string;
+  orderNo?: number | null;
   items: ApiOrderItem[];
   slotId: string;
   slotStart: string;
@@ -69,9 +88,18 @@ interface ApiOrder {
   diningMode: MerchantOrder['diningMode'];
   diningModeReason?: string | null;
   totalFen: number;
+  packagingFeeFen?: number | null;
   status: MerchantOrder['status'];
   paymentStatus: MerchantOrder['paymentStatus'];
   cancelRequest: ApiCancelRequest;
+  diningModeChange?: {
+    status?: MerchantOrder['diningModeChange']['status'];
+    reason?: string | null;
+    decisionReason?: string | null;
+    fromDiningMode?: MerchantOrder['diningMode'] | null;
+    toDiningMode?: MerchantOrder['diningMode'] | null;
+    requestedAt?: string | null;
+  } | null;
   cancellationReason: string | null;
   version: number;
   createdAt: string;
@@ -79,6 +107,7 @@ interface ApiOrder {
   pickedUpAt: string | null;
   delay: MerchantOrder['delay'];
   pickupCode: string | null;
+  remark?: string | null;
 }
 
 interface ApiMerchantOrders {
@@ -103,6 +132,33 @@ interface ApiMerchantProfile {
     description?: string | null;
     version?: number;
   } | null;
+
+  onboardingStep?: string;
+}
+
+interface ApiMerchantWallet {
+  balanceFen?: number;
+  totalIncomeFen?: number;
+  totalWithdrawnFen?: number;
+  entries?: {
+    id?: string;
+    kind?: string;
+    label?: string;
+    amountFen?: number;
+    createdAt?: string;
+  }[];
+}
+
+interface ApiMerchantAccount {
+  userId?: string;
+  account?: string;
+  password?: string | null;
+  active?: boolean;
+  merchantId?: string | null;
+  merchantName?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  createdAt?: string | null;
 }
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -138,6 +194,60 @@ function apiDishType(value: unknown): DishType | null {
     : null;
 }
 
+function apiImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) return trimmed;
+  if (trimmed.startsWith('/')) {
+    const base = buildApiUrl('/');
+    if (base) {
+      try {
+        return `${new URL(base).origin}${trimmed}`;
+      } catch {
+        // 落到下面按相对接口路径处理
+      }
+    }
+    return trimmed;
+  }
+  return buildApiUrl(trimmed) ?? trimmed;
+}
+
+function apiOptions(value: unknown): DishOption[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) return [];
+    const option = entry as Record<string, unknown>;
+    if (typeof option.id !== 'string' || typeof option.name !== 'string') return [];
+    return [{
+      id: option.id,
+      name: option.name,
+      priceFen: typeof option.priceFen === 'number' && Number.isFinite(option.priceFen)
+        ? Math.max(0, Math.round(option.priceFen))
+        : 0,
+    }];
+  });
+}
+
+function apiFlavorGroups(value: unknown): DishFlavorGroup[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) return [];
+    const group = entry as Record<string, unknown>;
+    if (typeof group.id !== 'string' || typeof group.name !== 'string') return [];
+    return [{
+      id: group.id,
+      name: group.name,
+      required: group.required !== false,
+      options: apiOptions(group.options),
+    }];
+  });
+}
+
 function mapDish(dish: ApiDish): Dish {
   return {
     dishId: dish.id,
@@ -147,6 +257,10 @@ function mapDish(dish: ApiDish): Dish {
     availableQuantity: dish.availableQuantity,
     onSale: dish.onSale,
     version: apiVersion(dish.version),
+    imageUrl: apiImageUrl(dish.imageUrl),
+    flavorGroups: apiFlavorGroups(dish.flavorGroups),
+    sides: apiOptions(dish.sides),
+    addOns: apiOptions(dish.addOns),
   };
 }
 
@@ -181,12 +295,46 @@ function mapSlots(payload: ApiMenu): SourceResult<SlotDay> {
   return { ok: true, data: { date: payload.date, demo: false, slots: payload.slots.map((slot) => mapSlot(slot)) } };
 }
 
+const ONBOARDING_STEPS: OnboardingStep[] = [
+  'NONE',
+  'UNREGISTERED',
+  'REGISTERED',
+  'SHOP_CREATED',
+];
+
+function resolveOnboardingStep(
+  raw: string | undefined,
+  merchant: unknown,
+  shop: unknown,
+): OnboardingStep {
+  if (typeof raw === 'string' && ONBOARDING_STEPS.includes(raw as OnboardingStep)) {
+    return raw as OnboardingStep;
+  }
+  if (shop) return 'SHOP_CREATED';
+  return merchant ? 'REGISTERED' : 'NONE';
+}
+
+function mapAccount(payload: ApiMerchantAccount): MerchantAccount {
+  return {
+    userId: payload.userId ?? '',
+    account: payload.account ?? '',
+    password: payload.password ?? null,
+    active: payload.active !== false,
+    merchantId: payload.merchantId ?? null,
+    merchantName: payload.merchantName ?? null,
+    contactName: payload.contactName ?? null,
+    contactPhone: payload.contactPhone ?? null,
+    createdAt: payload.createdAt ?? null,
+  };
+}
+
 function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> {
   if (typeof payload !== 'object' || payload === null) {
     return fail('INVALID_RESPONSE', '商家资料响应格式不正确。');
   }
   const merchant = payload.merchant ?? null;
   const shop = payload.shop ?? null;
+
   if (
     merchant !== null
     && (typeof merchant.id !== 'string' || typeof merchant.name !== 'string')
@@ -220,14 +368,47 @@ function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> 
           version: Number.isFinite(shop.version) ? (shop.version as number) : 1,
         }
         : null,
-      onboardingStep: shop ? 'SHOP_CREATED' : merchant ? 'REGISTERED' : 'NONE',
+      onboardingStep: resolveOnboardingStep(payload.onboardingStep, merchant, shop),
+    },
+  };
+}
+
+function mapWallet(payload: ApiMerchantWallet): SourceResult<WalletSummary> {
+  if (typeof payload !== 'object' || payload === null) {
+    return fail('INVALID_RESPONSE', '钱包响应格式不正确。');
+  }
+  const entries: WalletEntry[] = [];
+  for (const item of Array.isArray(payload.entries) ? payload.entries : []) {
+    if (typeof item !== 'object' || item === null) {
+      continue;
+    }
+    const kind = item.kind === 'income' || item.kind === 'withdraw' ? item.kind : null;
+    if (
+      typeof item.id !== 'string'
+      || kind === null
+      || typeof item.label !== 'string'
+      || typeof item.amountFen !== 'number'
+      || !Number.isFinite(item.amountFen)
+      || typeof item.createdAt !== 'string'
+    ) {
+      continue;
+    }
+    entries.push({ id: item.id, kind, label: item.label, amountFen: item.amountFen, createdAt: item.createdAt });
+  }
+  return {
+    ok: true,
+    data: {
+      balanceFen: Number.isFinite(payload.balanceFen) ? (payload.balanceFen as number) : 0,
+      totalIncomeFen: Number.isFinite(payload.totalIncomeFen) ? (payload.totalIncomeFen as number) : 0,
+      totalWithdrawnFen: Number.isFinite(payload.totalWithdrawnFen) ? (payload.totalWithdrawnFen as number) : 0,
+      entries,
     },
   };
 }
 
 function toOnboardingFailure<T>(error: unknown, label: string): SourceResult<T> {
   if (error instanceof ApiError) {
-    if (error.status === 404 || error.code === 'NOT_FOUND') {
+    if (error.code === 'NOT_FOUND') {
       return fail(
         'ONBOARDING_API_MISSING',
         `共同服务尚未提供${label}接口；本次未保存，页面不显示成功。`,
@@ -241,6 +422,7 @@ function toOnboardingFailure<T>(error: unknown, label: string): SourceResult<T> 
 function mapOrder(order: ApiOrder): MerchantOrder {
   return {
     id: order.id,
+    orderNo: typeof order.orderNo === 'number' ? order.orderNo : null,
     items: Array.isArray(order.items)
       ? order.items.map((item) => ({
         dishId: item.dishId,
@@ -255,12 +437,23 @@ function mapOrder(order: ApiOrder): MerchantOrder {
     diningMode: order.diningMode,
     diningModeReason: order.diningModeReason ?? null,
     totalFen: order.totalFen,
+    packagingFeeFen: typeof order.packagingFeeFen === 'number' && order.packagingFeeFen > 0
+      ? order.packagingFeeFen
+      : null,
     status: order.status,
     paymentStatus: order.paymentStatus,
     cancelRequest: {
       status: order.cancelRequest?.status ?? 'NONE',
       reason: order.cancelRequest?.reason ?? null,
       decisionReason: order.cancelRequest?.decisionReason ?? null,
+    },
+    diningModeChange: {
+      status: order.diningModeChange?.status ?? 'NONE',
+      reason: order.diningModeChange?.reason ?? null,
+      decisionReason: order.diningModeChange?.decisionReason ?? null,
+      fromDiningMode: order.diningModeChange?.fromDiningMode ?? null,
+      toDiningMode: order.diningModeChange?.toDiningMode ?? null,
+      requestedAt: order.diningModeChange?.requestedAt ?? null,
     },
     cancellationReason: order.cancellationReason ?? null,
     version: order.version,
@@ -271,6 +464,9 @@ function mapOrder(order: ApiOrder): MerchantOrder {
       ? { reason: order.delay.reason, expectedReadyAt: order.delay.expectedReadyAt }
       : null,
     pickupCode: order.pickupCode ?? null,
+    remark: typeof order.remark === 'string' && order.remark.trim().length > 0
+      ? order.remark
+      : null,
     demo: false,
   };
 }
@@ -294,14 +490,17 @@ async function requestMerchantOrderWrite(
 function createRealSource(scenario: MerchantScenario): MerchantSource {
   const inFlightMenus = new Map<string, Promise<SourceResult<ApiMenu>>>();
 
-  function loadMenu(date: string): Promise<SourceResult<ApiMenu>> {
-    const running = inFlightMenus.get(date);
+  function loadMenu(date: string, merchantId: string): Promise<SourceResult<ApiMenu>> {
+    const key = `${date}:${merchantId}`;
+    const running = inFlightMenus.get(key);
     if (running) return running;
-    const request = apiRequest<ApiMenu>(`/menu?date=${encodeURIComponent(date)}`)
+    const request = apiRequest<ApiMenu>(
+      `/menu?date=${encodeURIComponent(date)}&merchantId=${encodeURIComponent(merchantId)}`,
+    )
       .then((data): SourceResult<ApiMenu> => ({ ok: true, data }))
       .catch((error: unknown): SourceResult<ApiMenu> => toFailure<ApiMenu>(error))
-      .finally(() => inFlightMenus.delete(date));
-    inFlightMenus.set(date, request);
+      .finally(() => inFlightMenus.delete(key));
+    inFlightMenus.set(key, request);
     return request;
   }
 
@@ -367,14 +566,27 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
           '真实模式需要先登录档口演示账号：请到 #/system-check 登录后重试。',
         );
       }
-      const result = await loadMenu(date);
+      const result = await loadMenu(date, merchantId);
       return result.ok ? mapMenu(result.data, merchantId) : result;
     },
+    getDishLibrary: async (_date: string) => (
+      fail(
+        'UNSUPPORTED',
+        '真实服务暂未提供菜品库接口，制作每日菜单先在样例模式使用；字段需求已记录。',
+      )
+    ),
+    setDailyMenu: async (_date: string) => (
+      fail(
+        'UNSUPPORTED',
+        '真实服务暂未提供每日菜单接口，制作每日菜单先在样例模式使用；字段需求已记录。',
+      )
+    ),
     getSlots: async (date: string) => {
-      if (!currentMerchantId()) {
+      const merchantId = currentMerchantId();
+      if (!merchantId) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取时段。');
       }
-      const result = await loadMenu(date);
+      const result = await loadMenu(date, merchantId);
       return result.ok ? mapSlots(result.data) : result;
     },
     getProfile: async () => {
@@ -388,16 +600,111 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return toOnboardingFailure(error, '商家资料查询');
       }
     },
+    getWallet: async (): Promise<SourceResult<WalletSummary>> => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取钱包。');
+      }
+      try {
+        const data = await apiRequest<ApiMerchantWallet>('/merchant/wallet');
+        return mapWallet(data);
+      } catch (error) {
+        return toFailure(error, '钱包查询失败，请稍后重试。');
+      }
+    },
+    withdrawWallet: async (): Promise<SourceResult<WalletSummary>> => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不操作钱包。');
+      }
+      return fail('NOT_IMPLEMENTED', '钱包暂未接入共同服务；提现暂不可用。');
+    },
+    updateProfile: async (input: MerchantProfileUpdateInput) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不保存资料。');
+      }
+      const merchantBody: Record<string, unknown> = {};
+      if (input.merchantName !== undefined) merchantBody.merchantName = input.merchantName;
+      if (input.contactName !== undefined) merchantBody.contactName = input.contactName;
+      if (input.contactPhone !== undefined) merchantBody.contactPhone = input.contactPhone;
+      const shopBody: Record<string, unknown> = {};
+      if (input.shopName !== undefined) shopBody.shopName = input.shopName;
+      if (input.location !== undefined) shopBody.location = input.location;
+      if (input.description !== undefined) shopBody.description = input.description;
+
+      if (Object.keys(merchantBody).length === 0 && Object.keys(shopBody).length === 0) {
+        return fail('VALIDATION_ERROR', '没有需要保存的资料字段。');
+      }
+      try {
+        let nextProfile: MerchantProfile | null = null;
+        if (Object.keys(merchantBody).length > 0) {
+          const data = await apiRequest<ApiMerchantProfile>('/merchant/profile', {
+            method: 'PATCH',
+            body: { requestId: input.requestId, ...merchantBody },
+          });
+          const mapped = mapProfile(data);
+          if (!mapped.ok) return mapped;
+          nextProfile = mapped.data;
+        }
+        if (Object.keys(shopBody).length > 0) {
+          if (!input.shopId) {
+            if (!input.shopName) {
+              return fail('VALIDATION_ERROR', '缺少店铺标识，请刷新页面后重试。');
+            }
+            const data = await apiRequest<ApiMerchantProfile>('/merchant/shops', {
+              method: 'POST',
+              body: {
+                requestId: `${input.requestId}-shop`,
+                shopName: input.shopName,
+                location: input.location || '一食堂',
+                description: input.description ?? '',
+              },
+            });
+            const mapped = mapProfile(data);
+            if (!mapped.ok) return mapped;
+            nextProfile = mapped.data;
+          } else {
+            if (input.shopVersion === undefined) {
+              return fail('SHOP_VERSION_MISSING', '服务端未返回店铺版本，暂不能安全保存店铺资料。');
+            }
+            const data = await apiRequest<ApiMerchantProfile>(
+              `/merchant/shops/${encodeURIComponent(input.shopId)}`,
+              {
+                method: 'PATCH',
+                body: {
+                  requestId: `${input.requestId}-shop`,
+                  expectedVersion: input.shopVersion,
+                  ...shopBody,
+                },
+              },
+            );
+            const mapped = mapProfile(data);
+            if (!mapped.ok) return mapped;
+            nextProfile = mapped.data;
+          }
+        }
+        if (!nextProfile) {
+          return fail('VALIDATION_ERROR', '没有需要保存的资料字段。');
+        }
+        return { ok: true, data: nextProfile };
+      } catch (error) {
+        return toOnboardingFailure(error, '商家资料修改');
+      }
+    },
     registerMerchant: async (input: MerchantRegistrationInput) => {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送注册请求。');
       }
+      const session = getSession();
+      const accountName = session?.user.role === 'MERCHANT'
+        ? session.user.displayName.trim()
+        : '';
+      const merchantName = input.merchantName?.trim()
+        || (accountName.length >= 2 ? accountName.slice(0, 30) : `${input.contactName.trim()}的档口`);
       try {
         const data = await apiRequest<ApiMerchantProfile>('/merchant/registration', {
           method: 'POST',
           body: {
             requestId: input.requestId,
-            merchantName: input.merchantName,
+            merchantName,
             contactName: input.contactName,
             contactPhone: input.contactPhone,
           },
@@ -426,6 +733,38 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return toOnboardingFailure(error, '店铺创建');
       }
     },
+
+    getAccount: async () => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取账号信息。');
+      }
+      try {
+        const data = await apiRequest<ApiMerchantAccount>('/merchant/account');
+        return { ok: true, data: mapAccount(data) };
+      } catch (error) {
+        return toFailure(error, '账号信息读取失败，请稍后重试。');
+      }
+    },
+    updateAccount: async (input: UpdateMerchantAccountInput) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不保存账号信息。');
+      }
+      try {
+        const data = await apiRequest<ApiMerchantAccount>('/merchant/account', {
+          method: 'PATCH',
+          body: {
+            requestId: input.requestId,
+            account: input.account,
+            password: input.password,
+            contactName: input.contactName,
+            contactPhone: input.contactPhone,
+          },
+        });
+        return { ok: true, data: mapAccount(data) };
+      } catch (error) {
+        return toFailure(error, '账号信息保存失败，请稍后重试。');
+      }
+    },
     createDish: async (input: CreateDishInput) => {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送菜品创建请求。');
@@ -440,6 +779,10 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
             priceFen: input.priceFen,
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
+            ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+            ...(input.flavorGroups !== undefined ? { flavorGroups: input.flavorGroups } : {}),
+            ...(input.sides !== undefined ? { sides: input.sides } : {}),
+            ...(input.addOns !== undefined ? { addOns: input.addOns } : {}),
           },
         });
         if (typeof data.id !== 'string') {
@@ -448,6 +791,24 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return { ok: true, data: mapDish(data) };
       } catch (error) {
         return toOnboardingFailure(error, '菜品创建');
+      }
+    },
+    uploadDishImage: async (dataUrl: string, requestId: string) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送图片上传请求。');
+      }
+      try {
+        const data = await apiRequest<{ imageUrl?: unknown }>('/merchant/images', {
+          method: 'POST',
+          body: { dataUrl, requestId },
+        });
+        const imageUrl = typeof data.imageUrl === 'string' ? data.imageUrl.trim() : '';
+        if (!imageUrl) {
+          return fail('INVALID_RESPONSE', '图片上传响应缺少 imageUrl。');
+        }
+        return { ok: true, data: { imageUrl } };
+      } catch (error) {
+        return toOnboardingFailure(error, '图片上传');
       }
     },
     advanceOrder: async (id, input) => {
@@ -502,21 +863,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         expectedReadyAt: input.expectedReadyAt,
       });
     },
-    changeDiningMode: async (id, input) => {
-      if (!currentMerchantId()) {
-        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
-      }
-      return requestMerchantOrderWrite(
-        `/merchant/orders/${encodeURIComponent(id)}/dining-mode`,
-        {
-          requestId: input.requestId,
-          expectedVersion: input.expectedVersion,
-          diningMode: input.diningMode,
-          reason: input.reason,
-        },
-        'PATCH',
-      );
-    },
+
     updateDish: async (_date, dishId, input) => {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送写请求。');
@@ -533,9 +880,15 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
           body: {
             requestId: input.requestId,
             expectedVersion: input.expectedVersion,
+            name: input.name,
+            type: input.type,
             priceFen: input.priceFen,
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
+            ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+            ...(input.flavorGroups !== undefined ? { flavorGroups: input.flavorGroups } : {}),
+            ...(input.sides !== undefined ? { sides: input.sides } : {}),
+            ...(input.addOns !== undefined ? { addOns: input.addOns } : {}),
           },
         });
         if (typeof data.id !== 'string') {
@@ -544,6 +897,33 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return { ok: true, data: mapDish(data) };
       } catch (error) {
         return toFailure(error, '菜品保存失败，请重新读取菜单后重试。');
+      }
+    },
+    deleteDish: async (_date, dishId, input) => {
+      if (!currentMerchantId()) {
+        return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送删除请求。');
+      }
+      if (input.expectedVersion === null || !Number.isFinite(input.expectedVersion)) {
+        return fail(
+          'MENU_VERSION_MISSING',
+          '服务端 GET /menu 未返回菜品 version，暂不能安全删除；已记录给后端补字段。',
+        );
+      }
+      try {
+        const data = await apiRequest<{ id?: string } | undefined>(
+          `/merchant/menu/${encodeURIComponent(dishId)}`,
+          {
+            method: 'DELETE',
+            body: {
+              requestId: input.requestId,
+              expectedVersion: input.expectedVersion,
+            },
+          },
+        );
+        const returnedId = typeof data?.id === 'string' ? data.id : dishId;
+        return { ok: true, data: { dishId: returnedId } };
+      } catch (error) {
+        return toFailure(error, '删除菜品失败，请重新读取菜单后重试。');
       }
     },
     updateSlot: async (_date, slotId, input) => {
@@ -577,6 +957,49 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
   };
 }
 
+const SAMPLE_PROFILE_STORAGE_KEY = 'merchant-sample-profile-v1';
+
+function emptyProfile(): MerchantProfile {
+  return { merchant: null, shop: null, onboardingStep: 'NONE' };
+}
+
+function readSampleProfile(): MerchantProfile {
+  if (typeof window === 'undefined') return emptyProfile();
+  try {
+    const raw = window.localStorage.getItem(SAMPLE_PROFILE_STORAGE_KEY);
+    if (!raw) return emptyProfile();
+    const parsed = JSON.parse(raw) as Partial<MerchantProfile> | null;
+    if (!parsed || typeof parsed !== 'object') return emptyProfile();
+    const merchant = parsed.merchant ?? null;
+    const shop = parsed.shop ?? null;
+    if (merchant && (typeof merchant.name !== 'string' || typeof merchant.id !== 'string')) {
+      return emptyProfile();
+    }
+    if (shop && (typeof shop.name !== 'string' || typeof shop.id !== 'string')) {
+      return emptyProfile();
+    }
+    return {
+      merchant,
+      shop,
+
+      onboardingStep: parsed.onboardingStep
+        ?? (shop ? 'SHOP_CREATED' : merchant ? 'REGISTERED' : 'NONE'),
+    };
+  } catch {
+    return emptyProfile();
+  }
+}
+
+function persistSampleProfile(profile: MerchantProfile): void {
+
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(SAMPLE_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  } catch {
+    return;
+  }
+}
+
 export function createMerchantSource(options: {
   mode?: 'sample' | 'real';
   scenario?: MerchantScenario;
@@ -589,15 +1012,79 @@ export function createMerchantSource(options: {
   }
 
   const orders = sampleOrders(scenario);
-  const dishWrites = new Map<string, { priceFen: number; availableQuantity: number; onSale: boolean; version: number }>();
+  const dishWrites = new Map<string, { name: string; type: DishType; unitPriceFen: number; availableQuantity: number; onSale: boolean; version: number }>();
   const slotWrites = new Map<string, { capacity: number; enabled: boolean; version: number }>();
-  const addedDishes = new Map<string, Dish[]>();
+  const addedDishes = new Map<string, Dish>();
+  const deletedDishes = new Set<string>();
+  const dailyMenus = new Map<string, Set<string>>();
   let nextDishId = 1;
-  let sampleProfile: MerchantProfile = {
-    merchant: null,
-    shop: null,
-    onboardingStep: 'NONE',
-  };
+
+  function applyDishOverride(date: string, dish: Dish): Dish {
+    const override = dishWrites.get(`${date}:${dish.dishId}`);
+    return override ? { ...dish, ...override } : dish;
+  }
+
+  function libraryDishes(date: string): Dish[] {
+    const merged = new Map<string, Dish>();
+    for (const day of SAMPLE_DATES) {
+      for (const dish of sampleMenu(day)?.dishes ?? []) {
+        merged.set(dish.dishId, dish);
+      }
+    }
+    for (const dish of addedDishes.values()) {
+      merged.set(dish.dishId, dish);
+    }
+    for (const dish of sampleMenu(date)?.dishes ?? []) {
+      merged.set(dish.dishId, dish);
+    }
+    return [...merged.values()].filter((dish) => !deletedDishes.has(dish.dishId));
+  }
+
+  function selectedDishIds(date: string): Set<string> {
+    const override = dailyMenus.get(date);
+    if (override) return override;
+    return new Set((sampleMenu(date)?.dishes ?? []).map((dish) => dish.dishId));
+  }
+
+  function computeMenu(date: string): MenuDay | null {
+    const menu = sampleMenu(date);
+    if (!menu) return null;
+    const ids = selectedDishIds(date);
+    const dishes = libraryDishes(date)
+      .filter((dish) => ids.has(dish.dishId))
+      .map((dish) => applyDishOverride(date, dish));
+    return { ...menu, dishes };
+  }
+
+  function findSampleDish(date: string, dishId: string): Dish | null {
+    if (deletedDishes.has(dishId)) return null;
+    const base = libraryDishes(date).find((dish) => dish.dishId === dishId);
+    return base ? applyDishOverride(date, base) : null;
+  }
+  let walletEntries: WalletEntry[] = [
+    { id: 'wallet-in-1', kind: 'income', label: '订单收入 · 演示鸡肉饭', amountFen: 1800, createdAt: '2026-11-13T12:05:00+08:00' },
+    { id: 'wallet-in-2', kind: 'income', label: '订单收入 · 演示素面', amountFen: 1600, createdAt: '2026-11-13T12:10:00+08:00' },
+    { id: 'wallet-in-3', kind: 'income', label: '订单收入 · 演示素面 ×2', amountFen: 3200, createdAt: '2026-11-13T11:55:00+08:00' },
+    { id: 'wallet-out-1', kind: 'withdraw', label: '演示提现到银行卡', amountFen: 2000, createdAt: '2026-11-13T18:00:00+08:00' },
+  ];
+  const walletBalance = (): number => walletEntries.reduce(
+    (sum, entry) => (entry.kind === 'income' ? sum + entry.amountFen : sum - entry.amountFen),
+    0,
+  );
+  const walletSummary = (): WalletSummary => ({
+    balanceFen: walletBalance(),
+    totalIncomeFen: walletEntries
+      .filter((entry) => entry.kind === 'income')
+      .reduce((sum, entry) => sum + entry.amountFen, 0),
+    totalWithdrawnFen: walletEntries
+      .filter((entry) => entry.kind === 'withdraw')
+      .reduce((sum, entry) => sum + entry.amountFen, 0),
+    entries: [...walletEntries]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((entry) => ({ ...entry })),
+  });
+
+  let sampleProfile: MerchantProfile = readSampleProfile();
 
   return {
     mode: 'sample',
@@ -622,21 +1109,46 @@ export function createMerchantSource(options: {
       return { ok: true, data: structuredClone(found) };
     },
     getMenu: async (date: string): Promise<SourceResult<MenuDay>> => {
-      const menu = sampleMenu(date);
+      const menu = computeMenu(date);
       if (!menu) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
-      const dishes = menu.dishes.map((dish) => {
-        const override = dishWrites.get(`${date}:${dish.dishId}`);
-        if (!override) return dish;
-        return {
-          ...dish,
-          unitPriceFen: override.priceFen,
-          availableQuantity: override.availableQuantity,
-          onSale: override.onSale,
-          version: override.version,
-        };
-      });
-      const added = (addedDishes.get(date) ?? []).map((dish) => structuredClone(dish));
-      return { ok: true, data: { ...menu, dishes: [...dishes, ...added] } };
+      return { ok: true, data: menu };
+    },
+    getDishLibrary: async (date: string): Promise<SourceResult<Dish[]>> => {
+      if (!sampleMenu(date)) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
+      return { ok: true, data: structuredClone(libraryDishes(date)) };
+    },
+    setDailyMenu: async (date: string, input): Promise<SourceResult<MenuDay>> => {
+      const base = sampleMenu(date);
+      if (!base) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
+      const library = new Map(libraryDishes(date).map((dish) => [dish.dishId, dish]));
+      const ids = new Set<string>();
+      for (const item of input.dishes) {
+        const dish = library.get(item.dishId);
+        if (!dish) return fail('DISH_NOT_FOUND', `菜品 ${item.dishId} 不存在，请重新读取菜品库。`);
+        if (ids.has(item.dishId)) return fail('VALIDATION_ERROR', '同一道菜不能重复上架。');
+        if (
+          !Number.isSafeInteger(item.availableQuantity)
+          || item.availableQuantity < 0
+          || item.availableQuantity > 10_000
+        ) {
+          return fail('VALIDATION_ERROR', `「${dish.name}」的今日库存必须是 0—10000 的整数。`);
+        }
+        ids.add(item.dishId);
+        const key = `${date}:${item.dishId}`;
+        const current = dishWrites.get(key);
+        dishWrites.set(key, {
+          name: current?.name ?? dish.name,
+          type: current?.type ?? dish.type ?? 'STAPLE',
+          unitPriceFen: current?.unitPriceFen ?? dish.unitPriceFen,
+          availableQuantity: item.availableQuantity,
+          onSale: current?.onSale ?? dish.onSale,
+          version: (current?.version ?? dish.version ?? 1) + 1,
+        });
+      }
+      dailyMenus.set(date, ids);
+      const menu = computeMenu(date);
+      if (!menu) return fail('VALIDATION_ERROR', `只支持样例日期：${date}`);
+      return { ok: true, data: menu };
     },
     getSlots: async (date: string): Promise<SourceResult<SlotDay>> => {
       const day = sampleSlots(date);
@@ -647,14 +1159,77 @@ export function createMerchantSource(options: {
       });
       return { ok: true, data: { ...day, slots } };
     },
+    getWallet: async (): Promise<SourceResult<WalletSummary>> => ({ ok: true, data: walletSummary() }),
+    withdrawWallet: async (input: WalletWithdrawInput): Promise<SourceResult<WalletSummary>> => {
+      if (!Number.isSafeInteger(input.amountFen) || input.amountFen <= 0) {
+        return fail('VALIDATION_ERROR', '提现金额必须是大于 0 的整数（单位：分）。');
+      }
+      const balance = walletBalance();
+      if (input.amountFen > balance) {
+        return fail('VALIDATION_ERROR', '演示提现金额超出样例余额，请调整金额。');
+      }
+      walletEntries.push({
+        id: `wallet-out-${Date.now()}`,
+        kind: 'withdraw',
+        label: '演示提现到银行卡',
+        amountFen: input.amountFen,
+        createdAt: new Date().toISOString(),
+      });
+      return { ok: true, data: walletSummary() };
+    },
     getProfile: async (): Promise<SourceResult<MerchantProfile>> => (
       { ok: true, data: structuredClone(sampleProfile) }
     ),
+    updateProfile: async (input: MerchantProfileUpdateInput): Promise<SourceResult<MerchantProfile>> => {
+      if (!sampleProfile.merchant) {
+        return fail('MERCHANT_REQUIRED', '请先完成商家注册，再修改我的信息。');
+      }
+      const merchantName = input.merchantName?.trim() || sampleProfile.merchant.name;
+      const contactName = input.contactName?.trim() || sampleProfile.merchant.contactName || '';
+      const contactPhone = input.contactPhone?.trim().replace(/[\s-]/g, '')
+        || sampleProfile.merchant.contactPhone
+        || '';
+      const shop = sampleProfile.shop;
+      const nextShop = shop
+        ? {
+          ...shop,
+          name: input.shopName?.trim() || shop.name,
+          location: input.location?.trim() || shop.location,
+          description: input.description === undefined
+            ? shop.description
+            : input.description?.trim()
+              ? input.description.trim()
+              : null,
+          version: shop.version + 1,
+        }
+        : input.shopName?.trim()
+          ? {
+            id: 'demo-shop-01',
+            name: input.shopName.trim(),
+            location: input.location?.trim() || '一食堂',
+            description: input.description?.trim() || null,
+            version: 1,
+          }
+          : null;
+      sampleProfile = {
+        ...sampleProfile,
+        merchant: {
+          ...sampleProfile.merchant,
+          name: merchantName,
+          contactName,
+          contactPhone,
+        },
+        shop: nextShop,
+        onboardingStep: nextShop ? 'SHOP_CREATED' : sampleProfile.onboardingStep,
+      };
+      persistSampleProfile(sampleProfile);
+      return { ok: true, data: structuredClone(sampleProfile) };
+    },
     registerMerchant: async (input: MerchantRegistrationInput): Promise<SourceResult<MerchantProfile>> => {
       sampleProfile = {
         merchant: {
           id: 'demo-merchant-01',
-          name: input.merchantName,
+          name: input.merchantName?.trim() || sampleProfile.merchant?.name || '未命名商家',
           contactName: input.contactName,
           contactPhone: input.contactPhone,
           status: 'ACTIVE',
@@ -662,12 +1237,14 @@ export function createMerchantSource(options: {
         shop: null,
         onboardingStep: 'REGISTERED',
       };
+      persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };
     },
     createShop: async (input: CreateShopInput): Promise<SourceResult<MerchantProfile>> => {
       if (!sampleProfile.merchant) {
         return fail('MERCHANT_REQUIRED', '请先完成商家注册。');
       }
+
       sampleProfile = {
         ...sampleProfile,
         shop: {
@@ -679,12 +1256,59 @@ export function createMerchantSource(options: {
         },
         onboardingStep: 'SHOP_CREATED',
       };
+      persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };
     },
-    createDish: async (input: CreateDishInput): Promise<SourceResult<Dish>> => {
-      if (!sampleProfile.shop) {
-        return fail('SHOP_REQUIRED', '请先创建店铺。');
+
+    getAccount: async (): Promise<SourceResult<MerchantAccount>> => ({
+      ok: true,
+      data: {
+        userId: 'demo-user-merchant-01',
+        account: 'demo-merchant',
+        password: 'demo-pass',
+        active: true,
+        merchantId: sampleProfile.merchant?.id ?? null,
+        merchantName: sampleProfile.merchant?.name ?? null,
+        contactName: sampleProfile.merchant?.contactName ?? null,
+        contactPhone: sampleProfile.merchant?.contactPhone ?? null,
+        createdAt: null,
+      },
+    }),
+    updateAccount: async (input: UpdateMerchantAccountInput): Promise<SourceResult<MerchantAccount>> => {
+      const merchant = sampleProfile.merchant;
+      if (!merchant) {
+        return fail('MERCHANT_REQUIRED', '请先完成商家注册。');
       }
+      const contactName = input.contactName?.trim() || merchant.contactName || '';
+      const contactPhone = input.contactPhone?.trim().replace(/[\s-]/g, '')
+        || merchant.contactPhone
+        || '';
+      sampleProfile = {
+        ...sampleProfile,
+        merchant: {
+          ...merchant,
+          contactName,
+          contactPhone,
+        },
+      };
+      persistSampleProfile(sampleProfile);
+      return {
+        ok: true,
+        data: {
+          userId: 'demo-user-merchant-01',
+          account: input.account?.trim() || 'demo-merchant',
+          password: input.password || 'demo-pass',
+          active: true,
+          merchantId: merchant.id,
+          merchantName: merchant.name,
+          contactName,
+          contactPhone,
+          createdAt: null,
+        },
+      };
+    },
+    createDish: async (input: CreateDishInput): Promise<SourceResult<Dish>> => {
+      const targetDate = (input as CreateDishInput & { date?: string }).date;
       const dish: Dish = {
         dishId: `demo-dish-onboarding-${nextDishId}`,
         type: input.type,
@@ -693,15 +1317,23 @@ export function createMerchantSource(options: {
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
         version: 1,
+        imageUrl: input.imageUrl ?? null,
+        flavorGroups: input.flavorGroups ?? [],
+        sides: input.sides ?? [],
+        addOns: input.addOns ?? [],
       };
       nextDishId += 1;
-      for (const date of SAMPLE_DATES) {
-        const list = addedDishes.get(date) ?? [];
-        list.push(structuredClone(dish));
-        addedDishes.set(date, list);
+      addedDishes.set(dish.dishId, structuredClone(dish));
+      if (targetDate && (SAMPLE_DATES as ReadonlyArray<string>).includes(targetDate)) {
+        const ids = new Set(selectedDishIds(targetDate));
+        ids.add(dish.dishId);
+        dailyMenus.set(targetDate, ids);
       }
       return { ok: true, data: structuredClone(dish) };
     },
+    uploadDishImage: async (dataUrl: string): Promise<SourceResult<UploadedDishImage>> => (
+      { ok: true, data: { imageUrl: dataUrl } }
+    ),
     advanceOrder: async (): Promise<SourceResult<MerchantOrder>> => (
       fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
     ),
@@ -717,42 +1349,52 @@ export function createMerchantSource(options: {
     setDelay: async (): Promise<SourceResult<MerchantOrder>> => (
       fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
     ),
-    changeDiningMode: async (): Promise<SourceResult<MerchantOrder>> => (
-      fail('SAMPLE_READONLY', '样例模式不发送真实写请求。')
-    ),
+
     updateDish: async (date, dishId, input): Promise<SourceResult<Dish>> => {
-      const menu = sampleMenu(date);
-      const base = menu?.dishes.find((dish) => dish.dishId === dishId);
-      if (!base) return fail('DISH_NOT_FOUND', '菜品不存在或不属于当前样例日期。');
-      const key = `${date}:${dishId}`;
-      const override = dishWrites.get(key);
-      const current: Dish = override
-        ? {
-          ...base,
-          unitPriceFen: override.priceFen,
-          availableQuantity: override.availableQuantity,
-          onSale: override.onSale,
-          version: override.version,
-        }
-        : base;
+      const current = findSampleDish(date, dishId);
+      if (!current) return fail('DISH_NOT_FOUND', '菜品不存在、已删除或不属于当前样例日期。');
       const version = current.version ?? 1;
       if (input.expectedVersion === null || input.expectedVersion !== version) {
         return fail('ORDER_VERSION_CONFLICT', '菜品已在其他操作中更新，请重新读取菜单后再保存。');
       }
       const updated: Dish = {
         ...current,
+        name: input.name,
+        type: input.type,
         unitPriceFen: input.priceFen,
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
+        imageUrl: input.imageUrl === undefined ? current.imageUrl : input.imageUrl,
         version: version + 1,
       };
-      dishWrites.set(key, {
-        priceFen: updated.unitPriceFen,
+      dishWrites.set(`${date}:${dishId}`, {
+        name: updated.name,
+        type: input.type,
+        unitPriceFen: updated.unitPriceFen,
         availableQuantity: updated.availableQuantity,
         onSale: updated.onSale,
         version: updated.version ?? version + 1,
       });
       return { ok: true, data: updated };
+    },
+    deleteDish: async (date, dishId, input): Promise<SourceResult<DeletedDish>> => {
+      const current = findSampleDish(date, dishId);
+      if (!current) return fail('DISH_NOT_FOUND', '菜品不存在或已删除，请重新读取菜单。');
+      const version = current.version ?? 1;
+      if (input.expectedVersion === null || input.expectedVersion !== version) {
+        return fail('ORDER_VERSION_CONFLICT', '菜品已在其他操作中更新，请重新读取菜单后再删除。');
+      }
+      deletedDishes.add(dishId);
+      addedDishes.delete(dishId);
+      for (const key of [...dishWrites.keys()]) {
+        if (key.endsWith(`:${dishId}`)) {
+          dishWrites.delete(key);
+        }
+      }
+      for (const selection of dailyMenus.values()) {
+        selection.delete(dishId);
+      }
+      return { ok: true, data: { dishId } };
     },
     updateSlot: async (date, slotId, input): Promise<SourceResult<Slot>> => {
       const day = sampleSlots(date);
