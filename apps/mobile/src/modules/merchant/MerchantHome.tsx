@@ -1,30 +1,34 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import SampleBanner from './components/SampleBanner';
+
 import { SAMPLE_DATES } from './data/sampleData';
 import { createMerchantSource } from './data/source';
 import type {
   CancelDecision,
   CreateDishInput,
   DailyMenuSelection,
-  DiningMode,
+
   Dish,
   MenuDay,
   MerchantOrder,
   MerchantProfile,
   MerchantScenario,
   OrderAdvanceAction,
-  Slot,
+  PackagingFeeSetting,
+
   SlotDay,
-  SourceResult,
   WalletSummary,
 
+  SourceResult,
 } from './data/types';
 import MenuPage from './pages/MenuPage';
+import HomePage from './pages/HomePage';
 import MerchantLoginPage from './pages/MerchantLoginPage';
+import MerchantMyInfoPage from './pages/MerchantMyInfoPage';
 import OnboardingPage from './pages/OnboardingPage';
+import SourceSelectPage from './pages/SourceSelectPage';
+import WalletPage from './pages/WalletPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
-import WalletPage from './pages/WalletPage';
 import {
   actionErrorText,
   actionPrompt,
@@ -33,35 +37,69 @@ import {
   type ActionInput,
   type OrderAction,
 } from './state/actionMatrix';
-import { formatClock, localInputToZonedIso, shortOrderId, statusView } from './state/orderView';
+import { formatClock, localInputToZonedIso, orderNoLabel, statusView } from './state/orderView';
 import type { DishPatch } from './state/menuEdit';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
+import { resolveEffectiveMerchantName } from './state/onboarding';
+import {
+  loadPackagingFeeSetting,
+  parsePackagingFeeText,
+  packagingFeeSummary,
+  savePackagingFeeSetting,
+
+} from './state/packagingFee';
 import { formatYuan } from './utils/money';
 import { logout } from '../../shared/auth';
-import { roleLabel } from '../../shared';
+
 import { getApiBaseInfo } from '../../shared/config';
 import { createRequestId } from '../../shared/requestId';
-import { getSession, subscribeSession, type Session } from '../../shared/session';
+import { getSession, subscribeSession, clearSession, type Session } from '../../shared/session';
+import merchantAvatar from './assets/merchant-avatar-default.webp';
 import './merchant.css';
+import './merchant.v4.css';
 
 type DataMode = 'sample' | 'real';
+
+const DATA_MODE_STORAGE_KEY = 'merchant-data-mode-v1';
+
+function readStoredDataMode(): DataMode | null {
+  try {
+    const raw = window.localStorage.getItem(DATA_MODE_STORAGE_KEY);
+    return raw === 'real' || raw === 'sample' ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistDataMode(next: DataMode): void {
+  try {
+    window.localStorage.setItem(DATA_MODE_STORAGE_KEY, next);
+  } catch {
+    // 存储不可用时只影响下次进入的默认模式，不影响本次会话。
+  }
+}
 
 const ORDERS_PAGE_SIZE = 20;
 const AUTO_REFRESH_MS = 15000;
 const MERCHANT_ROUTE = '/merchant';
 const MENU_ROUTE = `${MERCHANT_ROUTE}/menu`;
 const SETUP_ROUTE = `${MERCHANT_ROUTE}/setup`;
+const SOURCE_ROUTE = `${MERCHANT_ROUTE}/source`;
 const ORDERS_ROUTE = `${MERCHANT_ROUTE}/orders`;
 const ORDER_ROUTE_PREFIX = `${ORDERS_ROUTE}/`;
 const MY_ROUTE = `${MERCHANT_ROUTE}/my`;
+const MY_INFO_ROUTE = `${MERCHANT_ROUTE}/my/info`;
 const WALLET_ROUTE = `${MERCHANT_ROUTE}/wallet`;
 
 type View =
+  | { name: 'home' }
   | { name: 'list' }
   | { name: 'detail'; orderId: string }
   | { name: 'menu' }
   | { name: 'setup' }
+  | { name: 'source' }
   | { name: 'my' }
+  | { name: 'my-info' }
   | { name: 'wallet' };
 
 function merchantRoute(): string {
@@ -82,10 +120,12 @@ function orderIdFromRoute(route: string): string | null {
 function viewFromRoute(): View {
   const route = merchantRoute();
   if (route === SETUP_ROUTE) return { name: 'setup' };
-  if (route === MERCHANT_ROUTE) return { name: 'list' };
+  if (route === MERCHANT_ROUTE) return { name: 'home' };
+  if (route === SOURCE_ROUTE) return { name: 'source' };
   if (route === MENU_ROUTE) return { name: 'menu' };
   if (route === ORDERS_ROUTE) return { name: 'list' };
   if (route === MY_ROUTE) return { name: 'my' };
+  if (route === MY_INFO_ROUTE) return { name: 'my-info' };
   if (route === WALLET_ROUTE) return { name: 'wallet' };
   const orderId = orderIdFromRoute(route);
   if (orderId) return { name: 'detail', orderId };
@@ -93,10 +133,12 @@ function viewFromRoute(): View {
 }
 
 export default function MerchantHome() {
-  const initialMode: DataMode = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).get('mode') === 'real'
-    ? 'real'
-    : 'sample';
+  const urlMode = import.meta.env.DEV
+    ? new URLSearchParams(window.location.search).get('mode')
+    : null;
+  const initialMode: DataMode = urlMode === 'real' || urlMode === 'sample'
+    ? urlMode
+    : (readStoredDataMode() ?? 'sample');
   const [mode, setMode] = useState<DataMode>(initialMode);
   const [scenario, setScenario] = useState<MerchantScenario>('normal');
   const [view, setView] = useState<View>(viewFromRoute);
@@ -110,22 +152,34 @@ export default function MerchantHome() {
     today,
   ));
   const [notice, setNotice] = useState<string | null>(null);
-  const [profile, setProfile] = useState<MerchantProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState<string | null>(null);
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [withdrawInFlight, setWithdrawInFlight] = useState(false);
+  const [profile, setProfile] = useState<MerchantProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{ code: string; message: string } | null>(null);
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionRequestIds = useRef(new Map<string, string>());
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
+  const [homeOrders, setHomeOrders] = useState<MerchantOrder[]>([]);
+  const [homeOrdersLoading, setHomeOrdersLoading] = useState(false);
   const [orderPage, setOrderPage] = useState(1);
+  const [orderGroupKey, setOrderGroupKey] = useState('new');
   const [orderPageInfo, setOrderPageInfo] = useState({ page: 1, pageSize: ORDERS_PAGE_SIZE, total: 0 });
   const [menu, setMenu] = useState<MenuDay | null>(null);
   const [slots, setSlots] = useState<SlotDay | null>(null);
+  const [mySlots, setMySlots] = useState<SlotDay | null>(null);
+  const [packagingSetting, setPackagingSetting] = useState<PackagingFeeSetting>(
+    () => loadPackagingFeeSetting(initialMode),
+  );
+  const [packagingOpen, setPackagingOpen] = useState(false);
+  const [packagingDraftEnabled, setPackagingDraftEnabled] = useState(false);
+  const [packagingFeeInput, setPackagingFeeInput] = useState('1.00');
+  const [packagingFeedback, setPackagingFeedback] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
+  const [logoutConfirming, setLogoutConfirming] = useState(false);
   const [dishLibrary, setDishLibrary] = useState<Dish[]>([]);
   const [dishLibraryLoading, setDishLibraryLoading] = useState(false);
   const [dishLibraryError, setDishLibraryError] = useState<string | null>(null);
@@ -143,8 +197,8 @@ export default function MerchantHome() {
   const knownOrderIds = useRef<Set<string>>(new Set());
 
   const source = useMemo(() => createMerchantSource({ mode, scenario }), [mode, scenario]);
-  const isSetupView = view.name === 'setup';
-  const isFlowView = view.name === 'setup';
+  const businessDate = mode === 'sample' ? SAMPLE_DATES[0] : today;
+  const isFlowView = view.name === 'setup' || view.name === 'source';
   const [session, setSession] = useState<Session | null>(getSession);
   const merchantLoggedIn = session?.user.role === 'MERCHANT';
   const apiBase = getApiBaseInfo();
@@ -156,36 +210,16 @@ export default function MerchantHome() {
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
 
   useEffect(() => {
-    const onHashChange = () => {
-      const route = merchantRoute();
-      const orderId = orderIdFromRoute(route);
-      if (orderId) {
-        clearActionState();
-        setView({ name: 'detail', orderId });
-        setNotice(null);
-      } else if (route === MENU_ROUTE) {
-        setView({ name: 'menu' });
-        setNotice(null);
-      } else if (route === SETUP_ROUTE) {
-        setView({ name: 'setup' });
-        setNotice(null);
-      } else if (route === MERCHANT_ROUTE) {
-        setView({ name: 'setup' });
-        setNotice(null);
-      } else if (route === ORDERS_ROUTE) {
-        setView({ name: 'list' });
-      } else if (route === MY_ROUTE) {
-        setView({ name: 'my' });
-        setNotice(null);
-        setNotice(null);
-      } else if (route === WALLET_ROUTE) {
-        setView({ name: 'wallet' });
-        setNotice(null);
-      }
-    };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+    persistDataMode(mode);
+  }, [mode]);
+
+  useEffect(() => {
+    const stored = loadPackagingFeeSetting(mode);
+    setPackagingSetting(stored);
+    setPackagingDraftEnabled(stored.enabled);
+    setPackagingFeeInput((stored.feeFen / 100).toFixed(2));
+    setPackagingFeedback(null);
+  }, [mode]);
 
   useEffect(() => {
     if (view.name !== 'wallet') return;
@@ -207,27 +241,68 @@ export default function MerchantHome() {
     };
   }, [view.name, source]);
 
+  useEffect(() => {
+    const onHashChange = () => {
+      const route = merchantRoute();
+      const orderId = orderIdFromRoute(route);
+      if (orderId) {
+        clearActionState();
+        setView({ name: 'detail', orderId });
+        setNotice(null);
+      } else if (route === MENU_ROUTE) {
+        setView({ name: 'menu' });
+        setNotice(null);
+      } else if (route === SETUP_ROUTE) {
+        setView({ name: 'setup' });
+        setNotice(null);
+      } else if (route === SOURCE_ROUTE) {
+        setView({ name: 'source' });
+        setNotice(null);
+      } else if (route === MERCHANT_ROUTE) {
+        setView({ name: 'home' });
+        setNotice(null);
+      } else if (route === ORDERS_ROUTE) {
+        setView({ name: 'list' });
+      } else if (route === MY_ROUTE) {
+        setView({ name: 'my' });
+        setNotice(null);
+      } else if (route === MY_INFO_ROUTE) {
+        setView({ name: 'my-info' });
+        setNotice(null);
+      } else if (route === WALLET_ROUTE) {
+        setView({ name: 'wallet' });
+        setNotice(null);
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   function handleMerchantLoggedIn() {
     clearActionState();
     setNotice(null);
-    setView({ name: 'list' });
+    setView({ name: 'home' });
     setOrderPage(1);
     setDataVersion((current) => current + 1);
-    if (merchantRoute() !== ORDERS_ROUTE) {
-      window.location.hash = ORDERS_ROUTE;
+    if (merchantRoute() !== MERCHANT_ROUTE) {
+      window.location.hash = MERCHANT_ROUTE;
     }
   }
 
   async function handleMerchantLogout() {
     clearActionState();
     setNotice(null);
-    try {
-      await logout();
-    } catch {
-      // logout 已在 finally 清除本地会话；服务端不可达时同样回到登录页。
+    setLogoutConfirming(false);
+    if (mode === 'real') {
+      try {
+        await logout();
+      } catch {
+        // logout 已在 finally 清除本地会话；服务端不可达时同样回角色入口。
+      }
+    } else {
+      clearSession();
     }
-    setView({ name: 'list' });
-    setDataVersion((current) => current + 1);
+    window.location.hash = '/';
   }
 
   useEffect(() => {
@@ -283,8 +358,7 @@ export default function MerchantHome() {
       }
       if (slotsResult.ok) {
         setSlots(slotsResult.data);
-      } else if (menuResult.ok) {
-        setMenuError(slotsResult.error.message);
+
       }
       if (profileResult.ok) {
         setProfile(profileResult.data);
@@ -301,11 +375,59 @@ export default function MerchantHome() {
     };
   }, [source, menuDate, orderPage, session?.user.id, mode, merchantLoggedIn, dataVersion]);
 
+  useEffect(() => {
+    if (view.name !== 'home') return;
+    if (mode === 'real' && !merchantLoggedIn) return;
+    let alive = true;
+    setHomeOrdersLoading(true);
+    void (async () => {
+      const result = await source.getOrders(1, 100);
+      if (!alive) return;
+      if (result.ok) setHomeOrders(result.data.orders);
+      setHomeOrdersLoading(false);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [view.name, source, mode, merchantLoggedIn, dataVersion, session?.user.id]);
+
+  useEffect(() => {
+    if (view.name !== 'my') return;
+    if (mode === 'real' && !merchantLoggedIn) return;
+    let alive = true;
+    void (async () => {
+      const result = await source.getSlots(businessDate);
+      if (!alive) return;
+      setMySlots(result.ok ? result.data : null);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [view.name, source, businessDate, mode, merchantLoggedIn, dataVersion]);
+
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
     : null;
-  const merchantName = profile?.merchant?.name ?? null;
-  const myDisplayName = merchantName ?? session?.user.displayName ?? '未登录';
+  const accountDisplayName = session?.user.role === 'MERCHANT'
+    ? (session.user.displayName?.trim() || null)
+    : null;
+  const merchantName = profile?.merchant
+    ? resolveEffectiveMerchantName({
+      mode,
+      session,
+      serverMerchantName: profile.merchant.name,
+    })
+    : null;
+  const myShopName = profile?.shop?.name ?? merchantName ?? accountDisplayName ?? '我的档口';
+  const hasShop = Boolean(profile?.shop);
+  const myOpenSlots = (mySlots?.slots ?? []).filter((slot) => slot.enabled);
+  const myIsOpen = myOpenSlots.length > 0;
+  const myHours = myOpenSlots.length > 0
+    ? `${formatClock(myOpenSlots[0].slotStart)}—${formatClock(myOpenSlots[myOpenSlots.length - 1].slotEnd)}`
+    : '未设置营业时段';
+  const businessDateLabel = businessDate.split('-').length === 3
+    ? `${Number(businessDate.split('-')[1])}月${Number(businessDate.split('-')[2])}日`
+    : businessDate;
 
   function rememberOrders(next: MerchantOrder[], announce: boolean) {
     if (announce) {
@@ -413,12 +535,18 @@ export default function MerchantHome() {
 
   function backToList() {
     clearActionState();
+    setOrderGroupKey('new');
     if (merchantRoute() !== ORDERS_ROUTE) {
       window.location.hash = ORDERS_ROUTE;
     }
     restoreListScroll.current = true;
     setView({ name: 'list' });
     setNotice(null);
+  }
+
+  function openOrders(groupKey: string) {
+    backToList();
+    setOrderGroupKey(groupKey);
   }
 
   function openMenu() {
@@ -429,6 +557,13 @@ export default function MerchantHome() {
     setNotice(null);
   }
 
+  function openHome() {
+    clearActionState();
+    window.location.hash = MERCHANT_ROUTE;
+    setView({ name: 'home' });
+    setNotice(null);
+  }
+
   function openSetup() {
     clearActionState();
     window.location.hash = SETUP_ROUTE;
@@ -436,18 +571,82 @@ export default function MerchantHome() {
     setNotice(null);
   }
 
+  function openSource() {
+    clearActionState();
+    window.location.hash = SOURCE_ROUTE;
+    setView({ name: 'source' });
+    setNotice(null);
+  }
+
+  function chooseMode(next: DataMode) {
+    if (next === mode) {
+      setView({ name: 'list' });
+      window.location.hash = ORDERS_ROUTE;
+      setNotice(null);
+      return;
+    }
+    changeMode(next);
+  }
+
   function openMy() {
     clearActionState();
+    setLogoutConfirming(false);
     window.location.hash = MY_ROUTE;
     setView({ name: 'my' });
     setNotice(null);
   }
-
   function openWallet() {
     clearActionState();
     window.location.hash = WALLET_ROUTE;
     setView({ name: 'wallet' });
     setNotice(null);
+  }
+
+  function openMyInfo() {
+    clearActionState();
+    window.location.hash = MY_INFO_ROUTE;
+    setView({ name: 'my-info' });
+    setNotice(null);
+  }
+
+  function togglePackagingPanel() {
+    if (!packagingOpen) {
+      setPackagingDraftEnabled(packagingSetting.enabled);
+      setPackagingFeeInput((packagingSetting.feeFen / 100).toFixed(2));
+      setPackagingFeedback(null);
+    }
+    setPackagingOpen((current) => !current);
+  }
+
+  function savePackagingSettings() {
+    const parsed = parsePackagingFeeText(packagingFeeInput);
+    if (!parsed.ok) {
+      setPackagingFeedback({ tone: 'error', text: parsed.error });
+      return;
+    }
+    if (packagingDraftEnabled && parsed.feeFen <= 0) {
+      setPackagingFeedback({
+        tone: 'error',
+        text: '开启收费时，打包盒价格需大于 0 元；不收费请关闭开关。',
+      });
+      return;
+    }
+    const next: PackagingFeeSetting = {
+      enabled: packagingDraftEnabled,
+      feeFen: parsed.feeFen,
+    };
+    const saved = savePackagingFeeSetting(mode, next);
+    if (!saved.ok) {
+      setPackagingFeedback({ tone: 'error', text: saved.error });
+      return;
+    }
+    setPackagingSetting(next);
+    setPackagingFeedback({
+      tone: 'info',
+      text: mode === 'sample'
+        ? `已保存到本机样例设置：${packagingFeeSummary(next)}。样例订单金额不会随设置重算。`
+        : `已保存在本机：${packagingFeeSummary(next)}。真实服务尚未提供打包费字段，本次不会同步到服务端，学生端也暂不会加收。`,
+    });
   }
 
   async function handleWithdrawDemo(amountFen: number) {
@@ -463,10 +662,6 @@ export default function MerchantHome() {
     }
   }
 
-  function exitMerchant() {
-    clearActionState();
-    window.location.hash = '/';
-  }
 
   function handleAction(orderId: string, action: OrderAction, input: ActionInput = {}) {
     if (pendingCode !== null) return;
@@ -539,6 +734,13 @@ export default function MerchantHome() {
     };
   }, [mode, merchantLoggedIn, loading, view, orderPage, source]);
 
+  useEffect(() => {
+    if (view.name !== 'source') return;
+    if (profile === null || profile.merchant) return;
+    window.location.hash = MERCHANT_ROUTE;
+    setView({ name: 'setup' });
+  }, [view.name, profile]);
+
   async function runRealWrite(order: MerchantOrder, action: OrderAction, input: ActionInput) {
     const key = `${order.id}:${action.code}`;
     const requestId = actionRequestIds.current.get(key) ?? createRequestId('merchant-write');
@@ -577,12 +779,7 @@ export default function MerchantHome() {
         reason: (input.reason ?? '').trim(),
         expectedReadyAt: localInputToZonedIso((input.expectedReadyAt ?? '').trim()),
       });
-    } else if (action.code === 'CHANGE_DINING_MODE') {
-      result = await source.changeDiningMode(order.id, {
-        ...base,
-        diningMode: input.diningMode as DiningMode,
-        reason: (input.reason ?? '').trim(),
-      });
+
     } else {
       setPendingCode(null);
       setNotice(actionPrompt(action, order.id, mode, input));
@@ -598,7 +795,7 @@ export default function MerchantHome() {
       const updated = result.data;
       setOrders((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       setNotice(
-        `${action.label}成功：订单 ${shortOrderId(updated.id)} 状态为「${statusView(updated.status).label}」，版本 v${updated.version}。`,
+        `${action.label}成功：订单 ${orderNoLabel(updated)} 状态为「${statusView(updated.status).label}」，版本 v${updated.version}。`,
       );
       void refreshOrders({ silent: true });
       return;
@@ -643,7 +840,7 @@ export default function MerchantHome() {
   }
 
   async function createDish(input: CreateDishInput) {
-    const result = await source.createDish(input);
+    const result = await source.createDish({ ...input, date: menuDate } as CreateDishInput & { date?: string });
     if (result.ok) {
       setMenu((current) => (current
         ? { ...current, dishes: [...current.dishes, result.data] }
@@ -671,9 +868,9 @@ export default function MerchantHome() {
     const result = await source.setDailyMenu(menuDate, { requestId, dishes: items });
     if (result.ok) {
       setMenu(result.data);
-      setNotice(
-        `今日菜单已保存：上架 ${result.data.dishes.length} 道菜；未勾选的菜品不会出现在学生端。`,
-      );
+      setNotice(mode === 'sample'
+        ? `样例菜单已更新（仅当前页面内存）：上架 ${result.data.dishes.length} 道菜；未勾选的菜品不会出现在学生端。`
+        : `今日菜单已保存：上架 ${result.data.dishes.length} 道菜；未勾选的菜品不会出现在学生端。`);
     }
     return result;
   }
@@ -695,29 +892,6 @@ export default function MerchantHome() {
     return result;
   }
 
-  async function saveSlot(
-    slot: Slot,
-    patch: { capacity: number; enabled: boolean },
-    requestId: string,
-  ) {
-    const result = await source.updateSlot(menuDate, slot.slotId, {
-      requestId,
-      expectedVersion: slot.version,
-      ...patch,
-    });
-    if (result.ok) {
-      setSlots((current) => (current
-        ? {
-          ...current,
-          slots: current.slots.map((item) => (item.slotId === result.data.slotId ? result.data : item)),
-        }
-        : current));
-      setNotice(
-        `已保存时段 ${formatClock(result.data.slotStart)}—${formatClock(result.data.slotEnd)}：名额 ${result.data.capacity}，${result.data.enabled ? '开放' : '关闭'}，版本 v${result.data.version ?? '未返回'}。`,
-      );
-    }
-    return result;
-  }
 
   useEffect(() => () => {
     if (actionTimer.current !== null) {
@@ -747,12 +921,13 @@ export default function MerchantHome() {
   }
 
   return (
-    <section className={`module-panel merchant-panel${view.name === 'list' ? ' merchant-panel--order-list' : ''}${view.name === 'detail' && activeOrder?.status === 'NEW' ? ' merchant-panel--new-order-detail' : ''}${view.name === 'menu' && mode === 'sample' ? ' merchant-panel--sample-menu' : ''}${view.name === 'setup' ? ' merchant-panel--onboarding' : ''}`}>
+    <section data-merchant-view={view.name} className={`module-panel merchant-panel${view.name === 'list' ? ' merchant-panel--order-list' : ''}${view.name === 'detail' && activeOrder?.status === 'NEW' ? ' merchant-panel--new-order-detail' : ''}${view.name === 'menu' && mode === 'sample' ? ' merchant-panel--sample-menu' : ''}${view.name === 'setup' ? ' merchant-panel--onboarding' : ''}${view.name === 'source' ? ' merchant-panel--source' : ''}`}>
       <div className="merchant-source">
         <span className="merchant-source__label">数据源</span>
         <button
           type="button"
           className={mode === 'sample' ? 'merchant-source__button merchant-source__button--active' : 'merchant-source__button'}
+          aria-pressed={mode === 'sample'}
           onClick={() => changeMode('sample')}
         >
           样例
@@ -760,15 +935,14 @@ export default function MerchantHome() {
         <button
           type="button"
           className={mode === 'real' ? 'merchant-source__button merchant-source__button--active' : 'merchant-source__button'}
+          aria-pressed={mode === 'real'}
           onClick={() => changeMode('real')}
         >
           真实 · 演示服务
         </button>
       </div>
 
-      {mode === 'sample' ? (
-        isFlowView || isSetupView ? null : <SampleBanner />
-      ) : isFlowView || isSetupView ? null : (
+      {mode === 'sample' || isFlowView || view.name === 'home' ? null : (
         <div className="merchant-real-banner" role="status">
           <strong>真实数据 · 演示服务（DRAFT v0.3 联调候选）</strong>
           <span>服务地址：{apiBase.baseUrl ?? '未配置'}{apiBase.problem ? `（${apiBase.problem}）` : ''}</span>
@@ -799,6 +973,20 @@ export default function MerchantHome() {
         </div>
       )}
 
+      {view.name === 'home' && (
+        <HomePage
+          mode={mode}
+          statDate={businessDate}
+          profile={profile}
+          merchantDisplayName={accountDisplayName}
+          orders={homeOrders}
+          slots={slots}
+          loading={homeOrdersLoading || loading}
+          onOpenOrders={openOrders}
+          onOpenMenu={openMenu}
+        />
+      )}
+
       {view.name === 'list' && (
         <OrderListPage
           orders={orders}
@@ -810,6 +998,8 @@ export default function MerchantHome() {
           page={orderPageInfo.page}
           pageSize={orderPageInfo.pageSize}
           total={orderPageInfo.total}
+          activeGroupKey={orderGroupKey}
+          onGroupChange={setOrderGroupKey}
           onScenarioChange={changeScenario}
           onPageChange={changeOrderPage}
           onOpenOrder={openOrder}
@@ -824,7 +1014,7 @@ export default function MerchantHome() {
 
       {view.name === 'detail' && (
         activeOrder ? (
-          <OrderDetailPage
+<OrderDetailPage
             order={activeOrder}
             mode={mode}
             onBack={backToList}
@@ -851,7 +1041,6 @@ export default function MerchantHome() {
           error={menuError}
           onDateChange={setMenuDate}
           menu={menu}
-          slots={slots}
           onSaveDish={saveDish}
           onCreateDish={createDish}
           onDeleteDish={deleteDish}
@@ -861,8 +1050,6 @@ export default function MerchantHome() {
           onLoadDishLibrary={loadDishLibrary}
           onSaveDailyMenu={saveDailyMenu}
           onGoSetup={openSetup}
-          onSaveSlot={saveSlot}
-          onBack={backToList}
         />
       )}
 
@@ -876,11 +1063,251 @@ export default function MerchantHome() {
           profileError={profileError}
           onProfileChange={setProfile}
 
+
           onBack={backToList}
-          onCancel={exitMerchant}
+          onCancel={backToList}
+          onComplete={openSource}
         />
       )}
 
+      {view.name === 'source' && (
+        <SourceSelectPage
+          mode={mode}
+          merchantName={merchantName}
+          shopName={profile?.shop?.name ?? null}
+          onSelectSample={() => chooseMode('sample')}
+          onSelectReal={() => chooseMode('real')}
+        />
+      )}
+
+      {view.name === 'my' && (
+        <section className='merchant-my' aria-label='我的'>
+          <header className='merchant-view__header'>
+            <h2>我的</h2>
+            <span className='merchant-my__mode'>{mode === 'sample' ? '样例演示' : '真实数据'}</span>
+          </header>
+          <div className='merchant-my__card'>
+            <div className='merchant-my__avatar'>
+              <img src={merchantAvatar} alt='商家头像' />
+            </div>
+            <div className='merchant-my__identity'>
+              <div className='merchant-my__name-row'>
+                <h3>{myShopName}</h3>
+                <span className={myIsOpen ? 'merchant-my__status is-open' : 'merchant-my__status'}>
+                  <i />
+                  {myIsOpen ? '营业中' : '休息中'}
+                </span>
+              </div>
+              <small>
+                {accountDisplayName ?? merchantName ?? (mode === 'sample' ? '档口演示账号' : '未登录')}
+                {mode === 'sample' ? ` · 演示日 ${businessDateLabel}` : ' · 今日营业'}
+              </small>
+            </div>
+          </div>
+
+          <div className='merchant-my__group' data-my-profile>
+            <h3 className='merchant-my__group-title'>个人信息</h3>
+            <div className='merchant-my__row'>
+              <span>店铺负责人</span>
+              <span>{profileLoading ? '读取中…' : profile?.merchant?.contactName || '未填写'}</span>
+            </div>
+            <div className='merchant-my__row'>
+              <span>联系电话</span>
+              <span>{profileLoading ? '读取中…' : profile?.merchant?.contactPhone || '未填写'}</span>
+            </div>
+            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openMyInfo}>
+              <span>我的信息</span>
+              <span className='merchant-my__arrow'>→</span>
+            </button>
+          </div>
+
+          <div className='merchant-my__group'>
+            <h3 className='merchant-my__group-title'>店铺信息</h3>
+            <div className='merchant-my__row'>
+              <span>店铺名称</span>
+              <span>{profileLoading ? '读取中…' : profile?.shop?.name || '未创建店铺'}</span>
+            </div>
+            <div className='merchant-my__row'>
+              <span>档口位置</span>
+              <span>{profileLoading ? '读取中…' : profile?.shop?.location || '未填写'}</span>
+            </div>
+            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openSetup}>
+              <span>{profile?.onboardingStep === 'SHOP_CREATED' ? '编辑店铺资料' : '店铺信息与入驻'}</span>
+              <span className='merchant-my__arrow'>→</span>
+            </button>
+          </div>
+
+          <div className='merchant-my__group'>
+            <h3 className='merchant-my__group-title'>营业设置</h3>
+            <div className='merchant-my__row'>
+              <span>今日营业时段</span>
+              <span>{myHours}</span>
+            </div>
+            <div className='merchant-my__row'>
+              <span>营业状态</span>
+              <span>{myIsOpen ? '已开放接单' : '未开放接单'}</span>
+            </div>
+            <div className='merchant-my__row'>
+              <span>打包盒收费</span>
+              <span data-packaging-summary>{packagingFeeSummary(packagingSetting)}</span>
+            </div>
+            <button
+              type='button'
+              className='merchant-my__row merchant-my__row--action'
+              onClick={togglePackagingPanel}
+              aria-expanded={packagingOpen}
+              aria-controls='merchant-packaging-panel'
+            >
+              <span>设置打包盒收费</span>
+              <span className='merchant-my__arrow'>{packagingOpen ? '收起' : '→'}</span>
+            </button>
+            {packagingOpen && (
+              <div className='merchant-my__packaging' id='merchant-packaging-panel' data-packaging-panel>
+                <label className='merchant-my__packaging-switch'>
+                  <input
+                    type='checkbox'
+                    checked={packagingDraftEnabled}
+                    onChange={(event) => {
+                      setPackagingDraftEnabled(event.target.checked);
+                      setPackagingFeedback(null);
+                    }}
+                    data-packaging-enabled
+                  />
+                  <span>外带订单收取打包盒费</span>
+                </label>
+                <label className='merchant-my__packaging-fee'>
+                  <span>打包盒单价</span>
+                  <input
+                    value={packagingFeeInput}
+                    onChange={(event) => {
+                      setPackagingFeeInput(event.target.value);
+                      setPackagingFeedback(null);
+                    }}
+                    inputMode='decimal'
+                    maxLength={5}
+                    disabled={!packagingDraftEnabled}
+                    data-packaging-fee
+                  />
+                  <span>元 / 单</span>
+                </label>
+                <button
+                  type='button'
+                  className='action-button action-button--primary merchant-my__packaging-save'
+                  onClick={savePackagingSettings}
+                  data-packaging-save
+                >
+                  保存打包盒设置
+                </button>
+                <p className='merchant-my__note'>
+                  每笔外带订单只收一次，堂食不收；价格由商家自定（0.01—50 元）。
+                  {mode === 'real' ? ' 真实服务尚未提供打包费字段，当前设置只保存在本机。' : ''}
+                </p>
+                {packagingFeedback && (
+                  <p
+                    className={`merchant-my__packaging-feedback${packagingFeedback.tone === 'error' ? ' is-error' : ''}`}
+                    role={packagingFeedback.tone === 'error' ? 'alert' : 'status'}
+                    data-packaging-feedback
+                    data-feedback-tone={packagingFeedback.tone}
+                  >
+                    {packagingFeedback.text}
+                  </p>
+                )}
+              </div>
+            )}
+            <button
+              type='button'
+              className='merchant-my__row merchant-my__row--action'
+              onClick={() => {
+                if (!hasShop) {
+                  openSetup();
+                  return;
+                }
+                setMenuDate(businessDate);
+                openMenu();
+              }}
+            >
+              <span>{hasShop ? '菜单与时段设置' : '先去完善店铺资料'}</span>
+              <span className='merchant-my__arrow'>→</span>
+            </button>
+            {!hasShop && (
+              <p className='merchant-my__note'>完成店铺资料后，营业时段与菜单上架才会对学生端生效。</p>
+            )}
+          </div>
+
+          <div className='merchant-my__group'>
+            <h3 className='merchant-my__group-title'>钱包</h3>
+            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openWallet}>
+              <span>钱包</span>
+              <span className='merchant-my__row-side'>
+                {mode === 'sample' ? '样例余额' : '暂未接通'}
+                <span className='merchant-my__arrow'>→</span>
+              </span>
+            </button>
+          </div>
+
+          <details className='merchant-my__fold'>
+            <summary>系统信息与开发调试</summary>
+            <div className='merchant-my__fold-body'>
+              <div className='merchant-my__row'>
+                <span>数据源</span>
+                <span>{mode === 'sample' ? '本地样例数据' : '真实 · 演示服务'}</span>
+              </div>
+              <div className='merchant-my__row'>
+                <span>服务地址</span>
+                <span>{apiBase.baseUrl ?? '未配置'}</span>
+              </div>
+              <div className='merchant-my__row'>
+                <span>登录账号</span>
+                <span>{session?.user.displayName ?? '未登录'}</span>
+              </div>
+              <p className='merchant-my__note'>
+                {mode === 'sample'
+                  ? '样例菜单、库存与订单保存在当前页面内存，刷新后还原；菜品图片与口味选项保存在本机浏览器。'
+                  : '菜单、订单与账号资料来自演示服务；菜品图片与口味选项暂存在本机，尚未同步到服务端。'}
+              </p>
+            </div>
+          </details>
+
+          <div className='merchant-my__group merchant-my__group--signout'>
+            {logoutConfirming ? (
+              <div className='merchant-my__confirm'>
+                <p>退出后将返回角色入口，需要重新登录档口账号；当前未保存的编辑会丢失。</p>
+                <div className='action-bar'>
+                  <button
+                    type='button'
+                    className='action-button action-button--danger'
+                    onClick={() => void handleMerchantLogout()}
+                  >
+                    确认退出
+                  </button>
+                  <button type='button' className='action-button' onClick={() => setLogoutConfirming(false)}>
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type='button'
+                className='merchant-my__row merchant-my__row--action merchant-my__row--danger'
+                onClick={() => setLogoutConfirming(true)}
+              >
+                <span>退出登录</span>
+                <span className='merchant-my__arrow'>→</span>
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+      {view.name === 'my-info' && (
+        <MerchantMyInfoPage
+          mode={mode}
+          session={session}
+          source={source}
+          profile={profile}
+          onProfileChange={setProfile}
+          onBack={openMy}
+        />
+      )}
       {view.name === 'wallet' && (
         <WalletPage
           mode={mode}
@@ -893,45 +1320,19 @@ export default function MerchantHome() {
         />
       )}
 
-      {view.name === 'my' && (
-        <section className='merchant-my' aria-label='我的'>
-          <div className='merchant-my__card'>
-            <div className='merchant-my__avatar'>{(session?.user.displayName ?? '档').slice(0, 1)}</div>
-            <div className='merchant-my__identity'>
-              <h3>{myDisplayName}</h3>
-              <p>档口账号 · {roleLabel(session?.user.role ?? 'MERCHANT')}</p>
-            </div>
-          </div>
-          <div className='merchant-my__group'>
-            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openWallet}>
-              <span>钱包 · 余额与提现</span>
-              <span className='merchant-my__arrow'>→</span>
-            </button>
-            <div className='merchant-my__row'>
-              <span>数据源</span>
-              <span>{mode === 'sample' ? '样例数据' : '真实 · 演示服务'}</span>
-            </div>
-            <div className='merchant-my__row'>
-              <span>服务地址</span>
-              <span>{apiBase.baseUrl ?? '未配置'}</span>
-            </div>
-            <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openSetup}>
-              <span>{profile?.onboardingStep === 'SHOP_CREATED' ? '店铺信息' : '店铺信息与入驻'}</span>
-              <span className='merchant-my__arrow'>→</span>
-            </button>
-            {mode === 'real' && merchantLoggedIn && (
-              <button type='button' className='merchant-my__row merchant-my__row--action' onClick={() => void handleMerchantLogout()}>
-                <span>退出登录 / 切换档口账号</span>
-                <span className='merchant-my__arrow'>→</span>
-              </button>
-            )}
-          </div>
-          <button type='button' className='merchant-my__exit' onClick={exitMerchant}>返回角色入口</button>
-        </section>
-      )}
-
-      {(merchantLoggedIn || mode === 'sample') && !isFlowView && !isSetupView && (
+      {(merchantLoggedIn || mode === 'sample') && view.name !== 'source' && (
       <nav className='merchant-tabbar' aria-label='底部导航'>
+        <button
+          type='button'
+          className={`merchant-tab-item${view.name === 'home' ? ' is-active' : ''}`}
+          onClick={openHome}
+        >
+          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+            <path d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' />
+            <polyline points='9 22 9 12 15 12 15 22' />
+          </svg>
+          <span>首页</span>
+        </button>
         <button
           type='button'
           className={`merchant-tab-item${view.name === 'menu' ? ' is-active' : ''}`}

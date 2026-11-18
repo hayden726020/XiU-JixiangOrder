@@ -41,23 +41,25 @@ export function hasPendingCancel(order: MerchantOrder): boolean {
   return order.cancelRequest.status === 'PENDING';
 }
 
-export function groupOrders(orders: MerchantOrder[]): OrderGroup[] {
-  return GROUP_DEFS
-    .map((definition) => {
-      const grouped = orders
-        .filter((order) => definition.statuses.includes(order.status))
-        .sort((left, right) => (left.createdAt === right.createdAt
-          ? left.id.localeCompare(right.id)
-          : left.createdAt < right.createdAt ? 1 : -1));
-      return {
-        key: definition.key,
-        label: definition.label,
-        count: grouped.length,
-        hasPendingCancel: grouped.some(hasPendingCancel),
-        orders: grouped,
-      };
-    })
-    .filter((group) => group.count > 0);
+export function groupOrders(
+  orders: MerchantOrder[],
+  options: { includeEmpty?: boolean } = {},
+): OrderGroup[] {
+  const groups = GROUP_DEFS.map((definition) => {
+    const grouped = orders
+      .filter((order) => definition.statuses.includes(order.status))
+      .sort((left, right) => (left.createdAt === right.createdAt
+        ? left.id.localeCompare(right.id)
+        : left.createdAt < right.createdAt ? 1 : -1));
+    return {
+      key: definition.key,
+      label: definition.label,
+      count: grouped.length,
+      hasPendingCancel: grouped.some(hasPendingCancel),
+      orders: grouped,
+    };
+  });
+  return options.includeEmpty ? groups : groups.filter((group) => group.count > 0);
 }
 
 export function shortOrderId(id: string): string {
@@ -67,6 +69,12 @@ export function shortOrderId(id: string): string {
   }
   const digits = /(\d+)$/.exec(id);
   return digits ? `#${digits[1]}` : id;
+}
+
+export function orderNoLabel(order: Pick<MerchantOrder, 'orderNo' | 'id'>): string {
+  return order.orderNo === null || order.orderNo === undefined
+    ? shortOrderId(order.id)
+    : `#${order.orderNo}`;
 }
 
 export function formatClock(iso: string): string {

@@ -5,7 +5,7 @@
 }
 
 .app-shell:has(.merchant-login-screen) {
-  background: #fbf5e6;
+  background: #fffdf7;
 }
 
 .app-shell:has(.merchant-login-screen) .app-main {
@@ -21,10 +21,10 @@
   padding: calc(1.35rem + env(safe-area-inset-top)) calc(1.15rem + env(safe-area-inset-right))
     calc(1.2rem + env(safe-area-inset-bottom)) calc(1.15rem + env(safe-area-inset-left));
   background:
-    radial-gradient(circle at 18% 4%, rgba(232, 204, 117, 0.42), transparent 44%),
-    radial-gradient(circle at 92% 26%, rgba(255, 253, 247, 0.95), transparent 48%),
-    linear-gradient(180deg, #fdf8e9 0%, #fbf5e6 58%, #f7efda 100%);
-  color: #1a1a1a;
+    radial-gradient(ellipse 20rem 12rem at 16% -4%, rgba(245, 231, 200, 0.9), transparent 68%),
+    radial-gradient(ellipse 16rem 10rem at 94% 22%, rgba(232, 166, 66, 0.09), transparent 66%),
+    linear-gradient(180deg, #fffdf7 0%, #fdf8ee 56%, #fbf3e4 100%);
+  color: #554638;
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   overflow-x: clip;
 }
@@ -45,38 +45,38 @@
 
 .merchant-login-brand {
   margin: 0;
-  color: #7a5b12;
-  font-family: "FZShuti", "方正舒体", "STXingkai", "华文行楷", "KaiTi", "楷体", serif;
-  font-size: 1.55rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  color: #8a6a2f;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
 }
 
 .merchant-login-hero__tag {
   flex: none;
   padding: 0.18rem 0.55rem;
-  border: 1px solid #c9ae6b;
-  border-radius: 3px;
-  background: #e8cc75;
-  color: #1a1a1a;
+  border: 1px solid #ede4d1;
+  border-radius: 999px;
+  background: #f5e7c8;
+  color: #554638;
   font-size: 0.7rem;
   letter-spacing: 0.08em;
-  transform: rotate(2deg);
 }
 
 .merchant-login-hero h2 {
   margin: 0.5rem 0 0;
-  color: #1a1a1a;
-  font-family: "FZShuti", "方正舒体", "STXingkai", "华文行楷", "KaiTi", "楷体", serif;
-  font-size: clamp(2.1rem, 10vw, 2.8rem);
-  line-height: 1.15;
-  letter-spacing: 0.04em;
+  color: #554638;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-size: clamp(1.6rem, 7vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
 }
 
 .merchant-login-hero__lead {
   margin: 0.45rem 0 0;
   max-width: 20rem;
-  color: #5f5a52;
+  color: #85776a;
   font-size: 0.85rem;
   line-height: 1.65;
 }
@@ -87,26 +87,26 @@
   display: grid;
   gap: 0.25rem;
   padding: 1.15rem 1.1rem 1.2rem;
-  border: 1px solid #e3d3a8;
-  border-radius: 1.1rem;
-  background: #fffdf8;
-  box-shadow: 0 18px 34px rgba(122, 91, 18, 0.13), 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  border: 1px solid #ede6d8;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(85, 70, 56, 0.08);
 }
 
 .merchant-login-card__title {
   margin: 0 0 0.9rem;
-  color: #1a1a1a;
-  font-size: 1.15rem;
+  color: #554638;
+  font-size: 1.12rem;
   font-weight: 700;
 }
 
 .merchant-login-gate {
   margin: 0 0 0.9rem;
   padding: 0.5rem 0.7rem;
-  border-left: 3px solid #e8cc75;
-  border-radius: 0.35rem;
-  background: #fbf1d6;
-  color: #7a5b12;
+  border-left: 3px solid #e8a642;
+  border-radius: 0.5rem;
+  background: #fdf3e0;
+  color: #8a6a2f;
   font-size: 0.78rem;
   line-height: 1.55;
 }
@@ -123,29 +123,29 @@
   gap: 0.65rem;
   height: 3rem;
   padding: 0 0.8rem;
-  border: 1px solid #e3d3a8;
-  border-radius: 0.8rem;
-  background: #fbf7ec;
-  color: #5f5a52;
+  border: 1px solid #ede6d8;
+  border-radius: 0.75rem;
+  background: #fffdf7;
+  color: #85776a;
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .merchant-login-field:focus-within {
-  border-color: #c9ae6b;
-  box-shadow: 0 0 0 3px rgba(232, 204, 117, 0.35);
+  border-color: #e8a642;
+  box-shadow: 0 0 0 3px rgba(232, 166, 66, 0.22);
 }
 
 .merchant-login-field__icon {
   flex: none;
   width: 1.1rem;
   height: 1.1rem;
-  color: #8f887d;
+  color: #a99a8b;
 }
 
 .merchant-login-field label {
   flex: none;
   width: 3.2em;
-  color: #2b2b2b;
+  color: #554638;
   font-size: 0.86rem;
 }
 
@@ -153,7 +153,7 @@
   flex: none;
   width: 1px;
   height: 1.3rem;
-  background: #e9e1d0;
+  background: #ede6d8;
 }
 
 .merchant-login-field input {
@@ -163,13 +163,13 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #1a1a1a;
+  color: #554638;
   font: inherit;
   font-size: 0.92rem;
 }
 
 .merchant-login-field input::placeholder {
-  color: #a49d90;
+  color: #a99a8b;
 }
 
 .merchant-login-field input:focus-visible {
@@ -177,16 +177,16 @@
 }
 
 .merchant-login-field:has(input:disabled) {
-  background: #f5efe1;
+  background: #fbf6eb;
 }
 
 .merchant-login-error {
   margin: 0;
   padding: 0.5rem 0.7rem;
-  border-left: 3px solid #d93025;
-  border-radius: 0.35rem;
-  background: #fce8e6;
-  color: #b3261e;
+  border-left: 3px solid #c0553f;
+  border-radius: 0.5rem;
+  background: #fbede8;
+  color: #a4482f;
   font-size: 0.78rem;
   line-height: 1.55;
 }
@@ -197,13 +197,13 @@
   justify-content: center;
   min-height: 3rem;
   margin-top: 0.15rem;
-  border: 1px solid #c9ae6b;
-  border-radius: 0.8rem;
-  background: linear-gradient(180deg, #f0d98f, #e8cc75);
-  color: #1a1a1a;
+  border: 1px solid #e8a642;
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #efb258, #e8a642);
+  color: #4a3c2f;
   font-size: 0.98rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
@@ -211,7 +211,7 @@
 .merchant-login-submit:hover,
 .merchant-login-submit:focus-visible {
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(122, 91, 18, 0.18);
+  box-shadow: 0 8px 18px rgba(232, 166, 66, 0.28);
   outline: none;
 }
 
@@ -225,10 +225,10 @@
 .merchant-login-quick {
   margin-top: 0.8rem;
   padding: 0.55rem 0.7rem;
-  border: 1px dashed #c9ae6b;
+  border: 1px dashed #e2cda6;
   border-radius: 0.65rem;
-  background: #fbf1d6;
-  color: #7a5b12;
+  background: #faf3e3;
+  color: #8a6a2f;
   font-size: 0.78rem;
   cursor: pointer;
 }
@@ -240,7 +240,7 @@
 
 .merchant-login-hint {
   margin: 0.9rem 0 0;
-  color: #8f887d;
+  color: #a99a8b;
   font-size: 0.73rem;
   line-height: 1.6;
 }
@@ -256,7 +256,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: #7a5b12;
+  color: #8a6a2f;
   font-size: 0.78rem;
   text-decoration: underline;
   cursor: pointer;
@@ -264,7 +264,7 @@
 
 .merchant-login-service {
   margin: 0 0 0.2rem;
-  color: #8f887d;
+  color: #a99a8b;
   font-size: 0.7rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
