@@ -890,9 +890,7 @@ export default function ConfirmPage({
                 onConfirmed={handleSlideConfirmed}
                 onBusyChange={handleSlideBusyChange}
               />
-              {isBusy ? (
-                <span className="confirm-checkout__reason">正在提交，请稍候…</span>
-              ) : disabledReason ? (
+              {disabledReason && !isBusy ? (
                 <span className="confirm-checkout__reason">{disabledReason}</span>
               ) : null}
             </div>
