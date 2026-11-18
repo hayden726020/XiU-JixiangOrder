@@ -804,10 +804,10 @@ export default function OrderDetailPage({
                 <span className="detail-steps__track-bg" aria-hidden="true" />
                 <span
                   className="detail-steps__track-fill"
-                  style={{ width: `calc(80% * ${progressRatio})` }}
+                  style={{ transform: `scaleX(${progressRatio})` }}
                   aria-hidden="true"
                 />
-                {stepNodes.map((step) => (
+                {stepNodes.map((step, index) => (
                   <div
                     key={step.name}
                     className={`detail-step${step.reached ? ' is-reached' : ''}${
@@ -815,7 +815,9 @@ export default function OrderDetailPage({
                     }`}
                   >
                     <span className="detail-step__dot">
-                      {step.reached ? <StepCheckIcon /> : null}
+                      {step.reached && (!step.current || statusView.status === 'COMPLETED')
+                        ? <StepCheckIcon />
+                        : <span className="detail-step__number" aria-hidden="true">{index + 1}</span>}
                     </span>
                     <span className="detail-step__label">{step.name}</span>
                   </div>

@@ -468,13 +468,17 @@
 }
 
 .detail-steps__track-fill {
+  width: 80%;
   height: 2px;
   background: var(--detail-brown);
   z-index: 2;
-  transition: width 0.25s ease;
+  transform-origin: left center;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: detail-track-enter 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .detail-step {
+  --step-delay: 0ms;
   position: relative;
   z-index: 3;
   display: flex;
@@ -482,6 +486,11 @@
   align-items: center;
   gap: 7px;
 }
+
+.detail-step:nth-of-type(2) { --step-delay: 120ms; }
+.detail-step:nth-of-type(3) { --step-delay: 240ms; }
+.detail-step:nth-of-type(4) { --step-delay: 360ms; }
+.detail-step:nth-of-type(5) { --step-delay: 480ms; }
 
 .detail-step__dot {
   width: 22px;
@@ -492,19 +501,31 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: transparent;
-  transition: transform 0.2s ease;
+  color: #7d6956;
+  font-size: 11px;
+  font-weight: 700;
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
 }
 
 .detail-step__dot svg {
+  position: absolute;
   width: 12px;
   height: 12px;
+  color: #fffaf2;
 }
 
-.detail-step.is-reached .detail-step__dot {
+.detail-step__dot svg path {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 0;
+  animation: detail-check-draw 360ms ease-out both;
+  animation-delay: calc(var(--step-delay) + 160ms);
+}
+
+.detail-step.is-reached:not(.is-current) .detail-step__dot {
   background: var(--detail-brown);
   border-color: var(--detail-brown);
-  color: #fffaf2;
+  animation: detail-step-reach 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--step-delay);
 }
 
 .detail-step.is-current .detail-step__dot {
@@ -515,6 +536,12 @@
   border: 1.8px solid #4d2e17;
   color: var(--detail-ink);
   box-shadow: 0 0 0 4px rgba(246, 206, 99, 0.3);
+  animation: detail-step-pop 470ms cubic-bezier(0.2, 1.25, 0.35, 1) both;
+  animation-delay: var(--step-delay);
+}
+
+.detail-step.is-current .detail-step__dot svg {
+  color: var(--detail-ink);
 }
 
 .detail-step__label {
@@ -544,6 +571,27 @@
   background: #f2c249;
   border-radius: 999px;
   transform: rotate(-2deg);
+}
+
+@keyframes detail-track-enter {
+  from { transform: scaleX(0); }
+}
+
+@keyframes detail-step-reach {
+  from { background: var(--detail-paper); border-color: #96816d; transform: scale(0.82); }
+  65% { transform: scale(1.12); }
+  to { transform: scale(1); }
+}
+
+@keyframes detail-step-pop {
+  from { background: var(--detail-paper); transform: scale(0.72); }
+  65% { transform: scale(1.16); }
+  to { transform: scale(1); }
+}
+
+@keyframes detail-check-draw {
+  from { stroke-dashoffset: 16; }
+  to { stroke-dashoffset: 0; }
 }
 
 /* --------------------------------------------------------------------------
@@ -1131,5 +1179,6 @@
   .student-order-detail *::before,
   .student-order-detail *::after {
     transition: none !important;
+    animation: none !important;
   }
 }
