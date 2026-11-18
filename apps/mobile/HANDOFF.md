@@ -25,6 +25,7 @@
 - 本轮同时纳入并行会话已完成的改动：档口首页工作台 `pages/HomePage.tsx` 与 `#/merchant` 首页 tab、`merchant.css`/`login.css` 视觉改版与 7 张品牌/菜品图片、管理端 `admin-theme.css`、学生端订单页与 `shared/styles.css` 若干调整；这些改动在本地 `tsc` 与 `vite build` 下均通过。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
 - **本地 `frontend/android` 与 `frontend/capacitor.config.ts` 是本次为出包新生成的临时模板**：`versionCode 2`、`versionName "0.1.0"`，未覆盖远端正式工程。禁止把本地 `android/` 整目录覆盖到远端 `apps/mobile/android`。
+- 2026-11-18 配菜修复：新分支 `frontend/merchant-dish-sides-2026-11-18`（基于 `frontend/handoff-2026-11-18-r5` `84ad0c2`）修复档口端“改了配菜却不生效”：`MenuPage.tsx` 编辑/新增保存时把 `flavorGroups/sides/addOns` 并入 `PUT /merchant/menu/{dishId}` 与 `POST /merchant/menu` 请求体，保存后以服务端回包重建本机镜像；真实模式加载菜单时以 `GET /menu` 字段回填，`localStorage` 只作镜像、不再遮蔽服务端；样例数据源 `source.ts` 同步写入配菜。验证：`tsc --noEmit` 0 错误、`vite build` 成功、样例模式 CDP 19/19、真实模式请求体抓包 12/12、现网 ECS `POST → PUT → GET → DELETE` 联调 8/8（测试菜品已清理）。未重打 APK、未做真机验收。
 
 ## 2 本次完成的工作
 

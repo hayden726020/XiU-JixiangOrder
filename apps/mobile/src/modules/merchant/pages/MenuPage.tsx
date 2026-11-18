@@ -145,6 +145,26 @@ export default function MenuPage({
   }, [scope]);
 
   useEffect(() => {
+    if (isSample || !menu) return;
+    const fromServer: Record<string, DishCustomization> = {};
+    for (const item of menu.dishes) {
+      const custom: DishCustomization = {
+        imageUrl: item.imageUrl,
+        flavorGroups: item.flavorGroups,
+        sides: item.sides,
+        addOns: item.addOns,
+      };
+      if (hasCustomization(custom)) {
+        fromServer[item.dishId] = custom;
+      }
+    }
+    setCustomizations(fromServer);
+    setCustomizationStoreError(saveCustomizations(scope, fromServer)
+      ? null
+      : '本机存储空间不足：图片和选项只保留在当前页面，刷新后会丢失。');
+  }, [menu, isSample, scope]);
+
+  useEffect(() => {
     setDailyMenuOpen(false);
     setDailyDraft({});
     setDailyRequestId('');
@@ -179,7 +199,12 @@ export default function MenuPage({
 
   function customizationFor(dish: Dish): DishCustomization {
     return customizations[dish.dishId]
-      ?? { imageUrl: dish.imageUrl, flavorGroups: [], sides: [], addOns: [] };
+      ?? {
+        imageUrl: dish.imageUrl,
+        flavorGroups: dish.flavorGroups,
+        sides: dish.sides,
+        addOns: dish.addOns,
+      };
   }
 
   const dailyLibrary = (() => {
@@ -406,10 +431,22 @@ export default function MenuPage({
       }
       imageUrlForSave = image.imageUrl;
     }
-    const result = await onSaveDish(dish, { ...parsed.patch, imageUrl: imageUrlForSave }, requestId);
+    const result = await onSaveDish(dish, {
+      ...parsed.patch,
+      imageUrl: imageUrlForSave,
+      flavorGroups: custom.value.flavorGroups,
+      sides: custom.value.sides,
+      addOns: custom.value.addOns,
+    }, requestId);
     setDishSaving(false);
     if (result.ok) {
-      const nextCustom = { ...custom.value, imageUrl: isSample ? custom.value.imageUrl : null };
+      const saved = result.data;
+      const nextCustom: DishCustomization = {
+        imageUrl: saved.imageUrl,
+        flavorGroups: saved.flavorGroups,
+        sides: saved.sides,
+        addOns: saved.addOns,
+      };
       if (hasCustomization(nextCustom)) {
         persistCustomizations({ ...customizations, [dish.dishId]: nextCustom });
       } else {
@@ -551,10 +588,23 @@ export default function MenuPage({
       }
       imageUrlForSave = image.imageUrl;
     }
-    const result = await onCreateDish({ requestId, ...parsed.value, imageUrl: imageUrlForSave });
+    const result = await onCreateDish({
+      requestId,
+      ...parsed.value,
+      imageUrl: imageUrlForSave,
+      flavorGroups: custom.value.flavorGroups,
+      sides: custom.value.sides,
+      addOns: custom.value.addOns,
+    });
     setNewDishSaving(false);
     if (result.ok) {
-      const nextCustom = { ...custom.value, imageUrl: isSample ? custom.value.imageUrl : null };
+      const saved = result.data;
+      const nextCustom: DishCustomization = {
+        imageUrl: saved.imageUrl,
+        flavorGroups: saved.flavorGroups,
+        sides: saved.sides,
+        addOns: saved.addOns,
+      };
       if (hasCustomization(nextCustom)) {
         persistCustomizations({ ...customizations, [result.data.dishId]: nextCustom });
       }
@@ -1325,7 +1375,7 @@ export default function MenuPage({
                 菜品图片、口味特征、固定配菜与加购项由商家自己添加和命名，学生端会显示成可点按钮；改完后点「保存菜品与配置」才会生效。
                 {isSample
                   ? '样例模式下图片与选项保存在本机浏览器。'
-                  : '真实模式下图片与选项暂存在本机，服务端字段完成后才会同步给学生端。'}
+                  : '真实模式下点保存会把图片与选项一并提交服务端，页面随后以服务端返回为准。'}
               </p>
               <p data-daily-menu-scope>
                 「制作今日菜单」从菜品库勾选当天上架的菜并设当天库存；没勾选的不进学生端，菜品库本身不删。

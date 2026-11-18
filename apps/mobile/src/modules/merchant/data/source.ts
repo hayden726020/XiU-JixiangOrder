@@ -1055,7 +1055,18 @@ export function createMerchantSource(options: {
   }
 
   const orders = sampleOrders(scenario);
-  const dishWrites = new Map<string, { name: string; type: DishType; unitPriceFen: number; availableQuantity: number; onSale: boolean; version: number }>();
+  const dishWrites = new Map<string, {
+    name: string;
+    type: DishType;
+    unitPriceFen: number;
+    availableQuantity: number;
+    onSale: boolean;
+    imageUrl: string | null;
+    flavorGroups: Dish['flavorGroups'];
+    sides: Dish['sides'];
+    addOns: Dish['addOns'];
+    version: number;
+  }>();
   const slotWrites = new Map<string, { capacity: number; enabled: boolean; version: number }>();
   const addedDishes = new Map<string, Dish>();
   const deletedDishes = new Set<string>();
@@ -1185,6 +1196,10 @@ export function createMerchantSource(options: {
           unitPriceFen: current?.unitPriceFen ?? dish.unitPriceFen,
           availableQuantity: item.availableQuantity,
           onSale: current?.onSale ?? dish.onSale,
+          imageUrl: current?.imageUrl ?? dish.imageUrl,
+          flavorGroups: current?.flavorGroups ?? dish.flavorGroups,
+          sides: current?.sides ?? dish.sides,
+          addOns: current?.addOns ?? dish.addOns,
           version: (current?.version ?? dish.version ?? 1) + 1,
         });
       }
@@ -1408,6 +1423,9 @@ export function createMerchantSource(options: {
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
         imageUrl: input.imageUrl === undefined ? current.imageUrl : input.imageUrl,
+        flavorGroups: input.flavorGroups ?? current.flavorGroups,
+        sides: input.sides ?? current.sides,
+        addOns: input.addOns ?? current.addOns,
         version: version + 1,
       };
       dishWrites.set(`${date}:${dishId}`, {
@@ -1416,6 +1434,10 @@ export function createMerchantSource(options: {
         unitPriceFen: updated.unitPriceFen,
         availableQuantity: updated.availableQuantity,
         onSale: updated.onSale,
+        imageUrl: updated.imageUrl,
+        flavorGroups: updated.flavorGroups,
+        sides: updated.sides,
+        addOns: updated.addOns,
         version: updated.version ?? version + 1,
       });
       return { ok: true, data: updated };
