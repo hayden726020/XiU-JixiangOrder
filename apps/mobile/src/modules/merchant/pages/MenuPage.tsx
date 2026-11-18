@@ -94,7 +94,9 @@ export default function MenuPage({
     }))
     : menuDateOptions(dates, today);
   const scope: 'sample' | 'real' = isSample ? 'sample' : 'real';
-  const [customizations, setCustomizations] = useState<Record<string, DishCustomization>>(() => loadCustomizations(scope));
+  const [customizations, setCustomizations] = useState<Record<string, DishCustomization>>(() => (
+    isSample ? loadCustomizations(scope) : {}
+  ));
   const [dishCustomDraft, setDishCustomDraft] = useState<DishCustomizationDraft>(emptyCustomizationDraft);
   const [dishCustomError, setDishCustomError] = useState<string | null>(null);
   const [newDishCustomDraft, setNewDishCustomDraft] = useState<DishCustomizationDraft>(emptyCustomizationDraft);
@@ -137,8 +139,9 @@ export default function MenuPage({
   const [slotSaving, setSlotSaving] = useState(false);
 
   useEffect(() => {
-    setCustomizations(loadCustomizations(scope));
-  }, [scope]);
+    setCustomizations(isSample ? loadCustomizations(scope) : {});
+    setCustomizationStoreError(null);
+  }, [isSample, scope]);
 
   useEffect(() => {
     setDailyMenuOpen(false);
@@ -174,8 +177,16 @@ export default function MenuPage({
   }
 
   function customizationFor(dish: Dish): DishCustomization {
-    return customizations[dish.dishId]
-      ?? { imageUrl: dish.imageUrl, flavorGroups: [], sides: [], addOns: [] };
+    const fromServer: DishCustomization = {
+      imageUrl: dish.imageUrl,
+      flavorGroups: dish.flavorGroups ?? [],
+      sides: dish.sides ?? [],
+      addOns: dish.addOns ?? [],
+    };
+    if (!isSample) {
+      return fromServer;
+    }
+    return customizations[dish.dishId] ?? fromServer;
   }
 
   const dailyLibrary = (() => {
@@ -378,15 +389,27 @@ export default function MenuPage({
     setDishRequestId(requestId);
     setDishSaving(true);
     setDishError(null);
-    const result = await onSaveDish(dish, parsed.patch, requestId);
+    const result = await onSaveDish(
+      dish,
+      {
+        ...parsed.patch,
+        imageUrl: custom.value.imageUrl,
+        flavorGroups: custom.value.flavorGroups,
+        sides: custom.value.sides,
+        addOns: custom.value.addOns,
+      },
+      requestId,
+    );
     setDishSaving(false);
     if (result.ok) {
-      if (hasCustomization(custom.value)) {
-        persistCustomizations({ ...customizations, [dish.dishId]: custom.value });
-      } else {
-        persistCustomizations(Object.fromEntries(
-          Object.entries(customizations).filter(([dishId]) => dishId !== dish.dishId),
-        ));
+      if (isSample) {
+        if (hasCustomization(custom.value)) {
+          persistCustomizations({ ...customizations, [dish.dishId]: custom.value });
+        } else {
+          persistCustomizations(Object.fromEntries(
+            Object.entries(customizations).filter(([dishId]) => dishId !== dish.dishId),
+          ));
+        }
       }
       setEditingDishId(null);
       setDishRequestId('');
@@ -450,10 +473,17 @@ export default function MenuPage({
     setNewDishSaving(true);
     setNewDishError(null);
     setNewDishNeedsShop(false);
-    const result = await onCreateDish({ requestId, ...parsed.value });
+    const result = await onCreateDish({
+      requestId,
+      ...parsed.value,
+      imageUrl: custom.value.imageUrl,
+      flavorGroups: custom.value.flavorGroups,
+      sides: custom.value.sides,
+      addOns: custom.value.addOns,
+    });
     setNewDishSaving(false);
     if (result.ok) {
-      if (hasCustomization(custom.value)) {
+      if (isSample && hasCustomization(custom.value)) {
         persistCustomizations({ ...customizations, [result.data.dishId]: custom.value });
       }
       setCreatingDish(false);
@@ -502,9 +532,11 @@ export default function MenuPage({
     const result = await onDeleteDish(dish, requestId);
     setDishDeletingId(null);
     if (result.ok) {
-      persistCustomizations(Object.fromEntries(
-        Object.entries(customizations).filter(([dishId]) => dishId !== result.data.dishId),
-      ));
+      if (isSample) {
+        persistCustomizations(Object.fromEntries(
+          Object.entries(customizations).filter(([dishId]) => dishId !== result.data.dishId),
+        ));
+      }
       setDeleteDishId(null);
       setDeleteRequestId('');
       if (dailyMenuOpen) onLoadDishLibrary();
@@ -665,8 +697,8 @@ export default function MenuPage({
                 <ul className="daily-menu__list">
                   {dailyLibrary.map((dish) => {
                     const row = dailyRow(dish);
-                    const custom = customizations[dish.dishId];
-                    const imageUrl = custom?.imageUrl ?? dish.imageUrl;
+                    const custom = customizationFor(dish);
+                    const imageUrl = custom.imageUrl;
                     const qtyText = row.quantityText.trim();
                     const soldOut = row.selected && /^\d+$/.test(qtyText) && Number(qtyText) === 0;
                     return (
@@ -809,9 +841,9 @@ export default function MenuPage({
             ) : (
               <ul className="menu-list">
                 {menu.dishes.map((dish) => {
-                  const custom = customizations[dish.dishId];
+                  const custom = customizationFor(dish);
                   const badge = customizationBadge(custom);
-                  const imageUrl = custom?.imageUrl ?? dish.imageUrl;
+                  const imageUrl = custom.imageUrl;
                   return (
                     <li
                       key={dish.dishId}
@@ -1148,7 +1180,7 @@ export default function MenuPage({
                 菜品图片、口味特征、固定配菜与加购项由商家自己添加和命名，学生端会显示成可点按钮；改完后点「保存菜品与配置」才会生效。
                 {isSample
                   ? '样例模式下图片与选项保存在本机浏览器。'
-                  : '真实模式下图片与选项暂存在本机，服务端字段完成后才会同步给学生端。'}
+                  : '真实模式下图片与选项会保存至服务端，学生端菜单同步展示。'}
               </p>
               <p data-daily-menu-scope>
                 「制作今日菜单」从菜品库勾选当天上架的菜并设当天库存；没勾选的不进学生端，菜品库本身不删。

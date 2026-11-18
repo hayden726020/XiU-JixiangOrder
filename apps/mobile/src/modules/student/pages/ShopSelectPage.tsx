@@ -674,7 +674,7 @@ export default function ShopSelectPage({
                                   }}
                                 >
                                   <img
-                                    src={resolveDishPhoto(dish.name, dishIndex)}
+                                    src={dish.imageUrl ?? resolveDishPhoto(dish.name, dishIndex)}
                                     alt={dish.name}
                                     loading="lazy"
                                   />

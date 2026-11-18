@@ -3,15 +3,20 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { transformWithOxc } from 'vite';
 
-async function loadMerchantSource(apiRequest, sessionStore) {
+async function loadMerchantSource(apiRequest, sessionStore, apiBaseUrl = 'https://39.96.195.158/api/v1') {
   const path = new URL('../src/modules/merchant/data/source.ts', import.meta.url);
   const source = readFileSync(path, 'utf8');
   const transformed = await transformWithOxc(source, 'source.ts');
   const compiled = transformed.code
     .replace(/^import \{ ([^}]+) \} from "([^"]+)";$/gm, 'const { $1 } = require("$2");')
     .replace('export function createMerchantSource', 'function createMerchantSource');
+  const normalizedBase = apiBaseUrl.replace(/\/+$/, '');
   const dependencies = {
     '../../../shared/apiClient': { ApiError: class ApiError extends Error {}, apiRequest },
+    '../../../shared/config': {
+      getApiBaseUrl: () => normalizedBase,
+      buildApiUrl: (p) => `${normalizedBase}${p.startsWith('/') ? p : `/${p}`}`,
+    },
     '../../../shared/session': {
       getSession: () => sessionStore.current,
       saveSession: (session) => { sessionStore.current = session; },
@@ -150,4 +155,85 @@ test('updateProfile submits merchantName and shopName in real mode', async () =>
   assert.equal(requests[1].options.body.shopName, '修改后店铺名');
   assert.equal(updated.data.merchant.name, '修改后商家名');
   assert.equal(updated.data.shop.name, '修改后店铺名');
+});
+
+test('createDish and updateDish sync imageUrl and customizations with API base resolution', async () => {
+  const requests = [];
+  const sessionStore = {
+    current: {
+      token: 'test-token', tokenType: 'Bearer', expiresAt: '2099-01-01T00:00:00Z',
+      user: { id: 'u1', displayName: '商家', role: 'MERCHANT', merchantId: 'm1' },
+    },
+  };
+  const source = await loadMerchantSource(async (path, options) => {
+    requests.push({ path, options });
+    if (path === '/merchant/menu') {
+      return {
+        id: 'd-img-1',
+        merchantId: 'm1',
+        type: 'STAPLE',
+        name: '照烧鸡腿饭',
+        priceFen: 1600,
+        availableQuantity: 20,
+        onSale: true,
+        version: 1,
+        imageUrl: '/api/v1/images/img_uploaded_1',
+        flavorGroups: options.body.flavorGroups,
+        sides: options.body.sides,
+        addOns: options.body.addOns,
+      };
+    }
+    if (path === '/merchant/menu/d-img-1') {
+      return {
+        id: 'd-img-1',
+        merchantId: 'm1',
+        type: 'STAPLE',
+        name: '照烧鸡腿饭',
+        priceFen: 1700,
+        availableQuantity: 20,
+        onSale: true,
+        version: 2,
+        imageUrl: options.body.imageUrl,
+        flavorGroups: options.body.flavorGroups,
+        sides: options.body.sides,
+        addOns: options.body.addOns,
+      };
+    }
+    throw new Error(`unexpected request: ${path}`);
+  }, sessionStore);
+
+  const created = await source.createDish({
+    requestId: 'create-img-1',
+    shopId: 's1',
+    type: 'STAPLE',
+    name: '照烧鸡腿饭',
+    priceFen: 1600,
+    availableQuantity: 20,
+    onSale: true,
+    imageUrl: 'data:image/jpeg;base64,/9j/4AAQ',
+    flavorGroups: [{ id: 'fg-1', name: '辣度', required: true, options: [{ id: 'opt-1', name: '微辣', priceFen: 0 }] }],
+    sides: [{ id: 'side-1', name: '青菜', priceFen: 0 }],
+    addOns: [{ id: 'add-1', name: '煎蛋', priceFen: 200 }],
+  });
+  assert.equal(created.ok, true);
+  assert.equal(requests[0].options.body.imageUrl, 'data:image/jpeg;base64,/9j/4AAQ');
+  assert.equal(created.data.imageUrl, 'https://39.96.195.158/api/v1/images/img_uploaded_1');
+  assert.equal(created.data.flavorGroups?.length, 1);
+
+  const updated = await source.updateDish('2026-11-18', 'd-img-1', {
+    requestId: 'update-img-1',
+    expectedVersion: 1,
+    name: '照烧鸡腿饭',
+    type: 'STAPLE',
+    priceFen: 1700,
+    availableQuantity: 20,
+    onSale: true,
+    imageUrl: created.data.imageUrl,
+    flavorGroups: created.data.flavorGroups,
+    sides: created.data.sides,
+    addOns: created.data.addOns,
+  });
+  assert.equal(updated.ok, true);
+  assert.equal(requests[1].options.body.imageUrl, '/api/v1/images/img_uploaded_1');
+  assert.equal(updated.data.imageUrl, 'https://39.96.195.158/api/v1/images/img_uploaded_1');
 });

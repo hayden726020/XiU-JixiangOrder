@@ -183,7 +183,7 @@ export default function DishCustomizeEditor({
             )}
             {mode === 'real' && (
               <p className="hint dish-cx__local-note">
-                当前图片先保存在本机，服务端图片字段完成后才会同步到学生端。
+                保存菜品后图片会上传到服务端并同步展示给学生端。
               </p>
             )}
           </div>

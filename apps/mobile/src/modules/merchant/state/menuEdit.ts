@@ -1,4 +1,4 @@
-import type { DishType, Slot } from '../data/types';
+import type { DishFlavorGroup, DishOption, DishType, Slot } from '../data/types';
 import { isDishType } from './onboarding';
 
 export interface DishPatch {
@@ -7,6 +7,10 @@ export interface DishPatch {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 export interface SlotPatch {

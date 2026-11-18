@@ -486,7 +486,7 @@ export default function HomeFeed({
               >
                 <span className="home-featured-card__media">
                   <img
-                    src={resolveHomeDishPhoto(featuredDish.name, 0)}
+                    src={featuredDish.imageUrl ?? resolveHomeDishPhoto(featuredDish.name, 0)}
                     alt={featuredDish.name}
                   />
                   <span className="home-featured-card__badge">
@@ -534,7 +534,7 @@ export default function HomeFeed({
                       >
                         <span className="home-small-card__media">
                           <img
-                            src={resolveHomeDishPhoto(dish.name, index + 1)}
+                            src={dish.imageUrl ?? resolveHomeDishPhoto(dish.name, index + 1)}
                             alt={dish.name}
                           />
                         </span>

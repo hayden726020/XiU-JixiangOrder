@@ -59,6 +59,9 @@ export interface Dish {
   onSale: boolean;
   version: number | null;
   imageUrl: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 export interface DishOption {
@@ -179,6 +182,10 @@ export interface UpdateDishInput {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 export interface DeleteDishInput {
@@ -290,6 +297,10 @@ export interface CreateDishInput {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 export interface MerchantSource {

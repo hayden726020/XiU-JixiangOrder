@@ -62,7 +62,10 @@ export async function readDishImage(file: File): Promise<DishImageResult> {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return { ok: false, error: '当前环境不支持选择图片。' };
   }
-  if (!ALLOWED_TYPES.has(file.type)) {
+  const rawType = file.type.toLowerCase();
+  const normalizedType = rawType === 'image/jpg' ? 'image/jpeg' : rawType;
+  const hasValidExt = /\.(jpe?g|png|webp)$/i.test(file.name);
+  if (!ALLOWED_TYPES.has(normalizedType) && !(normalizedType === '' && hasValidExt)) {
     return { ok: false, error: '只支持 JPG、PNG 或 WebP 图片。' };
   }
   if (file.size > MAX_SOURCE_BYTES) {
@@ -72,17 +75,25 @@ export async function readDishImage(file: File): Promise<DishImageResult> {
   let dataUrl: string;
   try {
     if (typeof createImageBitmap === 'function') {
-      const bitmap = await createImageBitmap(file);
       try {
-        dataUrl = await compressImage(bitmap, bitmap.width, bitmap.height);
-      } finally {
-        bitmap.close();
+        const bitmap = await createImageBitmap(file);
+        try {
+          dataUrl = await compressImage(bitmap, bitmap.width, bitmap.height);
+        } finally {
+          bitmap.close();
+        }
+      } catch {
+        const image = await loadImageElement(file);
+        dataUrl = await compressImage(image, image.naturalWidth, image.naturalHeight);
       }
     } else {
       const image = await loadImageElement(file);
       dataUrl = await compressImage(image, image.naturalWidth, image.naturalHeight);
     }
   } catch {
+    if (!ALLOWED_TYPES.has(normalizedType)) {
+      return { ok: false, error: '图片读取失败，请换一张图片重试。' };
+    }
     try {
       dataUrl = await readAsDataUrl(file);
     } catch {

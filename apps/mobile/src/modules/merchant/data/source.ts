@@ -1,4 +1,5 @@
 import { ApiError, apiRequest } from '../../../shared/apiClient';
+import { buildApiUrl, getApiBaseUrl } from '../../../shared/config';
 import { getSession, saveSession } from '../../../shared/session';
 import {
   DEFAULT_SAMPLE_MERCHANT_NAME,
@@ -12,6 +13,8 @@ import type {
 
   DeletedDish,
   Dish,
+  DishFlavorGroup,
+  DishOption,
   DishType,
   MenuDay,
   MerchantAccount,
@@ -42,6 +45,9 @@ interface ApiDish {
   onSale: boolean;
   version?: number;
   imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 interface ApiSlot {
@@ -173,7 +179,52 @@ function apiDishType(value: unknown): DishType | null {
 }
 
 function apiImageUrl(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) return trimmed;
+  if (trimmed.startsWith('/api/v1/')) {
+    return buildApiUrl(trimmed.slice('/api/v1'.length)) ?? trimmed;
+  }
+  if (trimmed.startsWith('/')) {
+    const base = getApiBaseUrl();
+    if (base) {
+      try {
+        return `${new URL(base).origin}${trimmed}`;
+      } catch {
+        // 保持相对路径
+      }
+    }
+    return trimmed;
+  }
+  return buildApiUrl(trimmed) ?? trimmed;
+}
+
+function toServerImageUrl(value: string | null | undefined): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (trimmed.startsWith('data:') || trimmed.startsWith('/api/v1/images/')) {
+    return trimmed;
+  }
+  const base = getApiBaseUrl();
+  if (base) {
+    const normalizedBase = base.replace(/\/+$/, '');
+    if (trimmed.startsWith(`${normalizedBase}/images/`)) {
+      return `/api/v1${trimmed.slice(normalizedBase.length)}`;
+    }
+    try {
+      const parsed = new URL(trimmed);
+      const baseOrigin = new URL(normalizedBase).origin;
+      if (parsed.origin === baseOrigin && /^\/api\/v1\/images\/[A-Za-z0-9_-]{4,80}$/.test(parsed.pathname)) {
+        return parsed.pathname;
+      }
+    } catch {
+      // 保留原值交由服务端校验
+    }
+  }
+  return trimmed;
 }
 
 function mapDish(dish: ApiDish): Dish {
@@ -186,6 +237,9 @@ function mapDish(dish: ApiDish): Dish {
     onSale: dish.onSale,
     version: apiVersion(dish.version),
     imageUrl: apiImageUrl(dish.imageUrl),
+    flavorGroups: Array.isArray(dish.flavorGroups) ? dish.flavorGroups : [],
+    sides: Array.isArray(dish.sides) ? dish.sides : [],
+    addOns: Array.isArray(dish.addOns) ? dish.addOns : [],
   };
 }
 
@@ -675,8 +729,11 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送菜品创建请求。');
       }
       try {
+        const imageUrl = toServerImageUrl(input.imageUrl);
+        const hasDataUrlImage = typeof imageUrl === 'string' && imageUrl.startsWith('data:');
         const data = await apiRequest<ApiDish>('/merchant/menu', {
           method: 'POST',
+          ...(hasDataUrlImage ? { timeoutMs: 30_000 } : {}),
           body: {
             requestId: input.requestId,
             shopId: input.shopId,
@@ -685,6 +742,10 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
             priceFen: input.priceFen,
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
+            ...(imageUrl !== undefined ? { imageUrl } : {}),
+            ...(input.flavorGroups !== undefined ? { flavorGroups: input.flavorGroups } : {}),
+            ...(input.sides !== undefined ? { sides: input.sides } : {}),
+            ...(input.addOns !== undefined ? { addOns: input.addOns } : {}),
           },
         });
         if (typeof data.id !== 'string') {
@@ -759,8 +820,11 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         );
       }
       try {
+        const imageUrl = toServerImageUrl(input.imageUrl);
+        const hasDataUrlImage = typeof imageUrl === 'string' && imageUrl.startsWith('data:');
         const data = await apiRequest<ApiDish>(`/merchant/menu/${encodeURIComponent(dishId)}`, {
           method: 'PUT',
+          ...(hasDataUrlImage ? { timeoutMs: 30_000 } : {}),
           body: {
             requestId: input.requestId,
             expectedVersion: input.expectedVersion,
@@ -769,6 +833,10 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
             priceFen: input.priceFen,
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
+            ...(imageUrl !== undefined ? { imageUrl } : {}),
+            ...(input.flavorGroups !== undefined ? { flavorGroups: input.flavorGroups } : {}),
+            ...(input.sides !== undefined ? { sides: input.sides } : {}),
+            ...(input.addOns !== undefined ? { addOns: input.addOns } : {}),
           },
         });
         if (typeof data.id !== 'string') {
@@ -894,7 +962,18 @@ export function createMerchantSource(options: {
   }
 
   const orders = sampleOrders(scenario);
-  const dishWrites = new Map<string, { name: string; type: DishType; unitPriceFen: number; availableQuantity: number; onSale: boolean; version: number }>();
+  const dishWrites = new Map<string, {
+    name: string;
+    type: DishType;
+    unitPriceFen: number;
+    availableQuantity: number;
+    onSale: boolean;
+    version: number;
+    imageUrl?: string | null;
+    flavorGroups?: DishFlavorGroup[];
+    sides?: DishOption[];
+    addOns?: DishOption[];
+  }>();
   const slotWrites = new Map<string, { capacity: number; enabled: boolean; version: number }>();
   const addedDishes = new Map<string, Dish>();
   const deletedDishes = new Set<string>();
@@ -1233,7 +1312,10 @@ export function createMerchantSource(options: {
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
         version: 1,
-        imageUrl: null,
+        imageUrl: input.imageUrl ?? null,
+        flavorGroups: input.flavorGroups ?? [],
+        sides: input.sides ?? [],
+        addOns: input.addOns ?? [],
       };
       nextDishId += 1;
       addedDishes.set(dish.dishId, structuredClone(dish));
@@ -1275,6 +1357,10 @@ export function createMerchantSource(options: {
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
         version: version + 1,
+        ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+        ...(input.flavorGroups !== undefined ? { flavorGroups: input.flavorGroups } : {}),
+        ...(input.sides !== undefined ? { sides: input.sides } : {}),
+        ...(input.addOns !== undefined ? { addOns: input.addOns } : {}),
       };
       dishWrites.set(`${date}:${dishId}`, {
         name: updated.name,
@@ -1283,6 +1369,10 @@ export function createMerchantSource(options: {
         availableQuantity: updated.availableQuantity,
         onSale: updated.onSale,
         version: updated.version ?? version + 1,
+        imageUrl: updated.imageUrl,
+        flavorGroups: updated.flavorGroups,
+        sides: updated.sides,
+        addOns: updated.addOns,
       });
       return { ok: true, data: updated };
     },
