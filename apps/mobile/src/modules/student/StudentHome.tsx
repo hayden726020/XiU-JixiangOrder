@@ -247,6 +247,50 @@ function StudentHomeApp({
     );
   }
 
+  if (view === 'orders') {
+    const backToShops = ordersBackTo === 'shop' || currentShop === null;
+    return (
+      <OrderListPage
+        source={source}
+        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
+        backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
+        onOpenOrder={(id) => openOrderFrom('orders', id)}
+        onGoToHome={() => {
+          setShopTab('home');
+          goTo('shop', 'push', 'home');
+        }}
+        onGoToShop={() => {
+          setShopTab('order');
+          goTo('shop', 'push', 'order');
+        }}
+        onGoToProfile={() => goTo('profile')}
+      />
+    );
+  }
+
+  if (view === 'order' && orderId !== null) {
+    const backTarget: StudentView =
+      detailFrom === 'orders' || currentShop === null ? 'orders' : 'menu';
+    return (
+      <OrderDetailPage
+        source={source}
+        orderId={orderId}
+        onBack={() => goTo(backTarget, 'back')}
+        backLabel={backTarget === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
+        onGoToHome={() => {
+          setShopTab('home');
+          goTo('shop', 'push', 'home');
+        }}
+        onGoToShop={() => {
+          setShopTab('order');
+          goTo('shop', 'push', 'order');
+        }}
+        onGoToOrders={() => goTo('orders')}
+        onGoToProfile={() => goTo('profile')}
+      />
+    );
+  }
+
   if (currentShop === null || view === 'shop') {
     return (
       <ShopSelectPage
@@ -287,49 +331,6 @@ function StudentHomeApp({
         onBack={() => goTo('slot', 'back')}
         onBackToMenu={() => goTo('menu', 'back')}
         onSubmitted={(id) => { setDetailFrom('menu'); setOrderId(id); replaceTo('order'); }}
-      />
-    );
-  }
-
-  if (view === 'orders') {
-    const backToShops = ordersBackTo === 'shop';
-    return (
-      <OrderListPage
-        source={source}
-        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
-        backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
-        onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => {
-          setShopTab('home');
-          goTo('shop', 'push', 'home');
-        }}
-        onGoToShop={() => {
-          setShopTab('order');
-          goTo('shop', 'push', 'order');
-        }}
-        onGoToProfile={() => goTo('profile')}
-      />
-    );
-  }
-
-  if (view === 'order' && orderId !== null) {
-    const backTarget: StudentView = detailFrom === 'orders' ? 'orders' : 'menu';
-    return (
-      <OrderDetailPage
-        source={source}
-        orderId={orderId}
-        onBack={() => goTo(backTarget, 'back')}
-        backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
-        onGoToHome={() => {
-          setShopTab('home');
-          goTo('shop', 'push', 'home');
-        }}
-        onGoToShop={() => {
-          setShopTab('order');
-          goTo('shop', 'push', 'order');
-        }}
-        onGoToOrders={() => goTo('orders')}
-        onGoToProfile={() => goTo('profile')}
       />
     );
   }
