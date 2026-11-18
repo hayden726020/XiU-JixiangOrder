@@ -7,9 +7,17 @@ import {
   formatSlot,
   orderNoLabel,
   pendingRequestSummary,
+  pickupTiming,
   statusView,
 } from '../state/orderView';
 import { formatYuan, itemsSummary, totalQuantity } from '../utils/money';
+import {
+  IconCheck,
+  IconClock3,
+  IconFileText,
+  IconMessageSquareText,
+  IconUtensils,
+} from './MerchantIcons';
 
 interface OrderCardProps {
   order: MerchantOrder;
@@ -20,6 +28,8 @@ interface OrderCardProps {
   actionError: { code: string; message: string; orderId?: string } | null;
   showCancellationDetails?: boolean;
   showOverdue?: boolean;
+  pendingOnly?: boolean;
+  now?: number;
 }
 
 function actionLabel(action: OrderAction): string {
@@ -37,6 +47,8 @@ export default function OrderCard({
   actionError,
   showCancellationDetails = true,
   showOverdue = true,
+  pendingOnly = false,
+  now = Date.now(),
 }: OrderCardProps) {
   const [pickupCode, setPickupCode] = useState('');
   const status = statusView(order.status);
@@ -47,11 +59,8 @@ export default function OrderCard({
   const rowError = actionError?.orderId === order.id ? actionError : null;
   const isTerminal = order.status === 'COMPLETED' || order.status === 'CANCELLED';
   const pendingSummary = pendingRequestSummary(order);
-  const deadline = new Date(order.slotEnd).getTime();
-  const overdue = showOverdue
-    && !isTerminal
-    && Number.isFinite(deadline)
-    && deadline < Date.now();
+  const timing = showOverdue ? pickupTiming(order, now) : null;
+  const overdue = timing?.tone === 'overdue';
   const terminalLabel = order.status === 'CANCELLED' ? '查看取消信息' : '查看详情';
 
   function stop(event: React.MouseEvent | React.KeyboardEvent) {
@@ -85,22 +94,35 @@ export default function OrderCard({
           {pendingSummary && (
             <span className="merchant-flag merchant-flag--pending">待处理 · {pendingSummary}</span>
           )}
-          {overdue && <span className="order-row__overdue">已过预约时段</span>}
         </span>
       </div>
 
       <div className="order-row__time-row">
-        <span className="order-row__slot">{formatSlot(order)}</span>
+        <span className="order-row__slot">
+          <IconClock3 size={15} />
+          <span>{formatSlot(order)}</span>
+        </span>
+        {timing && (
+          <span className={`order-row__pickup-timing is-${timing.tone}`} data-pickup-timing={timing.tone}>
+            {timing.label}
+          </span>
+        )}
         <span className="order-row__amount">
           共 {totalQuantity(order.items)} 份 · {formatYuan(order.totalFen)}
         </span>
       </div>
 
-      <div className="order-row__items">{itemsSummary(order.items)}</div>
+      <div className="order-row__items">
+        <IconUtensils size={14} />
+        <span>{itemsSummary(order.items)}</span>
+      </div>
 
       {order.remark && (
         <div className="order-row__remark" data-order-remark={order.remark}>
-          <span className="order-row__remark-label">备注</span>
+          <span className="order-row__remark-label">
+            <IconMessageSquareText size={14} />
+            备注
+          </span>
           <span className="order-row__remark-text">{order.remark}</span>
         </div>
       )}
@@ -117,7 +139,19 @@ export default function OrderCard({
       )}
 
       <div className="order-row__foot" onClick={stop}>
-        {isTerminal ? (
+        {pendingOnly ? (
+          <button
+            type="button"
+            className="order-row__detail"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(order.id);
+            }}
+          >
+            <IconFileText size={14} />
+            处理申请
+          </button>
+        ) : isTerminal ? (
           <button
             type="button"
             className="order-row__primary order-row__primary--muted"
@@ -126,6 +160,7 @@ export default function OrderCard({
               onOpen(order.id);
             }}
           >
+            <IconFileText size={14} />
             {terminalLabel}
           </button>
         ) : (
@@ -133,13 +168,14 @@ export default function OrderCard({
             <button
               type="button"
               className="order-row__detail"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpen(order.id);
-              }}
-            >
-              查看详情
-            </button>
+onClick={(event) => {
+                  event.stopPropagation();
+                  onOpen(order.id);
+                }}
+              >
+                <IconFileText size={14} />
+                查看详情
+              </button>
 
             {verifyAction ? (
               <span className="order-row__verify" onClick={stop} onKeyDown={stop}>
@@ -166,7 +202,12 @@ export default function OrderCard({
                   disabled={isPending}
                   aria-busy={isPending || undefined}
                 >
-                  {isPending ? '核销中…' : '核销取餐码'}
+                  {isPending ? '核销中…' : (
+                    <>
+                      <IconCheck size={15} />
+                      核销取餐码
+                    </>
+                  )}
                 </button>
               </span>
             ) : primary ? (
@@ -180,7 +221,12 @@ export default function OrderCard({
                 disabled={isPending}
                 aria-busy={isPending || undefined}
               >
-                {isPending ? '提交中…' : actionLabel(primary)}
+                {isPending ? '提交中…' : (
+                  <>
+                    <IconCheck size={15} />
+                    {actionLabel(primary)}
+                  </>
+                )}
               </button>
             ) : (
               <span className="order-row__muted">当前没有可执行操作</span>

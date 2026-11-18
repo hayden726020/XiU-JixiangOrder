@@ -95,7 +95,7 @@ const CODES_BY_STATUS: Record<OrderStatus, string[]> = {
   NEW: ['ACCEPT', 'CANCEL_ORDER'],
   ACCEPTED: ['START_PREPARING', 'SET_DELAY', 'CANCEL_ORDER'],
   PREPARING: ['MARK_READY', 'SET_DELAY', 'CANCEL_ORDER'],
-  READY: ['VERIFY', 'SET_DELAY', 'CANCEL_ORDER'],
+  READY: ['VERIFY', 'SET_DELAY'],
   COMPLETED: [],
   CANCELLED: [],
 };
@@ -106,7 +106,11 @@ export function getOrderActions(order: MerchantOrder): OrderAction[] {
   }
   const codes = [...CODES_BY_STATUS[order.status]];
   if (order.cancelRequest.status === 'PENDING') {
-    codes.push('APPROVE_CANCEL', 'REJECT_CANCEL');
+    if (order.status === 'READY') {
+      codes.push('REJECT_CANCEL');
+    } else {
+      codes.push('APPROVE_CANCEL', 'REJECT_CANCEL');
+    }
   }
   return codes.map((code) => structuredClone(ACTIONS[code]));
 }

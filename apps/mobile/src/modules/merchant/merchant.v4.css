@@ -2853,3 +2853,702 @@
   text-decoration: underline;
   cursor: pointer;
 }
+/* ── 菜单分区：已上架 / 未上架分组 ─────────────────────────── */
+.app-shell--merchant .daily-menu__group,
+.app-shell--merchant .menu-list__group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.1rem 0.3rem;
+  color: var(--m-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  list-style: none;
+}
+
+.app-shell--merchant .daily-menu__group::after,
+.app-shell--merchant .menu-list__group::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--m-line-soft);
+}
+
+.app-shell--merchant .daily-menu__check input:disabled {
+  cursor: not-allowed;
+}
+/* ── 首页：营业状态快捷菜单 ─────────────────────────────────── */
+.app-shell--merchant .merchant-home__status-wrap {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.app-shell--merchant .merchant-home__status--button {
+  appearance: none;
+  border: 0;
+  font-family: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.app-shell--merchant .merchant-home__status--button:focus-visible {
+  outline: 2px solid var(--m-brand-focus);
+  outline-offset: 1px;
+}
+
+.app-shell--merchant .merchant-home__hero:has(.merchant-status-menu) {
+  overflow: visible;
+}
+
+.merchant-status-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 13rem;
+  max-width: min(13rem, calc(100vw - 2rem));
+  padding: 0.4rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.5rem;
+  background: var(--m-card);
+  box-shadow: 0 12px 28px rgba(61, 51, 42, 0.16);
+  text-align: left;
+}
+
+.merchant-status-menu__head {
+  padding: 0.3rem 0.45rem 0.35rem;
+  border-bottom: 1px solid var(--m-line-soft);
+  color: var(--m-muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.merchant-status-menu__item {
+  appearance: none;
+  padding: 0.45rem 0.45rem;
+  border: 0;
+  border-radius: 0.3rem;
+  background: none;
+  color: var(--m-ink);
+  font: inherit;
+  font-size: 0.74rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.merchant-status-menu__item:hover:not(:disabled),
+.merchant-status-menu__item:focus-visible:not(:disabled) {
+  background: var(--m-surface-2);
+  outline: none;
+}
+
+.merchant-status-menu__item:disabled {
+  color: var(--m-faint);
+  cursor: default;
+}
+
+.merchant-status-menu__note {
+  margin: 0.2rem 0.45rem 0.25rem;
+  color: var(--m-muted);
+  font-size: 0.62rem;
+  line-height: 1.55;
+}
+
+.app-shell--merchant .merchant-notice--toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 0.7rem);
+  left: 50%;
+  z-index: 95;
+  width: min(26rem, calc(100vw - 1.4rem));
+  transform: translateX(-50%);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 28px rgba(61, 51, 42, 0.16);
+}
+
+/* ── 首页：时段柱状图可点击 ─────────────────────────────────── */
+.app-shell--merchant .merchant-home__trend-col--button {
+  appearance: none;
+  padding: 0.15rem 0.1rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: none;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.app-shell--merchant .merchant-home__trend-col--button:hover,
+.app-shell--merchant .merchant-home__trend-col--button:focus-visible {
+  background: var(--m-surface-2);
+  outline: none;
+}
+
+.trend-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.trend-detail__mask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(35, 28, 20, 0.42);
+  cursor: pointer;
+}
+
+.trend-detail__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(23rem, 100%);
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.5rem;
+  background: var(--m-card);
+  box-shadow: 0 16px 40px rgba(35, 28, 20, 0.22);
+}
+
+.trend-detail__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.trend-detail__head h3 {
+  margin: 0;
+  color: var(--m-ink);
+  font-size: 0.92rem;
+}
+
+.trend-detail__head p {
+  margin: 0.18rem 0 0;
+  color: var(--m-muted);
+  font-size: 0.66rem;
+}
+
+.trend-detail__close {
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--m-muted);
+  font: inherit;
+  font-size: 0.7rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.trend-detail__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trend-detail__stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 0.4rem;
+  background: var(--m-surface-2);
+}
+
+.trend-detail__stats span {
+  color: var(--m-muted);
+  font-size: 0.62rem;
+}
+
+.trend-detail__stats strong {
+  color: var(--m-ink);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-detail__empty {
+  margin: 0.7rem 0 0;
+  color: var(--m-muted);
+  font-size: 0.72rem;
+}
+
+.trend-detail__actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.trend-detail__actions .action-button {
+  flex: 1;
+  min-height: 2.3rem;
+}
+
+/* ── 订单卡片：取餐时间状态与备注完整显示 ─────────────────── */
+.app-shell--merchant .order-row__time-row {
+  flex-wrap: wrap;
+}
+
+.app-shell--merchant .order-row__pickup-timing {
+  flex: none;
+  padding: 0.1rem 0.38rem;
+  border-radius: 0.3rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.app-shell--merchant .order-row__pickup-timing.is-upcoming {
+  background: var(--m-surface-2);
+  color: var(--m-muted);
+}
+
+.app-shell--merchant .order-row__pickup-timing.is-soon {
+  border: 1px solid var(--m-warn-line);
+  background: var(--m-warn-bg);
+  color: var(--m-warn-ink);
+}
+
+.app-shell--merchant .order-row__pickup-timing.is-active {
+  border: 1px solid var(--m-info-line);
+  background: var(--m-info-bg);
+  color: var(--m-info-ink);
+}
+
+.app-shell--merchant .order-row__pickup-timing.is-overdue {
+  border: 1px solid var(--m-danger-line);
+  background: var(--m-danger-bg);
+  color: var(--m-danger-ink);
+}
+
+.app-shell--merchant .order-row__remark {
+  align-items: flex-start;
+}
+
+.app-shell--merchant .order-row__remark-text {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+/* ── 菜单：库存快捷调整 ───────────────────────────────────── */
+.app-shell--merchant .menu-item__stock-edit {
+  display: inline-flex;
+  gap: 0.2rem;
+  margin-left: 0.1rem;
+}
+
+.app-shell--merchant .menu-item__stock-edit button {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--m-line);
+  border-radius: 0.3rem;
+  background: #fffdf9;
+  color: var(--m-ink);
+  font-size: 0.82rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-shell--merchant .menu-item__stock-edit button:hover:not(:disabled),
+.app-shell--merchant .menu-item__stock-edit button:focus-visible:not(:disabled) {
+  border-color: var(--m-brand-strong);
+  outline: none;
+}
+
+.app-shell--merchant .menu-item__stock-edit button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+/* ── 备餐汇总抽屉 ─────────────────────────────────────────── */
+.prep-summary {
+  position: fixed;
+  inset: 0;
+  z-index: 88;
+}
+
+.prep-summary__mask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(35, 28, 20, 0.42);
+  cursor: pointer;
+}
+
+.prep-summary__drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(31rem, 100%);
+  padding: 1rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--m-line);
+  background: var(--m-canvas);
+  box-shadow: -16px 0 40px rgba(35, 28, 20, 0.2);
+}
+
+.prep-summary__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.prep-summary__head h3 {
+  margin: 0;
+  color: var(--m-ink);
+  font-size: 1rem;
+}
+
+.prep-summary__head p {
+  margin: 0.22rem 0 0;
+  color: var(--m-muted);
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.prep-summary__close {
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--m-muted);
+  font: inherit;
+  font-size: 0.7rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.prep-summary__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 0.4rem;
+  background: var(--m-card);
+  color: var(--m-muted);
+  font-size: 0.68rem;
+}
+
+.prep-summary__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.prep-summary__date {
+  appearance: none;
+  padding: 0.28rem 0.6rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.35rem;
+  background: var(--m-card);
+  color: var(--m-muted);
+  font: inherit;
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+
+.prep-summary__date.is-active {
+  border-color: var(--m-brand-line-strong);
+  background: var(--m-brand-soft);
+  color: var(--m-ink);
+  font-weight: 700;
+}
+
+.prep-summary__hint,
+.prep-summary__footnote {
+  margin: 0;
+  color: var(--m-muted);
+  font-size: 0.64rem;
+  line-height: 1.55;
+}
+
+.prep-summary__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.prep-summary__totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.4rem;
+  background: var(--m-brand-soft);
+  color: var(--m-ink-2);
+  font-size: 0.68rem;
+}
+
+.prep-summary__totals span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.prep-summary__totals i,
+.prep-slot__stats i {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 50%;
+  background: var(--m-faint);
+}
+
+.prep-summary__totals i.is-pending {
+  background: var(--m-brand-strong);
+}
+
+.prep-summary__totals i.is-preparing {
+  background: var(--m-info-ink);
+}
+
+.prep-summary__totals i.is-ready {
+  background: var(--m-success-ink);
+}
+
+.prep-summary__totals i.is-done {
+  background: var(--m-muted);
+}
+
+.prep-summary__totals b {
+  font-variant-numeric: tabular-nums;
+}
+
+.prep-slot {
+  overflow: hidden;
+  border: 1px solid var(--m-line);
+  border-radius: 0.5rem;
+  background: var(--m-card);
+}
+
+.prep-slot__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--m-line-soft);
+  background: var(--m-surface-2);
+}
+
+.prep-slot__head strong {
+  color: var(--m-ink);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.prep-slot__head span {
+  color: var(--m-muted);
+  font-size: 0.64rem;
+}
+
+.prep-slot__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: 0.4rem 0.65rem;
+  color: var(--m-muted);
+  font-size: 0.64rem;
+}
+
+.prep-slot__stats b {
+  color: var(--m-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.prep-slot__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+.prep-slot__table th,
+.prep-slot__table td {
+  padding: 0.38rem 0.5rem;
+  border-top: 1px solid var(--m-line-soft);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.prep-slot__table thead th {
+  border-top: 0;
+  color: var(--m-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.prep-slot__table th[scope='row'] {
+  color: var(--m-ink);
+  font-weight: 600;
+  text-align: left;
+}
+
+.prep-slot__table .is-pending {
+  color: var(--m-warn-ink);
+  font-weight: 700;
+}
+
+.prep-slot__table .is-preparing {
+  color: var(--m-info-ink);
+  font-weight: 700;
+}
+
+.prep-slot__table .is-ready {
+  color: var(--m-success-ink);
+  font-weight: 700;
+}
+
+.prep-slot__table .is-done {
+  color: var(--m-muted);
+}
+
+.prep-slot__table .is-zero {
+  color: var(--m-faint);
+}
+
+@media (max-width: 640px) {
+  .prep-summary__drawer {
+    top: auto;
+    left: 0;
+    width: 100%;
+    height: 86vh;
+    border-top: 1px solid var(--m-line);
+    border-left: 0;
+    border-radius: 0.75rem 0.75rem 0 0;
+    box-shadow: 0 -14px 36px rgba(35, 28, 20, 0.2);
+  }
+}
+
+/* ── 我的：消息提醒开关与特殊营业日期 ─────────────────────── */
+.app-shell--merchant .merchant-my__row--switch {
+  cursor: pointer;
+}
+
+.app-shell--merchant .merchant-my__row--switch input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--m-brand-strong);
+}
+
+.app-shell--merchant .merchant-my__special-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0 0.3rem;
+}
+
+.app-shell--merchant .merchant-my__special-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-shell--merchant .merchant-my__special-form .action-button {
+  flex: none;
+  min-height: 2.3rem;
+}
+
+.app-shell--merchant .merchant-my__special-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-shell--merchant .merchant-my__special-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 0.4rem;
+  background: var(--m-surface-2);
+}
+
+.app-shell--merchant .merchant-my__special-list span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.app-shell--merchant .merchant-my__special-list b {
+  color: var(--m-ink);
+  font-size: 0.72rem;
+}
+
+.app-shell--merchant .merchant-my__special-list small {
+  color: var(--m-muted);
+  font-size: 0.6rem;
+}
+
+.app-shell--merchant .merchant-my__special-list button {
+  flex: none;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--m-line);
+  border-radius: 0.3rem;
+  background: var(--m-card);
+  color: var(--m-danger-ink);
+  font: inherit;
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+.merchant-order-detail--new .status-track {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.status-track__step--branch {
+  border-style: dashed;
+}
+
+.status-track__step--branch.is-pending {
+  border-color: var(--m-warn-line);
+  background: var(--m-warn-bg);
+  color: var(--m-warn-ink);
+  font-weight: 600;
+}
+
+.status-track__step--branch.is-cleared {
+  border-color: var(--m-success-ink);
+  color: var(--m-success-ink);
+}
+
+.status-track__pending-dot {
+  display: inline-block;
+  width: 0.34rem;
+  height: 0.34rem;
+  margin-right: 0.18rem;
+  border-radius: 50%;
+  background: var(--m-warn-ink);
+  vertical-align: middle;
+}
+
+.status-track__note {
+  margin: 0.45rem 0 0;
+  color: var(--m-muted);
+  font-size: 0.68rem;
+  line-height: 1.6;
+}

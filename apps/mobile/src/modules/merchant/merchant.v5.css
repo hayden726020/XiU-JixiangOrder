@@ -1,0 +1,1174 @@
+.app-shell--merchant
+  :is(.merchant-menu-page, .merchant-order-list, .merchant-my, .merchant-my-info, .merchant-wallet, .business-hours-page, .merchant-order-detail)
+  :is(.action-button, .merchant-link-button, .back-link, .menu-editor__close) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 2.125rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant
+  :is(.merchant-menu-page, .merchant-order-list, .merchant-my, .merchant-my-info, .merchant-wallet, .business-hours-page, .merchant-order-detail)
+  svg {
+  flex: none;
+}
+
+.app-shell--merchant
+  :is(.merchant-menu-page, .merchant-order-list, .merchant-my, .merchant-my-info, .merchant-wallet, .business-hours-page, .merchant-order-detail)
+  :is(.action-button.action-button--primary, .merchant-my-info__submit, .merchant-wallet__submit) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-view__header h2,
+.app-shell--merchant .menu-page__head h2,
+.app-shell--merchant .merchant-my-info__title {
+  gap: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.app-shell--merchant .merchant-view__header h2::before,
+.app-shell--merchant .menu-page__head h2::before,
+.app-shell--merchant .merchant-my-info__title::before {
+  width: 3px;
+  height: 1.1rem;
+  border-radius: 1px;
+}
+
+.app-shell--merchant .merchant-view__header .lead,
+.app-shell--merchant .menu-page__head .lead {
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-page__head {
+  gap: 0.8rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-page__head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-page__date-note {
+  margin-top: 0.3rem;
+  color: var(--m-muted);
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-page__actions {
+  gap: 8px;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-page__actions .action-button {
+  min-height: 2.125rem;
+  white-space: nowrap;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-tabs {
+  gap: 3px;
+  padding: 3px;
+  border-radius: 7px;
+  background: var(--m-surface-2);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-tabs__button {
+  min-height: 2rem;
+  padding: 0.25rem 0.9rem;
+  border-radius: 5px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-tabs__button--active {
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-menu-page .date-switch {
+  gap: 8px;
+}
+
+.app-shell--merchant .merchant-menu-page .date-switch__button {
+  min-height: 2.125rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-menu-page .date-switch__button--active {
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card {
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__head h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__head p {
+  margin-top: 0.22rem;
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__hint {
+  padding: 0.14rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-list {
+  gap: 0;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item {
+  gap: 0.7rem;
+  min-height: 4rem;
+  padding: 0.75rem 0.1rem;
+  border-bottom: 1px solid var(--m-line-soft);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__info {
+  gap: 0.3rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__name {
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__meta {
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__meta > span:first-child {
+  color: var(--m-muted);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__price {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__stock-line {
+  gap: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__qty {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__version {
+  font-size: 0.6875rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-badge {
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__stock-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__stock-edit button {
+  width: 1.375rem;
+  height: 1.375rem;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-card);
+  color: var(--m-ink-2);
+  font-size: 0.8125rem;
+  line-height: 1;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__stock-edit button:hover:not(:disabled),
+.app-shell--merchant .merchant-menu-page .menu-item__stock-edit button:focus-visible:not(:disabled) {
+  border-color: var(--m-brand-line-strong);
+  background: var(--m-brand-soft);
+  outline: none;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__actions {
+  gap: 4px;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__sale-toggle {
+  min-height: 1.75rem;
+  border: 1px solid var(--m-line);
+  background: var(--m-card);
+  color: var(--m-ink-2);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__edit {
+  min-height: 1.75rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--m-ink-2);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__delete {
+  min-height: 1.75rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--m-danger-ink);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-item__delete:hover:not(:disabled),
+.app-shell--merchant .merchant-menu-page .menu-item__delete:focus-visible:not(:disabled) {
+  background: var(--m-danger-bg);
+  color: var(--m-danger-ink);
+}
+
+.app-shell--merchant .merchant-menu-page .dish-thumb {
+  width: 2.875rem;
+  height: 2.875rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 6px;
+  background: var(--m-surface-2);
+}
+
+.app-shell--merchant .merchant-menu-page .dish-thumb--sm {
+  width: 2.375rem;
+  height: 2.375rem;
+  border-radius: 5px;
+}
+
+.app-shell--merchant .merchant-menu-page .dish-thumb__empty {
+  background: var(--m-surface-2);
+  color: var(--m-brand-ink);
+}
+
+.app-shell--merchant .merchant-menu-page .dish-thumb__empty svg {
+  width: 1.375rem;
+  height: 1.375rem;
+  opacity: 1;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__empty {
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__empty--state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 1.5rem 1rem;
+  color: var(--m-muted);
+  text-align: center;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__empty--state svg {
+  color: var(--m-brand-ink);
+  opacity: 0.75;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__empty--state p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__empty--action {
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__empty--action svg {
+  color: var(--m-brand-ink);
+  opacity: 0.75;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__off-sale {
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  background: var(--m-surface-2);
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-card__off-sale-link {
+  margin-left: 4px;
+  color: var(--m-brand-ink);
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-menu-page .daily-menu {
+  border-radius: 8px;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor {
+  gap: 0.8rem;
+  padding: 0.9rem;
+  border-radius: 10px;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__head h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__close {
+  min-height: 1.9rem;
+  padding: 0.2rem 0.5rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--m-muted);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field {
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-confirm {
+  padding: 0.9rem;
+  border-radius: 10px;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-confirm h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-notes {
+  border-radius: 8px;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-notes summary {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-view__actions {
+  gap: 8px;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-view__actions .merchant-link-button {
+  min-height: 2rem;
+  padding: 0.3rem 0.7rem;
+  border-color: var(--m-line);
+  background: var(--m-card);
+  color: var(--m-ink-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-view__actions .merchant-link-button svg {
+  color: var(--m-brand-ink);
+}
+
+.app-shell--merchant .merchant-order-list .merchant-status-bar {
+  gap: 3px;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-status-chip {
+  min-height: 2.125rem;
+  padding: 0 0.3rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-status-chip--active {
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-status-chip__badge {
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.15rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-order-list .order-group {
+  gap: 0.6rem;
+}
+
+.app-shell--merchant .merchant-order-list .order-group__title {
+  gap: 0.4rem;
+  color: var(--m-ink-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-order-list .order-group__count {
+  color: var(--m-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-order-list .order-group__sort {
+  color: var(--m-faint);
+  font-size: 0.6875rem;
+  font-weight: 400;
+}
+
+.app-shell--merchant .merchant-order-list .order-row {
+  gap: 0.5rem;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid var(--m-line);
+  border-radius: 8px;
+  background: var(--m-surface-2);
+  box-shadow: none;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-order-list .order-row:hover,
+.app-shell--merchant .merchant-order-list .order-row:focus-visible {
+  border-color: var(--m-brand-line-strong);
+  background: var(--m-card);
+  box-shadow: none;
+  transform: none;
+  outline: none;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__ident {
+  gap: 0.4rem;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__id {
+  margin-right: 0.1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__time-row {
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__slot svg {
+  color: var(--m-brand-ink);
+}
+
+.app-shell--merchant .merchant-order-list .order-row__amount {
+  color: var(--m-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__items {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--m-ink-2);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__items svg {
+  margin-top: 2px;
+  color: var(--m-brand-ink);
+}
+
+.app-shell--merchant .merchant-order-list .order-row__items span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__remark {
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--m-warn-line);
+  border-radius: 6px;
+  background: var(--m-warn-bg);
+  color: var(--m-ink-2);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__remark-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--m-brand-ink);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__remark-text {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__cancel {
+  gap: 0.4rem;
+  padding-top: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-tag,
+.app-shell--merchant .merchant-order-list .merchant-flag {
+  padding: 0.14rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__foot {
+  gap: 0.4rem;
+  padding-top: 0.15rem;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__detail,
+.app-shell--merchant .merchant-order-list .order-row__primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__detail {
+  min-height: 2.25rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  color: var(--m-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__detail:hover {
+  border-color: transparent;
+  background: var(--m-brand-soft);
+  color: var(--m-ink);
+}
+
+.app-shell--merchant .merchant-order-list .order-row__primary {
+  min-height: 44px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__verify input {
+  min-height: 44px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+
+.app-shell--merchant .merchant-order-list .order-row__muted {
+  display: inline-flex;
+  align-items: center;
+  color: var(--m-faint);
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-empty--state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 2rem 1rem;
+  border-style: dashed;
+  border-radius: 8px;
+  color: var(--m-muted);
+  text-align: center;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-empty--state svg {
+  color: var(--m-brand-ink);
+  opacity: 0.7;
+}
+
+.app-shell--merchant .merchant-order-list .merchant-empty--state p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+
+.app-shell--merchant .merchant-order-list .merchant-pager {
+  gap: 0.6rem;
+}
+
+.app-shell--merchant .merchant-my {
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.app-shell--merchant .merchant-my__card {
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-my__avatar {
+  width: 3.25rem;
+  height: 3.25rem;
+  background: var(--m-surface-2);
+}
+
+.app-shell--merchant .merchant-my__name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-shell--merchant .merchant-my__identity h3 {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.app-shell--merchant .merchant-my__identity small {
+  display: block;
+  margin-top: 0.22rem;
+  color: var(--m-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.app-shell--merchant .merchant-my__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.1rem 0.42rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.app-shell--merchant .merchant-my__group {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-my__group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0.7rem 0.9rem 0.5rem;
+  border-bottom: 1px solid var(--m-line-soft);
+  color: var(--m-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.app-shell--merchant .merchant-my__group-title svg {
+  color: var(--m-brand-ink);
+}
+
+.app-shell--merchant .merchant-my__row {
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--m-line-soft);
+  color: var(--m-ink-2);
+  font-size: 0.84375rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.app-shell--merchant .merchant-my__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.app-shell--merchant
+  .merchant-my__row:not(.merchant-my__row--switch)
+  > span:first-child:not(.merchant-my__label) {
+  padding-left: 1.5rem;
+}
+
+.app-shell--merchant .merchant-my__label svg {
+  color: var(--m-faint);
+}
+
+.app-shell--merchant .merchant-my__row span:last-child {
+  max-width: 62%;
+  color: var(--m-muted);
+  font-size: 0.78125rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.app-shell--merchant .merchant-my__row--action {
+  width: 100%;
+  border-bottom: 1px solid var(--m-line-soft);
+  font-family: inherit;
+  transition: background-color 150ms ease-out;
+}
+
+.app-shell--merchant .merchant-my__row--action:hover {
+  background: var(--m-brand-soft);
+}
+
+.app-shell--merchant .merchant-my__row--action span:first-child {
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-my__arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--m-faint);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.app-shell--merchant .merchant-my__row-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--m-muted);
+  font-size: 0.78125rem;
+}
+
+.app-shell--merchant .merchant-my__note {
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.app-shell--merchant .merchant-my__fold {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-my__fold summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-my__fold summary::after {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.app-shell--merchant .merchant-my__fold summary svg {
+  color: var(--m-brand-ink);
+}
+
+.app-shell--merchant .merchant-my__row--switch {
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-my__special-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.app-shell--merchant .merchant-my__group--signout {
+  border-color: var(--m-danger-line);
+}
+
+.app-shell--merchant .merchant-my__row--danger span:first-child,
+.app-shell--merchant .merchant-my__row--danger .merchant-my__label svg {
+  color: var(--m-danger-ink);
+}
+
+.app-shell--merchant .merchant-my-info {
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.app-shell--merchant .merchant-my-info__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.25rem 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-my-info__form,
+.app-shell--merchant .merchant-my-info__account-card {
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-my-info__readonly {
+  border-radius: 6px;
+  background: var(--m-surface-2);
+}
+
+.app-shell--merchant .merchant-my-info__readonly span,
+.app-shell--merchant .merchant-my-info__readonly p {
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .merchant-my-info__readonly strong {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-my-info__field {
+  gap: 0.35rem;
+}
+
+.app-shell--merchant .merchant-my-info__field label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-my-info__field input,
+.app-shell--merchant .merchant-my-info__field textarea {
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.app-shell--merchant .merchant-my-info__section {
+  margin: 0.1rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-my-info__submit {
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-my-info__submit--inline {
+  min-height: 2.25rem;
+  font-size: 0.8125rem;
+}
+
+.app-shell--merchant .merchant-my-info__notice,
+.app-shell--merchant .merchant-my-info__feedback {
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+
+.app-shell--merchant .merchant-my-info__hint,
+.app-shell--merchant .merchant-my-info__account-note {
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.app-shell--merchant .merchant-wallet {
+  gap: 0.75rem;
+}
+
+.app-shell--merchant .merchant-wallet__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-wallet__balance-card,
+.app-shell--merchant .merchant-wallet__withdraw,
+.app-shell--merchant .merchant-wallet__entries {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-wallet__submit {
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .business-hours-page .menu-card {
+  border-radius: 8px;
+}
+
+.app-shell--merchant .business-hours-page .menu-item__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant
+  :is(.merchant-my-info, .merchant-wallet, .business-hours-page, .merchant-menu-page, .merchant-order-detail, .merchant-my)
+  :is(input:not([type='checkbox']), select, textarea) {
+  min-height: 2.375rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  background: var(--m-card);
+  color: var(--m-ink);
+  font-family: inherit;
+  font-size: 0.875rem;
+  transition:
+    border-color 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.app-shell--merchant
+  :is(.merchant-my-info, .merchant-wallet, .business-hours-page, .merchant-menu-page, .merchant-order-detail, .merchant-my)
+  :is(input:not([type='checkbox']), select, textarea)::placeholder {
+  color: var(--m-faint);
+}
+
+.app-shell--merchant
+  :is(.merchant-my-info, .merchant-wallet, .business-hours-page, .merchant-menu-page, .merchant-order-detail, .merchant-my)
+  :is(input:not([type='checkbox']), select, textarea):focus-visible {
+  border-color: var(--m-brand-strong);
+  box-shadow: 0 0 0 2px var(--m-brand-focus);
+  outline: none;
+}
+
+.app-shell--merchant .merchant-order-detail .detail-block {
+  padding: 0.9rem;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-order-detail .detail-block h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-order-detail .detail-block h3 svg {
+  color: var(--m-brand-ink);
+}
+
+.app-shell--merchant .merchant-order-detail .detail-block--remark {
+  border-radius: 8px;
+}
+
+.app-shell--merchant .order-detail-v7 :is(.action-button, .od-btn, .merchant-link-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.app-shell--merchant .order-detail-v7 .od-card__head h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .order-detail-v7 .od-card__head > span {
+  font-size: 0.75rem;
+}
+
+.app-shell--merchant .order-detail-v7 :is(input:not([type='checkbox']), select, textarea) {
+  min-height: 2.375rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.app-shell--merchant .order-detail-v7 :is(input:not([type='checkbox']), select, textarea):focus-visible {
+  border-color: var(--m-brand-strong);
+  box-shadow: 0 0 0 2px var(--m-brand-focus);
+  outline: none;
+}
+
+.app-shell--merchant .merchant-order-detail .detail-id__short {
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell--merchant .merchant-order-detail .detail-emphasis {
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+
+@media (max-width: 560px) {
+  .app-shell--merchant .merchant-menu-page .menu-item {
+    display: grid;
+    grid-template-columns: 2.875rem minmax(0, 1fr);
+    align-items: start;
+    column-gap: 0.7rem;
+    row-gap: 0.5rem;
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-item .dish-thumb {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-item__info {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-item__actions {
+    grid-row: 2;
+    grid-column: 2;
+    width: 100%;
+    justify-self: stretch;
+    justify-content: flex-start;
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-item__feedback {
+    grid-row: 3;
+    grid-column: 1 / -1;
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-item__version {
+    display: none;
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-page__actions {
+    width: 100%;
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-page__actions .action-button {
+    flex: 0 1 auto;
+  }
+
+  .app-shell--merchant .merchant-order-list .merchant-view__actions .merchant-link-button {
+    flex: 0 1 auto;
+  }
+
+  .app-shell--merchant .merchant-order-list .order-row__detail {
+    padding: 0.3rem 0.4rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .app-shell--merchant .merchant-menu-page .menu-item__actions button {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.71875rem;
+  }
+
+  .app-shell--merchant .merchant-my__row span:last-child {
+    max-width: 55%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell--merchant
+    :is(.merchant-menu-page, .merchant-order-list, .merchant-my, .merchant-my-info, .merchant-wallet, .business-hours-page, .merchant-order-detail)
+    * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

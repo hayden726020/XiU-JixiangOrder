@@ -30,6 +30,7 @@ import SourceSelectPage from './pages/SourceSelectPage';
 import WalletPage from './pages/WalletPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderListPage from './pages/OrderListPage';
+import PrepSummary from './components/PrepSummary';
 import {
   actionErrorText,
   actionPrompt,
@@ -42,6 +43,20 @@ import { formatClock, localInputToZonedIso, orderNoLabel, statusView } from './s
 import type { DishPatch } from './state/menuEdit';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
 import { resolveEffectiveMerchantName } from './state/onboarding';
+import {
+
+  loadNotifySettings,
+  loadPausedBusiness,
+  loadSpecialBusinessDays,
+  orderDateOf,
+  saveNotifySettings,
+  savePausedBusiness,
+  saveSpecialBusinessDays,
+  scenarioDateLabel,
+  type MerchantNotifySettings,
+  type SpecialBusinessDay,
+} from './state/serviceSettings';
+import { playNewOrderChime, unlockNotificationSound } from './utils/notifySound';
 import {
   loadPackagingFeeSetting,
   parsePackagingFeeText,
@@ -56,11 +71,30 @@ import { getApiBaseInfo } from '../../shared/config';
 import { createRequestId } from '../../shared/requestId';
 import { getSession, subscribeSession, clearSession, type Session } from '../../shared/session';
 import merchantAvatar from './assets/merchant-avatar-default.webp';
+import {
+  IconBell,
+  IconBookOpen,
+  IconCalendarClock,
+  IconChevronRight,
+  IconCircleCheck,
+  IconClock3,
+  IconLogOut,
+  IconMapPin,
+  IconPackage,
+  IconPhone,
+  IconSettings2,
+  IconSquarePen,
+  IconStore,
+  IconUserRound,
+  IconWallet,
+} from './components/MerchantIcons';
 import './merchant.css';
 import './merchant.v4.css';
 import './merchant.v2.css';
 import './merchant.v2-fix.css';
 import './merchant.hours.css';
+import './merchant.v5.css';
+import './merchant.v7.css';
 
 type DataMode = 'sample' | 'real';
 
@@ -83,7 +117,7 @@ function persistDataMode(next: DataMode): void {
   }
 }
 
-const ORDERS_PAGE_SIZE = 20;
+const ORDERS_PAGE_SIZE = 100;
 const AUTO_REFRESH_MS = 15000;
 const MERCHANT_ROUTE = '/merchant';
 const MENU_ROUTE = `${MERCHANT_ROUTE}/menu`;
@@ -180,6 +214,7 @@ export default function MerchantHome() {
   const [orderGroupKey, setOrderGroupKey] = useState('new');
   const [orderPageInfo, setOrderPageInfo] = useState({ page: 1, pageSize: ORDERS_PAGE_SIZE, total: 0 });
   const [menu, setMenu] = useState<MenuDay | null>(null);
+  const [menuInitialTab, setMenuInitialTab] = useState<'today' | 'library'>('today');
   const [mySlots, setMySlots] = useState<SlotDay | null>(null);
   const [mySlotsLoading, setMySlotsLoading] = useState(false);
   const [mySlotsError, setMySlotsError] = useState<string | null>(null);
@@ -192,10 +227,22 @@ export default function MerchantHome() {
   const [packagingFeeInput, setPackagingFeeInput] = useState('1.00');
   const [packagingFeedback, setPackagingFeedback] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
   const [logoutConfirming, setLogoutConfirming] = useState(false);
+  const [notifySettings, setNotifySettings] = useState<MerchantNotifySettings>(() => loadNotifySettings());
+  const [businessPending, setBusinessPending] = useState(false);
+  const [prepOpen, setPrepOpen] = useState(false);
+  const [prepOrders, setPrepOrders] = useState<MerchantOrder[]>([]);
+  const [prepLoading, setPrepLoading] = useState(false);
+  const [prepError, setPrepError] = useState<string | null>(null);
+  const [prepTruncated, setPrepTruncated] = useState(false);
+  const [specialDays, setSpecialDays] = useState<SpecialBusinessDay[]>(() => loadSpecialBusinessDays(initialMode));
+  const [specialDateInput, setSpecialDateInput] = useState('');
+  const [specialFeedback, setSpecialFeedback] = useState<string | null>(null);
   const [dishLibrary, setDishLibrary] = useState<Dish[]>([]);
   const [dishLibraryLoading, setDishLibraryLoading] = useState(false);
   const [dishLibraryError, setDishLibraryError] = useState<string | null>(null);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -205,8 +252,14 @@ export default function MerchantHome() {
   const listScrollTop = useRef(0);
   const restoreListScroll = useRef(false);
   const listRefreshInFlight = useRef(false);
+  const homeRefreshInFlight = useRef(false);
   const orderRefreshInFlight = useRef(false);
+  const writeInFlight = useRef(false);
+  const detailLoadFor = useRef<string | null>(null);
   const knownOrderIds = useRef<Set<string>>(new Set());
+  const knownOrderStatuses = useRef<Map<string, string>>(new Map());
+  const lastChimeAt = useRef(0);
+
 
   const source = useMemo(() => createMerchantSource({ mode, scenario }), [mode, scenario]);
   const businessDate = mode === 'sample' ? SAMPLE_DATES[0] : today;
@@ -220,6 +273,16 @@ export default function MerchantHome() {
 
 
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
+
+  useEffect(() => {
+    const unlock = () => unlockNotificationSound();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   useEffect(() => {
     persistDataMode(mode);
@@ -302,6 +365,7 @@ export default function MerchantHome() {
 
   function handleMerchantLoggedIn() {
     clearActionState();
+    resetKnownOrders();
     setNotice(null);
     setView(viewFromRoute());
     setOrderPage(1);
@@ -314,6 +378,7 @@ export default function MerchantHome() {
 
   async function handleMerchantLogout() {
     clearActionState();
+    resetKnownOrders();
     setNotice(null);
     setLogoutConfirming(false);
     if (mode === 'real') {
@@ -402,7 +467,12 @@ export default function MerchantHome() {
     void (async () => {
       const result = await source.getOrders(1, 100);
       if (!alive) return;
-      if (result.ok) setHomeOrders(result.data.orders);
+      if (result.ok) {
+        rememberOrders(result.data.orders, false);
+        setHomeOrders(result.data.orders);
+      } else {
+        setNotice((current) => current ?? `首页经营数据读取失败：${result.error.message}`);
+      }
       setHomeOrdersLoading(false);
     })();
     return () => {
@@ -435,6 +505,38 @@ export default function MerchantHome() {
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
     : null;
+
+  useEffect(() => {
+    if (view.name !== 'detail') {
+      detailLoadFor.current = null;
+      setDetailLoading(false);
+      setDetailError(null);
+      return;
+    }
+    if (loading || activeOrder || detailLoadFor.current === view.orderId) return;
+    if (mode === 'real' && !merchantLoggedIn) return;
+
+    let alive = true;
+    detailLoadFor.current = view.orderId;
+    setDetailLoading(true);
+    setDetailError(null);
+    void (async () => {
+      const result = await source.getOrder(view.orderId);
+      if (!alive) return;
+      setDetailLoading(false);
+      if (result.ok) {
+        setOrders((current) => (current.some((item) => item.id === result.data.id)
+          ? current.map((item) => (item.id === result.data.id ? result.data : item))
+          : [...current, result.data]));
+        setDetailError(null);
+      } else {
+        setDetailError(result.error.message);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [view, loading, activeOrder, source, mode, merchantLoggedIn, detailError]);
   const accountDisplayName = session?.user.role === 'MERCHANT'
     ? (session.user.displayName?.trim() || null)
     : null;
@@ -456,17 +558,36 @@ export default function MerchantHome() {
     ? `${Number(businessDate.split('-')[1])}月${Number(businessDate.split('-')[2])}日`
     : businessDate;
 
+  function resetKnownOrders() {
+    knownOrderIds.current.clear();
+    knownOrderStatuses.current.clear();
+  }
+
   function rememberOrders(next: MerchantOrder[], announce: boolean) {
-    if (announce) {
-      const fresh = next.filter(
-        (order) => order.status === 'NEW' && !knownOrderIds.current.has(order.id),
-      );
-      if (fresh.length > 0) {
-        setNotice(`发现 ${fresh.length} 笔新订单，已在「待接单」分组显示。`);
+    const fresh = announce
+      ? next.filter((order) => order.status === 'NEW' && !knownOrderIds.current.has(order.id))
+      : [];
+    const justCancelled = announce
+      ? next.filter((order) => {
+        const previous = knownOrderStatuses.current.get(order.id);
+        return order.status === 'CANCELLED' && previous !== undefined && previous !== 'CANCELLED';
+      })
+      : [];
+    if (fresh.length > 0) {
+      setNotice(`发现 ${fresh.length} 笔新订单，已在「待接单」分组显示。`);
+      if (notifySettings.soundEnabled) {
+        const now = Date.now();
+        if (now - lastChimeAt.current > 5000) {
+          lastChimeAt.current = now;
+          playNewOrderChime();
+        }
       }
+    } else if (justCancelled.length > 0 && notifySettings.cancelAlertEnabled) {
+      setNotice(`有 ${justCancelled.length} 笔订单已取消，请到「已取消」分组查看取消说明。`);
     }
     for (const order of next) {
       knownOrderIds.current.add(order.id);
+      knownOrderStatuses.current.set(order.id, order.status);
     }
   }
 
@@ -523,9 +644,42 @@ export default function MerchantHome() {
     setActionError(null);
   }
 
+  async function refreshHomeOrders(options: { announce?: boolean } = {}) {
+    if (homeRefreshInFlight.current) return;
+    homeRefreshInFlight.current = true;
+    try {
+      const result = await source.getOrders(1, 100);
+      if (result.ok) {
+        rememberOrders(result.data.orders, options.announce !== false);
+        setHomeOrders(result.data.orders);
+      }
+    } finally {
+      homeRefreshInFlight.current = false;
+    }
+  }
+
   function changeMode(next: DataMode) {
     if (next === mode) return;
     clearActionState();
+    resetKnownOrders();
+    lastChimeAt.current = 0;
+    detailLoadFor.current = null;
+    setOrders([]);
+    setHomeOrders([]);
+    setMenu(null);
+    setMySlots(null);
+    setDishLibrary([]);
+    setPrepOrders([]);
+    setPrepOpen(false);
+    setPrepLoading(false);
+    setPrepError(null);
+    setPrepTruncated(false);
+    setOrdersError(null);
+    setMenuError(null);
+    setMySlotsError(null);
+    setDetailLoading(false);
+    setDetailError(null);
+    setLastRefreshedAt(null);
     if (merchantRoute() !== ORDERS_ROUTE) {
       window.location.hash = ORDERS_ROUTE;
     }
@@ -539,6 +693,7 @@ export default function MerchantHome() {
 
   function changeScenario(next: MerchantScenario) {
     clearActionState();
+    resetKnownOrders();
     setScenario(next);
     setView({ name: 'list' });
     setNotice(null);
@@ -576,7 +731,193 @@ export default function MerchantHome() {
     setOrderGroupKey(groupKey);
   }
 
-  function openMenu() {
+  function confirmedOrderCount(date: string): number {
+    const seen = new Set<string>();
+    let count = 0;
+    for (const order of [...orders, ...homeOrders]) {
+      if (seen.has(order.id)) continue;
+      seen.add(order.id);
+      if (orderDateOf(order) === date && order.status !== 'CANCELLED') count += 1;
+    }
+    return count;
+  }
+
+  async function setBusinessOpen(open: boolean) {
+    if (businessPending) return;
+    const current = mySlots;
+    if (!current || current.slots.length === 0) {
+      setNotice('还没有读取到今日营业时段，请刷新后重试。');
+      return;
+    }
+    const turnedOn = current.slots.filter((slot) => slot.enabled);
+    const now = Date.now();
+    let targets: typeof current.slots;
+    let skippedEnded = 0;
+    if (open) {
+      const record = loadPausedBusiness();
+      if (!record || record.date !== businessDate || record.slotIds.length === 0) {
+        setNotice('没有找到今天暂停前的时段记录，请到「时段设置」里开放需要接单的时段。');
+        return;
+      }
+      const remembered = new Set(record.slotIds);
+      const candidates = current.slots.filter((slot) => remembered.has(slot.slotId));
+      targets = candidates.filter((slot) => {
+        if (businessDate !== today) return true;
+        const end = Date.parse(slot.slotEnd);
+        return !Number.isFinite(end) || end > now;
+      });
+      skippedEnded = candidates.length - targets.length;
+      if (targets.length === 0) {
+        savePausedBusiness(null);
+        setNotice('今天暂停前开放的时段都已经结束，不再重新开放；如仍有晚间时段，请到「时段设置」手动开启。');
+        return;
+      }
+    } else {
+      if (turnedOn.length === 0) {
+        setNotice('当前已经是暂停接单状态，学生端不能创建新的预约。');
+        return;
+      }
+      savePausedBusiness({
+        date: businessDate,
+        slotIds: turnedOn.map((slot) => slot.slotId),
+        pausedAt: new Date().toISOString(),
+      });
+      targets = turnedOn;
+    }
+    if (targets.length === 0) {
+      setNotice('当前没有开放中的时段。');
+      return;
+    }
+    const confirmed = confirmedOrderCount(businessDate);
+    setBusinessPending(true);
+    if (mode === 'sample') {
+      setMySlots((previous) => (previous
+        ? {
+          ...previous,
+          slots: previous.slots.map((slot) => (
+            targets.some((target) => target.slotId === slot.slotId)
+              ? { ...slot, enabled: open, full: open ? slot.remaining <= 0 : slot.full }
+              : slot
+          )),
+        }
+        : previous));
+      setBusinessPending(false);
+      setNotice(open
+        ? `已恢复接单（样例）：学生端可继续预约今日时段；已确认的 ${confirmed} 笔订单不受影响。`
+        : `已暂停接单（样例）：学生端不能新建预约；已确认的 ${confirmed} 笔订单不会被取消。`);
+      return;
+    }
+    if (targets.some((slot) => slot.version === null)) {
+      setBusinessPending(false);
+      setNotice('服务端未返回时段 version，暂不能安全修改营业状态；请到「时段设置」重试或联系后端补字段。');
+      return;
+    }
+    const failures: string[] = [];
+    let succeeded = 0;
+    for (const slot of targets) {
+      const result = await source.updateSlot(businessDate, slot.slotId, {
+        requestId: createRequestId('merchant-business'),
+        expectedVersion: slot.version,
+        capacity: slot.capacity,
+        enabled: open,
+      });
+      if (result.ok) {
+        succeeded += 1;
+      } else {
+        failures.push(`${formatClock(slot.slotStart)}：${result.error.message}`);
+      }
+    }
+    setBusinessPending(false);
+    setDataVersion((value) => value + 1);
+    if (failures.length > 0) {
+      setNotice(
+        `${open ? '恢复' : '暂停'}接单未全部完成（成功 ${succeeded}/${targets.length}）：${failures[0]}`,
+      );
+      return;
+    }
+    if (open) savePausedBusiness(null);
+    const endedNote = open && skippedEnded > 0
+      ? `；${skippedEnded} 个已结束时段不再重新开放`
+      : '';
+    setNotice(open
+      ? `已恢复接单${endedNote}：学生端可继续预约今日时段；已确认的 ${confirmed} 笔订单不受影响。`
+      : `已暂停接单：学生端不能新建预约；已确认的 ${confirmed} 笔订单不会被取消。`);
+  }
+
+  async function openPrepSummary() {
+    setPrepOpen(true);
+    setPrepLoading(true);
+    setPrepError(null);
+    const first = await source.getOrders(1, 100);
+    if (!first.ok) {
+      setPrepLoading(false);
+      setPrepError(first.error.message);
+      return;
+    }
+    const all = [...first.data.orders];
+    const total = first.data.total;
+    const maxPage = Math.min(Math.max(1, Math.ceil(total / 100)), 5);
+    let partialError: string | null = null;
+    for (let page = 2; page <= maxPage; page += 1) {
+      const next = await source.getOrders(page, 100);
+      if (!next.ok) {
+        partialError = next.error.message;
+        break;
+      }
+      all.push(...next.data.orders);
+    }
+    const deduped = new Map<string, MerchantOrder>();
+    for (const order of all) deduped.set(order.id, order);
+    setPrepLoading(false);
+    setPrepError(partialError);
+    setPrepOrders([...deduped.values()]);
+    setPrepTruncated(total > deduped.size);
+  }
+
+  function applyNotifySettings(next: MerchantNotifySettings) {
+    setNotifySettings(next);
+    saveNotifySettings(next);
+    if (next.soundEnabled) {
+      unlockNotificationSound();
+      playNewOrderChime();
+    }
+  }
+
+  useEffect(() => {
+    setSpecialDays(loadSpecialBusinessDays(mode));
+    setSpecialFeedback(null);
+  }, [mode]);
+
+  function addSpecialDay() {
+    const date = specialDateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setSpecialFeedback('请选择要设置的日期。');
+      return;
+    }
+    if (specialDays.some((day) => day.date === date)) {
+      setSpecialFeedback(`${scenarioDateLabel(date)} 已在列表中。`);
+      return;
+    }
+    const confirmed = confirmedOrderCount(date);
+    const next = [...specialDays, { date, note: '临时停业 / 节假日不接单' }]
+      .sort((left, right) => left.date.localeCompare(right.date));
+    setSpecialDays(next);
+    saveSpecialBusinessDays(mode, next);
+    setSpecialDateInput('');
+    setSpecialFeedback(confirmed > 0
+      ? `已记录 ${scenarioDateLabel(date)} 停业计划；该日期已有 ${confirmed} 笔已确认订单，不会被取消，请提前与学生沟通。`
+      : `已记录 ${scenarioDateLabel(date)} 停业计划。${mode === 'real' ? '本机计划不会自动修改服务端时段，请在「时段设置」同步关闭。' : ''}`);
+  }
+
+  function removeSpecialDay(date: string) {
+    const next = specialDays.filter((day) => day.date !== date);
+    setSpecialDays(next);
+    saveSpecialBusinessDays(mode, next);
+    setSpecialFeedback(`已移除 ${scenarioDateLabel(date)} 的停业计划。`);
+  }
+
+  function openMenu(tab: 'today' | 'library' = 'today') {
+    setMenuInitialTab(tab === 'library' ? 'library' : 'today');
     clearActionState();
     setDataVersion((current) => current + 1);
     window.location.hash = MENU_ROUTE;
@@ -708,7 +1049,7 @@ export default function MerchantHome() {
 
 
   function handleAction(orderId: string, action: OrderAction, input: ActionInput = {}) {
-    if (pendingCode !== null) return;
+    if (pendingCode !== null || writeInFlight.current) return;
     const validation = validateActionInput(action, input, mode);
     if (validation) {
       setActionError({ code: action.code, message: validation, orderId });
@@ -723,7 +1064,10 @@ export default function MerchantHome() {
         setActionError({ code: action.code, message: '订单不在当前列表中，请返回列表刷新后重试。', orderId });
         return;
       }
-      void runRealWrite(order, action, input);
+      writeInFlight.current = true;
+      void runRealWrite(order, action, input).finally(() => {
+        writeInFlight.current = false;
+      });
       return;
     }
     setPendingCode(action.code);
@@ -745,7 +1089,8 @@ export default function MerchantHome() {
       if (result.ok) {
         setOrders((current) => (current.some((item) => item.id === result.data.id)
           ? current.map((item) => (item.id === result.data.id ? result.data : item))
-          : current));
+          : [...current, result.data]));
+        setDetailError(null);
         markRefreshed();
       } else if (!options.silent) {
         setNotice(`刷新订单失败：${result.error.message}`);
@@ -758,8 +1103,9 @@ export default function MerchantHome() {
 
   useEffect(() => {
     if (mode !== 'real' || !merchantLoggedIn || loading) return undefined;
-    if (view.name !== 'list' && view.name !== 'detail') return undefined;
+    if (view.name === 'setup' || view.name === 'source') return undefined;
     const detailId = view.name === 'detail' ? view.orderId : null;
+    const isList = view.name === 'list';
     const tick = () => {
       if (document.visibilityState === 'hidden') return;
       if (detailId) {
@@ -767,7 +1113,11 @@ export default function MerchantHome() {
         void checkNewOrders();
         return;
       }
-      void refreshOrders({ silent: true });
+      if (isList) {
+        void refreshOrders({ silent: true });
+        return;
+      }
+      void refreshHomeOrders();
     };
     const timer = setInterval(tick, AUTO_REFRESH_MS);
     const onVisibilityChange = () => {
@@ -778,7 +1128,7 @@ export default function MerchantHome() {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [mode, merchantLoggedIn, loading, view, orderPage, source]);
+  }, [mode, merchantLoggedIn, loading, view, orderPage, source, notifySettings]);
 
   useEffect(() => {
     if (view.name !== 'source') return;
@@ -842,11 +1192,15 @@ export default function MerchantHome() {
         }
       }
       const updated = result.data;
-      setOrders((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setOrders((current) => (current.some((item) => item.id === updated.id)
+        ? current.map((item) => (item.id === updated.id ? updated : item))
+        : [...current, updated]));
+      setHomeOrders((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       setNotice(
         `${action.label}成功：订单 ${orderNoLabel(updated)} 状态为「${statusView(updated.status).label}」，版本 v${updated.version}。`,
       );
       void refreshOrders({ silent: true });
+      void refreshHomeOrders({ announce: false });
       return;
     }
     setActionError({
@@ -870,13 +1224,14 @@ export default function MerchantHome() {
     patch: DishPatch,
     requestId: string,
   ) {
-    const result = await source.updateDish(menuDate, dish.dishId, {
+    const targetDate = menuDate;
+    const result = await source.updateDish(targetDate, dish.dishId, {
       requestId,
       expectedVersion: dish.version,
       ...patch,
     });
     if (result.ok) {
-      setMenu((current) => (current
+      setMenu((current) => (current && current.date === targetDate
         ? {
           ...current,
           dishes: current.dishes.map((item) => (item.dishId === result.data.dishId ? result.data : item)),
@@ -890,9 +1245,10 @@ export default function MerchantHome() {
   }
 
   async function createDish(input: CreateDishInput) {
-    const result = await source.createDish({ ...input, date: menuDate } as CreateDishInput & { date?: string });
+    const targetDate = menuDate;
+    const result = await source.createDish({ ...input, date: targetDate } as CreateDishInput & { date?: string });
     if (result.ok) {
-      setMenu((current) => (current
+      setMenu((current) => (current && current.date === targetDate
         ? { ...current, dishes: [...current.dishes, result.data] }
         : current));
       setNotice(
@@ -915,12 +1271,15 @@ export default function MerchantHome() {
   }
 
   async function saveDailyMenu(items: DailyMenuSelection[], requestId: string) {
-    const result = await source.setDailyMenu(menuDate, { requestId, dishes: items });
+    const targetDate = menuDate;
+    const result = await source.setDailyMenu(targetDate, { requestId, dishes: items });
     if (result.ok) {
-      setMenu(result.data);
+      if (result.data.date === targetDate) {
+        setMenu(result.data);
+      }
       setNotice(mode === 'sample'
-        ? `样例菜单已更新（仅当前页面内存）：上架 ${result.data.dishes.length} 道菜；未勾选的菜品不会出现在学生端。`
-        : `今日菜单已保存：上架 ${result.data.dishes.length} 道菜；未勾选的菜品不会出现在学生端。`);
+        ? `样例菜单已更新（仅当前页面内存）：上架 ${result.data.dishes.filter((item) => item.onSale).length} 道菜；未勾选的菜品不会出现在学生端。`
+        : `今日菜单已保存：上架 ${result.data.dishes.filter((item) => item.onSale).length} 道菜；未勾选的菜品不会出现在学生端。`);
     }
     return result;
   }
@@ -953,12 +1312,13 @@ export default function MerchantHome() {
 
 
   async function deleteDish(dish: Dish, requestId: string) {
-    const result = await source.deleteDish(menuDate, dish.dishId, {
+    const targetDate = menuDate;
+    const result = await source.deleteDish(targetDate, dish.dishId, {
       requestId,
       expectedVersion: dish.version,
     });
     if (result.ok) {
-      setMenu((current) => (current
+      setMenu((current) => (current && current.date === targetDate
         ? {
           ...current,
           dishes: current.dishes.filter((item) => item.dishId !== result.data.dishId),
@@ -1038,7 +1398,10 @@ export default function MerchantHome() {
       )}
 
       {notice && (
-        <div className="merchant-notice" role="status">
+        <div
+          className={view.name === 'home' ? 'merchant-notice merchant-notice--toast' : 'merchant-notice'}
+          role="status"
+        >
           <span>{notice}</span>
           <button
             type="button"
@@ -1063,6 +1426,8 @@ export default function MerchantHome() {
           onOpenOrders={openOrders}
           onOpenMenu={openMenu}
           onOpenHours={() => openHours('home')}
+          onSetBusinessOpen={(open) => void setBusinessOpen(open)}
+          businessPending={businessPending}
         />
       )}
 
@@ -1085,6 +1450,7 @@ export default function MerchantHome() {
           orders={orders}
           scenario={scenario}
           isSample={mode === 'sample'}
+          businessDate={businessDate}
 
           loading={loading}
           error={ordersError}
@@ -1101,6 +1467,7 @@ export default function MerchantHome() {
           pendingOrderId={pendingOrderId}
           actionError={actionError}
           onOpenMenu={openMenu}
+          onOpenPrep={() => void openPrepSummary()}
 
           onRefresh={refreshOrders}
           refreshing={refreshing}
@@ -1121,6 +1488,22 @@ export default function MerchantHome() {
             pendingCode={pendingCode}
             actionError={actionError}
           />
+        ) : detailLoading ? (
+          <p className="merchant-empty">正在读取订单…</p>
+        ) : detailError ? (
+          <div className="merchant-empty merchant-empty--error">
+            <p>订单读取失败：{detailError}</p>
+            <button
+              type="button"
+              className="action-button"
+              onClick={() => {
+                detailLoadFor.current = null;
+                setDetailError(null);
+              }}
+            >
+              重新加载
+            </button>
+          </div>
         ) : (
           <p className="merchant-empty">
             {loading ? '正在读取订单…' : '订单不存在、已不在当前数据源中，或需要登录档口账号。'}
@@ -1136,6 +1519,7 @@ export default function MerchantHome() {
           isSample={mode === 'sample'}
           loading={loading}
           error={menuError}
+          initialTab={menuInitialTab}
           onDateChange={setMenuDate}
           menu={menu}
           onSaveDish={saveDish}
@@ -1205,49 +1589,76 @@ export default function MerchantHome() {
           </div>
 
           <div className='merchant-my__group' data-my-profile>
-            <h3 className='merchant-my__group-title'>个人信息</h3>
+            <h3 className='merchant-my__group-title'>
+              <IconUserRound size={17} />
+              个人信息
+            </h3>
             <div className='merchant-my__row'>
               <span>店铺负责人</span>
               <span>{profileLoading ? '读取中…' : profile?.merchant?.contactName || '未填写'}</span>
             </div>
             <div className='merchant-my__row'>
-              <span>联系电话</span>
+              <span className='merchant-my__label'>
+                <IconPhone size={16} />
+                联系电话
+              </span>
               <span>{profileLoading ? '读取中…' : profile?.merchant?.contactPhone || '未填写'}</span>
             </div>
             <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openMyInfo}>
-              <span>我的信息</span>
-              <span className='merchant-my__arrow'>→</span>
+              <span className='merchant-my__label'>
+                <IconSquarePen size={16} />
+                我的信息
+              </span>
+              <span className='merchant-my__arrow'><IconChevronRight size={16} /></span>
             </button>
           </div>
 
           <div className='merchant-my__group'>
-            <h3 className='merchant-my__group-title'>店铺信息</h3>
+            <h3 className='merchant-my__group-title'>
+              <IconStore size={17} />
+              店铺信息
+            </h3>
             <div className='merchant-my__row'>
               <span>店铺名称</span>
               <span>{profileLoading ? '读取中…' : profile?.shop?.name || '未创建店铺'}</span>
             </div>
             <div className='merchant-my__row'>
-              <span>档口位置</span>
+              <span className='merchant-my__label'>
+                <IconMapPin size={16} />
+                档口位置
+              </span>
               <span>{profileLoading ? '读取中…' : profile?.shop?.location || '未填写'}</span>
             </div>
             <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openSetup}>
-              <span>{profile?.onboardingStep === 'SHOP_CREATED' ? '编辑店铺资料' : '店铺信息与入驻'}</span>
-              <span className='merchant-my__arrow'>→</span>
+              <span className='merchant-my__label'>
+                <IconSquarePen size={16} />
+                {profile?.onboardingStep === 'SHOP_CREATED' ? '编辑店铺资料' : '店铺信息与入驻'}
+              </span>
+              <span className='merchant-my__arrow'><IconChevronRight size={16} /></span>
             </button>
           </div>
 
           <div className='merchant-my__group'>
-            <h3 className='merchant-my__group-title'>营业设置</h3>
+            <h3 className='merchant-my__group-title'>
+              <IconClock3 size={17} />
+              营业设置
+            </h3>
             <div className='merchant-my__row'>
               <span>今日营业时段</span>
               <span>{myHours}</span>
             </div>
             <div className='merchant-my__row'>
-              <span>营业状态</span>
+              <span className='merchant-my__label'>
+                <IconCircleCheck size={16} />
+                营业状态
+              </span>
               <span>{myIsOpen ? '已开放接单' : '未开放接单'}</span>
             </div>
             <div className='merchant-my__row'>
-              <span>打包盒收费</span>
+              <span className='merchant-my__label'>
+                <IconPackage size={16} />
+                打包盒收费
+              </span>
               <span data-packaging-summary>{packagingFeeSummary(packagingSetting)}</span>
             </div>
             <button
@@ -1258,7 +1669,9 @@ export default function MerchantHome() {
               aria-controls='merchant-packaging-panel'
             >
               <span>设置打包盒收费</span>
-              <span className='merchant-my__arrow'>{packagingOpen ? '收起' : '→'}</span>
+              <span className='merchant-my__arrow'>
+                {packagingOpen ? '收起' : <IconChevronRight size={16} />}
+              </span>
             </button>
             {packagingOpen && (
               <div className='merchant-my__packaging' id='merchant-packaging-panel' data-packaging-panel>
@@ -1325,21 +1738,30 @@ export default function MerchantHome() {
                 openMenu();
               }}
             >
-              <span>菜单设置</span>
-              <span className='merchant-my__arrow'>→</span>
+              <span className='merchant-my__label'>
+                <IconBookOpen size={16} />
+                菜单设置
+              </span>
+              <span className='merchant-my__arrow'><IconChevronRight size={16} /></span>
             </button>
             <button
               type='button'
               className='merchant-my__row merchant-my__row--action'
               onClick={() => openHours('my')}
             >
-              <span>时段设置</span>
-              <span className='merchant-my__arrow'>→</span>
+              <span className='merchant-my__label'>
+                <IconCalendarClock size={16} />
+                时段设置
+              </span>
+              <span className='merchant-my__arrow'><IconChevronRight size={16} /></span>
             </button>
             {!hasShop && (
               <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openSetup}>
-                <span>先去完善店铺资料</span>
-                <span className='merchant-my__arrow'>→</span>
+                <span className='merchant-my__label'>
+                  <IconSquarePen size={16} />
+                  先去完善店铺资料
+                </span>
+                <span className='merchant-my__arrow'><IconChevronRight size={16} /></span>
               </button>
             )}
             {!hasShop && (
@@ -1348,18 +1770,116 @@ export default function MerchantHome() {
           </div>
 
           <div className='merchant-my__group'>
-            <h3 className='merchant-my__group-title'>钱包</h3>
+            <h3 className='merchant-my__group-title'>
+              <IconWallet size={17} />
+              钱包
+            </h3>
             <button type='button' className='merchant-my__row merchant-my__row--action' onClick={openWallet}>
               <span>钱包</span>
               <span className='merchant-my__row-side'>
                 {mode === 'sample' ? '样例余额' : '暂未接通'}
-                <span className='merchant-my__arrow'>→</span>
+                <span className='merchant-my__arrow'><IconChevronRight size={16} /></span>
               </span>
             </button>
           </div>
 
+          <div className='merchant-my__group' data-notify-settings>
+            <h3 className='merchant-my__group-title'>
+              <IconBell size={17} />
+              消息与提醒
+            </h3>
+            <label className='merchant-my__row merchant-my__row--switch'>
+              <span>新订单声音提醒</span>
+              <input
+                type='checkbox'
+                checked={notifySettings.soundEnabled}
+                onChange={(event) => applyNotifySettings({
+                  ...notifySettings,
+                  soundEnabled: event.target.checked,
+                })}
+                data-notify-sound
+              />
+            </label>
+            <label className='merchant-my__row merchant-my__row--switch'>
+              <span>订单取消与待处理提醒</span>
+              <input
+                type='checkbox'
+                checked={notifySettings.cancelAlertEnabled}
+                onChange={(event) => applyNotifySettings({
+                  ...notifySettings,
+                  cancelAlertEnabled: event.target.checked,
+                })}
+                data-notify-cancel
+              />
+            </label>
+            <p className='merchant-my__note'>
+              新订单仍会同步数字与列表；关闭声音只影响本机播放。同一批新订单 5 秒内只响一次。
+            </p>
+          </div>
+
+          <div className='merchant-my__group' data-special-days>
+            <h3 className='merchant-my__group-title'>
+              <IconCalendarClock size={17} />
+              特殊营业日期
+            </h3>
+            <div className='merchant-my__row'>
+              <span>今日接单状态</span>
+              <span>{myIsOpen ? '开放接单' : '已暂停接单'}</span>
+            </div>
+            <button
+              type='button'
+              className='merchant-my__row merchant-my__row--action'
+              onClick={() => void setBusinessOpen(!myIsOpen)}
+              disabled={businessPending || mySlotsLoading}
+            >
+              <span>{myIsOpen ? '暂停今日接单' : '恢复今日接单'}</span>
+              <span className='merchant-my__arrow'>
+                {businessPending ? '提交中…' : <IconChevronRight size={16} />}
+              </span>
+            </button>
+            <div className='merchant-my__special-form'>
+              <input
+                type='date'
+                value={specialDateInput}
+                onChange={(event) => setSpecialDateInput(event.target.value)}
+                aria-label='特殊营业日期'
+              />
+              <button type='button' className='action-button' onClick={addSpecialDay}>
+                记录停业
+              </button>
+            </div>
+            {specialDays.length === 0 ? (
+              <p className='merchant-my__note'>暂无临时停业或节假日停业记录。</p>
+            ) : (
+              <ul className='merchant-my__special-list'>
+                {specialDays.map((day) => (
+                  <li key={day.date}>
+                    <span>
+                      <b>{scenarioDateLabel(day.date)}</b>
+                      <small>{day.note}</small>
+                    </span>
+                    <button type='button' onClick={() => removeSpecialDay(day.date)}>
+                      移除
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {specialFeedback && (
+              <p className='merchant-my__note' role='status' data-special-feedback>
+                {specialFeedback}
+              </p>
+            )}
+            <p className='merchant-my__note'>
+              停业计划只在本机记录与提示，不会静默取消已确认订单；真实模式请同时到「时段设置」关闭对应日期接单。
+            </p>
+          </div>
+
           <details className='merchant-my__fold'>
-            <summary>系统信息与开发调试</summary>
+            <summary>
+              <IconSettings2 size={16} />
+              系统信息与开发调试
+            </summary>
             <div className='merchant-my__fold-body'>
               <div className='merchant-my__row'>
                 <span>数据源</span>
@@ -1404,8 +1924,11 @@ export default function MerchantHome() {
                 className='merchant-my__row merchant-my__row--action merchant-my__row--danger'
                 onClick={() => setLogoutConfirming(true)}
               >
-                <span>退出登录</span>
-                <span className='merchant-my__arrow'>→</span>
+                <span className='merchant-my__label'>
+                  <IconLogOut size={16} />
+                  退出登录
+                </span>
+                <span className='merchant-my__arrow'><IconChevronRight size={16} /></span>
               </button>
             )}
           </div>
@@ -1435,6 +1958,20 @@ export default function MerchantHome() {
         />
       )}
 
+      {prepOpen && (
+        <PrepSummary
+          date={businessDate}
+          today={today}
+          dates={dates}
+          orders={prepOrders}
+          loading={prepLoading}
+          error={prepError}
+          truncated={prepTruncated}
+          onRefresh={() => void openPrepSummary()}
+          onClose={() => setPrepOpen(false)}
+        />
+      )}
+
       {(merchantLoggedIn || mode === 'sample') && view.name !== 'source' && (
       <nav className='merchant-tabbar' aria-label='底部导航'>
         <button
@@ -1451,7 +1988,7 @@ export default function MerchantHome() {
         <button
           type='button'
           className={`merchant-tab-item${view.name === 'menu' ? ' is-active' : ''}`}
-          onClick={openMenu}
+          onClick={() => openMenu('today')}
         >
           <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
             <path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20' />

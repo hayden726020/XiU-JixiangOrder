@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import type {
   CreateDishInput,
   DailyMenuSelection,
@@ -15,6 +15,15 @@ import { createRequestId } from '../../../shared/requestId';
 import DishCustomizeEditor from '../components/DishCustomizeEditor';
 import DishCustomizePreview from '../components/DishCustomizePreview';
 import DishThumb from '../components/DishThumb';
+import {
+  IconEye,
+  IconEyeOff,
+  IconListPlus,
+  IconPencil,
+  IconPlus,
+  IconTrash2,
+  IconUtensils,
+} from '../components/MerchantIcons';
 import {
   customizationBadge,
   customizationToDraft,
@@ -42,6 +51,7 @@ interface MenuPageProps {
   isSample: boolean;
   loading: boolean;
   error: string | null;
+  initialTab?: 'today' | 'library';
   onDateChange: (date: string) => void;
   menu: MenuDay | null;
   onSaveDish: (dish: Dish, patch: DishPatch, requestId: string) => Promise<SourceResult<Dish>>;
@@ -82,6 +92,7 @@ export default function MenuPage({
   onLoadDishLibrary,
   onSaveDailyMenu,
 
+  initialTab = 'today',
   onGoSetup,
 }: MenuPageProps) {
   const dateOptions = isSample
@@ -91,6 +102,8 @@ export default function MenuPage({
       isToday: index === 0,
     }))
     : menuDateOptions(dates, today);
+  const dateIsToday = date === today;
+  const dateTitle = dateIsToday ? '今日菜单' : `${shortDate(date)} 菜单`;
   const scope: 'sample' | 'real' = isSample ? 'sample' : 'real';
   const [customizations, setCustomizations] = useState<Record<string, DishCustomization>>(() => loadCustomizations(scope));
   const [dishCustomDraft, setDishCustomDraft] = useState<DishCustomizationDraft>(emptyCustomizationDraft);
@@ -98,7 +111,7 @@ export default function MenuPage({
   const [newDishCustomDraft, setNewDishCustomDraft] = useState<DishCustomizationDraft>(emptyCustomizationDraft);
   const [newDishCustomError, setNewDishCustomError] = useState<string | null>(null);
   const [customizationStoreError, setCustomizationStoreError] = useState<string | null>(null);
-  const [menuTab, setMenuTab] = useState<'today' | 'library'>('today');
+  const [menuTab, setMenuTab] = useState<'today' | 'library'>(initialTab);
   const [dailyMenuOpen, setDailyMenuOpen] = useState(false);
   const [dailyDraft, setDailyDraft] = useState<Record<string, { selected: boolean; quantityText: string }>>({});
   const [dailyRequestId, setDailyRequestId] = useState('');
@@ -117,6 +130,7 @@ export default function MenuPage({
   const [dishError, setDishError] = useState<string | null>(null);
   const [dishSaving, setDishSaving] = useState(false);
   const [dishTogglingId, setDishTogglingId] = useState<string | null>(null);
+  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
   const [todayTogglingId, setTodayTogglingId] = useState<string | null>(null);
   const [todayToggleFeedback, setTodayToggleFeedback] = useState<{ dishId: string; message: string } | null>(null);
   const [dishToggleFeedback, setDishToggleFeedback] = useState<{ dishId: string; message: string } | null>(null);
@@ -147,6 +161,22 @@ export default function MenuPage({
     setDailyConfirm(null);
     setDailyDiscardConfirm(false);
     setDailyResult(null);
+    setEditingDishId(null);
+    setDishRequestId('');
+    setDishError(null);
+    setDishCustomError(null);
+    setDishCustomDraft(emptyCustomizationDraft());
+    setCreatingDish(false);
+    setNewDishRequestId('');
+    setNewDishError(null);
+    setNewDishNeedsShop(false);
+    setNewDishCustomDraft(emptyCustomizationDraft());
+    setNewDishCustomError(null);
+    setDeleteDishId(null);
+    setDeleteRequestId('');
+    setDishDeleteError(null);
+    setDishToggleFeedback(null);
+    setTodayToggleFeedback(null);
   }, [date, scope]);
 
   useEffect(() => {
@@ -157,6 +187,14 @@ export default function MenuPage({
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [editingDishId, creatingDish]);
+
+  useEffect(() => {
+    if (!dailyMenuOpen) return;
+    const target = document.querySelector('[data-daily-menu-editor]');
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [dailyMenuOpen]);
 
   function persistCustomizations(next: Record<string, DishCustomization>) {
     setCustomizations(next);
@@ -188,12 +226,16 @@ export default function MenuPage({
     return [...merged.values()];
   })();
 
+  function todayDishFor(dish: Dish): Dish | null {
+    return menu?.dishes.find((item) => item.dishId === dish.dishId) ?? null;
+  }
+
   function dailyRow(dish: Dish): { selected: boolean; quantityText: string } {
     const draft = dailyDraft[dish.dishId];
     if (draft) return draft;
-    const todayDish = menu?.dishes.find((item) => item.dishId === dish.dishId) ?? null;
+    const todayDish = todayDishFor(dish);
     return {
-      selected: Boolean(todayDish),
+      selected: Boolean(todayDish?.onSale),
       quantityText: String(todayDish?.availableQuantity ?? dish.availableQuantity),
     };
   }
@@ -214,10 +256,10 @@ export default function MenuPage({
     let changed = 0;
     for (const dish of dailyLibrary) {
       const row = dailyRow(dish);
-      const original = menu?.dishes.find((item) => item.dishId === dish.dishId) ?? null;
-      if (row.selected && !original) {
+      const original = todayDishFor(dish);
+      if (row.selected && (!original || !original.onSale)) {
         added += 1;
-      } else if (!row.selected && original) {
+      } else if (!row.selected && original?.onSale) {
         removed += 1;
       } else if (row.selected && original) {
         const text = row.quantityText.trim();
@@ -234,8 +276,10 @@ export default function MenuPage({
     const items: DailyMenuSelection[] = [];
     for (const dish of dailyLibrary) {
       const row = dailyRow(dish);
-      if (!row.selected) continue;
-      const text = row.quantityText.trim();
+      const original = todayDishFor(dish);
+      const keepOffSale = !row.selected && original !== null && !original.onSale;
+      if (!row.selected && !keepOffSale) continue;
+      const text = (row.selected ? row.quantityText : String(original?.availableQuantity ?? 0)).trim();
       if (!/^\d+$/.test(text)) {
         setDailyError(`「${dish.name}」的今日库存必须是 0 或正整数。`);
         return null;
@@ -358,8 +402,8 @@ export default function MenuPage({
       setDailyDraft({});
       setDailyRequestId('');
       setDailyResult(isSample
-        ? `已更新「${shortDate(date)}」的今日菜单：上架 ${result.data.dishes.length} 道菜。样例改动只保存在当前页面内存，刷新后会还原。`
-        : `已保存「${shortDate(date)}」的今日菜单：上架 ${result.data.dishes.length} 道菜，服务端已返回最新菜单。`);
+        ? `已更新「${shortDate(date)}」的今日菜单：上架 ${result.data.dishes.filter((item) => item.onSale).length} 道菜。样例改动只保存在当前页面内存，刷新后会还原。`
+        : `已保存「${shortDate(date)}」的今日菜单：上架 ${result.data.dishes.filter((item) => item.onSale).length} 道菜，服务端已返回最新菜单。`);
       return;
     }
     setDailyError(menuWriteErrorText(result.error.code, result.error.message));
@@ -369,6 +413,19 @@ export default function MenuPage({
   const todayDishes = menu?.dishes ?? [];
   const todayOnSaleDishes = todayDishes.filter((dish) => dish.onSale);
   const todayOffSaleCount = todayDishes.length - todayOnSaleDishes.length;
+
+  const dailyOnSaleCount = dailyLibrary.filter((dish) => dailyRow(dish).selected).length;
+  const dailySortedLibrary = [...dailyLibrary].sort((a, b) => {
+    const aOn = dailyRow(a).selected ? 0 : 1;
+    const bOn = dailyRow(b).selected ? 0 : 1;
+    return aOn - bOn;
+  });
+  const libraryOnSaleCount = dailyLibrary.filter((dish) => todayDishFor(dish)?.onSale).length;
+  const librarySortedDishes = [...dailyLibrary].sort((a, b) => {
+    const aOn = todayDishFor(a)?.onSale ? 0 : 1;
+    const bOn = todayDishFor(b)?.onSale ? 0 : 1;
+    return aOn - bOn;
+  });
 
   function startDishEdit(dish: Dish) {
     setDailyMenuOpen(false);
@@ -476,6 +533,40 @@ export default function MenuPage({
     }
   }
 
+  async function adjustStock(dish: Dish, delta: number) {
+    if (stockSavingId !== null || dishTogglingId !== null) return;
+    const next = dish.availableQuantity + delta;
+    if (!Number.isInteger(next) || next < 0 || next > 10_000) {
+      setDishToggleFeedback({
+        dishId: dish.dishId,
+        message: '库存必须是 0—10000 的整数。',
+      });
+      return;
+    }
+    setStockSavingId(dish.dishId);
+    setDishToggleFeedback(null);
+    setDailyResult(null);
+    const patch: DishPatch = {
+      name: dish.name,
+      type: dish.type ?? 'STAPLE',
+      priceFen: dish.unitPriceFen,
+      availableQuantity: next,
+      onSale: dish.onSale,
+      imageUrl: dish.imageUrl,
+    };
+    const result = await onSaveDish(dish, patch, createRequestId('merchant-dish-stock'));
+    setStockSavingId(null);
+    if (!result.ok) {
+      setDishToggleFeedback({
+        dishId: dish.dishId,
+        message: menuWriteErrorText(result.error.code, result.error.message),
+      });
+      return;
+    }
+    setDailyResult(result.data.availableQuantity === 0
+      ? `「${result.data.name}」库存已调整为 0，学生端会显示售罄；已确认的预约订单不受影响。`
+      : `「${result.data.name}」库存已更新为 ${result.data.availableQuantity}（${shortDate(date)}），已确认的预约订单不受影响。`);
+  }
 
   function startCreateDish() {
     setDailyMenuOpen(false);
@@ -646,8 +737,9 @@ export default function MenuPage({
               onClick={startDailyMenuEdit}
               disabled={!isSample || dailySaving || creatingDish || editingDishId !== null || dishDeletingId !== null}
               title={!isSample ? '真实服务暂未提供菜品库与每日菜单接口，当前仅样例模式可选择今日菜单' : undefined}
-              data-open-daily-menu
+data-open-daily-menu
             >
+              <IconListPlus size={15} />
               从菜品库选今日菜品
             </button>
           )}
@@ -656,9 +748,11 @@ export default function MenuPage({
             className="action-button action-button--primary"
             onClick={startCreateDish}
             disabled={creatingDish || newDishSaving}
+            title={`新增菜品会加入 ${shortDate(date)} 的菜单，其他日期不受影响`}
             data-dish-create
           >
-            + 新增菜品
+            <IconPlus size={15} />
+            新增菜品
           </button>
         </div>
       </header>
@@ -671,6 +765,7 @@ export default function MenuPage({
           className={menuTab === 'today' ? 'menu-tabs__button menu-tabs__button--active' : 'menu-tabs__button'}
           onClick={() => switchMenuTab('today')}
           data-menu-tab="today"
+          title={dateIsToday ? undefined : `当前选择 ${shortDate(date)}，不是今天`}
         >
           今日菜单
         </button>
@@ -726,6 +821,193 @@ export default function MenuPage({
         <p className="merchant-empty">这一天没有数据。</p>
       ) : (
         <>
+
+          {menuTab === 'today' && (
+          <section className="menu-card" aria-label="今日菜单">
+            <header className="menu-card__head">
+              <div>
+                <h3>{dateTitle}</h3>
+                <p>{dateIsToday ? '今日' : shortDate(date)}在售 {todayOnSaleDishes.length} 道 · {isSample ? `演示日 ${shortDate(date)}` : shortDate(date)}</p>
+              </div>
+              <span className="menu-card__hint">{isSample ? '当天在售 · 学生端可见' : '真实数据'}</span>
+            </header>
+            {todayOffSaleCount > 0 && (
+              <p className="hint menu-card__off-sale" data-off-sale-note>
+                {todayOffSaleCount} 道已下架的菜已从今日菜单隐藏。
+                <button
+                  type="button"
+                  className="menu-card__off-sale-link"
+                  onClick={() => switchMenuTab('library')}
+                >
+                  去菜品 · 总菜单重新上架
+                </button>
+              </p>
+            )}
+            {todayOnSaleDishes.length === 0 ? (
+              <div className="menu-card__empty menu-card__empty--action">
+                <IconUtensils size={26} />
+                <p>
+                  {todayOffSaleCount > 0
+                    ? '今日菜单里的菜都已下架，去「菜品 · 总菜单」重新上架后会回到今日菜单。'
+                    : '今天还没有上架菜品，去「菜品 · 总菜单」里勾选今天要卖的菜即可。'}
+                </p>
+                <button type="button" className="action-button" onClick={() => switchMenuTab('library')}>
+                  去菜品 · 总菜单
+                </button>
+              </div>
+            ) : (
+
+              <ul className="menu-list">
+                {todayOnSaleDishes.map((dish) => {
+                  const custom = customizations[dish.dishId];
+                  const badge = customizationBadge(custom);
+                  const imageUrl = custom?.imageUrl ?? dish.imageUrl;
+                  return (
+                    <li
+                      key={dish.dishId}
+                      className={[
+                        'menu-item',
+                        dish.availableQuantity === 0 ? 'menu-item--soldout' : '',
+                      ].filter(Boolean).join(' ')}
+                      data-dish-id={dish.dishId}
+                      data-dish-version={dish.version ?? 'missing'}
+                    >
+                      <DishThumb src={imageUrl} alt={`${dish.name} 图片`} />
+                      <span className="menu-item__info">
+                        <span className="menu-item__name">
+                          {dish.name}
+                          {badge && <span className="menu-badge menu-badge--soft">{badge}</span>}
+                        </span>
+                        <span className="menu-item__meta">
+                          <span>{dish.type ? dishTypeLabel(dish.type) : '未分类'}</span>
+                          <span className="menu-item__price">{formatYuan(dish.unitPriceFen)}</span>
+                        </span>
+                        <span className="menu-item__stock-line">
+                          {dish.availableQuantity === 0 ? (
+                            <span className="menu-badge menu-badge--soldout">已售罄</span>
+                          ) : (
+                            <span className="menu-badge menu-badge--on">在售</span>
+                          )}
+                          <span className={`menu-item__qty${dish.availableQuantity === 0 ? ' is-soldout' : dish.availableQuantity <= 5 ? ' is-low' : ''}`}>
+                            库存 {dish.availableQuantity}
+                            {dish.availableQuantity > 0 && dish.availableQuantity <= 5 && (
+                              <span className="menu-item__stock-warning">偏低</span>
+                            )}
+                          </span>
+                          <span className="menu-item__stock-edit">
+                            <button
+                              type="button"
+                              aria-label={`减少 ${dish.name} 库存`}
+                              onClick={() => void adjustStock(dish, -1)}
+                              disabled={
+                                !canEditVersion(dish.version)
+                                || stockSavingId !== null
+                                || dishSaving
+                                || dishTogglingId !== null
+                                || dishDeletingId !== null
+                                || editingDishId === dish.dishId
+                                || dish.availableQuantity <= 0
+                              }
+                            >
+                              −
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`增加 ${dish.name} 库存`}
+                              onClick={() => void adjustStock(dish, 1)}
+                              disabled={
+                                !canEditVersion(dish.version)
+                                || stockSavingId !== null
+                                || dishSaving
+                                || dishTogglingId !== null
+                                || dishDeletingId !== null
+                                || editingDishId === dish.dishId
+                                || dish.availableQuantity >= 10_000
+                              }
+                              aria-busy={stockSavingId === dish.dishId || undefined}
+                            >
+                              {stockSavingId === dish.dishId ? '…' : '＋'}
+                            </button>
+                          </span>
+                          <span className="menu-item__version">
+                            {canEditVersion(dish.version) ? `v${dish.version}` : 'version 未返回'}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="menu-item__actions">
+                        <button
+                          type="button"
+                          className="menu-item__sale-toggle"
+                          onClick={() => void toggleDishSale(dish)}
+                          disabled={
+                            !canEditVersion(dish.version)
+                            || dishSaving
+                            || dishDeletingId !== null
+                            || dishTogglingId !== null
+                            || editingDishId === dish.dishId
+                          }
+                          aria-busy={dishTogglingId === dish.dishId || undefined}
+                        >
+                          {dishTogglingId === dish.dishId ? '保存中…' : dish.onSale ? (
+                            <>
+                              <IconEyeOff size={13} />
+                              下架
+                            </>
+                          ) : (
+                            <>
+                              <IconEye size={13} />
+                              上架
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="menu-item__edit"
+                          onClick={() => startDishEdit(dish)}
+                          disabled={
+                            !canEditVersion(dish.version)
+                            || dishSaving
+                            || dishDeletingId !== null
+                            || editingDishId === dish.dishId
+                          }
+                        >
+                          {editingDishId === dish.dishId ? '编辑中' : (
+                            <>
+                              <IconPencil size={13} />
+                              编辑
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="menu-item__delete"
+                          data-dish-delete={dish.dishId}
+                          aria-label={`删除菜品 ${dish.name}`}
+                          onClick={() => askDeleteDish(dish)}
+                          disabled={
+                            !canEditVersion(dish.version)
+                            || dishSaving
+                            || dishDeletingId !== null
+                            || editingDishId === dish.dishId
+                          }
+                        >
+                          <IconTrash2 size={13} />
+                          删除
+                        </button>
+                      </span>
+                      {dishToggleFeedback?.dishId === dish.dishId && (
+                        <p className="action-feedback action-feedback--error menu-item__feedback" role="alert">
+                          {dishToggleFeedback.message}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+          )}
+
           {menuTab === 'today' && dailyMenuOpen && (
             <section className="daily-menu" data-daily-menu-editor aria-label="从菜品库选今日菜品">
               <header className="daily-menu__head">
@@ -733,7 +1015,7 @@ export default function MenuPage({
                   <h3>从菜品库选今日菜品</h3>
                   <p>
                     {isSample ? `演示日 ${shortDate(date)}` : shortDate(date)}
-                    · 从菜品库勾选今天要卖的菜，并设置今日库存；只影响这一天。
+                    · 勾选今天要卖的菜并设置今日库存；已下架的菜请在「菜品 · 总菜单」重新上架。
                   </p>
                 </div>
                 <span className="daily-menu__count">库内 {dailyLibrary.length} 道</span>
@@ -745,58 +1027,78 @@ export default function MenuPage({
                 </p>
               )}
               {!dishLibraryLoading && !dishLibraryError && dailyLibrary.length === 0 && (
-                <p className="menu-card__empty">菜品库还是空的，先「+ 新增菜品」。</p>
+                <div className="menu-card__empty menu-card__empty--state">
+                  <IconUtensils size={24} />
+                  <p>菜品库还是空的，先新增一道菜品。</p>
+                </div>
               )}
               {dailyLibrary.length > 0 && (
                 <ul className="daily-menu__list">
-                  {dailyLibrary.map((dish) => {
+                  {dailySortedLibrary.map((dish, index) => {
                     const row = dailyRow(dish);
+                    const todayDish = todayDishFor(dish);
+                    const offSaleToday = todayDish !== null && !todayDish.onSale;
+                    const checked = row.selected && !offSaleToday;
                     const custom = customizations[dish.dishId];
                     const imageUrl = custom?.imageUrl ?? dish.imageUrl;
                     const qtyText = row.quantityText.trim();
-                    const soldOut = row.selected && /^\d+$/.test(qtyText) && Number(qtyText) === 0;
+                    const soldOut = checked && /^\d+$/.test(qtyText) && Number(qtyText) === 0;
                     return (
-                      <li
-                        key={dish.dishId}
-                        className={row.selected ? 'daily-menu__item is-on' : 'daily-menu__item'}
-                        data-daily-dish={dish.dishId}
-                      >
-                        <label className="daily-menu__check">
-                          <input
-                            type="checkbox"
-                            checked={row.selected}
-                            onChange={(event) => updateDailyRow(dish, { selected: event.target.checked })}
-                            aria-label={`今天上架 ${dish.name}`}
-                          />
-                          <span>{row.selected ? '上架' : '不上架'}</span>
-                        </label>
-                        <DishThumb size="sm" src={imageUrl} alt="" />
-                        <span className="daily-menu__info">
-                          <strong>{dish.name}</strong>
-                          <span>
-                            {dish.type ? dishTypeLabel(dish.type) : '未分类'} · {formatYuan(dish.unitPriceFen)}
+                      <Fragment key={dish.dishId}>
+                        {index === 0 && (
+                          <li className="daily-menu__group">今日已上架 {dailyOnSaleCount} 道</li>
+                        )}
+                        {index === dailyOnSaleCount && (
+                          <li className="daily-menu__group">
+                            今日未上架 {dailyLibrary.length - dailyOnSaleCount} 道
+                          </li>
+                        )}
+                        <li
+                          className={checked ? 'daily-menu__item is-on' : 'daily-menu__item'}
+                          data-daily-dish={dish.dishId}
+                        >
+                          <label className="daily-menu__check">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={offSaleToday}
+                              onChange={(event) => updateDailyRow(dish, { selected: event.target.checked })}
+                              aria-label={offSaleToday
+                                ? `${dish.name} 今日已下架，请到菜品总菜单重新上架`
+                                : `今天上架 ${dish.name}`}
+                            />
+                            <span>{checked ? '上架' : '不上架'}</span>
+                          </label>
+                          <DishThumb size="sm" src={imageUrl} alt="" />
+                          <span className="daily-menu__info">
+                            <strong>{dish.name}</strong>
+                            <span>
+                              {dish.type ? dishTypeLabel(dish.type) : '未分类'} · {formatYuan(dish.unitPriceFen)}
+                            </span>
                           </span>
-                        </span>
-                        <span className="daily-menu__state">
-                          {!row.selected ? (
-                            <span className="menu-badge">今日不上架</span>
-                          ) : soldOut ? (
-                            <span className="menu-badge menu-badge--soldout">售罄</span>
-                          ) : (
-                            <span className="menu-badge menu-badge--on">上架中</span>
-                          )}
-                        </span>
-                        <label className="daily-menu__qty">
-                          <span>今日库存</span>
-                          <input
-                            value={row.quantityText}
-                            inputMode="numeric"
-                            disabled={!row.selected}
-                            onChange={(event) => updateDailyRow(dish, { quantityText: event.target.value })}
-                            aria-label={`${dish.name} 今日库存`}
-                          />
-                        </label>
-                      </li>
+                          <span className="daily-menu__state">
+                            {offSaleToday ? (
+                              <span className="menu-badge menu-badge--off">今日已下架</span>
+                            ) : !checked ? (
+                              <span className="menu-badge">今日未上架</span>
+                            ) : soldOut ? (
+                              <span className="menu-badge menu-badge--soldout">售罄</span>
+                            ) : (
+                              <span className="menu-badge menu-badge--on">今日已上架</span>
+                            )}
+                          </span>
+                          <label className="daily-menu__qty">
+                            <span>今日库存</span>
+                            <input
+                              value={row.quantityText}
+                              inputMode="numeric"
+                              disabled={!checked}
+                              onChange={(event) => updateDailyRow(dish, { quantityText: event.target.value })}
+                              aria-label={`${dish.name} 今日库存`}
+                            />
+                          </label>
+                        </li>
+                      </Fragment>
                     );
                   })}
                 </ul>
@@ -882,140 +1184,6 @@ export default function MenuPage({
             </section>
           )}
 
-          {menuTab === 'today' && (
-          <section className="menu-card" aria-label="今日菜单">
-            <header className="menu-card__head">
-              <div>
-                <h3>今日菜单</h3>
-                <p>今日在售 {todayOnSaleDishes.length} 道 · {isSample ? `演示日 ${shortDate(date)}` : shortDate(date)}</p>
-              </div>
-              <span className="menu-card__hint">{isSample ? '当天在售 · 学生端可见' : '真实数据'}</span>
-            </header>
-            {todayOffSaleCount > 0 && (
-              <p className="hint menu-card__off-sale" data-off-sale-note>
-                {todayOffSaleCount} 道已下架的菜已从今日菜单隐藏。
-                <button
-                  type="button"
-                  className="menu-card__off-sale-link"
-                  onClick={() => switchMenuTab('library')}
-                >
-                  去菜品 · 总菜单重新上架
-                </button>
-              </p>
-            )}
-            {todayOnSaleDishes.length === 0 ? (
-              <div className="menu-card__empty menu-card__empty--action">
-                <p>
-                  {todayOffSaleCount > 0
-                    ? '今日菜单里的菜都已下架，去「菜品 · 总菜单」重新上架后会回到今日菜单。'
-                    : '今天还没有上架菜品，去「菜品 · 总菜单」里勾选今天要卖的菜即可。'}
-                </p>
-                <button type="button" className="action-button" onClick={() => switchMenuTab('library')}>
-                  去菜品 · 总菜单
-                </button>
-              </div>
-            ) : (
-
-              <ul className="menu-list">
-                {todayOnSaleDishes.map((dish) => {
-                  const custom = customizations[dish.dishId];
-                  const badge = customizationBadge(custom);
-                  const imageUrl = custom?.imageUrl ?? dish.imageUrl;
-                  return (
-                    <li
-                      key={dish.dishId}
-                      className={[
-                        'menu-item',
-                        dish.availableQuantity === 0 ? 'menu-item--soldout' : '',
-                      ].filter(Boolean).join(' ')}
-                      data-dish-id={dish.dishId}
-                      data-dish-version={dish.version ?? 'missing'}
-                    >
-                      <DishThumb src={imageUrl} alt={`${dish.name} 图片`} />
-                      <span className="menu-item__info">
-                        <span className="menu-item__name">
-                          {dish.name}
-                          {badge && <span className="menu-badge menu-badge--soft">{badge}</span>}
-                        </span>
-                        <span className="menu-item__meta">
-                          <span>{dish.type ? dishTypeLabel(dish.type) : '未分类'}</span>
-                          <span className="menu-item__price">{formatYuan(dish.unitPriceFen)}</span>
-                        </span>
-                        <span className="menu-item__stock-line">
-                          {dish.availableQuantity === 0 ? (
-                            <span className="menu-badge menu-badge--soldout">已售罄</span>
-                          ) : (
-                            <span className="menu-badge menu-badge--on">在售</span>
-                          )}
-                          <span className={`menu-item__qty${dish.availableQuantity === 0 ? ' is-soldout' : dish.availableQuantity <= 5 ? ' is-low' : ''}`}>
-                            库存 {dish.availableQuantity}
-                            {dish.availableQuantity > 0 && dish.availableQuantity <= 5 && (
-                              <span className="menu-item__stock-warning">偏低</span>
-                            )}
-                          </span>
-                          <span className="menu-item__version">
-                            {canEditVersion(dish.version) ? `v${dish.version}` : 'version 未返回'}
-                          </span>
-                        </span>
-                      </span>
-                      <span className="menu-item__actions">
-                        <button
-                          type="button"
-                          className="menu-item__sale-toggle"
-                          onClick={() => void toggleDishSale(dish)}
-                          disabled={
-                            !canEditVersion(dish.version)
-                            || dishSaving
-                            || dishDeletingId !== null
-                            || dishTogglingId !== null
-                            || editingDishId === dish.dishId
-                          }
-                          aria-busy={dishTogglingId === dish.dishId || undefined}
-                        >
-                          {dishTogglingId === dish.dishId ? '保存中…' : dish.onSale ? '下架' : '上架'}
-                        </button>
-                        <button
-                          type="button"
-                          className="menu-item__edit"
-                          onClick={() => startDishEdit(dish)}
-                          disabled={
-                            !canEditVersion(dish.version)
-                            || dishSaving
-                            || dishDeletingId !== null
-                            || editingDishId === dish.dishId
-                          }
-                        >
-                          {editingDishId === dish.dishId ? '编辑中' : '编辑'}
-                        </button>
-                        <button
-                          type="button"
-                          className="menu-item__delete"
-                          data-dish-delete={dish.dishId}
-                          aria-label={`删除菜品 ${dish.name}`}
-                          onClick={() => askDeleteDish(dish)}
-                          disabled={
-                            !canEditVersion(dish.version)
-                            || dishSaving
-                            || dishDeletingId !== null
-                            || editingDishId === dish.dishId
-                          }
-                        >
-                          删除
-                        </button>
-                      </span>
-                      {dishToggleFeedback?.dishId === dish.dishId && (
-                        <p className="action-feedback action-feedback--error menu-item__feedback" role="alert">
-                          {dishToggleFeedback.message}
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-          )}
-
           {menuTab === 'library' && (
             <section className="menu-card" aria-label="菜品总菜单" data-menu-library>
               <header className="menu-card__head">
@@ -1039,24 +1207,35 @@ export default function MenuPage({
                 </p>
               )}
               {dailyLibrary.length === 0 ? (
-                <p className="menu-card__empty">菜品库还是空的，先「+ 新增菜品」。</p>
+                <div className="menu-card__empty menu-card__empty--state">
+                  <IconUtensils size={24} />
+                  <p>菜品库还是空的，先新增一道菜品。</p>
+                </div>
               ) : (
                 <ul className="menu-list">
-                  {dailyLibrary.map((dish) => {
+                  {librarySortedDishes.map((dish, index) => {
                     const custom = customizations[dish.dishId];
                     const badge = customizationBadge(custom);
                     const imageUrl = custom?.imageUrl ?? dish.imageUrl;
-                    const todayDish = menu.dishes.find((item) => item.dishId === dish.dishId) ?? null;
+                    const todayDish = todayDishFor(dish);
                     const inToday = todayDish !== null;
                     const offSaleToday = todayDish !== null && !todayDish.onSale;
                     const displayDish = todayDish ?? dish;
                     return (
-                      <li
-                        key={dish.dishId}
-                        className={inToday ? 'menu-item' : 'menu-item menu-item--off'}
-                        data-library-dish={dish.dishId}
-                        data-dish-version={displayDish.version ?? 'missing'}
-                      >
+                      <Fragment key={dish.dishId}>
+                        {index === 0 && (
+                          <li className="menu-list__group">今日已上架 {libraryOnSaleCount} 道</li>
+                        )}
+                        {index === libraryOnSaleCount && (
+                          <li className="menu-list__group">
+                            今日未上架 {dailyLibrary.length - libraryOnSaleCount} 道
+                          </li>
+                        )}
+                        <li
+                          className={inToday && !offSaleToday ? 'menu-item' : 'menu-item menu-item--off'}
+                          data-library-dish={dish.dishId}
+                          data-dish-version={displayDish.version ?? 'missing'}
+                        >
                         <DishThumb src={imageUrl} alt={`${displayDish.name} 图片`} />
                         <span className="menu-item__info">
                           <span className="menu-item__name">
@@ -1097,7 +1276,12 @@ export default function MenuPage({
                               data-dish-restore={dish.dishId}
                               title="重新上架后会回到今日菜单"
                             >
-                              {dishTogglingId === dish.dishId ? '保存中…' : '重新上架'}
+                              {dishTogglingId === dish.dishId ? '保存中…' : (
+                                <>
+                                  <IconEye size={13} />
+                                  重新上架
+                                </>
+                              )}
                             </button>
                           ) : (
                             <button
@@ -1125,7 +1309,12 @@ export default function MenuPage({
                               || editingDishId === dish.dishId
                             }
                           >
-                            {editingDishId === dish.dishId ? '编辑中' : '编辑'}
+                            {editingDishId === dish.dishId ? '编辑中' : (
+                              <>
+                                <IconPencil size={13} />
+                                编辑
+                              </>
+                            )}
                           </button>
                           <button
                             type="button"
@@ -1140,6 +1329,7 @@ export default function MenuPage({
                               || editingDishId === dish.dishId
                             }
                           >
+                            <IconTrash2 size={13} />
                             删除
                           </button>
                         </span>
@@ -1150,7 +1340,8 @@ export default function MenuPage({
                               : dishToggleFeedback?.message}
                           </p>
                         ) : null}
-                      </li>
+                        </li>
+                      </Fragment>
                     );
                   })}
                 </ul>
@@ -1308,7 +1499,7 @@ export default function MenuPage({
             <section className="menu-editor" data-dish-create-form aria-label="新增菜品">
               <header className="menu-editor__head">
                 <div>
-                  <h3>新增菜品</h3>
+                  <h3>新增菜品（{shortDate(date)}）</h3>
                   <p>新增后加入「{shortDate(date)}」的菜单，其他日期不会自动上架。</p>
                 </div>
                 <button type="button" className="menu-editor__close" onClick={cancelCreateDish} disabled={newDishSaving}>

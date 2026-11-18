@@ -1,4 +1,13 @@
+import { useState } from 'react';
 import type { MerchantOrder, MerchantProfile, SlotDay } from '../data/types';
+
+interface TrendItem {
+  key: string;
+  label: string;
+  endLabel: string;
+  count: number;
+  enabled: boolean;
+}
 
 function WheatMark({ className }: { className: string }) {
   return (
@@ -29,8 +38,10 @@ interface HomePageProps {
   slots: SlotDay | null;
   loading: boolean;
   onOpenOrders: (groupKey: string) => void;
-  onOpenMenu: () => void;
+  onOpenMenu: (tab?: 'today' | 'library') => void;
   onOpenHours: () => void;
+  onSetBusinessOpen: (open: boolean) => void;
+  businessPending: boolean;
 }
 
 function slotClock(value: string): string {
@@ -64,7 +75,11 @@ export default function HomePage({
   onOpenOrders,
   onOpenMenu,
   onOpenHours,
+  onSetBusinessOpen,
+  businessPending,
 }: HomePageProps) {
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [selectedTrendKey, setSelectedTrendKey] = useState<string | null>(null);
   const todayOrders = orders.filter((order) => orderDay(order) === statDate);
   const activeOrders = todayOrders.filter((order) => order.status !== 'CANCELLED');
   const pending = todayOrders.filter((order) => order.status === 'NEW').length;
@@ -96,13 +111,30 @@ export default function HomePage({
     count: orderCountByClock.get(slotClock(slot.slotStart)) ?? 0,
     enabled: slot.enabled,
   }));
-  const fallbackTrend = [...orderCountByClock.entries()]
+  const fallbackTrend: TrendItem[] = [...orderCountByClock.entries()]
     .sort((left, right) => left[0].localeCompare(right[0]))
     .map(([label, count]) => ({ key: label, label, endLabel: '', count, enabled: true }));
-  const trend = slotTrend.length > 0 ? slotTrend : fallbackTrend;
+  const trend: TrendItem[] = slotTrend.length > 0 ? slotTrend : fallbackTrend;
   const maxTrend = Math.max(1, ...trend.map((item) => item.count));
   const metric = (value: number) => (loading ? '—' : String(value));
   const dateLabel = mode === 'sample' ? `演示日 ${formatDate(statDate)} · 样例数据` : `${formatDate(statDate)} · 真实数据`;
+
+  const selectedTrend = trend.find((item) => item.key === selectedTrendKey) ?? null;
+  const selectedOrders = selectedTrend
+    ? todayOrders.filter((order) => slotClock(order.slotStart) === selectedTrend.label)
+    : [];
+  const selectedPending = selectedOrders.filter((order) => order.status === 'NEW').length;
+  const selectedPreparing = selectedOrders.filter(
+    (order) => order.status === 'ACCEPTED' || order.status === 'PREPARING',
+  ).length;
+  const selectedReady = selectedOrders.filter((order) => order.status === 'READY').length;
+  const selectedCompleted = selectedOrders.filter((order) => order.status === 'COMPLETED').length;
+  const selectedCancelled = selectedOrders.filter((order) => order.status === 'CANCELLED').length;
+
+  function chooseBusinessState(open: boolean) {
+    setStatusMenuOpen(false);
+    onSetBusinessOpen(open);
+  }
 
   return (
     <div className="merchant-home" data-merchant-home>
@@ -117,10 +149,60 @@ export default function HomePage({
         </div>
         <div className="merchant-home__hero-side">
           <strong>{shopName}</strong>
-          <span className={isOpen ? 'merchant-home__status is-open' : 'merchant-home__status'}>
-            <i />
-            {isOpen ? '营业中' : '休息中'}
-          </span>
+          <div className="merchant-home__status-wrap">
+            <button
+              type="button"
+              className={isOpen
+                ? 'merchant-home__status merchant-home__status--button is-open'
+                : 'merchant-home__status merchant-home__status--button'}
+              onClick={() => setStatusMenuOpen((current) => !current)}
+              aria-haspopup="menu"
+              aria-expanded={statusMenuOpen}
+              data-business-status
+            >
+              <i />
+              {isOpen ? '营业中' : '休息中'}
+            </button>
+            {statusMenuOpen && (
+              <div className="merchant-status-menu" role="menu" aria-label="营业状态">
+                <div className="merchant-status-menu__head">
+                  当前：{isOpen ? '营业中' : '休息中'}
+                </div>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="merchant-status-menu__item"
+                  disabled={businessPending || isOpen}
+                  onClick={() => chooseBusinessState(true)}
+                >
+                  恢复接单
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="merchant-status-menu__item"
+                  disabled={businessPending || !isOpen}
+                  onClick={() => chooseBusinessState(false)}
+                >
+                  暂停接单
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="merchant-status-menu__item"
+                  onClick={() => {
+                    setStatusMenuOpen(false);
+                    onOpenHours();
+                  }}
+                >
+                  调整今日营业时段
+                </button>
+                <p className="merchant-status-menu__note">
+                  暂停只停止新的预约，已确认订单不会被取消；恢复按暂停前开放的时段执行。
+                </p>
+              </div>
+            )}
+          </div>
           <button type="button" className="merchant-home__hours-link" onClick={onOpenHours}>
             今日 {hours}
           </button>
@@ -174,7 +256,7 @@ export default function HomePage({
                 <path d="M4 7h16M9 12h6" />
               </svg>
             </span>
-            <strong>待处理订单</strong>
+            <strong>待接单订单</strong>
             <small><b>{pending}</b> 单待接</small>
             <i aria-hidden="true">→</i>
           </button>
@@ -217,11 +299,16 @@ export default function HomePage({
             {trend.length === 0 ? (
               <p className="merchant-home__trend-empty">今天还没有订单</p>
             ) : (
-              <div className="merchant-home__trend" role="img" aria-label="按时段订单分布">
+              <div className="merchant-home__trend" role="group" aria-label="按时段订单分布">
                 {trend.map((item) => (
-                  <div
-                    className={item.enabled ? 'merchant-home__trend-col' : 'merchant-home__trend-col is-off'}
+                  <button
+                    type="button"
+                    className={item.enabled
+                      ? 'merchant-home__trend-col merchant-home__trend-col--button'
+                      : 'merchant-home__trend-col merchant-home__trend-col--button is-off'}
                     key={item.key}
+                    onClick={() => setSelectedTrendKey(item.key)}
+                    title={`查看 ${item.label}${item.endLabel ? `—${item.endLabel}` : ''} 的订单汇总`}
                   >
                     <b>{item.count}</b>
                     <span className="merchant-home__trend-track">
@@ -235,7 +322,7 @@ export default function HomePage({
                       {item.endLabel ? `—${item.endLabel}` : ''}
                     </small>
                     {!item.enabled && <em>休息</em>}
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -266,13 +353,13 @@ export default function HomePage({
           <span>日常经营入口</span>
         </header>
         <div className="merchant-home__tools">
-          <button type="button" className="merchant-home__tool" onClick={onOpenMenu}>
+          <button type="button" className="merchant-home__tool" onClick={() => onOpenMenu('library')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 5h16v14H4zM8 5v14M4 10h16" />
             </svg>
             <span>菜品管理</span>
           </button>
-          <button type="button" className="merchant-home__tool" onClick={onOpenMenu}>
+          <button type="button" className="merchant-home__tool" onClick={() => onOpenMenu('today')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 12h12M12 6l6 6-6 6M20 4v16" />
             </svg>
@@ -302,6 +389,71 @@ export default function HomePage({
         </div>
         <WheatMark className="merchant-home__tip-grain" />
       </section>
+
+      {selectedTrend && (
+        <div className="trend-detail" role="presentation">
+          <button
+            type="button"
+            className="trend-detail__mask"
+            aria-label="关闭时段订单汇总"
+            onClick={() => setSelectedTrendKey(null)}
+          />
+          <div
+            className="trend-detail__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trend-detail-title"
+            data-trend-detail
+          >
+            <header className="trend-detail__head">
+              <div>
+                <h3 id="trend-detail-title">
+                  {selectedTrend.label}
+                  {selectedTrend.endLabel ? `—${selectedTrend.endLabel}` : ''}
+                </h3>
+                <p>{dateLabel} · 该时段订单汇总</p>
+              </div>
+              <button type="button" className="trend-detail__close" onClick={() => setSelectedTrendKey(null)}>
+                关闭
+              </button>
+            </header>
+            <ul className="trend-detail__stats">
+              <li><span>预约订单</span><strong>{selectedOrders.length}</strong></li>
+              <li><span>待接单</span><strong>{selectedPending}</strong></li>
+              <li><span>制作中</span><strong>{selectedPreparing}</strong></li>
+              <li><span>可取餐</span><strong>{selectedReady}</strong></li>
+              <li><span>已完成</span><strong>{selectedCompleted}</strong></li>
+              <li><span>已取消</span><strong>{selectedCancelled}</strong></li>
+            </ul>
+            {selectedOrders.length === 0 ? (
+              <p className="trend-detail__empty">该时段暂无订单。</p>
+            ) : (
+              <div className="trend-detail__actions">
+                <button
+                  type="button"
+                  className="action-button action-button--primary"
+                  onClick={() => {
+                    setSelectedTrendKey(null);
+                    onOpenOrders('new');
+                  }}
+                >
+                  去待接单查看
+                </button>
+                <button
+                  type="button"
+                  className="action-button"
+                  onClick={() => {
+                    setSelectedTrendKey(null);
+                    onOpenOrders('in-progress');
+                  }}
+                >
+                  去制作中查看
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

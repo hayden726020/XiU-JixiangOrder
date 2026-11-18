@@ -6,7 +6,7 @@ export type PaymentStatus = 'SIMULATED_PAID' | 'SIMULATED_REFUNDED';
 
 export type CancelRequestStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
-export type MerchantScenario = 'normal' | 'empty' | 'pending-cancel';
+export type MerchantScenario = 'normal' | 'empty' | 'pending-cancel' | 'preparing' | 'ready';
 
 export type DishType = 'STAPLE' | 'SNACK' | 'DRINK' | 'SET';
 

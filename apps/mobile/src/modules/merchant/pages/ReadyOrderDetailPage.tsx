@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { MerchantOrder } from '../data/types';
+import OrderStatusTrack from '../components/OrderStatusTrack';
+import { IconClock3, IconMessageSquareText, IconUtensils } from '../components/MerchantIcons';
 import {
   getOrderActions,
   getPrimaryAction,
@@ -13,7 +15,7 @@ import {
   formatSlot,
   orderNoLabel,
   paymentText,
-  STATUS_TRACK,
+
   statusView,
 } from '../state/orderView';
 import { fenToYuan, formatYuan, totalQuantity } from '../utils/money';
@@ -68,7 +70,7 @@ order,
   const cancelError = errorFor('APPROVE_CANCEL') ?? errorFor('REJECT_CANCEL');
   const status = statusView(order.status);
   const dining = diningModeView(order.diningMode);
-  const currentIndex = STATUS_TRACK.indexOf(order.status);
+
 
   return (
     <div
@@ -106,17 +108,28 @@ order,
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
           <span className={`merchant-tag merchant-tag--${dining.tone}`}>{dining.label}</span>
         </div>
-        <p className="detail-next">下一步：{primary ? primary.label : '当前没有可用的主操作'}</p>
+        <p className="detail-next">
+          下一步：
+          {order.cancelRequest.status === 'PENDING'
+            ? '处理退款申请（订单已可取餐，退款不受理）'
+            : primary ? primary.label : '当前没有可用的主操作'}
+        </p>
       </header>
 
       <section className="detail-block detail-block--appointment">
-        <h3>预约时间</h3>
+        <h3>
+          <IconClock3 size={16} />
+          预约时间
+        </h3>
         <p className="detail-emphasis">{formatSlot(order)}</p>
         <p className="hint">档口应在这个时段内做好，到点不一定已好。</p>
       </section>
 
       <section className="detail-block detail-block--remark">
-        <h3>订单备注</h3>
+        <h3>
+          <IconMessageSquareText size={16} />
+          订单备注
+        </h3>
         {order.remark ? (
           <p className="detail-remark" data-order-remark={order.remark}>{order.remark}</p>
         ) : (
@@ -125,7 +138,10 @@ order,
       </section>
 
       <section className="detail-block detail-block--items">
-        <h3>菜品与金额</h3>
+        <h3>
+          <IconUtensils size={16} />
+          菜品与金额
+        </h3>
         <ul className="detail-items">
           {order.items.map((item) => (
             <li key={item.dishId}>
@@ -142,17 +158,7 @@ order,
 
       <section className="detail-block detail-block--status">
         <h3>状态轴</h3>
-        <ol className="status-track">
-          {STATUS_TRACK.map((step, index) => (
-            <li
-              key={step}
-              aria-current={index === currentIndex ? 'step' : undefined}
-              className={index === currentIndex ? 'status-track__step status-track__step--on' : 'status-track__step'}
-            >
-              {statusView(step).label}
-            </li>
-          ))}
-        </ol>
+        <OrderStatusTrack order={order} />
       </section>
 
       <section className="detail-block detail-block--meta">
@@ -176,44 +182,54 @@ order,
         <div className="detail-info-row">
           <h3>取消申请</h3>
           <div className="detail-info-row__content">
-            <p className="merchant-muted merchant-order-detail__cancel-label">
+            <p
+              className="merchant-muted merchant-order-detail__cancel-label"
+              data-refund-blocked={order.cancelRequest.status === 'PENDING' ? 'true' : undefined}
+            >
               {order.cancelRequest.status === 'PENDING'
-                ? '学生申请取消，请优先处理：申请不等于已取消'
+                ? '学生申请退款，但订单已可取餐，退款不受理：请拒绝申请后核销取餐码'
                 : cancelRequestLabel(order.cancelRequest)}
             </p>
             {order.cancelRequest.reason && (
               <p className="merchant-muted">申请理由：{order.cancelRequest.reason}</p>
             )}
+            {order.cancelRequest.status === 'PENDING' && verifyAction && (
+              <p className="hint">先处理本页的退款申请；拒绝后才会重新出现取餐码核销入口。</p>
+            )}
             {order.cancelRequest.decisionReason && (
               <p className="merchant-muted">处理理由：{order.cancelRequest.decisionReason}</p>
             )}
-            {approveAction && rejectAction && (
+            {(approveAction || rejectAction) && (
               <>
                 <div className="action-bar merchant-order-detail__cancel-actions">
-                  <button
-                    type="button"
-                    className="action-button action-button--danger"
-                    onClick={() => setCancelDecision((current) => (
-                      current === 'APPROVE_CANCEL' ? null : 'APPROVE_CANCEL'
-                    ))}
-                    disabled={busy(approveAction)}
-                    aria-expanded={cancelDecision === 'APPROVE_CANCEL'}
-                    aria-controls="ready-order-cancel-decision-form"
-                  >
-                    {approveAction.label}
-                  </button>
-                  <button
-                    type="button"
-                    className="action-button action-button--secondary"
-                    onClick={() => setCancelDecision((current) => (
-                      current === 'REJECT_CANCEL' ? null : 'REJECT_CANCEL'
-                    ))}
-                    disabled={busy(rejectAction)}
-                    aria-expanded={cancelDecision === 'REJECT_CANCEL'}
-                    aria-controls="ready-order-cancel-decision-form"
-                  >
-                    {rejectAction.label}
-                  </button>
+                  {approveAction && (
+                    <button
+                      type="button"
+                      className="action-button action-button--danger"
+                      onClick={() => setCancelDecision((current) => (
+                        current === 'APPROVE_CANCEL' ? null : 'APPROVE_CANCEL'
+                      ))}
+                      disabled={busy(approveAction)}
+                      aria-expanded={cancelDecision === 'APPROVE_CANCEL'}
+                      aria-controls="ready-order-cancel-decision-form"
+                    >
+                      {approveAction.label}
+                    </button>
+                  )}
+                  {rejectAction && (
+                    <button
+                      type="button"
+                      className="action-button action-button--secondary"
+                      onClick={() => setCancelDecision((current) => (
+                        current === 'REJECT_CANCEL' ? null : 'REJECT_CANCEL'
+                      ))}
+                      disabled={busy(rejectAction)}
+                      aria-expanded={cancelDecision === 'REJECT_CANCEL'}
+                      aria-controls="ready-order-cancel-decision-form"
+                    >
+                      {rejectAction.label}
+                    </button>
+                  )}
                 </div>
                 {cancelDecisionAction && (
                   <div className="merchant-order-detail__form" id="ready-order-cancel-decision-form">
@@ -233,7 +249,11 @@ order,
                     >
                       {busy(cancelDecisionAction) ? '提交中…' : `确认${cancelDecisionAction.label}`}
                     </button>
-                    <p className="hint">批准会取消订单并模拟退款；申请不等于已取消。</p>
+                    <p className="hint">
+                      {approveAction
+                        ? '批准会取消订单并模拟退款；申请不等于已取消。'
+                        : '已可取餐的订单不允许退款；拒绝后请核销取餐码。'}
+                    </p>
                   </div>
                 )}
                 {cancelError && (
@@ -247,7 +267,7 @@ order,
         </div>
       </section>
 
-      {verifyAction && (
+      {verifyAction && order.cancelRequest.status !== 'PENDING' && (
         <section className="detail-block detail-block--verify">
           <h3>取餐码核销</h3>
           <p className="merchant-muted">档口不显示学生取餐码，请学生出示后手工输入。</p>
@@ -348,53 +368,51 @@ order,
 
       </section>
 
-      <section className="detail-block detail-block--operations">
-        <h3>操作</h3>
-        {stockCancelAction && (
-          <>
-            <div className="merchant-order-detail__action-grid">
+      {stockCancelAction && (
+        <section className="detail-block detail-block--operations">
+          <h3>操作</h3>
+          <div className="merchant-order-detail__action-grid">
+            <button
+              type="button"
+              className="action-button action-button--danger"
+              onClick={() => setShowStockCancelForm((current) => !current)}
+              disabled={busy(stockCancelAction)}
+              aria-expanded={showStockCancelForm}
+              aria-controls="ready-order-stock-cancel-form"
+            >
+              {showStockCancelForm ? '收起缺货取消' : stockCancelAction.label}
+            </button>
+          </div>
+          {showStockCancelForm && (
+            <div className="merchant-order-detail__form" id="ready-order-stock-cancel-form">
+              <textarea
+                value={stockCancelReason}
+                onChange={(event) => setStockCancelReason(event.target.value)}
+                placeholder="填写缺货原因"
+                rows={2}
+                aria-label="缺货取消原因"
+              />
               <button
                 type="button"
                 className="action-button action-button--danger"
-                onClick={() => setShowStockCancelForm((current) => !current)}
+                onClick={() => onAction(stockCancelAction, { reason: stockCancelReason })}
                 disabled={busy(stockCancelAction)}
-                aria-expanded={showStockCancelForm}
-                aria-controls="ready-order-stock-cancel-form"
+                aria-busy={busy(stockCancelAction) || undefined}
               >
-                {showStockCancelForm ? '收起缺货取消' : stockCancelAction.label}
+                {busy(stockCancelAction) ? '提交中…' : '确认缺货取消'}
               </button>
-            </div>
-            {showStockCancelForm && (
-              <div className="merchant-order-detail__form" id="ready-order-stock-cancel-form">
-                <textarea
-                  value={stockCancelReason}
-                  onChange={(event) => setStockCancelReason(event.target.value)}
-                  placeholder="填写缺货原因"
-                  rows={2}
-                  aria-label="缺货取消原因"
-                />
-                <button
-                  type="button"
-                  className="action-button action-button--danger"
-                  onClick={() => onAction(stockCancelAction, { reason: stockCancelReason })}
-                  disabled={busy(stockCancelAction)}
-                  aria-busy={busy(stockCancelAction) || undefined}
-                >
-                  {busy(stockCancelAction) ? '提交中…' : '确认缺货取消'}
-                </button>
-                <p className="hint">
-                  仅未结束订单可取消；取消后模拟退款，并返还菜品库存与尚未开始时段的 1 个名额。
-                </p>
-              </div>
-            )}
-            {errorFor('CANCEL_ORDER') && (
-              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-                {errorFor('CANCEL_ORDER')}
+              <p className="hint">
+                仅未结束订单可取消；取消后模拟退款，并返还菜品库存与尚未开始时段的 1 个名额。
               </p>
-            )}
-          </>
-        )}
-      </section>
+            </div>
+          )}
+          {errorFor('CANCEL_ORDER') && (
+            <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
+              {errorFor('CANCEL_ORDER')}
+            </p>
+          )}
+        </section>
+      )}
     </div>
   );
 }

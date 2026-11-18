@@ -1,26 +1,46 @@
-import { useState } from 'react';
-import ActionBar from '../components/ActionBar';
+import { useEffect, useState, type ReactNode } from 'react';
+
 import type { MerchantOrder } from '../data/types';
 import {
   getOrderActions,
-  getPrimaryAction,
   type ActionInput,
   type OrderAction,
 } from '../state/actionMatrix';
 import {
-  cancelRequestLabel,
+
   cancellationNote,
+  diningModeChangeLabel,
+  diningModeChangeRoute,
   diningModeView,
   formatDateTime,
   formatSlot,
+  hasPendingCancel,
+  hasPendingDiningModeChange,
+  localInputToZonedIso,
   orderNoLabel,
   paymentText,
-  STATUS_TRACK,
   statusView,
 } from '../state/orderView';
 import { formatYuan, totalQuantity } from '../utils/money';
-import NewOrderDetailPage from './NewOrderDetailPage';
-import ReadyOrderDetailPage from './ReadyOrderDetailPage';
+import OrderStatusTrack from '../components/OrderStatusTrack';
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconCheck,
+  IconCircleCheck,
+  IconCircleX,
+  IconClock3,
+  IconGitCommitHorizontal,
+  IconHistory,
+  IconListOrdered,
+  IconMessageSquareText,
+  IconPackage,
+  IconReceiptText,
+  IconTimer,
+  IconUtensils,
+  IconWallet,
+} from '../components/MerchantIcons';
+
 
 interface OrderDetailPageProps {
   order: MerchantOrder;
@@ -33,18 +53,49 @@ interface OrderDetailPageProps {
   actionError?: { code: string; message: string } | null;
 }
 
-export default function OrderDetailPage(props: OrderDetailPageProps) {
-  if (props.order.status === 'NEW') {
-    return <NewOrderDetailPage {...props} />;
-  }
-  if (props.order.status === 'READY') {
-    return <ReadyOrderDetailPage {...props} />;
-  }
-  return <OrderDetailContent {...props} />;
+const CANCEL_STATUS_TEXT: Record<string, string> = {
+  NONE: '无取消申请',
+  PENDING: '学生申请取消 · 待处理',
+  APPROVED: '取消申请已批准',
+  REJECTED: '取消申请已拒绝',
+};
+
+function flowActionLabel(action: OrderAction): string {
+  if (action.code === 'ACCEPT') return '接单';
+  if (action.code === 'START_PREPARING') return '开始制作';
+  if (action.code === 'MARK_READY') return '完成制作';
+  return action.label;
 }
 
-function OrderDetailContent({
-order,
+function flowActionHint(action: OrderAction): string {
+  if (action.code === 'ACCEPT') return '接单后订单进入制作流程，学生端同步显示。';
+  if (action.code === 'START_PREPARING') return '开始制作后订单进入制作中。';
+  if (action.code === 'MARK_READY') return '完成后进入可取餐；仍需学生取餐核销才算完成。';
+  return '';
+}
+
+function InfoRow({
+  icon,
+  label,
+  value,
+  extra,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  extra?: ReactNode;
+}) {
+  return (
+    <div className="od-info__row">
+      <span className="od-info__label">{icon}{label}</span>
+      <span className="od-info__value">{value}</span>
+      {extra && <span className="od-info__extra">{extra}</span>}
+    </div>
+  );
+}
+
+export default function OrderDetailPage({
+  order,
   mode,
   onBack,
   onAction,
@@ -55,49 +106,114 @@ order,
 }: OrderDetailPageProps) {
   const [pickupCode, setPickupCode] = useState('');
   const [cancelReason, setCancelReason] = useState('');
-  const [stockCancelReason, setStockCancelReason] = useState('');
+  const [stockReason, setStockReason] = useState('');
   const [delayReason, setDelayReason] = useState('');
-  const [delayExpectedReadyAt, setDelayExpectedReadyAt] = useState('');
+  const [delayAt, setDelayAt] = useState('');
+  const [showStock, setShowStock] = useState(false);
+  const [showDelay, setShowDelay] = useState(false);
 
+  useEffect(() => {
+    setPickupCode('');
+    setCancelReason('');
+    setStockReason('');
+    setDelayReason('');
+    setDelayAt('');
+    setShowStock(false);
+    setShowDelay(false);
+  }, [order.id]);
 
   const actions = getOrderActions(order);
-  const primary = getPrimaryAction(order);
   const verifyAction = actions.find((action) => action.code === 'VERIFY');
   const approveAction = actions.find((action) => action.code === 'APPROVE_CANCEL');
   const rejectAction = actions.find((action) => action.code === 'REJECT_CANCEL');
   const stockCancelAction = actions.find((action) => action.code === 'CANCEL_ORDER');
   const delayAction = actions.find((action) => action.code === 'SET_DELAY');
+  const flowAction = actions.find((action) => (
+    action.code === 'ACCEPT'
+    || action.code === 'START_PREPARING'
+    || action.code === 'MARK_READY'
+  )) ?? null;
 
-  const mainActions = actions.filter(
-    (action) => action.kind === 'primary' && action.code !== 'VERIFY' && action.code !== 'CANCEL_ORDER',
-  );
-  const busy = (action: OrderAction | undefined) => Boolean(action) && pendingCode === action?.code;
-  const busyLabel = (action: OrderAction | undefined) => (busy(action) ? '提交中…' : action?.label);
-  const errorFor = (code: string) => (actionError?.code === code ? actionError.message : null);
-  const cancelError = errorFor('APPROVE_CANCEL') ?? errorFor('REJECT_CANCEL');
-  const otherError = actionError
-    && !['VERIFY', 'APPROVE_CANCEL', 'REJECT_CANCEL', 'CANCEL_ORDER', 'SET_DELAY']
-      .includes(actionError.code)
+  const pendingCancel = hasPendingCancel(order);
+  const pendingChange = hasPendingDiningModeChange(order);
+  const pending = pendingCancel || pendingChange;
+  const isCancelled = order.status === 'CANCELLED';
+  const isCompleted = order.status === 'COMPLETED';
+  const isTerminal = isCancelled || isCompleted;
+  const making = order.status === 'ACCEPTED' || order.status === 'PREPARING';
+  const status = statusView(order.status);
+  const headerLabel = making ? '制作中' : status.label;
+  const headerTone = making ? 'in-progress' : status.tone;
+  const dining = diningModeView(order.diningMode);
+  const busy = (action?: OrderAction | null) => Boolean(action) && pendingCode === action?.code;
+  const anyBusy = pendingCode !== null;
+
+  const verifyError = actionError?.code === 'VERIFY' ? actionError.message : null;
+  const pendingError = actionError && ['APPROVE_CANCEL', 'REJECT_CANCEL'].includes(actionError.code)
+    ? actionError.message
+    : null;
+  const delayError = actionError?.code === 'SET_DELAY' ? actionError.message : null;
+  const stockError = actionError?.code === 'CANCEL_ORDER' ? actionError.message : null;
+  const flowError = actionError && ['ACCEPT', 'START_PREPARING', 'MARK_READY'].includes(actionError.code)
     ? actionError.message
     : null;
 
-  const status = statusView(order.status);
-  const dining = diningModeView(order.diningMode);
-  const currentIndex = STATUS_TRACK.indexOf(order.status);
-  const isCancelled = order.status === 'CANCELLED';
-  const isEmptyOperation = order.status === 'COMPLETED' || order.status === 'CANCELLED';
-  const emptyText = order.status === 'CANCELLED'
-    ? '订单已取消，无可用操作'
-    : order.status === 'COMPLETED' ? '订单已完成，无可用操作' : '当前没有可用的主操作';
+  const topHint = isCancelled
+    ? '该订单已取消，无后续操作'
+    : isCompleted
+      ? '该订单已完成，信息只读'
+      : pending
+        ? '该订单存在待处理事项，请优先处理'
+        : order.status === 'NEW'
+          ? '等待接单，接单后进入制作流程'
+          : order.status === 'ACCEPTED'
+            ? '下一步：开始制作'
+            : order.status === 'PREPARING'
+              ? '正在制作，完成后标记可取餐'
+              : order.status === 'READY'
+                ? '餐品已备好，等待学生取餐并核销'
+                : '按当前状态处理订单';
+
+  const actionSectionHint = isCancelled
+    ? '订单已取消'
+    : isCompleted
+      ? '订单已完成'
+      : pending
+        ? '请先处理待处理事项'
+        : verifyAction
+          ? '核销后完成订单'
+          : '按当前状态操作';
+
+  const cancelStatusText = CANCEL_STATUS_TEXT[order.cancelRequest.status] ?? '无取消申请';
+  const diningIcon = order.diningMode === 'TAKEAWAY'
+    ? <IconPackage size={17} />
+    : <IconUtensils size={17} />;
+
+  function toggleDelay() {
+    if (!showDelay) {
+      setDelayReason(order.delay?.reason ?? '');
+      setDelayAt(order.delay?.expectedReadyAt?.slice(0, 16) ?? '');
+    }
+    setShowDelay((current) => !current);
+  }
 
   return (
-    <div className="merchant-view" data-order-id={order.id} data-order-status={order.status}>
-      <div className="merchant-order-detail__topbar">
-        <button type="button" className="back-link merchant-order-detail__back" onClick={onBack}>← 返回订单列表</button>
+    <div
+      className="merchant-view order-detail-v7"
+      data-order-id={order.id}
+      data-order-status={order.status}
+      data-pending={pending ? 'true' : 'false'}
+      data-cancelled={isCancelled ? 'true' : 'false'}
+    >
+      <div className="od-topbar">
+        <button type="button" className="od-back" onClick={onBack}>
+          <IconArrowLeft size={16} />
+          返回订单列表
+        </button>
         {mode === 'real' && (
           <button
             type="button"
-            className="merchant-link-button merchant-order-detail__refresh"
+            className="od-refresh"
             onClick={onRefresh}
             disabled={refreshing}
             aria-busy={refreshing || undefined}
@@ -109,296 +225,398 @@ order,
         )}
       </div>
 
-      <header className="detail-header">
-        <p className="badge">
-          {order.demo || mode === 'sample' ? '样例订单 · demo=true' : '真实数据 · 演示服务'}
-        </p>
-        <div className="detail-id">
-          <h2 className="detail-id__short">{orderNoLabel(order)}</h2>
-          <p className="detail-id__full">当天第 {order.orderNo ?? '—'} 单</p>
+      <header className="od-hero">
+        <div className="od-hero__top">
+          <div className="od-order-id">
+            <span className="od-order-id__icon"><IconReceiptText size={18} /></span>
+            <div>
+              <strong>{orderNoLabel(order)}</strong>
+              <small>{order.orderNo === null || order.orderNo === undefined
+                ? '订单编号'
+                : `当天第 ${order.orderNo} 单`}</small>
+            </div>
+          </div>
+          <div className="od-badges">
+            <span className={`od-badge od-badge--${headerTone}`}>{headerLabel}</span>
+            {pending && (
+              <span className="od-badge od-badge--pending">
+                <i aria-hidden="true" />
+                待处理
+              </span>
+            )}
+            {order.demo || mode === 'sample' ? (
+              <span className="od-source-tag">样例</span>
+            ) : null}
+          </div>
         </div>
-        <div className="detail-tags">
-          <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
-          {isCancelled && order.paymentStatus === 'SIMULATED_REFUNDED' && (
-            <span className="merchant-flag merchant-flag--refund" data-payment-status="SIMULATED_REFUNDED">
-              模拟退款
-            </span>
-          )}
+
+        <div className="od-hero__meta">
+          <div className="od-meta">
+            <IconClock3 size={17} />
+            <div>
+              <span>预约时间</span>
+              <strong>{formatSlot(order)}</strong>
+            </div>
+          </div>
+          <div className="od-meta">
+            {diningIcon}
+            <div>
+              <span>用餐方式</span>
+              <strong>{dining.label}</strong>
+              <small>{dining.description}</small>
+            </div>
+          </div>
         </div>
-        <div className={`detail-dining detail-dining--${dining.tone}`} data-dining-mode={order.diningMode}>
-          <span className="detail-dining__label">用餐方式</span>
-          <strong className="detail-dining__value">{dining.label}</strong>
-          <span className="detail-dining__desc">{dining.description}</span>
-        </div>
-        {order.cancelRequest.status === 'PENDING' && (
-          <p className="detail-alert">学生申请取消，请优先处理；申请不等于已取消。</p>
-        )}
-        <p className="detail-next">下一步：{primary ? primary.label : emptyText}</p>
+
+        <p className={`od-hero__hint${pending ? ' is-pending' : ''}`}>{topHint}</p>
       </header>
 
-      <section className="detail-block">
-        <h3>预约时间</h3>
-        <p className="detail-emphasis">{formatSlot(order)}</p>
-        <p className="hint">档口应在这个时段内做好，到点不一定已好。</p>
-      </section>
-
-      <section className="detail-block detail-block--remark">
-        <h3>订单备注</h3>
-        {order.remark ? (
-          <p className="detail-remark" data-order-remark={order.remark}>{order.remark}</p>
-        ) : (
-          <p className="merchant-muted detail-remark detail-remark--empty">学生未填写备注</p>
-        )}
-      </section>
-
-      <section className="detail-block">
-        <h3>菜品与金额</h3>
-        <ul className="detail-items">
+      <section className="od-card od-ticket" aria-label="菜品与金额">
+        <header className="od-card__head">
+          <h2><IconListOrdered size={18} />菜品与金额</h2>
+          <span>{order.items.length} 种 · {totalQuantity(order.items)} 份</span>
+        </header>
+        <div className="od-ticket__columns" aria-hidden="true">
+          <span>菜品</span>
+          <span>数量</span>
+          <span>单价</span>
+        </div>
+        <ul className="od-ticket__items">
           {order.items.map((item) => (
             <li key={item.dishId}>
-              <span>{item.name} ×{item.quantity}</span>
-              <span>{formatYuan(item.unitPriceFen)}/份</span>
+              <span className="od-ticket__name">{item.name}</span>
+              <span className="od-ticket__qty">×{item.quantity}</span>
+              <span className="od-ticket__price">{formatYuan(item.unitPriceFen)}</span>
             </li>
           ))}
         </ul>
-        <p className="detail-total">
-          总份数 <strong>{totalQuantity(order.items)}</strong> 份 · 合计 <strong>{formatYuan(order.totalFen)}</strong>
-        </p>
-      </section>
-
-      <section className="detail-block">
-        <h3>状态轴</h3>
-        {isCancelled ? (
-          <p className="detail-alert">订单已取消：{cancellationNote(order)}</p>
-        ) : (
-          <ol className="status-track">
-            {STATUS_TRACK.map((step, index) => (
-              <li
-                key={step}
-                aria-current={index === currentIndex ? 'step' : undefined}
-                className={index <= currentIndex ? 'status-track__step status-track__step--on' : 'status-track__step'}
-              >
-                {statusView(step).label}
-              </li>
-            ))}
-          </ol>
+        <div className="od-ticket__summary">
+          <span>总份数 <b>{totalQuantity(order.items)}</b> 份</span>
+          <span className="od-ticket__total">合计 <b>{formatYuan(order.totalFen)}</b></span>
+        </div>
+        {typeof order.packagingFeeFen === 'number' && order.packagingFeeFen > 0 && (
+          <p className="od-ticket__fee">含打包费 {formatYuan(order.packagingFeeFen)}</p>
         )}
-      </section>
-
-      <section className="detail-block">
-        <h3>时间</h3>
-        <ul className="detail-times">
-          <li>创建：{formatDateTime(order.createdAt)}</li>
-          <li>更新：{formatDateTime(order.updatedAt)}</li>
-          <li>取餐：{order.pickedUpAt ? formatDateTime(order.pickedUpAt) : '尚未取餐'}</li>
-        </ul>
-      </section>
-
-      <section className="detail-block">
-        <h3>支付</h3>
-        <p className="merchant-muted" data-payment-status={order.paymentStatus}>{paymentText(order.paymentStatus)}</p>
-        {isCancelled && (
-          <p className="hint">已取消订单保留在列表与详情中，不随状态变化消失。</p>
-        )}
-      </section>
-
-      {verifyAction && (
-        <section className="detail-block">
-          <h3>取餐码核销</h3>
-          <p className="merchant-muted">档口不显示学生取餐码，请学生出示后手工输入。</p>
-          <div className="inline-form">
-            <input
-              value={pickupCode}
-              onChange={(event) => setPickupCode(event.target.value)}
-              placeholder="输入学生出示的取餐码"
-              aria-label="取餐码"
-            />
-            <button
-              type="button"
-              className="action-button action-button--primary"
-              onClick={() => onAction(verifyAction, { pickupCode })}
-              disabled={busy(verifyAction)}
-              aria-busy={busy(verifyAction) || undefined}
-            >
-              {busyLabel(verifyAction)}
-            </button>
+        <div className={`od-note${order.remark ? ' has-note' : ' is-empty'}`}>
+          <IconMessageSquareText size={16} />
+          <div>
+            <span>订单备注</span>
+            <p>{order.remark || '学生未填写备注'}</p>
           </div>
-          {errorFor('VERIFY') && (
-            <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-              {errorFor('VERIFY')}
-            </p>
-          )}
-          <p className="hint">
-            {mode === 'real'
-              ? '输入学生出示的取餐码后提交；服务端校验订单状态与码，错误会原样提示。'
-              : '第 2—3 天接入服务后可用；当前点击只显示接口提示，不会核销成功。'}
-          </p>
-        </section>
-      )}
+        </div>
+      </section>
 
-      <section className="detail-block">
-        <h3>取消申请</h3>
-        <p className="merchant-muted">{cancelRequestLabel(order.cancelRequest)}</p>
-        {order.cancelRequest.reason && (
-          <p className="merchant-muted">
-            申请理由：{order.cancelRequest.reason}
-          </p>
-        )}
-        {order.cancelRequest.decisionReason && (
-          <p className="merchant-muted">
-            处理理由：{order.cancelRequest.decisionReason}
-          </p>
-        )}
-        {approveAction && rejectAction && (
-          <>
-            <textarea
-              value={cancelReason}
-              onChange={(event) => setCancelReason(event.target.value)}
-              placeholder="批准或拒绝都必须填写理由"
-              rows={2}
-              aria-label="取消申请处理理由"
+      <section className="od-card od-progress-card" aria-label="订单进度与时间">
+        <header className="od-card__head">
+          <h2><IconGitCommitHorizontal size={18} />订单进度</h2>
+          <span>{status.label}</span>
+        </header>
+        <OrderStatusTrack order={order} />
+        <dl className="od-times">
+          <div><dt>创建时间</dt><dd>{formatDateTime(order.createdAt)}</dd></div>
+          <div><dt>更新时间</dt><dd>{formatDateTime(order.updatedAt)}</dd></div>
+          <div>
+            <dt>{order.pickedUpAt ? '取餐核销' : '取餐时间'}</dt>
+            <dd>{order.pickedUpAt ? formatDateTime(order.pickedUpAt) : '尚未取餐'}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="od-card od-info" aria-label="订单补充信息">
+        <header className="od-card__head">
+          <h2><IconHistory size={18} />订单信息</h2>
+        </header>
+        <div className="od-info__rows">
+          <InfoRow
+            icon={<IconWallet size={16} />}
+            label="支付"
+            value={(
+              <>
+                {paymentText(order.paymentStatus)}
+                {order.paymentStatus === 'SIMULATED_REFUNDED' && (
+                  <em className="od-refund-tag">模拟退款</em>
+                )}
+              </>
+            )}
+          />
+          {!isCancelled && (
+            <InfoRow
+              icon={<IconCircleX size={16} />}
+              label="取消申请"
+              value={cancelStatusText}
             />
-            <div className="action-bar">
-              <button
-                type="button"
-                className="action-button action-button--danger"
-                onClick={() => onAction(approveAction, { reason: cancelReason })}
-                disabled={busy(approveAction)}
-                aria-busy={busy(approveAction) || undefined}
-              >
-                {busyLabel(approveAction)}
+          )}
+          {!isCancelled && order.cancelRequest.reason && order.cancelRequest.status !== 'PENDING' && (
+            <p className="od-info__sub">申请原因：{order.cancelRequest.reason}</p>
+          )}
+          {!isCancelled && order.cancelRequest.decisionReason && (
+            <p className="od-info__sub">处理理由：{order.cancelRequest.decisionReason}</p>
+          )}
+          <InfoRow
+            icon={<IconTimer size={16} />}
+            label="延迟"
+            value={order.delay
+              ? `${order.delay.reason} · 预计 ${formatDateTime(order.delay.expectedReadyAt)} 可取`
+              : '未设置延迟'}
+            extra={delayAction ? (
+              <button type="button" className="od-text-button" onClick={toggleDelay}>
+                {showDelay ? '收起' : order.delay ? '修改延迟' : '填写延迟'}
               </button>
+            ) : null}
+          />
+        </div>
+
+        {showDelay && delayAction && (
+          <div className="od-form" data-delay-form>
+            <label>
+              <span>延迟原因</span>
+              <textarea
+                value={delayReason}
+                onChange={(event) => setDelayReason(event.target.value)}
+                placeholder="例如：当前订单较多，出餐延后"
+                rows={2}
+                aria-label="延迟原因"
+              />
+            </label>
+            <label>
+              <span>预计可取时间</span>
+              <input
+                type="datetime-local"
+                value={delayAt}
+                onChange={(event) => setDelayAt(event.target.value)}
+                aria-label="预计可取时间"
+              />
+            </label>
+            <div className="od-form__actions">
               <button
                 type="button"
                 className="action-button action-button--secondary"
-                onClick={() => onAction(rejectAction, { reason: cancelReason })}
-                disabled={busy(rejectAction)}
-                aria-busy={busy(rejectAction) || undefined}
+                onClick={() => onAction(delayAction, {
+                  reason: delayReason,
+                  expectedReadyAt: localInputToZonedIso(delayAt),
+                })}
+                disabled={anyBusy}
+                aria-busy={busy(delayAction) || undefined}
               >
-                {busyLabel(rejectAction)}
+                {busy(delayAction) ? '提交中…' : '保存延迟'}
               </button>
             </div>
-            {cancelError && (
-              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-                {cancelError}
-              </p>
+            {delayError && <p className="od-error" role="alert">{delayError}</p>}
+            <p className="od-hint">延迟不改变订单主状态，学生可读取原因与预计时间。</p>
+          </div>
+        )}
+
+        {pendingCancel && (
+          <div className="od-pending-panel" data-pending-panel>
+            <div className="od-pending-panel__head">
+              <IconAlertTriangle size={17} />
+              <strong>待处理事项</strong>
+              <span>退款申请</span>
+            </div>
+            <p className="od-pending-panel__line">学生申请取消 · 订单金额 {formatYuan(order.totalFen)}</p>
+            {order.cancelRequest.reason && (
+              <p className="od-pending-panel__reason">申请原因：{order.cancelRequest.reason}</p>
             )}
-            <p className="hint">
-              批准会取消订单并模拟退款；申请不等于已取消。
-              {mode === 'real' ? '处理结果保存后学生端可读取同一订单。' : ''}
+            {order.cancelRequest.decisionReason && (
+              <p className="od-pending-panel__reason">处理理由：{order.cancelRequest.decisionReason}</p>
+            )}
+            {order.status === 'READY' && (
+              <p className="od-pending-panel__tip">订单已可取餐，退款不受理；请拒绝申请后核销取餐码。</p>
+            )}
+            {(approveAction || rejectAction) ? (
+              <>
+                <textarea
+                  value={cancelReason}
+                  onChange={(event) => setCancelReason(event.target.value)}
+                  placeholder={approveAction ? '批准或拒绝都必须填写理由' : '请填写拒绝理由'}
+                  rows={2}
+                  aria-label="取消申请处理理由"
+                />
+                <div className="od-form__actions">
+                  {approveAction && (
+                    <button
+                      type="button"
+                      className="action-button action-button--danger"
+                      onClick={() => onAction(approveAction, { reason: cancelReason })}
+                      disabled={anyBusy}
+                      aria-busy={busy(approveAction) || undefined}
+                    >
+                      {busy(approveAction) ? '提交中…' : approveAction.label}
+                    </button>
+                  )}
+                  {rejectAction && (
+                    <button
+                      type="button"
+                      className="action-button action-button--secondary"
+                      onClick={() => onAction(rejectAction, { reason: cancelReason })}
+                      disabled={anyBusy}
+                      aria-busy={busy(rejectAction) || undefined}
+                    >
+                      {busy(rejectAction) ? '提交中…' : rejectAction.label}
+                    </button>
+                  )}
+                </div>
+                {pendingError && <p className="od-error" role="alert">{pendingError}</p>}
+                <p className="od-hint">
+                  {approveAction
+                    ? '批准会取消订单并模拟退款；申请不等于已取消。'
+                    : '订单已可取餐，退款不受理；拒绝申请后请核销取餐码。'}
+                  {mode === 'real' ? ' 处理结果保存后学生端读取同一订单。' : ''}
+                </p>
+              </>
+            ) : (
+              <p className="od-hint">请在订单列表的「待处理」分组中查看并处理该申请。</p>
+            )}
+          </div>
+        )}
+
+        {pendingChange && (
+          <div className="od-pending-panel" data-pending-panel="dining-mode">
+            <div className="od-pending-panel__head">
+              <IconAlertTriangle size={17} />
+              <strong>待处理事项</strong>
+              <span>用餐方式变更</span>
+            </div>
+            <p className="od-pending-panel__line">
+              {diningModeChangeRoute(order.diningModeChange)}
             </p>
-          </>
+            {order.diningModeChange?.reason && (
+              <p className="od-pending-panel__reason">申请原因：{order.diningModeChange.reason}</p>
+            )}
+            <p className="od-hint">{diningModeChangeLabel(order.diningModeChange)}；当前流程请按线下确认结果处理。</p>
+          </div>
+        )}
+
+        {isCancelled && (
+          <div className="od-cancel-record">
+            <div className="od-cancel-record__head">
+              <IconCircleX size={17} />
+              <strong>取消记录</strong>
+              {order.paymentStatus === 'SIMULATED_REFUNDED' && (
+                <em className="od-refund-tag">模拟退款</em>
+              )}
+            </div>
+            <p>取消说明：{cancellationNote(order)}</p>
+            {order.cancelRequest.reason && <p>申请原因：{order.cancelRequest.reason}</p>}
+            {order.cancelRequest.decisionReason && <p>处理理由：{order.cancelRequest.decisionReason}</p>}
+            <p className="od-hint">订单已终止，不再执行接单、制作或核销。</p>
+          </div>
         )}
       </section>
 
-      {stockCancelAction && (
-        <section className="detail-block">
-          <h3>缺货取消</h3>
-          <p className="merchant-muted">
-            仅未结束订单可取消；取消后模拟退款，并返还菜品库存与尚未开始时段的 1 个名额。
-          </p>
-          <textarea
-            value={stockCancelReason}
-            onChange={(event) => setStockCancelReason(event.target.value)}
-            placeholder="填写缺货原因"
-            rows={2}
-            aria-label="缺货取消原因"
-          />
-          <button
-            type="button"
-            className="action-button action-button--danger"
-            onClick={() => onAction(stockCancelAction, { reason: stockCancelReason })}
-            disabled={busy(stockCancelAction)}
-            aria-busy={busy(stockCancelAction) || undefined}
-          >
-            {busyLabel(stockCancelAction)}
-          </button>
-          {errorFor('CANCEL_ORDER') && (
-            <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-              {errorFor('CANCEL_ORDER')}
-            </p>
-          )}
-          <p className="hint">
-            {mode === 'real'
-              ? '提交后由服务端判断状态与版本，失败会原样提示。'
-              : '样例模式只显示接口提示，不会取消订单。'}
-          </p>
-        </section>
-      )}
+      <section className={`od-card od-actions${isTerminal ? ' is-readonly' : ''}`} aria-label="订单操作">
+        <header className="od-card__head">
+          <h2><IconCircleCheck size={18} />操作</h2>
+          <span>{actionSectionHint}</span>
+        </header>
 
-      <section className="detail-block">
-        <h3>延迟</h3>
-        {order.delay ? (
-          <p className="merchant-muted">
-            {order.delay.reason} · 预计 {formatDateTime(order.delay.expectedReadyAt)} 可取
+        {isTerminal ? (
+          <p className="od-result">
+            {isCancelled
+              ? '该订单已取消，无后续操作。'
+              : `该订单已完成${order.pickedUpAt ? `，取餐核销于 ${formatDateTime(order.pickedUpAt)}` : ''}。`}
           </p>
-        ) : (
-          <p className="merchant-muted">未设置延迟</p>
-        )}
-        {delayAction && (
-          <>
-            <p className="merchant-muted">延迟原因</p>
-            <textarea
-              value={delayReason}
-              onChange={(event) => setDelayReason(event.target.value)}
-              placeholder="例如：当前订单较多，出餐延后"
-              rows={2}
-              aria-label="延迟原因"
-            />
-            <p className="merchant-muted">预计可取时间</p>
-            <input
-              type="datetime-local"
-              value={delayExpectedReadyAt}
-              onChange={(event) => setDelayExpectedReadyAt(event.target.value)}
-              aria-label="预计可取时间"
-            />
+        ) : verifyAction && !pendingCancel ? (
+          <div className="od-verify" data-verify-block>
+            <label className="od-field">
+              <span>取餐码</span>
+              <div className="od-verify__row">
+                <input
+                  value={pickupCode}
+                  onChange={(event) => setPickupCode(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !anyBusy) {
+                      onAction(verifyAction, { pickupCode });
+                    }
+                  }}
+                  placeholder="输入学生出示的取餐码"
+                  aria-label="取餐码"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  className="action-button action-button--primary od-btn"
+                  onClick={() => onAction(verifyAction, { pickupCode })}
+                  disabled={anyBusy}
+                  aria-busy={busy(verifyAction) || undefined}
+                  data-verify-submit
+                >
+                  {busy(verifyAction) ? '核销中…' : '核销取餐'}
+                </button>
+              </div>
+            </label>
+            {verifyError && <p className="od-error" role="alert">{verifyError}</p>}
+            <p className="od-hint">输入学生出示的取餐码后提交；核销成功后才进入已完成。</p>
+          </div>
+        ) : flowAction ? (
+          <div className="od-primary-action">
             <button
               type="button"
-              className="action-button action-button--secondary"
-              onClick={() => onAction(delayAction, {
-                reason: delayReason,
-                expectedReadyAt: delayExpectedReadyAt,
-              })}
-              disabled={busy(delayAction)}
-              aria-busy={busy(delayAction) || undefined}
+              className="action-button action-button--primary od-btn od-btn--wide"
+              onClick={() => onAction(flowAction)}
+              disabled={anyBusy}
+              aria-busy={busy(flowAction) || undefined}
+              data-flow-action={flowAction.code}
             >
-              {busyLabel(delayAction)}
+              {busy(flowAction) ? '提交中…' : (
+                <>
+                  <IconCheck size={16} />
+                  {flowActionLabel(flowAction)}
+                </>
+              )}
             </button>
-            {errorFor('SET_DELAY') && (
-              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-                {errorFor('SET_DELAY')}
-              </p>
+            <p className="od-hint">{flowActionHint(flowAction)}</p>
+            {flowError && <p className="od-error" role="alert">{flowError}</p>}
+          </div>
+        ) : pending ? (
+          <p className="od-result">请先处理上方待处理事项。</p>
+        ) : (
+          <p className="od-result">当前状态没有可执行的主操作。</p>
+        )}
+
+        {!isTerminal && stockCancelAction && (
+          <div className="od-danger" data-stock-cancel>
+            <button
+              type="button"
+              className="od-text-button od-text-button--danger"
+              onClick={() => setShowStock((current) => !current)}
+              disabled={anyBusy}
+              aria-expanded={showStock}
+            >
+              {showStock ? '收起缺货取消' : '缺货取消'}
+            </button>
+            {showStock && (
+              <div className="od-form">
+                <label>
+                  <span>缺货原因</span>
+                  <textarea
+                    value={stockReason}
+                    onChange={(event) => setStockReason(event.target.value)}
+                    placeholder="填写缺货原因"
+                    rows={2}
+                    aria-label="缺货取消原因"
+                  />
+                </label>
+                <div className="od-form__actions">
+                  <button
+                    type="button"
+                    className="action-button action-button--danger"
+                    onClick={() => onAction(stockCancelAction, { reason: stockReason })}
+                    disabled={anyBusy}
+                    aria-busy={busy(stockCancelAction) || undefined}
+                  >
+                    {busy(stockCancelAction) ? '提交中…' : '确认缺货取消'}
+                  </button>
+                </div>
+                {stockError && <p className="od-error" role="alert">{stockError}</p>}
+                <p className="od-hint">仅未结束订单可取消；取消后按服务端规则返还库存与未开始时段的 1 个名额。</p>
+              </div>
             )}
-            <p className="hint">
-              延迟不改变主状态，学生可读取原因与预计时间。
-              {mode === 'sample' ? '样例模式只显示接口提示。' : ''}
-            </p>
-          </>
+          </div>
         )}
-      </section>
 
-      <section className="detail-block">
-        <h3>用餐方式</h3>
-        <p className="detail-emphasis">{dining.label} · {dining.description}</p>
-        {order.diningModeReason && (
-          <p className="merchant-muted">变更理由：{order.diningModeReason}</p>
-        )}
-        <p className="hint">用餐方式由学生下单时选择，档口不可修改。</p>
-
-      </section>
-
-      <section className="detail-block">
-        <h3>操作</h3>
-        <ActionBar
-          actions={mainActions}
-          onAction={onAction}
-          emptyText={emptyText}
-          mode={mode}
-          pendingCode={pendingCode}
-          errorText={otherError}
-        />
-        {isEmptyOperation && (
-          <p className="hint">终态订单只读，不显示接单、制作或核销按钮。</p>
+        {isCompleted && (
+          <p className="od-hint">已完成订单只读，不显示接单、制作或核销按钮。</p>
         )}
       </section>
     </div>

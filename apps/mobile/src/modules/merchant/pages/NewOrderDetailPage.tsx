@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import ActionBar from '../components/ActionBar';
+import OrderStatusTrack from '../components/OrderStatusTrack';
+import { IconClock3, IconMessageSquareText, IconUtensils } from '../components/MerchantIcons';
 import type { MerchantOrder } from '../data/types';
 import {
   getOrderActions,
@@ -14,7 +16,7 @@ import {
   formatSlot,
   orderNoLabel,
   paymentText,
-  STATUS_TRACK,
+
   statusView,
 } from '../state/orderView';
 import { fenToYuan, formatYuan, totalQuantity } from '../utils/money';
@@ -64,7 +66,7 @@ order,
     : null;
   const status = statusView(order.status);
   const dining = diningModeView(order.diningMode);
-  const currentIndex = STATUS_TRACK.indexOf(order.status);
+
 
   return (
     <div
@@ -109,13 +111,19 @@ order,
       </header>
 
       <section className="detail-block detail-block--appointment">
-        <h3>预约时间</h3>
+        <h3>
+          <IconClock3 size={16} />
+          预约时间
+        </h3>
         <p className="detail-emphasis">{formatSlot(order)}</p>
         <p className="hint">档口应在这个时段内做好，到点不一定已好。</p>
       </section>
 
       <section className="detail-block detail-block--remark">
-        <h3>订单备注</h3>
+        <h3>
+          <IconMessageSquareText size={16} />
+          订单备注
+        </h3>
         {order.remark ? (
           <p className="detail-remark" data-order-remark={order.remark}>{order.remark}</p>
         ) : (
@@ -124,7 +132,10 @@ order,
       </section>
 
       <section className="detail-block detail-block--items">
-        <h3>菜品与金额</h3>
+        <h3>
+          <IconUtensils size={16} />
+          菜品与金额
+        </h3>
         <ul className="detail-items">
           {order.items.map((item) => (
             <li key={item.dishId}>
@@ -141,17 +152,7 @@ order,
 
       <section className="detail-block detail-block--status">
         <h3>状态轴</h3>
-        <ol className="status-track">
-          {STATUS_TRACK.map((step, index) => (
-            <li
-              key={step}
-              aria-current={index === currentIndex ? 'step' : undefined}
-              className={index <= currentIndex ? 'status-track__step status-track__step--on' : 'status-track__step'}
-            >
-              {statusView(step).label}
-            </li>
-          ))}
-        </ol>
+        <OrderStatusTrack order={order} />
       </section>
 
       <section className="detail-block detail-block--meta">

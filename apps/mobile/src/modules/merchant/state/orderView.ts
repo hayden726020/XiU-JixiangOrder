@@ -26,7 +26,7 @@ const GROUP_DEFS: ReadonlyArray<{ key: string; label: string; statuses: OrderSta
   { key: 'cancelled', label: '已取消', statuses: ['CANCELLED'] },
 ];
 
-export const STATUS_TRACK: OrderStatus[] = ['NEW', 'ACCEPTED', 'PREPARING', 'READY', 'COMPLETED'];
+export { STATUS_TRACK } from './statusTrack';
 
 const DINING_MODE_VIEWS: Record<DiningMode, { label: string; tone: string; description: string }> = {
   DINE_IN: { label: '堂食', tone: 'dine-in', description: '在档口用餐，按堂食备餐' },
@@ -87,9 +87,11 @@ export function groupOrders(
 ): OrderGroup[] {
   const groups = GROUP_DEFS.map((definition) => {
     const grouped = orders
-      .filter((order) => (definition.statuses === null
-        ? hasPendingRequest(order)
-        : definition.statuses.includes(order.status)))
+      .filter((order) => {
+        if (definition.statuses === null) return hasPendingRequest(order);
+        if (hasPendingRequest(order)) return false;
+        return definition.statuses.includes(order.status);
+      })
       .sort((left, right) => {
         if (definition.statuses === null) {
           return left.updatedAt === right.updatedAt
@@ -111,6 +113,8 @@ export function groupOrders(
   });
   return options.includeEmpty ? groups : groups.filter((group) => group.count > 0);
 }
+
+export { sortOrdersForPickup } from './orderPickup';
 
 export function shortOrderId(id: string): string {
   const uuid = /^ord_([0-9a-f]{8})/i.exec(id);
@@ -150,6 +154,35 @@ export function localInputToZonedIso(value: string): string {
 
 export function formatSlot(order: MerchantOrder): string {
   return `${formatClock(order.slotStart)}—${formatClock(order.slotEnd)}`;
+}
+
+export const PICKUP_SOON_MINUTES = 15;
+
+export type PickupTimingTone = 'upcoming' | 'soon' | 'active' | 'overdue';
+
+export interface PickupTiming {
+  tone: PickupTimingTone;
+  label: string;
+}
+
+export function pickupTiming(order: MerchantOrder, now: number = Date.now()): PickupTiming | null {
+  if (order.status === 'COMPLETED' || order.status === 'CANCELLED') return null;
+  const start = Date.parse(order.slotStart);
+  const end = Date.parse(order.slotEnd);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(now)) return null;
+
+  if (now < start) {
+    const minutes = Math.max(1, Math.ceil((start - now) / 60_000));
+    if (minutes <= PICKUP_SOON_MINUTES) {
+      return { tone: 'soon', label: `即将进入取餐时段（${minutes} 分钟）` };
+    }
+    return { tone: 'upcoming', label: `距离取餐还有 ${minutes} 分钟` };
+  }
+  if (now <= end) {
+    return { tone: 'active', label: `已到预约开始时间，取餐至 ${formatClock(order.slotEnd)}` };
+  }
+  const minutes = Math.max(1, Math.floor((now - end) / 60_000));
+  return { tone: 'overdue', label: `已超过预约取餐时段 ${minutes} 分钟` };
 }
 
 export function diningModeView(mode: DiningMode): { label: string; tone: string; description: string } {

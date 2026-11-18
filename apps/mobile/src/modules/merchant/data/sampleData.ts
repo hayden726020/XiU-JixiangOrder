@@ -6,6 +6,8 @@ export const DEMO_SCENARIOS: ReadonlyArray<{ value: MerchantScenario; label: str
   { value: 'normal', label: '正常（5 笔）' },
   { value: 'empty', label: '无订单' },
   { value: 'pending-cancel', label: '待处理取消申请' },
+  { value: 'preparing', label: '制作中（1 笔）' },
+  { value: 'ready', label: '可取餐（1 笔）' },
 ];
 
 const DISHES: Record<string, Dish[]> = {
@@ -157,6 +159,29 @@ export function sampleOrders(scenario: MerchantScenario): MerchantOrder[] {
   if (scenario === 'empty') return [];
   if (scenario === 'pending-cancel') {
     return structuredClone(NORMAL_ORDERS.filter((order) => order.id === 'demo-order-003'));
+  }
+  if (scenario === 'preparing') {
+    const base = NORMAL_ORDERS.find((order) => order.id === 'demo-order-002');
+    if (!base) return [];
+    return [structuredClone({
+      ...base,
+      id: 'demo-order-002-preparing',
+      status: 'PREPARING',
+      version: 3,
+      updatedAt: '2026-11-13T12:05:00+08:00',
+    })];
+  }
+  if (scenario === 'ready') {
+    const base = NORMAL_ORDERS.find((order) => order.id === 'demo-order-003');
+    if (!base) return [];
+    return [structuredClone({
+      ...base,
+      id: 'demo-order-003-ready',
+      status: 'READY',
+      cancelRequest: { status: 'NONE', reason: null, decisionReason: null },
+      version: 3,
+      updatedAt: '2026-11-13T11:30:00+08:00',
+    })];
   }
   return structuredClone(NORMAL_ORDERS);
 }

@@ -1,13 +1,16 @@
+import { useEffect, useState } from 'react';
 import OrderCard from '../components/OrderCard';
 import { DEMO_SCENARIOS } from '../data/sampleData';
 import type { MerchantOrder, MerchantScenario } from '../data/types';
 import type { ActionInput, OrderAction } from '../state/actionMatrix';
-import { groupOrders } from '../state/orderView';
+import { groupOrders, sortOrdersForPickup } from '../state/orderView';
+import { IconClipboardList, IconReceiptText, IconUtensils } from '../components/MerchantIcons';
 
 interface OrderListPageProps {
   orders: MerchantOrder[];
   scenario: MerchantScenario;
   isSample: boolean;
+  businessDate: string;
 
   loading: boolean;
   error: string | null;
@@ -24,6 +27,7 @@ interface OrderListPageProps {
   pendingOrderId: string | null;
   actionError: { code: string; message: string; orderId?: string } | null;
   onOpenMenu: () => void;
+  onOpenPrep: () => void;
 
   onRefresh: () => void;
   refreshing: boolean;
@@ -35,6 +39,7 @@ export default function OrderListPage({
   orders,
   scenario,
   isSample,
+  businessDate,
 
   loading,
   error,
@@ -51,19 +56,28 @@ export default function OrderListPage({
   pendingOrderId,
   actionError,
   onOpenMenu,
+  onOpenPrep,
 
   onRefresh,
   refreshing,
   lastRefreshedAt,
   autoRefreshSeconds,
 }: OrderListPageProps) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
   const groups = groupOrders(orders, { includeEmpty: true });
   const activeGroup = groups.find((group) => group.key === activeGroupKey) ?? groups[0];
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const activeOrders = [...activeGroup.orders].sort((left, right) => {
-    const slotOrder = left.slotStart.localeCompare(right.slotStart);
-    return slotOrder !== 0 ? slotOrder : left.createdAt.localeCompare(right.createdAt);
-  });
+  const activeOrders = activeGroup.key === 'pending'
+    ? [...activeGroup.orders].sort((left, right) => {
+      const timeOrder = right.updatedAt.localeCompare(left.updatedAt);
+      return timeOrder !== 0 ? timeOrder : right.id.localeCompare(left.id);
+    })
+    : sortOrdersForPickup(activeGroup.orders, businessDate);
 
   return (
     <div className="merchant-view merchant-order-list">
@@ -80,8 +94,12 @@ export default function OrderListPage({
           </p>
         </div>
         <div className="merchant-view__actions">
-
-          <button type="button" className="merchant-link-button" onClick={onOpenMenu} data-open-menu>
+          <button type="button" className="merchant-link-button" onClick={onOpenPrep} data-open-prep>
+            <IconClipboardList size={15} />
+            备餐汇总
+          </button>
+          <button type="button" className="merchant-link-button" onClick={() => onOpenMenu()} data-open-menu>
+            <IconUtensils size={15} />
             菜单与库存
           </button>
         </div>
@@ -136,11 +154,14 @@ export default function OrderListPage({
           </button>
         </div>
       ) : orders.length === 0 ? (
-        <p className="merchant-empty">
-          {total > 0
-            ? '本页没有订单，请返回上一页。'
-            : isSample ? '暂无订单，样例模式下可切换演示场景。' : '服务返回 0 笔订单。'}
-        </p>
+        <div className="merchant-empty merchant-empty--state">
+          <IconReceiptText size={30} />
+          <p>
+            {total > 0
+              ? '本页没有订单，请返回上一页。'
+              : isSample ? '暂无订单，样例模式下可切换演示场景。' : '服务返回 0 笔订单。'}
+          </p>
+        </div>
       ) : (
         <>
           <div className="merchant-status-bar" role="group" aria-label="按订单状态查看">
@@ -172,11 +193,14 @@ export default function OrderListPage({
           </div>
 
           {activeGroup.count === 0 ? (
-            <p className="merchant-empty">
-              {activeGroup.key === 'pending'
-                ? '暂无待处理申请：学生可申请退款或更改用餐方式。'
-                : `「${activeGroup.label}」暂无订单。`}
-            </p>
+            <div className="merchant-empty merchant-empty--state">
+              <IconReceiptText size={30} />
+              <p>
+                {activeGroup.key === 'pending'
+                  ? '暂无待处理申请：学生可申请退款或更改用餐方式。'
+                  : `「${activeGroup.label}」暂无订单。`}
+              </p>
+            </div>
           ) : (
             <section className="order-group" aria-label={activeGroup.label}>
               <h3 className="order-group__title">
@@ -185,9 +209,7 @@ export default function OrderListPage({
                 <span className="order-group__sort">
                   {activeGroup.key === 'pending' ? '按申请时间排序' : '按取餐时间排序'}
                 </span>
-                {activeGroup.hasPendingRequest && activeGroup.key !== 'pending' && (
-                  <span className="merchant-flag merchant-flag--pending">有学生申请</span>
-                )}
+
               </h3>
               <div className="order-group__rows">
                 {activeOrders.map((order) => (
@@ -201,6 +223,8 @@ export default function OrderListPage({
                     actionError={actionError}
                     showCancellationDetails
                     showOverdue={!isSample}
+                    pendingOnly={activeGroup.key === 'pending'}
+                    now={now}
                   />
                 ))}
               </div>
@@ -212,7 +236,11 @@ export default function OrderListPage({
       {!loading && !error && total > 0 && (
         <>
           {!isSample && (
-            <p className="hint">档口共 {total} 笔订单，本页 {orders.length} 笔；点击卡片查看详情。</p>
+            <p className="hint">
+              档口共 {total} 笔订单，本页 {orders.length} 笔
+              {total > orders.length ? '；状态数量按本页统计，可用分页查看其余订单' : ''}
+              ；点击卡片查看详情。
+            </p>
           )}
           {totalPages > 1 && (
             <nav className="merchant-pager" aria-label="订单分页">
