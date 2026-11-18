@@ -1,0 +1,1010 @@
+.app-shell:has(.confirm-order-page) {
+  max-width: 520px;
+  background: #f7efe2;
+}
+
+.app-shell:has(.confirm-order-page) > .app-header,
+.app-shell:has(.confirm-order-page) > .app-footer,
+.app-main:has(.confirm-order-page) > .back-link {
+  display: none;
+}
+
+.app-main:has(.confirm-order-page) {
+  padding: 0;
+}
+
+.confirm-order-page {
+  --co-ink: #2b1406;
+  --co-ink-soft: #4c3625;
+  --co-muted: #7d6d5e;
+  --co-gold: #f5bb20;
+  --co-paper: #fffbf4;
+  --co-border: #e5d3bc;
+  --co-serif: "STKaiti", "KaiTi", "Kaiti SC", "DFKai-SB", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+  --co-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+
+  box-sizing: border-box;
+  min-height: 100dvh;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 50% 0%, #fffefb 0%, #fbf5eb 46%, #f5ecde 100%);
+  color: var(--co-ink);
+  font-family: var(--co-sans);
+  overflow-x: hidden;
+}
+
+.confirm-order-page *,
+.confirm-order-page *::before,
+.confirm-order-page *::after {
+  box-sizing: border-box;
+}
+
+.confirm-order-page button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.confirm-order-page button:disabled {
+  cursor: not-allowed;
+}
+
+.confirm-order-page button:focus-visible,
+.confirm-order-page textarea:focus-visible,
+.confirm-order-page summary:focus-visible {
+  outline: 2.5px solid #c9820a;
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   1. 顶部标题区与手绘餐盖插画
+   ========================================================================== */
+
+.confirm-order__hero {
+  position: relative;
+  padding: calc(0.75rem + env(safe-area-inset-top)) 0.95rem 0.45rem;
+}
+
+.confirm-order__nav {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 2.5rem;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.confirm-order__back {
+  display: grid;
+  place-items: center;
+  width: 2.38rem;
+  height: 2.38rem;
+  padding: 0;
+  border: 1px solid #e7d8c5;
+  border-radius: 0.72rem;
+  background: #fffdf9;
+  color: var(--co-ink);
+  box-shadow: 0 2px 6px rgba(88, 48, 12, 0.08);
+  transition: transform 0.14s ease, background-color 0.14s ease;
+}
+
+.confirm-order__back:active {
+  transform: scale(0.95);
+  background: #faf2e6;
+}
+
+.confirm-order__back svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.confirm-order__title-wrap {
+  position: relative;
+  justify-self: center;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.confirm-order__title {
+  margin: 0;
+  font-family: var(--co-serif);
+  font-size: clamp(1.92rem, 8.2vw, 2.3rem);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: 0.05em;
+  color: var(--co-ink);
+  white-space: nowrap;
+}
+
+.confirm-order__title-rays {
+  position: absolute;
+  top: -0.52rem;
+  right: -1.35rem;
+  width: 1.35rem;
+  height: 1.25rem;
+  color: #f5ba1f;
+  pointer-events: none;
+}
+
+.confirm-order__title-underline {
+  display: block;
+  width: 106%;
+  height: 0.65rem;
+  margin-top: -0.04rem;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.confirm-order__cloche {
+  position: absolute;
+  right: 0.85rem;
+  top: calc(1.25rem + env(safe-area-inset-top));
+  width: 5.15rem;
+  height: 4.35rem;
+  color: #d9bf99;
+  pointer-events: none;
+}
+
+.confirm-order__lead {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  margin: 0.42rem 0 0 0.05rem;
+}
+
+.confirm-order__lead-rays {
+  width: 1.18rem;
+  height: 1.18rem;
+  margin-left: -0.18rem;
+  color: #f5ba1f;
+  flex: none;
+}
+
+.confirm-order__lead-text {
+  font-family: var(--co-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #3a200d;
+}
+
+/* ==========================================================================
+   2. 当前店铺轻量信息行（无外框，底部 1px 分割线）
+   ========================================================================== */
+
+.confirm-order__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.1rem 1rem 0.9rem;
+}
+
+.confirm-shop-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.5rem 0.125rem;
+  border: 0;
+  border-bottom: 1px solid #e6d8c5;
+  background: transparent;
+  cursor: default;
+}
+
+.confirm-shop-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.confirm-shop-bar__icon {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  color: #46301e;
+}
+
+.confirm-shop-bar__label {
+  flex: none;
+  font-family: var(--co-sans);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: #7b6a5a;
+  white-space: nowrap;
+}
+
+.confirm-shop-bar__name {
+  min-width: 0;
+  margin-left: 0.125rem;
+  font-family: var(--co-sans);
+  font-size: 17.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: var(--co-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   3. 主票据纸张卡片（上下邮票齿孔 + 左右半圆缺口）
+   ========================================================================== */
+
+.confirm-receipt-wrap {
+  position: relative;
+  filter:
+    drop-shadow(1px 0 0 #e7d6c0)
+    drop-shadow(-1px 0 0 #e7d6c0)
+    drop-shadow(0 1px 0 #e7d6c0)
+    drop-shadow(0 -1px 0 #e7d6c0)
+    drop-shadow(0 8px 18px rgba(84, 48, 12, 0.08));
+}
+
+.confirm-receipt::before,
+.confirm-receipt::after {
+  content: "";
+  display: block;
+  height: 10px;
+  background-size: 19px 10px;
+  background-repeat: repeat-x;
+}
+
+.confirm-receipt::before {
+  background-image: radial-gradient(circle at 9.5px 0, transparent 0 5px, var(--co-paper) 5.45px);
+}
+
+.confirm-receipt::after {
+  background-image: radial-gradient(circle at 9.5px 10px, transparent 0 5px, var(--co-paper) 5.45px);
+}
+
+.confirm-receipt__body {
+  padding: 0.42rem 1.05rem 0.5rem;
+  background:
+    radial-gradient(circle at 0 2.6rem, transparent 0 7.8px, var(--co-paper) 8.3px) left top / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 2.6rem, transparent 0 7.8px, var(--co-paper) 8.3px) right top / 51% 100% no-repeat;
+}
+
+/* 分组标题行与手绘刷痕底色 */
+.confirm-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.72rem;
+}
+
+.confirm-sec-head__left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.42rem;
+}
+
+.confirm-brush-tag {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.14rem 0.78rem 0.16rem;
+  font-family: var(--co-serif);
+  font-size: 1.12rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: var(--co-ink);
+  z-index: 1;
+}
+
+.confirm-brush-tag::before {
+  content: "";
+  position: absolute;
+  inset: 1px 0 0;
+  background: linear-gradient(95deg, #ffe08a 0%, #ffe8a3 55%, #ffde84 100%);
+  clip-path: polygon(
+    2% 9%,
+    97% 4%,
+    100% 27%,
+    96% 52%,
+    99% 78%,
+    95% 96%,
+    3% 95%,
+    0% 70%,
+    4% 43%,
+    1% 19%
+  );
+  z-index: -1;
+}
+
+.confirm-brush-tag__rays {
+  position: absolute;
+  top: -0.45rem;
+  right: -1.05rem;
+  width: 1.05rem;
+  height: 1rem;
+  color: #f4ba22;
+  pointer-events: none;
+}
+
+.confirm-sec-head__sub {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #887766;
+}
+
+.confirm-sec-head__watermark {
+  flex: none;
+  color: #dec6a4;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.confirm-sec-head__watermark svg {
+  width: 2.2rem;
+  height: 2.05rem;
+}
+
+.confirm-divider {
+  margin: 0.78rem 0;
+  border: 0;
+  border-top: 1px dashed #dfceb8;
+}
+
+/* 3.1 订单明细列表 */
+.confirm-items {
+  margin: 0;
+  padding: 0.1rem 0 0;
+  list-style: none;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.confirm-item {
+  display: flex;
+  align-items: center;
+  gap: 0.82rem;
+}
+
+.confirm-item__polaroid {
+  position: relative;
+  flex: none;
+  width: 5.2rem;
+  height: 5.2rem;
+  padding: 3px;
+  border-radius: 0.62rem;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(72, 40, 12, 0.13);
+}
+
+.confirm-item__tape {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  z-index: 2;
+  width: 2.3rem;
+  height: 0.76rem;
+  background: rgba(248, 203, 82, 0.86);
+  border-radius: 1px;
+  transform: rotate(-24deg);
+  box-shadow: 0 1px 2px rgba(132, 84, 12, 0.15);
+  pointer-events: none;
+}
+
+.confirm-item__polaroid img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.48rem;
+  background: #f2e6d5;
+}
+
+.confirm-item__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.22rem;
+}
+
+.confirm-item__name {
+  margin: 0;
+  max-width: 100%;
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1.25;
+  color: var(--co-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confirm-item__unit {
+  margin: 0;
+  font-size: 0.81rem;
+  font-weight: 500;
+  color: var(--co-muted);
+}
+
+.confirm-item__custom {
+  margin: 0.14rem 0 0;
+  max-width: 100%;
+  color: #8a5a1c;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.confirm-item__qty {
+  margin-top: 0.16rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.14rem 0.62rem;
+  border-radius: 0.42rem;
+  background: #f2e8d9;
+  color: #361e0c;
+  font-size: 0.83rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.confirm-item__subtotal {
+  flex: none;
+  align-self: flex-end;
+  padding-bottom: 0.08rem;
+  font-size: 1.24rem;
+  font-weight: 900;
+  line-height: 1.15;
+  color: var(--co-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.confirm-subtotal-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.confirm-subtotal-row__label {
+  font-family: var(--co-serif);
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--co-ink);
+}
+
+.confirm-subtotal-row__amount {
+  font-size: 1.14rem;
+  font-weight: 900;
+  color: var(--co-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 3.2 预约信息行 */
+.confirm-meta-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.confirm-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 2.42rem;
+  padding: 0.36rem 0;
+}
+
+.confirm-meta-row + .confirm-meta-row {
+  border-top: 1px solid #f1e7d9;
+}
+
+.confirm-meta-row__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--co-ink-soft);
+}
+
+.confirm-meta-row__key svg {
+  width: 1.12rem;
+  height: 1.12rem;
+  color: #5b422c;
+  flex: none;
+}
+
+.confirm-meta-row__val {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--co-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.confirm-meta-row__slot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--co-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.confirm-meta-row__slot-btn svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: #6f5b49;
+}
+
+/* 3.3 订单备注输入框 */
+.confirm-remark-box {
+  position: relative;
+  border: 1px solid #e4d5c1;
+  border-radius: 0.65rem;
+  background: #faf5ec;
+  padding: 0.6rem 0.75rem 1.42rem;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.confirm-remark-box:focus-within {
+  border-color: #d49d35;
+  background: #fffdf9;
+}
+
+.confirm-remark-box__input {
+  display: block;
+  width: 100%;
+  min-height: 2.55rem;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--co-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  resize: none;
+}
+
+.confirm-remark-box__input::placeholder {
+  color: #8c7b6a;
+}
+
+.confirm-remark-box__input:disabled {
+  opacity: 0.6;
+}
+
+.confirm-remark-box__count {
+  position: absolute;
+  right: 0.72rem;
+  bottom: 0.38rem;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: #8c7b6a;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* 3.4 票据底部合计金额与按时取餐提示 */
+.confirm-summary-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1.18fr);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.1rem 0 0.18rem;
+}
+
+.confirm-summary-foot__left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.confirm-summary-foot__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #594738;
+}
+
+.confirm-summary-foot__price-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  margin-top: 0.08rem;
+}
+
+.confirm-summary-foot__price {
+  font-size: clamp(1.48rem, 6.2vw, 1.78rem);
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--co-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.confirm-summary-foot__underline {
+  width: 106%;
+  height: 0.45rem;
+  margin-top: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.confirm-summary-foot__sep {
+  width: 1px;
+  height: 2.55rem;
+  background: #decbb4;
+}
+
+.confirm-summary-foot__right {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.confirm-pickup-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.44rem 0.62rem;
+  color: #381f0d;
+  z-index: 1;
+}
+
+.confirm-pickup-pill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(95deg, #fde4a3 0%, #fcebb8 52%, #fde199 100%);
+  border-radius: 0.45rem;
+  clip-path: polygon(
+    2% 8%,
+    98% 3%,
+    100% 34%,
+    97% 66%,
+    99% 93%,
+    95% 98%,
+    3% 96%,
+    0% 65%,
+    3% 32%
+  );
+  z-index: -1;
+}
+
+.confirm-pickup-pill svg {
+  flex: none;
+  width: 1.32rem;
+  height: 1.2rem;
+  color: #3a200d;
+}
+
+.confirm-pickup-pill span {
+  font-family: var(--co-serif);
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   4. 状态反馈、说明文字与样例调试折叠面板
+   ========================================================================== */
+
+.confirm-sub-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0 0.15rem;
+}
+
+.confirm-contract-note {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #8a7967;
+}
+
+.confirm-state-card {
+  padding: 0.9rem 1rem;
+  border: 1px dashed #dcc8b0;
+  border-radius: 0.75rem;
+  background: rgba(255, 251, 244, 0.9);
+  color: #6f5e4e;
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+.confirm-alert-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.88rem 1rem;
+  border: 1px solid #e7b5ac;
+  border-radius: 0.75rem;
+  background: #fff5f3;
+  color: #7c2419;
+}
+
+.confirm-alert-card p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.confirm-alert-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.confirm-alert-card__actions button {
+  padding: 0.38rem 0.82rem;
+  border: 1px solid #dca49a;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #7c2419;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.confirm-alert-card__actions button.is-primary {
+  border-color: #dfaf31;
+  background: #f8cf52;
+  color: var(--co-ink);
+}
+
+.confirm-scenario-details {
+  border: 1px dashed #dfd0bb;
+  border-radius: 0.7rem;
+  background: rgba(255, 251, 244, 0.72);
+  padding: 0.45rem 0.75rem;
+}
+
+.confirm-scenario-details summary {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #7b6b5b;
+  cursor: pointer;
+  user-select: none;
+}
+
+.confirm-scenario-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.confirm-scenario-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #e2d1bc;
+  border-radius: 0.5rem;
+  background: #fffdf9;
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--co-ink);
+}
+
+.confirm-scenario-btn__hint {
+  font-size: 0.64rem;
+  font-weight: 400;
+  color: var(--co-muted);
+}
+
+.confirm-scenario-btn.is-active {
+  border-color: #d99f26;
+  background: #ffecaf;
+}
+
+/* ==========================================================================
+   5. 底部吸底齿孔结算票条
+   ========================================================================== */
+
+.confirm-checkout-wrap {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin-top: auto;
+  padding: 0.5rem 0.625rem calc(0.6rem + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(245, 236, 222, 0) 0%, rgba(245, 236, 222, 0.94) 28%, #f5ecde 100%);
+}
+
+.confirm-checkout-ticket {
+  filter:
+    drop-shadow(1px 0 0 #e6d7c3)
+    drop-shadow(-1px 0 0 #e6d7c3)
+    drop-shadow(0 1px 0 #e6d7c3)
+    drop-shadow(0 -1px 0 #e6d7c3)
+    drop-shadow(0 3px 10px rgba(84, 48, 12, 0.05));
+}
+
+.confirm-checkout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1.12fr);
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 68px;
+  padding: 8px 12px 8px 18px;
+  border-radius: 8px;
+  background: #fffbf4;
+  -webkit-mask-image:
+    radial-gradient(circle at 0 25%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 0 50%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 0 75%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 100% 25%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 100% 50%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 100% 75%, transparent 0 4px, #000 4.5px);
+  -webkit-mask-composite: destination-in;
+  mask-image:
+    radial-gradient(circle at 0 25%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 0 50%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 0 75%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 100% 25%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 100% 50%, transparent 0 4px, #000 4.5px),
+    radial-gradient(circle at 100% 75%, transparent 0 4px, #000 4.5px);
+  mask-composite: intersect;
+}
+
+.confirm-checkout__left {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.confirm-checkout__label {
+  font-family: var(--co-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: #6d5c4d;
+}
+
+.confirm-checkout__total {
+  font-family: var(--co-sans);
+  font-size: clamp(1.32rem, 5.4vw, 1.56rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--co-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.confirm-checkout__sep {
+  width: 1px;
+  height: 28px;
+  background: #e4d4bf;
+}
+
+.confirm-checkout__right {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.confirm-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 9px;
+  background-color: #f1c94c;
+  box-shadow: none;
+  color: #2b180a;
+  font-family: var(--co-sans);
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: background-color 0.14s ease;
+}
+
+.confirm-submit-btn:hover:not(:disabled) {
+  background-color: #ebc140;
+}
+
+.confirm-submit-btn:active:not(:disabled) {
+  background-color: #e1b634;
+}
+
+.confirm-submit-btn:disabled {
+  background-color: #ede3ce;
+  box-shadow: none;
+  color: #948473;
+}
+
+.confirm-submit-btn svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+.confirm-checkout__reason {
+  margin-top: 0.2rem;
+  font-size: 0.65rem;
+  color: #8b2619;
+  text-align: center;
+  line-height: 1.25;
+}
+
+/* 窄屏适配（320px - 360px） */
+@media (max-width: 360px) {
+  .confirm-order__cloche {
+    width: 4.1rem;
+    height: 3.5rem;
+    right: 0.55rem;
+  }
+
+  .confirm-receipt__body {
+    padding-inline: 0.8rem;
+  }
+
+  .confirm-item__polaroid {
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+
+  .confirm-item__subtotal {
+    font-size: 1.08rem;
+  }
+
+  .confirm-summary-foot {
+    gap: 0.5rem;
+  }
+
+  .confirm-pickup-pill {
+    padding-inline: 0.42rem;
+  }
+
+  .confirm-pickup-pill span {
+    font-size: 0.75rem;
+  }
+
+  .confirm-checkout {
+    padding-inline: 0.85rem 0.65rem;
+    gap: 0.5rem;
+  }
+
+  .confirm-submit-btn {
+    font-size: 16px;
+    padding-inline: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-order__back,
+  .confirm-shop-bar,
+  .confirm-remark-box,
+  .confirm-submit-btn {
+    transition: none;
+  }
+}
