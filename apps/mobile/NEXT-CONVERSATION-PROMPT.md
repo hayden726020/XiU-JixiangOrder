@@ -39,9 +39,9 @@
 ## Git 基线
 
 - 远端：`https://github.com/hayden726020/XiU-JixiangOrder.git`，默认分支 `main`。
-- 远端基线分支：`frontend/baseline-2026-11-17`；专用分支 `frontend/handoff-2026-11-17` 当前远端头 `ba4bdc3`，提交链 `82044d9` → `19902d0` → `ba4bdc3`，其后接记录本节的 docs 提交。
-- 远端历史里存在 `ef68433`/`fbbac94`/`d321d90` 三个同内容重复提交（GitHub API 推送产生）；本地已 rebase 到其上，不要再强推本地旧提交。
-- GitHub HTTPS 会间歇性超时或 `Connection was reset`；重试即可，或加 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用。
+- 远端基线分支：`frontend/baseline-2026-11-17`；专用分支 `frontend/handoff-2026-11-18` 为 2026-11-18 新基线（由 `1cc7f47` 之后继续，包含 `a0dc038 feat(mobile): 档口端先登录后入驻并支持我的信息修改` 与本轮提交）。上一轮 `frontend/handoff-2026-11-17` 远端头为 `1cc7f47`，勿强推覆盖。
+- 远端历史里存在 `ef68433`/`fbbac94`/`d321d90` 三个同内容重复提交（GitHub API 推送产生）；不要再强推本地旧提交。
+- GitHub HTTPS 会间歇性超时或 `Connection was reset`；重试即可，或加 `-c http.version=HTTP/1.1`。本次 `github.com:443` 持续不可达而 `api.github.com` 可达，最终通过 GitHub REST API 上传变更树、创建提交并新建分支引用；远端与本地哈希不同但树一致。
 - 远端没有 `frontend/`；本地副本对应远端 `apps/mobile`。
 
 ## 关键约束
@@ -53,7 +53,7 @@
 
 ## 新对话优先事项
 
-1. **先重打 APK**（登录页与刷新修复仅在源码，旧包不含）：在 `frontend` 或 `.git-sync/apps/mobile` 执行 `vite build`，再按 HANDOFF 第 3 节执行 `gradlew.bat assembleDebug`；然后安装：
+1. **先重打 APK**（档口首页工作台、商家名称可改、退出后重登、登录页与刷新修复仅在源码，旧包不含）：在 `frontend` 或 `.git-sync/apps/mobile` 执行 `vite build`，再按 HANDOFF 第 3 节执行 `gradlew.bat assembleDebug`；然后安装：
    ```powershell
    & "D:\AndroidSdk\platform-tools\adb.exe" devices
    & "D:\AndroidSdk\platform-tools\adb.exe" install -r "E:\project\workspace\frontend\android\app\build\outputs\apk\debug\app-debug.apk"
@@ -71,7 +71,7 @@
 
 ## 数据与兼容边界
 
-- `MerchantRegistrationDraft` 包含 `merchantName`、`contactName`、`contactPhone`；注册页不展示 `merchantName` 输入，提交时自动填当前档口账号名（`session.user.displayName`，截断 20 字符，兜底「档口商家」）。
+- `MerchantRegistrationDraft` 包含 `merchantName`、`contactName`、`contactPhone`；注册页第 1 步展示商家名称输入（2—20 字），默认只在首次进入且为空时预填当前档口账号名，之后不覆盖商家输入；提交与第 2 步摘要都用表单值。
 - 真实服务端 `POST /merchant/registration` 强制要求 `merchantName`（2—30 字符），不得省略该字段，也不得伪造名称或假成功。
 - 样例模式只使用本机样例数据，不冒充真实服务端。
 - 不修改公共模块契约、服务端、学生端或管理端来迁就档口端视觉。
@@ -86,10 +86,10 @@
 
 至少验证：
 
-1. `#/merchant` 默认进入入驻/登录门；`#/merchant/setup` 进入注册页，页面无商家名称输入（`[data-field="merchantName"]` 不存在），无新增菜品步骤。
-2. 未注册账号：联系人、联系电话校验与两步开店流程；已有商家未开店：第 1 步只读、直接创建店铺；已开店：入驻页只读展示且订单列表无注册入口。
+1. `#/merchant` 默认进入入驻/登录门；`#/merchant/setup` 注册页存在商家名称输入框（`[data-field="merchantName"]`），默认预填账号名且可改；无新增菜品步骤。
+2. 未注册账号：商家名称、负责人、联系电话校验与两步开店流程；已有商家未开店：第 1 步只读、直接创建店铺；已开店：入驻页只读展示且订单列表无注册入口。
 3. `#/merchant/orders` 列表及详情返回。
-4. 带 `?mode=real` 时未登录进入档口登录页，不展示订单；登录成功进入真实订单列表；退出后回登录页，再次登录仍识别已注册状态。
+4. 带 `?mode=real` 时未登录进入档口登录页，不展示订单；登录成功进入真实订单列表；退出后清会话并回角色入口，再次进入（包括从角色入口点档口端，URL 不带 `?mode=`）必须重新输入账号密码；重新登录仍识别已注册状态。真实登录后切到样例再退出，也必须清除真实会话。
 5. 真实模式订单列表显示「刷新列表」与自动刷新说明；等待 15 秒或手动刷新，最近更新时间变化。
 6. 新增订单后 15 秒内自动进入「待接单」并出现“发现 N 笔新订单”提示；详情页「刷新订单」可用且无错误。
 7. 390px 视口无横向溢出、无运行时异常。

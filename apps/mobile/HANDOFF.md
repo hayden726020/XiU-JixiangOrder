@@ -1,6 +1,6 @@
 # 吉祥点餐前端交接：档口端、局域网预览与 APK 构建
 
-更新时间：2026-11-17
+更新时间：2026-11-18
 
 ## 1 当前基线与 Git 状态
 
@@ -21,6 +21,8 @@
 - 本次基线内容：档口端新增数据模式选择页（`#/merchant/source`）、钱包页与「我的」页；注册第 1 步删除「商家名称」输入，服务端仍要求 `merchantName`，页面自动取当前档口账号名（`session.user.displayName`，截断 20 字符，兜底「档口商家」）；学生端订单/菜单页拆分为 `BookingTicket`、`OrderDishCard`、`OrderListIcons`、`OrderMenuIcons`、`OrderTicketCard` 组件；管理端恢复非订单详情页的横幅与导航。
 - 本次验证：`tsc --noEmit` 0 错误、`vite build` 成功；无头浏览器 390px 确认注册页无商家名称输入、表单仅「店铺负责人」「联系电话」两项、空表单 2 项校验、填写后可进入第 2 步。本次未重打 APK、未做真机验收。
 - 本地 `frontend/src` 与 `.git-sync/apps/mobile/src` 已逐文件一致；`README.md`、`package.json`、`capacitor.config.ts`、`android/` 仍以远端为准，不用本地临时副本覆盖。
+- 2026-11-18 基线：新分支 `frontend/handoff-2026-11-18`，包含上一轮已提交但未推送的 `a0dc038 feat(mobile): 档口端先登录后入驻并支持我的信息修改`，以及本轮档口端首页工作台、注册页商家名称可改、退出后再进入必须重新登录等改动；远端 2026-11-17 分支头为 `1cc7f47`（用 GitHub API 核对）。
+- 本轮同时纳入并行会话已完成的改动：档口首页工作台 `pages/HomePage.tsx` 与 `#/merchant` 首页 tab、`merchant.css`/`login.css` 视觉改版与 7 张品牌/菜品图片、管理端 `admin-theme.css`、学生端订单页与 `shared/styles.css` 若干调整；这些改动在本地 `tsc` 与 `vite build` 下均通过。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
 - **本地 `frontend/android` 与 `frontend/capacitor.config.ts` 是本次为出包新生成的临时模板**：`versionCode 2`、`versionName "0.1.0"`，未覆盖远端正式工程。禁止把本地 `android/` 整目录覆盖到远端 `apps/mobile/android`。
 
@@ -115,6 +117,14 @@
 - 并行冲突处理：本次合并了另一会话在 `MerchantHome.tsx` 的底部「首页」tab、`setup.from` 来源区分改动；同时给 `state/actionMatrix.ts` 的 `ActionInput` 补回 `diningMode` 字段，恢复类型检查通过。
 - 验证：390px 视口下，入口显示登录页、登录页不出现“已完成商家注册与开店”；点「先看样例数据」进入订单列表；已登录后刷新仍回到登录页；真实登录 → 入驻页 → 我的信息保存 → 刷新回登录页，全部通过。
 
+### 2.6 2026-11-18 注册商家名称与退出后重新登录
+
+- 商家名称重新可填写：注册第 1 步恢复「商家名称」输入框（2—20 字），默认值只在首次进入且为空时预填一次当前档口账号名，之后不再覆盖商家手工填写或清空的内容；注册提交与第 2 步商家摘要都使用表单值，不再用账号名强制替换。服务端 `POST /merchant/registration` 仍要求 `merchantName`。
+- 退出登录统一清会话：此前只在真实模式调用 `logout()`，真实登录后切到样例再点退出会留下登录态。现在样例模式下点「退出登录」同样调用 `clearSession()` 并回角色入口。
+- 记住数据模式：档口端把样例/真实模式写入 `localStorage`（`merchant-data-mode-v1`），从角色入口（URL 不带 `?mode=`）再次进入时沿用上次模式；真实模式直接落到登录页，不再默认回样例而免登录。
+- 已注册账号重复进入：登录后读取 `GET /merchant/profile`，已开店账号只显示只读摘要/完成页，不出现注册表单。
+- 同轮纳入的并行改动见第 1 节最后一条；本轮未改学生端业务逻辑。
+
 ## 3 本次安装的工具链
 
 均位于 `D:\AndroidSdk`，可从命令行直接复用：
@@ -156,8 +166,8 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 | 订单详情－可取餐 | `#/merchant/orders/demo-order-003` | 可直达、刷新保持 |
 | 菜单与库存 | `#/merchant/menu` | 保留既有页面 |
 
-- 开店流程只有两步：商家注册（联系人、联系电话）→ 创建店铺（店铺名称、档口位置、店铺简介可选）；服务端已有商家资料时第 1 步只读，已有店铺时整页只读，不重复注册。
-- 已删除“商家名称”字段、 “新增菜品”第三步及其表单、提示与提交逻辑。
+- 开店流程只有两步：商家注册（商家名称、店铺负责人、联系电话）→ 创建店铺（店铺名称、档口位置、店铺简介可选）；服务端已有商家资料时第 1 步只读，已有店铺时整页只读，不重复注册。
+- 2026-11-18 起「商家名称」输入框已恢复且可自由修改（默认预填账号名，仅首次一次）；此前的“已删除商家名称字段”约定作废。
 - 保存成功后“完成”返回订单列表；第 1 步“取消”返回角色入口 `#/`。
 - 注册数据边界：`MerchantRegistrationDraft` 只有 `contactName`、`contactPhone`；`MerchantRegistrationInput.merchantName` 为可选。
 - 未做真实服务端注册联调，不得宣称真实接口成功。
@@ -184,6 +194,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 - 上一轮：4173 本机与局域网 HTTP 200；`gradlew.bat assembleDebug` `BUILD SUCCESSFUL`。
 - 五个档口端设计页面、两步开店流程、订单详情直达与 390px 布局：上一轮已在 Headless Edge 中验证通过并记录。
 - 入驻状态提交：`tsc --noEmit` 0 错误；`vite build` 成功；Headless Edge + 本地模拟服务 8/8 通过——已开店账号登录后不显示“商家注册 / 开店”入口、「我的」显示“店铺信息”、入驻页只读展示且不出现注册表单；已有商家资料时直接进入创建店铺；无运行时异常与 `console.error`。
+- 2026-11-18 本轮：`tsc --noEmit` 0 错误；`vite build` 成功（`dist/` 被同步工具占用时改用 `--outDir .runtime/dist-check` 验证，仅 chunk 体积与动态导入提示）。Headless Edge 390px 三组场景全部通过：注册页存在商家名称输入框、默认预填、可手工修改、第 2 步摘要与完成页使用手填名称（5/5）；真实登录 → 退出清会话 → 回角色入口 → 从角色入口再进要求重新输入账号密码 → 重新登录不显示注册表单（7/7）；真实登录后切样例再退出同样清除会话（5/5）。
 
 已知问题（不属于本次档口改动）：
 
@@ -200,7 +211,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
 
 ## 7 新对话应优先做的事
 
-1. **先重打 APK**（登录页与刷新修复均只在源码，旧包不含）：在基线目录（`E:\project\workspace\.git-sync\apps\mobile`）或已同步的 `frontend` 执行 `vite build`，再按第 3 节命令执行 `gradlew.bat assembleDebug`；随后安装：
+1. **先重打 APK**（档口首页工作台、商家名称可改、退出后重登、登录页与刷新修复都只在源码，旧包不含）：在基线目录（`E:\project\workspace\.git-sync\apps\mobile`）或已同步的 `frontend` 执行 `vite build`，再按第 3 节命令执行 `gradlew.bat assembleDebug`；随后安装：
 
    ```powershell
    & "D:\AndroidSdk\platform-tools\adb.exe" devices
@@ -212,6 +223,7 @@ Gradle 依赖已配置阿里云镜像（google / central / gradle-plugin），Gr
    注意：合并基线还有 1 个学生端 tsc 类型错误，出包请直接跑 `vite build`，不要跑含 tsc 的 `npm run build`。
 
 2. 打开 App 验证：角色入口、档口端登录页、地图定位授权弹窗、页面无白屏；带 `?mode=real` 进入真实模式时先出现档口登录页，登录成功后才读取真实菜单与订单；在订单列表确认「刷新列表」、15 秒自动刷新与新单提示；进入详情确认「刷新订单」；横幅「退出登录 / 切换档口账号」可回到登录页。
+2.1 本轮重点验收链路：登录 → 「我的」 → 「退出登录」 → 从角色入口再次点击档口端 → 必须重新输入账号密码；重新登录后进入入驻页应显示已完成/无需再次注册。另在样例模式点「退出登录」后切回真实模式，也必须重新登录。
 3. 验证注册状态持久化：用已完成开店的档口账号登录后，订单列表不显示“商家注册 / 开店”，从「我的 → 店铺信息」进入应看到只读商家与店铺资料；退出登录再登录仍保持该行为。已有商家未开店的账号应直接进入创建店铺步骤。
 3. 原生 App 里 `window.location.origin` 不是预览地址，`/api/v1` 相对地址不可用；需在应用内配置可访问的后端绝对地址。
 4. 若要发正式版本，应在远端 `apps/mobile/android`（versionCode 14 / 1.13）上构建并递增版本号，不要使用本地临时工程。
@@ -233,8 +245,8 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 ## 9 Git 操作约定
 
 - 工作区：`E:\project\workspace\.git-sync`（稀疏检出 `apps/mobile`）。
-- 当前分支：`frontend/handoff-2026-11-17`，远端提交链 `ddd9785`（合并）→ `ca24fed`（详情页检测）→ `c02046c`（docs）→ `ca97747`（档口登录页）→ `3e1710d feat(mobile): 档口端增加底部导航与我的页面` → 本次 docs 提交（以 `git ls-remote` 为准；登录页本地同内容提交为 `81113c3` → `44e8653`）。
+- 当前分支：`frontend/handoff-2026-11-18`（从 `1cc7f47` 之后继续，包含 `a0dc038 feat(mobile): 档口端先登录后入驻并支持我的信息修改` 与本轮提交）；上一轮分支 `frontend/handoff-2026-11-17` 远端头为 `1cc7f47`，勿强推覆盖。
 - 远端基线分支 `frontend/baseline-2026-11-17` 已快进到同一提交；只推专用分支，不推 `main`，不强推。注意远端哈希与本地哈希不同但树一致，下一次操作前先 `git fetch` 核对，不要用本地提交直接强推。
-- 提交信息：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`、`merge: 合并当前前端基线与档口订单刷新修复`、`docs(mobile): 更新当前基线、刷新验收与交接说明`、`fix(mobile): 订单详情页定时检测新订单并保留当前订单`、`feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`。
-- GitHub 主站连接可能超时或 `Connection was reset`；重试或用 `-c http.version=HTTP/1.1`。本次主站不可用时通过 GitHub REST API 更新分支引用，远端与本地 SHA 一致。
+- 提交信息：`fix(mobile): 档口订单列表与详情支持刷新并自动发现新单`、`merge: 合并当前前端基线与档口订单刷新修复`、`docs(mobile): 更新当前基线、刷新验收与交接说明`、`fix(mobile): 订单详情页定时检测新订单并保留当前订单`、`feat(mobile): 档口端登录页接通真实模式并同步最新档口页面`、`feat(mobile): 档口首页工作台与注册名称可改并修复退出重登`。
+- GitHub 主站连接可能超时或 `Connection was reset`；重试或用 `-c http.version=HTTP/1.1`。本次 `github.com:443` 连续失败而 `api.github.com` 可达，因此通过 GitHub REST API 上传变更树、创建提交并新建分支引用；远端哈希与本地不同但树一致，核验要用 API 查询分支头后比对 tree。
 - 推送后用 `git log -1 --oneline`、`git status`、`git ls-remote` 核对。
