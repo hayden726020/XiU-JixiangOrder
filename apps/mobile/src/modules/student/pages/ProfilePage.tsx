@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { StudentMode, StudentOrder, StudentSource } from '../types';
+import type { OrderFilter } from './OrderListPage';
 import { writeStudentModeOverride } from '../data/mode';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { clearSession } from '../../../shared/session';
@@ -12,7 +13,7 @@ import '../profile.css';
 export interface ProfilePageProps {
   source: StudentSource;
   onSwitchMode?: (next: StudentMode) => void;
-  onOpenOrders: () => void;
+  onOpenOrders: (filter?: OrderFilter) => void;
   onOpenOrder?: (id: string) => void;
   onGoToShop: () => void;
   onGoToMenu: () => void;
@@ -477,13 +478,13 @@ export default function ProfilePage({
               <ClipboardIcon />
               <h2>我的订单</h2>
             </div>
-            <button type="button" className="profile-card__more" onClick={onOpenOrders}>
+            <button type="button" className="profile-card__more" onClick={() => onOpenOrders('all')}>
               查看全部 <ChevronRightIcon />
             </button>
           </div>
 
           <div className="profile-orders-grid">
-            <button type="button" className="profile-orders-grid__item" onClick={onOpenOrders}>
+            <button type="button" className="profile-orders-grid__item" onClick={() => onOpenOrders('new')}>
               <span className="profile-orders-grid__icon">
                 <PendingIcon />
                 {newCount > 0 ? <span className="profile-orders-grid__dot">{newCount}</span> : null}
@@ -491,7 +492,7 @@ export default function ProfilePage({
               <span>待接单</span>
             </button>
 
-            <button type="button" className="profile-orders-grid__item" onClick={onOpenOrders}>
+            <button type="button" className="profile-orders-grid__item" onClick={() => onOpenOrders('preparing')}>
               <span className="profile-orders-grid__icon">
                 <ChefHatIcon />
                 {preparingCount > 0 ? <span className="profile-orders-grid__dot">{preparingCount}</span> : null}
@@ -499,7 +500,7 @@ export default function ProfilePage({
               <span>制作中</span>
             </button>
 
-            <button type="button" className="profile-orders-grid__item" onClick={onOpenOrders}>
+            <button type="button" className="profile-orders-grid__item" onClick={() => onOpenOrders('ready')}>
               <span className="profile-orders-grid__icon">
                 <BagCheckIcon />
                 {readyCount > 0 ? <span className="profile-orders-grid__dot">{readyCount}</span> : null}
@@ -507,7 +508,7 @@ export default function ProfilePage({
               <span>待取餐</span>
             </button>
 
-            <button type="button" className="profile-orders-grid__item" onClick={onOpenOrders}>
+            <button type="button" className="profile-orders-grid__item" onClick={() => onOpenOrders('completed')}>
               <span className="profile-orders-grid__icon">
                 <CheckCircleIcon />
                 {completedCount > 0 ? <span className="profile-orders-grid__count">{completedCount}</span> : null}
@@ -655,7 +656,7 @@ export default function ProfilePage({
           <BowlIcon />
           <span>点餐</span>
         </button>
-        <button type="button" onClick={onOpenOrders}>
+        <button type="button" onClick={() => onOpenOrders('all')}>
           <OrdersIcon />
           <span>订单</span>
         </button>

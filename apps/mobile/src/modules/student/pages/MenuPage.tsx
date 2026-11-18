@@ -44,9 +44,11 @@ export interface MenuPageProps {
   onOpenOrders: () => void;
   onGoHome?: () => void;
   onGoProfile?: () => void;
+  focusDishId?: string | null;
+  onFocusHandled?: () => void;
 }
 
-export default function OrderMenuPage({ source, draft, shop, onBackToShops, onProceed, onViewSampleOrder, onViewCancelOrder, onOpenOrders, onGoHome, onGoProfile }: MenuPageProps) {
+export default function OrderMenuPage({ source, draft, shop, onBackToShops, onProceed, onViewSampleOrder, onViewCancelOrder, onOpenOrders, onGoHome, onGoProfile, focusDishId = null, onFocusHandled }: MenuPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [status, setStatus] = useState<LoadStatus>('loading');
@@ -135,7 +137,7 @@ export default function OrderMenuPage({ source, draft, shop, onBackToShops, onPr
       {status === 'error' ? <div className="meal-menu__state is-error" role="alert"><p>{errorText}</p><button type="button" onClick={() => setReloadToken((value) => value + 1)}>重新读取</button></div> : null}
       {status === 'ready' && shopDishes.length === 0 ? <p className="meal-menu__state">当前店铺暂无菜单信息</p> : null}
       {status === 'ready' && shopDishes.length > 0 && shownDishes.length === 0 ? <p className="meal-menu__state">此分类暂无菜品</p> : null}
-      {status === 'ready' && shownDishes.length > 0 ? <ul className="meal-menu__dishes" aria-label="菜品列表">{shownDishes.map((dish, index) => <OrderDishCard key={dish.dishId} dish={dish} quantity={snapshot.items.find((item) => item.dishId === dish.dishId)?.quantity ?? 0} index={index} customization={draft.getCustomization(dish.dishId)} onQuantityChange={(next) => updateQuantity(dish, next)} onCustomizationChange={(selection) => updateCustomization(dish, selection)} />)}</ul> : null}
+      {status === 'ready' && shownDishes.length > 0 ? <ul className="meal-menu__dishes" aria-label="菜品列表">{shownDishes.map((dish, index) => <OrderDishCard key={dish.dishId} dish={dish} quantity={snapshot.items.find((item) => item.dishId === dish.dishId)?.quantity ?? 0} index={index} customization={draft.getCustomization(dish.dishId)} onQuantityChange={(next) => updateQuantity(dish, next)} onCustomizationChange={(selection) => updateCustomization(dish, selection)} autoOpen={focusDishId === dish.dishId} onAutoOpenHandled={onFocusHandled} />)}</ul> : null}
 
       {needsFlavor ? <p className="meal-menu__notice" role="status">有菜品还未选择必选口味，请点菜品上的“选配菜/口味”。</p> : null}
 

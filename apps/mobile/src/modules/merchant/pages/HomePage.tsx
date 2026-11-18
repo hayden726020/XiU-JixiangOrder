@@ -239,7 +239,7 @@ export default function HomePage({
           <div className="merchant-home__progress">
             <div className="merchant-home__progress-head">
               <span>订单完成情况</span>
-              <strong>{completionRate}%</strong>
+
             </div>
             <div className="merchant-home__progress-track">
               <span style={{ width: `${completionRate}%` }} />

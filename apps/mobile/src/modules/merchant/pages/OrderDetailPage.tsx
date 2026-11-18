@@ -20,7 +20,7 @@ import {
   STATUS_TRACK,
   statusView,
 } from '../state/orderView';
-import { formatYuan, totalQuantity } from '../utils/money';
+import { customizationSummary, formatYuan, totalQuantity } from '../utils/money';
 import NewOrderDetailPage from './NewOrderDetailPage';
 import ReadyOrderDetailPage from './ReadyOrderDetailPage';
 
@@ -163,7 +163,12 @@ order,
         <ul className="detail-items">
           {order.items.map((item) => (
             <li key={item.dishId}>
-              <span>{item.name} ×{item.quantity}</span>
+              <span>
+                {item.name} ×{item.quantity}
+                {customizationSummary(item) ? (
+                  <small className="detail-item__custom">配菜：{customizationSummary(item)}</small>
+                ) : null}
+              </span>
               <span>{formatYuan(item.unitPriceFen)}/份</span>
             </li>
           ))}

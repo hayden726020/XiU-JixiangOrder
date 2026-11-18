@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { OrderDraft } from '../state/orderDraft';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
-import type { DemoScenario, DishDto, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
+import type { DemoScenario, DishDto, DraftItemInput, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
 import { sanitizeMessage } from '../utils/errorSemantics';
 import { filterDishesByShop } from '../utils/dishShopFilter';
 import { formatYuan } from '../utils/money';
@@ -255,7 +255,24 @@ function slotTimeRange(slot: SlotDto): string {
   return start || end || '未选择';
 }
 
-function resolveConfirmDishPhoto(dish: DishDto | undefined, fallbackName: string, index: number): string {
+type DishWithExtras = DishDto & {
+  imageUrl?: string | null;
+  flavorGroups?: Array<{
+    id: string;
+    name: string;
+    options: Array<{ id: string; name: string; priceFen: number }>;
+  }>;
+  sides?: Array<{ id: string; name: string; priceFen: number }>;
+  addOns?: Array<{ id: string; name: string; priceFen: number }>;
+};
+
+type DraftItemWithExtras = DraftItemInput & {
+  selectedFlavors?: Array<{ groupId: string; optionId: string }>;
+  selectedSides?: string[];
+  selectedAddOns?: string[];
+};
+
+function resolveConfirmDishPhoto(dish: DishWithExtras | undefined, fallbackName: string, index: number): string {
   if (dish?.imageUrl) {
     return dish.imageUrl;
   }
@@ -272,6 +289,7 @@ export interface ConfirmPageProps {
   onBack: () => void;
   onBackToMenu: () => void;
   onSubmitted: (orderId: string) => void;
+  onEditCustomization?: (dishId: string) => void;
   hideSampleTools?: boolean;
 }
 
@@ -282,6 +300,7 @@ export default function ConfirmPage({
   onBack,
   onBackToMenu,
   onSubmitted,
+  onEditCustomization,
   hideSampleTools = false,
 }: ConfirmPageProps) {
   const { gate, refresh } = useStudentSessionGate();
@@ -401,26 +420,27 @@ export default function ConfirmPage({
   }
 
   const selectedSlot = menu?.slots.find((slot) => slot.slotId === snapshot.slotId) ?? null;
-  const lines = snapshot.items.map((item, index) => {
-    const dish = menu?.dishes.find((candidate) => candidate.dishId === item.dishId);
+  const lines = snapshot.items.map((rawItem, index) => {
+    const item = rawItem as DraftItemWithExtras;
+    const dish = menu?.dishes.find((candidate) => candidate.dishId === item.dishId) as DishWithExtras | undefined;
     const name = dish?.name ?? item.dishId;
     const selectedGroups = new Set((item.selectedFlavors ?? []).map((entry) => entry.groupId));
-    const flavorTexts = dish?.flavorGroups.flatMap((group) => {
+    const flavorTexts = dish?.flavorGroups?.flatMap((group) => {
       if (!selectedGroups.has(group.id)) return [];
       const entry = item.selectedFlavors?.find((choice) => choice.groupId === group.id);
       const option = group.options.find((candidate) => candidate.id === entry?.optionId);
       return option ? [`${group.name}：${option.name}`] : [];
     }) ?? [];
     const sideTexts = (item.selectedSides ?? []).flatMap((id) => {
-      const side = dish?.sides.find((candidate) => candidate.id === id);
+      const side = dish?.sides?.find((candidate) => candidate.id === id);
       return side ? [side.name] : [];
     });
     const addOnTexts = (item.selectedAddOns ?? []).flatMap((id) => {
-      const addOn = dish?.addOns.find((candidate) => candidate.id === id);
+      const addOn = dish?.addOns?.find((candidate) => candidate.id === id);
       return addOn ? [`${addOn.name} +${formatYuan(addOn.priceFen)}`] : [];
     });
     const addOnFen = (item.selectedAddOns ?? []).reduce((sum, id) => {
-      const addOn = dish?.addOns.find((candidate) => candidate.id === id);
+      const addOn = dish?.addOns?.find((candidate) => candidate.id === id);
       return sum + (addOn?.priceFen ?? 0);
     }, 0);
     const unitPriceFen = (dish?.unitPriceFen ?? 0) + addOnFen;
@@ -432,6 +452,12 @@ export default function ConfirmPage({
       addOnFen,
       subtotalFen: unitPriceFen * item.quantity,
       customizationText: [...flavorTexts, ...sideTexts, ...addOnTexts].join('、'),
+      hasOptions: Boolean(
+        dish &&
+        ((dish.flavorGroups?.length ?? 0) > 0 ||
+          (dish.sides?.length ?? 0) > 0 ||
+          (dish.addOns?.length ?? 0) > 0),
+      ),
       photo: resolveConfirmDishPhoto(dish, name, index),
     };
   });
@@ -586,6 +612,15 @@ export default function ConfirmPage({
                             {line.addOnFen > 0 ? `（含加购 ${formatYuan(line.addOnFen)}）` : ''}
                           </p>
                           <span className="confirm-item__qty">× {line.quantity}</span>
+                          {line.hasOptions && onEditCustomization ? (
+                            <button
+                              type="button"
+                              className="confirm-item__edit"
+                              onClick={() => onEditCustomization(line.dishId)}
+                            >
+                              修改配菜
+                            </button>
+                          ) : null}
                         </div>
                         <strong className="confirm-item__subtotal">
                           {formatYuan(line.subtotalFen)}

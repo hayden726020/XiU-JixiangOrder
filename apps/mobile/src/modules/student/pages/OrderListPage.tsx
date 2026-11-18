@@ -11,13 +11,14 @@ import OrderTicketCard from '../components/OrderTicketCard';
 import '../order-list-new.css';
 
 type ListStatus = 'loading' | 'empty' | 'ready' | 'error';
-type OrderFilter = 'all' | 'progress' | 'completed' | 'after';
+export type OrderFilter = 'all' | 'progress' | 'completed' | 'after' | 'new' | 'preparing' | 'ready';
 
 export interface OrderListPageProps {
   source: StudentSource;
   onBack: () => void;
   backLabel?: string;
   onOpenOrder: (id: string) => void;
+  initialFilter?: OrderFilter;
   onGoToHome?: () => void;
   onGoToShop?: () => void;
   onGoToProfile?: () => void;
@@ -27,16 +28,19 @@ function inFilter(order: StudentOrder, filter: OrderFilter): boolean {
   if (filter === 'all') return true;
   if (filter === 'progress') return order.status === 'NEW' || order.status === 'ACCEPTED' || order.status === 'PREPARING' || order.status === 'READY';
   if (filter === 'completed') return order.status === 'COMPLETED';
+  if (filter === 'new') return order.status === 'NEW';
+  if (filter === 'preparing') return order.status === 'ACCEPTED' || order.status === 'PREPARING';
+  if (filter === 'ready') return order.status === 'READY';
   return order.status === 'CANCELLED' || order.paymentStatus === 'SIMULATED_REFUNDED' || order.cancelRequest.status === 'PENDING';
 }
 
-export default function OrderListPage({ source, onBack, onOpenOrder, onGoToHome, onGoToShop, onGoToProfile }: OrderListPageProps) {
+export default function OrderListPage({ source, onBack, onOpenOrder, initialFilter, onGoToHome, onGoToShop, onGoToProfile }: OrderListPageProps) {
   const { gate, refresh } = useStudentSessionGate();
   const [orders, setOrders] = useState<StudentOrder[]>([]);
   const [status, setStatus] = useState<ListStatus>('loading');
   const [error, setError] = useState<SourceError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  const [filter, setFilter] = useState<OrderFilter>('all');
+  const [filter, setFilter] = useState<OrderFilter>(initialFilter ?? 'all');
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [notice, setNotice] = useState('');
@@ -72,6 +76,7 @@ export default function OrderListPage({ source, onBack, onOpenOrder, onGoToHome,
     }), [orders, filter, query]);
   const progressCount = orders.filter((order) => inFilter(order, 'progress')).length;
   const errorView = toOrderListErrorView(error);
+  const isProgressFilter = filter === 'progress' || filter === 'new' || filter === 'preparing' || filter === 'ready';
   const filters: { id: OrderFilter; label: string; icon: 'clipboard' | 'clock' | 'checkSquare' | 'refund' }[] = [
     { id: 'all', label: '全部订单', icon: 'clipboard' },
     { id: 'progress', label: `进行中 (${progressCount})`, icon: 'clock' },
@@ -91,7 +96,7 @@ export default function OrderListPage({ source, onBack, onOpenOrder, onGoToHome,
       <p className="meal-orders__sample">{source.mode === 'sample' ? '示例订单 · 餐品图片仅供参考' : '餐品图片仅供参考'}</p>
       {searchOpen ? <div className="meal-orders__search"><OrderListIcon name="search" size={20} /><input autoFocus type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索订单号、档口或餐品" aria-label="搜索订单号、档口或餐品" /><button type="button" aria-label="关闭搜索" onClick={() => { setSearchOpen(false); setQuery(''); }}><OrderListIcon name="close" size={18} /></button></div> : null}
       <div className="meal-orders__filters" role="group" aria-label="筛选订单">
-        {filters.map((item) => <button key={item.id} type="button" className={filter === item.id ? 'is-active' : ''} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}><OrderListIcon name={item.icon} size={21} /><span>{item.label}</span></button>)}
+        {filters.map((item) => <button key={item.id} type="button" className={filter === item.id || (item.id === 'progress' && isProgressFilter) ? 'is-active' : ''} aria-pressed={filter === item.id || (item.id === 'progress' && isProgressFilter)} onClick={() => setFilter(item.id)}><OrderListIcon name={item.icon} size={21} /><span>{item.label}</span></button>)}
       </div>
       {realLoggedOut ? <div className="meal-orders__state"><LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} /></div> : null}
       {!realLoggedOut && status === 'loading' ? <p className="meal-orders__state" role="status">正在读取订单…</p> : null}

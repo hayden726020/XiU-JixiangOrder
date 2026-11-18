@@ -26,6 +26,7 @@ import type {
   WalletSummary,
   WalletWithdrawInput,
   MerchantSource,
+  OrderItem,
   OrderPage,
   Slot,
   SlotDay,
@@ -70,6 +71,7 @@ interface ApiOrderItem {
   name: string;
   quantity: number;
   unitPriceFen: number;
+  customization?: unknown;
 }
 
 interface ApiCancelRequest {
@@ -419,6 +421,46 @@ function toOnboardingFailure<T>(error: unknown, label: string): SourceResult<T> 
   return fail('UNKNOWN_ERROR', `${label}未完成，请稍后重试。`);
 }
 
+function mapOrderItemCustomization(value: unknown): OrderItem['customization'] {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const raw = value as Record<string, unknown>;
+  const entries = (key: string): Record<string, unknown>[] =>
+    Array.isArray(raw[key]) ? (raw[key] as Record<string, unknown>[]) : [];
+  const flavorSelections = entries('flavorSelections').flatMap((entry) =>
+    typeof entry.groupId === 'string' &&
+    typeof entry.groupName === 'string' &&
+    typeof entry.optionId === 'string' &&
+    typeof entry.optionName === 'string'
+      ? [{
+          groupId: entry.groupId,
+          groupName: entry.groupName,
+          optionId: entry.optionId,
+          optionName: entry.optionName,
+        }]
+      : [],
+  );
+  const sides = entries('sides').flatMap((entry) =>
+    typeof entry.id === 'string' && typeof entry.name === 'string'
+      ? [{ id: entry.id, name: entry.name }]
+      : [],
+  );
+  const addOns = entries('addOns').flatMap((entry) =>
+    typeof entry.id === 'string' && typeof entry.name === 'string'
+      ? [{
+          id: entry.id,
+          name: entry.name,
+          priceFen: typeof entry.priceFen === 'number' ? entry.priceFen : 0,
+        }]
+      : [],
+  );
+  if (flavorSelections.length === 0 && sides.length === 0 && addOns.length === 0) {
+    return null;
+  }
+  return { flavorSelections, sides, addOns };
+}
+
 function mapOrder(order: ApiOrder): MerchantOrder {
   return {
     id: order.id,
@@ -429,6 +471,7 @@ function mapOrder(order: ApiOrder): MerchantOrder {
         name: item.name,
         quantity: item.quantity,
         unitPriceFen: item.unitPriceFen,
+        customization: mapOrderItemCustomization(item.customization),
       }))
       : [],
     slotId: order.slotId,

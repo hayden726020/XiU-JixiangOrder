@@ -251,6 +251,15 @@
   line-height: 1.45;
 }
 
+.order-row__custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  color: #8a5a1c;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
 .order-row__bottom {
   display: flex;
   justify-content: space-between;
@@ -471,6 +480,15 @@
   display: flex;
   justify-content: space-between;
   gap: 0.6rem;
+}
+
+.detail-item__custom {
+  display: block;
+  margin-top: 0.12rem;
+  color: #8a5a1c;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  font-weight: 500;
 }
 
 .detail-total {
@@ -4983,6 +5001,16 @@
 .app-shell--merchant .merchant-home__progress-legend i.is-active {
   background: var(--m-brand-strong);
 }
+
+.app-shell--merchant .merchant-home__trend-block {
+  min-width: 0;
+}
+
+.app-shell--merchant .merchant-home__trend {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 
 /* ── 首页：常用功能 ───────────────────────────────────────────── */
 .app-shell--merchant .merchant-home__tools {

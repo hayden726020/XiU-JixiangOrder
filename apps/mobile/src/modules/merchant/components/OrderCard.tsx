@@ -9,7 +9,7 @@ import {
   pendingRequestSummary,
   statusView,
 } from '../state/orderView';
-import { formatYuan, itemsSummary, totalQuantity } from '../utils/money';
+import { customizationSummary, formatYuan, itemsSummary, totalQuantity } from '../utils/money';
 
 interface OrderCardProps {
   order: MerchantOrder;
@@ -54,6 +54,10 @@ export default function OrderCard({
     && deadline < Date.now();
   const terminalLabel = order.status === 'CANCELLED' ? '查看取消信息' : '查看详情';
 
+  const customLines = order.items
+    .map((item) => ({ name: item.name, text: customizationSummary(item) }))
+    .filter((entry) => entry.text !== '');
+
   function stop(event: React.MouseEvent | React.KeyboardEvent) {
     event.stopPropagation();
   }
@@ -97,6 +101,14 @@ export default function OrderCard({
       </div>
 
       <div className="order-row__items">{itemsSummary(order.items)}</div>
+
+      {customLines.length > 0 && (
+        <div className="order-row__custom">
+          {customLines.map((entry) => (
+            <span key={`${entry.name}-${entry.text}`}>{entry.name}：{entry.text}</span>
+          ))}
+        </div>
+      )}
 
       {order.remark && (
         <div className="order-row__remark" data-order-remark={order.remark}>

@@ -1,3 +1,5 @@
+import type { OrderItemCustomization } from '../data/types';
+
 export function assertFen(value: number): void {
   if (!Number.isInteger(value) || value < 0) {
     throw new TypeError(`金额必须是非负整数分，收到：${String(value)}`);
@@ -24,4 +26,17 @@ export function totalQuantity(items: ReadonlyArray<{ quantity: number }>): numbe
 
 export function itemsSummary(items: ReadonlyArray<{ name: string; quantity: number }>): string {
   return items.map((item) => `${item.name} ×${item.quantity}`).join('、');
+}
+export function customizationSummary(item: {
+  customization?: OrderItemCustomization | null;
+}): string {
+  const customization = item.customization;
+  if (!customization) {
+    return '';
+  }
+  return [
+    ...customization.flavorSelections.map((entry) => `${entry.groupName}：${entry.optionName}`),
+    ...customization.sides.map((side) => side.name),
+    ...customization.addOns.map((addOn) => `${addOn.name} +${formatYuan(addOn.priceFen)}`),
+  ].join('、');
 }

@@ -10,11 +10,23 @@ export type MerchantScenario = 'normal' | 'empty' | 'pending-cancel';
 
 export type DishType = 'STAPLE' | 'SNACK' | 'DRINK' | 'SET';
 
+export interface OrderItemCustomization {
+  flavorSelections: Array<{
+    groupId: string;
+    groupName: string;
+    optionId: string;
+    optionName: string;
+  }>;
+  sides: Array<{ id: string; name: string }>;
+  addOns: Array<{ id: string; name: string; priceFen: number }>;
+}
+
 export interface OrderItem {
   dishId: string;
   name: string;
   quantity: number;
   unitPriceFen: number;
+  customization?: OrderItemCustomization | null;
 }
 
 export interface CancelRequest {

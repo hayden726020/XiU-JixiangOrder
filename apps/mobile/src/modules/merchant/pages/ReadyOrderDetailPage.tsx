@@ -19,7 +19,7 @@ import {
   statusView,
 } from '../state/orderView';
 import { orderPackagingFeeFen } from '../state/packagingFee';
-import { fenToYuan, formatYuan, totalQuantity } from '../utils/money';
+import { customizationSummary, fenToYuan, formatYuan, totalQuantity } from '../utils/money';
 
 interface ReadyOrderDetailPageProps {
   order: MerchantOrder;
@@ -138,7 +138,12 @@ order,
         <ul className="detail-items">
           {order.items.map((item) => (
             <li key={item.dishId}>
-              <span>{item.name} ×{item.quantity}</span>
+              <span>
+                {item.name} ×{item.quantity}
+                {customizationSummary(item) ? (
+                  <small className="detail-item__custom">配菜：{customizationSummary(item)}</small>
+                ) : null}
+              </span>
               <span>{fenToYuan(item.unitPriceFen)} 元/份</span>
             </li>
           ))}

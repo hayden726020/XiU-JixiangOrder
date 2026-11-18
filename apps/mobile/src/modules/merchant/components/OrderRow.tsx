@@ -1,7 +1,7 @@
 import type { MerchantOrder } from '../data/types';
 import { getPrimaryAction } from '../state/actionMatrix';
 import { cancellationNote, diningModeView, formatSlot, orderNoLabel, pendingRequestSummary, statusView } from '../state/orderView';
-import { itemsSummary, totalQuantity } from '../utils/money';
+import { customizationSummary, itemsSummary, totalQuantity } from '../utils/money';
 
 interface OrderRowProps {
   order: MerchantOrder;
@@ -18,6 +18,10 @@ export default function OrderRow({ order, onOpen, showCancellationDetails = true
     ? `下一步：${primary.label}`
     : (order.status === 'CANCELLED' ? '订单已取消' : '无可用操作');
 
+  const customLines = order.items
+    .map((item) => ({ name: item.name, text: customizationSummary(item) }))
+    .filter((entry) => entry.text !== '');
+
   return (
     <button type="button" className="order-row" data-order-id={order.id} data-status={order.status} onClick={() => onOpen(order.id)}>
       <span className="order-row__top">
@@ -30,6 +34,13 @@ export default function OrderRow({ order, onOpen, showCancellationDetails = true
         <span className="order-row__slot">{formatSlot(order)}</span>
         <span className="order-row__items">{itemsSummary(order.items)}</span>
       </span>
+      {customLines.length > 0 && (
+        <span className="order-row__custom">
+          {customLines.map((entry) => (
+            <span key={`${entry.name}-${entry.text}`}>{entry.name}：{entry.text}</span>
+          ))}
+        </span>
+      )}
       {order.remark && (
         <span className="order-row__remark" data-order-remark={order.remark}>
           <span className="order-row__remark-label">备注</span>

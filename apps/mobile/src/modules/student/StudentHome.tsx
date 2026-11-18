@@ -12,7 +12,7 @@ import LoginPage from './pages/LoginPage';
 import ConfirmPage from './pages/ConfirmPage';
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
-import OrderListPage from './pages/OrderListPage';
+import OrderListPage, { type OrderFilter } from './pages/OrderListPage';
 import ShopSelectPage from './pages/ShopSelectPage';
 import SlotDiningPage from './pages/SlotDiningPage';
 import ProfilePage from './pages/ProfilePage';
@@ -27,7 +27,21 @@ type StudentView = 'shop' | 'menu' | 'slot' | 'confirm' | 'order' | 'orders' | '
 
 type DetailFrom = 'menu' | 'orders';
 
-type OrdersBackTo = 'shop' | 'menu';
+type OrdersBackTo = 'shop' | 'menu' | 'profile';
+
+const VIEW_HASH: Record<StudentView, string> = {
+  shop: '#/student',
+  menu: '#/student/menu',
+  slot: '#/student/slot',
+  confirm: '#/student/confirm',
+  order: '#/student/order',
+  orders: '#/student/orders',
+  profile: '#/student/profile',
+};
+
+function viewHash(view: StudentView): string {
+  return VIEW_HASH[view];
+}
 
 function previewSlotRequested(): boolean {
   if (new URLSearchParams(window.location.search).get('preview') === 'slot') {
@@ -117,6 +131,7 @@ function StudentHomeApp({
   const [orderId, setOrderId] = useState<string | null>(null);
   const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
+  const [ordersFilter, setOrdersFilter] = useState<OrderFilter>('all');
   const [shopNotice, setShopNotice] = useState('');
   const previewStarted = useRef(false);
   const pendingShopTabRef = useRef<'home' | 'order' | null>(null);
@@ -156,19 +171,31 @@ function StudentHomeApp({
       window.history.back();
       return;
     }
-    window.history.pushState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
+    window.history.pushState(
+      { module: 'student', studentView: next, shopTab: nextShopTab },
+      '',
+      viewHash(next),
+    );
     setView(next);
     window.scrollTo(0, 0);
   }
 
   function replaceTo(next: StudentView, nextShopTab: 'home' | 'order' = shopTab): void {
-    window.history.replaceState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
+    window.history.replaceState(
+      { module: 'student', studentView: next, shopTab: nextShopTab },
+      '',
+      viewHash(next),
+    );
     setView(next);
     window.scrollTo(0, 0);
   }
 
   useEffect(() => {
-    window.history.replaceState({ module: 'student', studentView: 'shop', shopTab: 'home' }, '');
+    window.history.replaceState(
+      { module: 'student', studentView: 'shop', shopTab: 'home' },
+      '',
+      viewHash('shop'),
+    );
     const onPopState = (event: PopStateEvent) => {
       const state = event.state as {
         module?: string;
@@ -223,8 +250,9 @@ function StudentHomeApp({
     goTo('menu');
   }
 
-  function openOrders(from: OrdersBackTo): void {
+  function openOrders(from: OrdersBackTo, filter: OrderFilter = 'all'): void {
     setOrdersBackTo(from);
+    setOrdersFilter(filter);
     goTo('orders');
   }
 
@@ -233,7 +261,7 @@ function StudentHomeApp({
       <ProfilePage
         source={source}
         onSwitchMode={onSwitchMode}
-        onOpenOrders={() => openOrders('shop')}
+        onOpenOrders={(filter) => openOrders('profile', filter)}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
         onGoToShop={() => {
           setShopTab('home');
@@ -243,6 +271,52 @@ function StudentHomeApp({
           setShopTab('order');
           goTo('shop', 'push', 'order');
         }}
+      />
+    );
+  }
+
+  if (view === 'orders') {
+    const backToProfile = ordersBackTo === 'profile';
+    const backToShops = !backToProfile && (ordersBackTo === 'shop' || currentShop === null);
+    return (
+      <OrderListPage
+        source={source}
+        onBack={() => goTo(backToProfile ? 'profile' : backToShops ? 'shop' : 'menu', 'back')}
+        backLabel={backToProfile ? '← 返回我的' : backToShops ? '← 返回店铺选择' : '← 返回菜单'}
+        initialFilter={ordersFilter}
+        onOpenOrder={(id) => openOrderFrom('orders', id)}
+        onGoToHome={() => {
+          setShopTab('home');
+          goTo('shop', 'push', 'home');
+        }}
+        onGoToShop={() => {
+          setShopTab('order');
+          goTo('shop', 'push', 'order');
+        }}
+        onGoToProfile={() => goTo('profile')}
+      />
+    );
+  }
+
+  if (view === 'order' && orderId !== null) {
+    const backTarget: StudentView =
+      detailFrom === 'orders' || currentShop === null ? 'orders' : 'menu';
+    return (
+      <OrderDetailPage
+        source={source}
+        orderId={orderId}
+        onBack={() => goTo(backTarget, 'back')}
+        backLabel={backTarget === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
+        onGoToHome={() => {
+          setShopTab('home');
+          goTo('shop', 'push', 'home');
+        }}
+        onGoToShop={() => {
+          setShopTab('order');
+          goTo('shop', 'push', 'order');
+        }}
+        onGoToOrders={() => goTo('orders')}
+        onGoToProfile={() => goTo('profile')}
       />
     );
   }
@@ -287,49 +361,6 @@ function StudentHomeApp({
         onBack={() => goTo('slot', 'back')}
         onBackToMenu={() => goTo('menu', 'back')}
         onSubmitted={(id) => { setDetailFrom('menu'); setOrderId(id); replaceTo('order'); }}
-      />
-    );
-  }
-
-  if (view === 'orders') {
-    const backToShops = ordersBackTo === 'shop';
-    return (
-      <OrderListPage
-        source={source}
-        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
-        backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
-        onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => {
-          setShopTab('home');
-          goTo('shop', 'push', 'home');
-        }}
-        onGoToShop={() => {
-          setShopTab('order');
-          goTo('shop', 'push', 'order');
-        }}
-        onGoToProfile={() => goTo('profile')}
-      />
-    );
-  }
-
-  if (view === 'order' && orderId !== null) {
-    const backTarget: StudentView = detailFrom === 'orders' ? 'orders' : 'menu';
-    return (
-      <OrderDetailPage
-        source={source}
-        orderId={orderId}
-        onBack={() => goTo(backTarget, 'back')}
-        backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
-        onGoToHome={() => {
-          setShopTab('home');
-          goTo('shop', 'push', 'home');
-        }}
-        onGoToShop={() => {
-          setShopTab('order');
-          goTo('shop', 'push', 'order');
-        }}
-        onGoToOrders={() => goTo('orders')}
-        onGoToProfile={() => goTo('profile')}
       />
     );
   }

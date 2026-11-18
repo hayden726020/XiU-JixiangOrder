@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   DishDto,
   ItemCustomizationSelection,
@@ -46,13 +46,15 @@ function missingRequiredGroup(dish: DishDto, selection: ItemCustomizationSelecti
   return missing ? missing.name : null;
 }
 
-export default function OrderDishCard({ dish, quantity, index, customization, onQuantityChange, onCustomizationChange }: {
+export default function OrderDishCard({ dish, quantity, index, customization, onQuantityChange, onCustomizationChange, autoOpen = false, onAutoOpenHandled }: {
   dish: DishDto;
   quantity: number;
   index: number;
   customization: ItemCustomizationSelection | null;
   onQuantityChange: (next: number) => void;
   onCustomizationChange: (selection: ItemCustomizationSelection) => { ok: boolean; message: string | null };
+  autoOpen?: boolean;
+  onAutoOpenHandled?: () => void;
 }) {
   const view = toDishView(dish);
   const limit = dish.onSale ? Math.max(0, dish.availableQuantity) : 0;
@@ -60,10 +62,20 @@ export default function OrderDishCard({ dish, quantity, index, customization, on
   const visual = visualForDish(dish.name);
   const photo = dish.imageUrl ?? visual.photo;
   const hasOptions = dish.flavorGroups.length > 0 || dish.sides.length > 0 || dish.addOns.length > 0;
+  const cardRef = useRef<HTMLLIElement | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [hint, setHint] = useState('');
   const [draft, setDraft] = useState<ItemCustomizationSelection>(() => customization ?? emptySelection());
   const summary = summaryOf(dish, customization ?? emptySelection());
+
+  useEffect(() => {
+    if (!autoOpen) return;
+    setDraft(customization ?? emptySelection());
+    setHint('');
+    setExpanded(true);
+    cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    onAutoOpenHandled?.();
+  }, [autoOpen]);
 
   function openPanel(): void {
     setDraft(customization ?? emptySelection());
@@ -122,7 +134,7 @@ export default function OrderDishCard({ dish, quantity, index, customization, on
     onQuantityChange(quantity + 1);
   }
 
-  return <li className={`meal-dish${view.kind === 'OFF_SALE' ? ' is-off' : ''}`} data-dish-id={dish.dishId}>
+  return <li ref={cardRef} className={`meal-dish${view.kind === 'OFF_SALE' ? ' is-off' : ''}`} data-dish-id={dish.dishId}>
     <span className="meal-dish__tape" aria-hidden="true" />
     <div className="meal-dish__photo"><img src={photo} alt="" loading={index > 2 ? 'lazy' : 'eager'} /></div>
     <div className="meal-dish__details">
