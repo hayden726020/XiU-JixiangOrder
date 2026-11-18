@@ -133,6 +133,7 @@ interface ApiMerchantAccount {
   active?: boolean;
   merchantId?: string | null;
   merchantName?: string | null;
+  shopName?: string | null;
   contactName?: string | null;
   contactPhone?: string | null;
   createdAt?: string | null;
@@ -246,6 +247,7 @@ function mapAccount(payload: ApiMerchantAccount): MerchantAccount {
     active: payload.active !== false,
     merchantId: payload.merchantId ?? null,
     merchantName: payload.merchantName ?? null,
+    shopName: payload.shopName ?? null,
     contactName: payload.contactName ?? null,
     contactPhone: payload.contactPhone ?? null,
     createdAt: payload.createdAt ?? null,
@@ -507,6 +509,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不保存资料。');
       }
       const merchantBody: Record<string, unknown> = {};
+      if (input.merchantName !== undefined) merchantBody.merchantName = input.merchantName;
       if (input.contactName !== undefined) merchantBody.contactName = input.contactName;
       if (input.contactPhone !== undefined) merchantBody.contactPhone = input.contactPhone;
       const shopBody: Record<string, unknown> = {};
@@ -530,25 +533,40 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         }
         if (Object.keys(shopBody).length > 0) {
           if (!input.shopId) {
-            return fail('VALIDATION_ERROR', '缺少店铺标识，请刷新页面后重试。');
-          }
-          if (input.shopVersion === undefined) {
-            return fail('SHOP_VERSION_MISSING', '服务端未返回店铺版本，暂不能安全保存店铺资料。');
-          }
-          const data = await apiRequest<ApiMerchantProfile>(
-            `/merchant/shops/${encodeURIComponent(input.shopId)}`,
-            {
-              method: 'PATCH',
+            if (!input.shopName) {
+              return fail('VALIDATION_ERROR', '缺少店铺标识，请刷新页面后重试。');
+            }
+            const data = await apiRequest<ApiMerchantProfile>('/merchant/shops', {
+              method: 'POST',
               body: {
                 requestId: `${input.requestId}-shop`,
-                expectedVersion: input.shopVersion,
-                ...shopBody,
+                shopName: input.shopName,
+                location: input.location || '一食堂',
+                description: input.description ?? '',
               },
-            },
-          );
-          const mapped = mapProfile(data);
-          if (!mapped.ok) return mapped;
-          nextProfile = mapped.data;
+            });
+            const mapped = mapProfile(data);
+            if (!mapped.ok) return mapped;
+            nextProfile = mapped.data;
+          } else {
+            if (input.shopVersion === undefined) {
+              return fail('SHOP_VERSION_MISSING', '服务端未返回店铺版本，暂不能安全保存店铺资料。');
+            }
+            const data = await apiRequest<ApiMerchantProfile>(
+              `/merchant/shops/${encodeURIComponent(input.shopId)}`,
+              {
+                method: 'PATCH',
+                body: {
+                  requestId: `${input.requestId}-shop`,
+                  expectedVersion: input.shopVersion,
+                  ...shopBody,
+                },
+              },
+            );
+            const mapped = mapProfile(data);
+            if (!mapped.ok) return mapped;
+            nextProfile = mapped.data;
+          }
         }
         if (!nextProfile) {
           return fail('VALIDATION_ERROR', '没有需要保存的资料字段。');
@@ -562,8 +580,8 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送注册请求。');
       }
-      const fallbackName = input.merchantName?.trim() || `${input.contactName.trim()}的档口`;
-      const merchantName = resolveAccountMerchantName(getSession(), fallbackName);
+      const fallbackName = `${input.contactName.trim()}的档口`;
+      const merchantName = input.merchantName?.trim() || resolveAccountMerchantName(getSession(), fallbackName);
       try {
         const data = await apiRequest<ApiMerchantProfile>('/merchant/registration', {
           method: 'POST',
@@ -1048,6 +1066,7 @@ export function createMerchantSource(options: {
       if (!sampleProfile.merchant) {
         return fail('MERCHANT_REQUIRED', '请先完成商家注册，再修改我的信息。');
       }
+      const merchantName = input.merchantName?.trim() || sampleProfile.merchant.name;
       const contactName = input.contactName?.trim() || sampleProfile.merchant.contactName || '';
       const contactPhone = input.contactPhone?.trim().replace(/[\s-]/g, '')
         || sampleProfile.merchant.contactPhone
@@ -1065,27 +1084,39 @@ export function createMerchantSource(options: {
               : null,
           version: shop.version + 1,
         }
-        : null;
+        : input.shopName?.trim()
+          ? {
+            id: 'demo-shop-1',
+            name: input.shopName.trim(),
+            location: input.location?.trim() || '一食堂',
+            description: input.description?.trim() || null,
+            version: 1,
+          }
+          : null;
+      const nextShops = nextShop
+        ? sampleProfile.shops.some((item) => item.id === nextShop.id)
+          ? sampleProfile.shops.map((item) => item.id === nextShop.id ? { ...nextShop, merchantId: item.merchantId } : item)
+          : [...sampleProfile.shops, { ...nextShop, merchantId: sampleProfile.merchant.id }]
+        : sampleProfile.shops;
       sampleProfile = {
         ...sampleProfile,
         merchant: {
           ...sampleProfile.merchant,
+          name: merchantName,
           contactName,
           contactPhone,
         },
         shop: nextShop,
-        shops: nextShop
-          ? sampleProfile.shops.map((item) => item.id === nextShop.id ? { ...nextShop, merchantId: item.merchantId } : item)
-          : sampleProfile.shops,
+        shops: nextShops,
+        activeShopId: sampleProfile.activeShopId ?? nextShop?.id ?? null,
+        onboardingStep: nextShop ? 'SHOP_CREATED' : sampleProfile.onboardingStep,
       };
       persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };
     },
     registerMerchant: async (input: MerchantRegistrationInput): Promise<SourceResult<MerchantProfile>> => {
-      const fallbackName = input.merchantName?.trim()
-        || sampleProfile.merchant?.name
-        || DEFAULT_SAMPLE_MERCHANT_NAME;
-      const merchantName = resolveAccountMerchantName(getSession(), fallbackName);
+      const fallbackName = sampleProfile.merchant?.name || DEFAULT_SAMPLE_MERCHANT_NAME;
+      const merchantName = input.merchantName?.trim() || resolveAccountMerchantName(getSession(), fallbackName);
       sampleProfile = {
         merchant: {
           id: 'demo-merchant-01',

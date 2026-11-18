@@ -102,3 +102,52 @@ test('a late shop selection cannot restore a signed-out session', async () => {
   assert.equal(selected.error.code, 'SESSION_CHANGED');
   assert.equal(sessionStore.current, null);
 });
+
+test('updateProfile submits merchantName and shopName in real mode', async () => {
+  const requests = [];
+  const sessionStore = {
+    current: {
+      token: 'test-token', tokenType: 'Bearer', expiresAt: '2099-01-01T00:00:00Z',
+      user: { id: 'u1', displayName: '默认账号名', role: 'MERCHANT', merchantId: 'm1' },
+    },
+  };
+  const source = await loadMerchantSource(async (path, options) => {
+    requests.push({ path, options });
+    if (path === '/merchant/profile') {
+      return {
+        merchant: { id: 'm1', name: options.body.merchantName, contactName: options.body.contactName, contactPhone: '138****0000', status: 'ACTIVE' },
+        shop: { id: 's1', merchantId: 'm1', name: '旧店名', location: '一楼', version: 1 },
+        shops: [{ id: 's1', merchantId: 'm1', name: '旧店名', location: '一楼', version: 1 }],
+        activeShopId: 's1', activeMerchantId: 'm1', onboardingStep: 'SHOP_CREATED',
+      };
+    }
+    if (path === '/merchant/shops/s1') {
+      return {
+        merchant: { id: 'm1', name: '修改后商家名', contactName: '李四', contactPhone: '138****0000', status: 'ACTIVE' },
+        shop: { id: 's1', merchantId: 'm1', name: options.body.shopName, location: options.body.location, version: 2 },
+        shops: [{ id: 's1', merchantId: 'm1', name: options.body.shopName, location: options.body.location, version: 2 }],
+        activeShopId: 's1', activeMerchantId: 'm1', onboardingStep: 'SHOP_CREATED',
+      };
+    }
+    throw new Error(`unexpected request: ${path}`);
+  }, sessionStore);
+
+  const updated = await source.updateProfile({
+    requestId: 'req-1',
+    merchantName: '修改后商家名',
+    contactName: '李四',
+    shopId: 's1',
+    shopVersion: 1,
+    shopName: '修改后店铺名',
+    location: '二楼 3 号',
+    description: '新简介',
+  });
+  assert.equal(updated.ok, true);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].path, '/merchant/profile');
+  assert.equal(requests[0].options.body.merchantName, '修改后商家名');
+  assert.equal(requests[1].path, '/merchant/shops/s1');
+  assert.equal(requests[1].options.body.shopName, '修改后店铺名');
+  assert.equal(updated.data.merchant.name, '修改后商家名');
+  assert.equal(updated.data.shop.name, '修改后店铺名');
+});

@@ -193,9 +193,52 @@ function parseMerchantAccount(value: unknown): AdminMerchantAccount {
     active: value.active !== false,
     merchantId: typeof value.merchantId === 'string' ? value.merchantId : null,
     merchantName: typeof value.merchantName === 'string' ? value.merchantName : null,
+    shopName: typeof value.shopName === 'string' ? value.shopName : null,
     contactName: typeof value.contactName === 'string' ? value.contactName : null,
     contactPhone: typeof value.contactPhone === 'string' ? value.contactPhone : null,
     createdAt: typeof value.createdAt === 'string' ? value.createdAt : null,
+  };
+}
+
+const SAMPLE_MERCHANT_PROFILE_KEY = 'merchant-sample-profile-v1';
+
+interface SampleMerchantProfileSnapshot {
+  merchant?: {
+    id?: string;
+    name?: string;
+    contactName?: string | null;
+    contactPhone?: string | null;
+  } | null;
+  shop?: {
+    id?: string;
+    name?: string;
+  } | null;
+}
+
+function readSampleMerchantProfileSnapshot(): SampleMerchantProfileSnapshot | null {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const raw = window.localStorage.getItem(SAMPLE_MERCHANT_PROFILE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return isRecord(parsed) ? (parsed as SampleMerchantProfileSnapshot) : null;
+  } catch {
+    return null;
+  }
+}
+
+function applySampleProfileToOrder(order: Order): Order {
+  const snapshot = readSampleMerchantProfileSnapshot();
+  if (!snapshot) return order;
+  const targetMerchantId = snapshot.merchant?.id ?? 'demo-merchant-01';
+  if (order.merchantId !== targetMerchantId && order.merchantId !== 'demo-merchant-01') {
+    return order;
+  }
+  const latestName = snapshot.shop?.name?.trim() || snapshot.merchant?.name?.trim();
+  if (!latestName) return order;
+  return {
+    ...order,
+    merchantName: latestName,
   };
 }
 
@@ -208,6 +251,7 @@ let sampleMerchantAccountState: AdminMerchantAccount[] = [
     active: true,
     merchantId: 'demo-merchant-01',
     merchantName: '一食堂·家常档',
+    shopName: '一食堂 · 家常档',
     contactName: '王师傅',
     contactPhone: '138****8888',
     createdAt: '2026-11-13T08:00:00+08:00',
@@ -215,10 +259,11 @@ let sampleMerchantAccountState: AdminMerchantAccount[] = [
 ];
 
 function samplePage(query: AdminOrderQuery): AdminOrderPage {
+  const syncedOrders = sampleOrders.map(applySampleProfileToOrder);
   const filtered =
     query.status === 'ALL'
-      ? sampleOrders
-      : sampleOrders.filter((order) => order.status === query.status);
+      ? syncedOrders
+      : syncedOrders.filter((order) => order.status === query.status);
   const start = (query.page - 1) * query.pageSize;
   return {
     orders: filtered.slice(start, start + query.pageSize),
@@ -338,7 +383,10 @@ export function createAdminSource(options: {
   const sample: AdminSource = {
     mode: 'sample',
     listOrders: async (query) => samplePage(query),
-    getOrder: async (id) => sampleOrders.find((order) => order.id === id) ?? null,
+    getOrder: async (id) => {
+      const found = sampleOrders.find((order) => order.id === id);
+      return found ? applySampleProfileToOrder(found) : null;
+    },
     getSettings: async () => sampleSettings,
     updateSettings: async () => {
       throw new ApiError({
@@ -349,7 +397,19 @@ export function createAdminSource(options: {
       });
     },
 
-    listMerchantAccounts: async () => structuredClone(sampleMerchantAccountState),
+    listMerchantAccounts: async () => {
+      const snapshot = readSampleMerchantProfileSnapshot();
+      return structuredClone(sampleMerchantAccountState).map((item) => {
+        if (item.merchantId !== 'demo-merchant-01' || !snapshot) return item;
+        return {
+          ...item,
+          merchantName: snapshot.merchant?.name?.trim() || item.merchantName,
+          shopName: snapshot.shop?.name?.trim() || item.shopName || item.merchantName,
+          contactName: snapshot.merchant?.contactName?.trim() || item.contactName,
+          contactPhone: snapshot.merchant?.contactPhone?.trim() || item.contactPhone,
+        };
+      });
+    },
     createMerchantAccount: async (input) => {
       const created: AdminMerchantAccount = {
         userId: `demo-user-${input.account}`,

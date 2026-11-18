@@ -31,15 +31,19 @@ import {
 import { getAdminSettings, putAdminSettings } from './admin.mjs';
 import { getPublicImage, uploadMerchantImage } from './images.mjs';
 import {
+  createAdminMerchantAccount,
   createDish,
   createShop,
+  getMerchantAccount,
   getMerchantProfile,
+  listAdminMerchantAccounts,
   listMerchantDishes,
   listMerchantShops,
   listMerchants,
   registerMerchant,
   selectActiveShop,
   setDailyMenu,
+  updateMerchantAccount,
   updateMerchantProfile,
   updateShop,
   updateShopBusinessHours,
@@ -169,6 +173,16 @@ export function createApp({ db, clock, logger = () => {} }) {
       method: 'GET',
       pattern: /^\/api\/v1\/merchant\/profile$/,
       handler: withAuth(['MERCHANT'], getMerchantProfile),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/merchant\/account$/,
+      handler: withAuth(['MERCHANT'], getMerchantAccount),
+    },
+    {
+      method: 'PATCH',
+      pattern: /^\/api\/v1\/merchant\/account$/,
+      handler: withBody(['MERCHANT'], updateMerchantAccount),
     },
     {
       method: 'PATCH',
@@ -335,6 +349,16 @@ export function createApp({ db, clock, logger = () => {} }) {
       method: 'GET',
       pattern: /^\/api\/v1\/admin\/orders$/,
       handler: withAuth(['ADMIN'], (ctx) => listAdminOrders({ ...ctx, query: queryOf(ctx.req) })),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/admin\/merchant-accounts$/,
+      handler: withAuth(['ADMIN'], listAdminMerchantAccounts),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/admin\/merchant-accounts$/,
+      handler: withBody(['ADMIN'], createAdminMerchantAccount),
     },
     {
       method: 'GET',

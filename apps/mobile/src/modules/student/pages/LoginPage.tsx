@@ -6,6 +6,7 @@ import '../login.css';
 
 export interface LoginPageProps {
   gate: StudentSessionGate;
+  onSwitchToSample?: () => void;
 }
 
 const GATE_MESSAGE: Record<StudentSessionGate['kind'], string> = {
@@ -79,7 +80,7 @@ function FieldIcon({ type }: { type: 'account' | 'password' }) {
   );
 }
 
-export default function LoginPage({ gate }: LoginPageProps) {
+export default function LoginPage({ gate, onSwitchToSample }: LoginPageProps) {
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -252,6 +253,16 @@ export default function LoginPage({ gate }: LoginPageProps) {
           演示账号由管理员线下提供
           <span aria-hidden="true" />
         </p>
+
+        {onSwitchToSample ? (
+          <button
+            type="button"
+            className="student-login-sample-switch"
+            onClick={onSwitchToSample}
+          >
+            切换到演示模式（免登录预览）
+          </button>
+        ) : null}
       </div>
 
       <svg className="student-login-bottombranch" viewBox="0 0 120 90" fill="none" aria-hidden="true">

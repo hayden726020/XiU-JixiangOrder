@@ -1067,7 +1067,7 @@ export default function MerchantHome() {
                 </span>
               </div>
               <small>
-                {accountDisplayName ?? merchantName ?? (mode === 'sample' ? '档口演示账号' : '未登录')}
+                {merchantName ?? accountDisplayName ?? (mode === 'sample' ? '档口演示账号' : '未登录')}
                 {mode === 'sample' ? ` · 演示日 ${businessDateLabel}` : ' · 今日营业'}
               </small>
             </div>
@@ -1075,6 +1075,10 @@ export default function MerchantHome() {
 
           <div className='merchant-my__group' data-my-profile>
             <h3 className='merchant-my__group-title'>个人信息</h3>
+            <div className='merchant-my__row'>
+              <span>商家名称</span>
+              <span>{profileLoading ? '读取中…' : merchantName || '未填写'}</span>
+            </div>
             <div className='merchant-my__row'>
               <span>店铺负责人</span>
               <span>{profileLoading ? '读取中…' : profile?.merchant?.contactName || '未填写'}</span>
@@ -1205,7 +1209,10 @@ export default function MerchantHome() {
           session={session}
           source={source}
           profile={profile}
-          onProfileChange={setProfile}
+          onProfileChange={(nextProfile) => {
+            setProfile(nextProfile);
+            setDataVersion((current) => current + 1);
+          }}
           onBack={openMy}
         />
       )}

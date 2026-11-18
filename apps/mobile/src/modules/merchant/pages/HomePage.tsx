@@ -78,8 +78,8 @@ export default function HomePage({
     ? `${slotClock(openSlots[0].slotStart)}—${slotClock(openSlots[openSlots.length - 1].slotEnd)}`
     : '未设置营业时段';
   const shopName = profile?.shop?.name
-    ?? merchantDisplayName
     ?? profile?.merchant?.name
+    ?? merchantDisplayName
     ?? '我的档口';
 
   const orderCountByClock = new Map<string, number>();

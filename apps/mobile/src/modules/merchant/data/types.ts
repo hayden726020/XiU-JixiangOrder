@@ -220,6 +220,7 @@ export interface MerchantAccount {
   active: boolean;
   merchantId: string | null;
   merchantName: string | null;
+  shopName?: string | null;
   contactName: string | null;
   contactPhone: string | null;
   createdAt: string | null;
@@ -229,6 +230,7 @@ export interface UpdateMerchantAccountInput {
   requestId: string;
   account?: string;
   password?: string;
+  merchantName?: string;
   contactName?: string;
   contactPhone?: string;
 }
@@ -263,6 +265,7 @@ export interface MerchantRegistrationInput {
 
 export interface MerchantProfileUpdateInput {
   requestId: string;
+  merchantName?: string;
   contactName?: string;
   contactPhone?: string;
   shopId?: string;

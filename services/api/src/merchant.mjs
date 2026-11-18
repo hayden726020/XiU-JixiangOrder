@@ -7,6 +7,7 @@ import {
   resolveDishImageUrl,
   serializeDish,
 } from './dish-customization.mjs';
+import { hashPassword } from './security.mjs';
 import { runIdempotent, transaction } from './tx.mjs';
 import {
   addDays,
@@ -406,6 +407,15 @@ export function updateMerchantProfile({ db, clock, user, body }) {
         db.prepare(
           'UPDATE merchants SET name = ?, contact_name = ?, contact_phone = ? WHERE id = ?',
         ).run(nextName, nextContactName, nextContactPhone, merchant.id);
+        if (merchantName !== undefined) {
+          const hasShop = db.prepare('SELECT 1 FROM shops WHERE merchant_id = ? LIMIT 1').get(merchant.id);
+          if (!hasShop) {
+            db.prepare('UPDATE orders SET merchant_name = ? WHERE merchant_id = ? AND shop_id IS NULL').run(
+              nextName,
+              merchant.id,
+            );
+          }
+        }
         if (contactName !== undefined || contactPhone !== undefined) {
           db.prepare(
             'UPDATE merchants SET contact_name = ?, contact_phone = ? WHERE owner_user_id = ?',
@@ -519,6 +529,9 @@ export function createShop({ db, clock, user, body }) {
           now,
           now,
         );
+        db.prepare(
+          'UPDATE orders SET shop_id = ?, merchant_name = ? WHERE merchant_id = ? AND shop_id IS NULL',
+        ).run(id, shopName, shopMerchantId);
         return {
           status: 201,
           body: { data: profiledData(db, user.merchant_id, user, id) },
@@ -625,6 +638,9 @@ export function updateShop({ db, clock, user, params = {}, body }) {
         if (current.merchant_id !== user.merchant_id) {
           db.prepare('UPDATE merchants SET name = ? WHERE id = ?').run(nextName, current.merchant_id);
         }
+        db.prepare(
+          'UPDATE orders SET merchant_name = ? WHERE shop_id = ? OR (shop_id IS NULL AND merchant_id = ?)',
+        ).run(nextName, current.id, current.merchant_id);
         return {
           status: 200,
           body: { data: profiledData(db, user.merchant_id, user, current.id) },
@@ -1016,5 +1032,185 @@ export function setDailyMenu({ db, clock, user, params, body }) {
         };
       },
     ),
+  );
+}
+
+const MERCHANT_ACCOUNT_PATTERN = /^[A-Za-z0-9._-]{4,30}$/;
+
+function serializeMerchantAccountRow(db, userRow) {
+  const merchant = userRow.merchant_id
+    ? db.prepare('SELECT * FROM merchants WHERE id = ?').get(userRow.merchant_id)
+    : db.prepare('SELECT * FROM merchants WHERE owner_user_id = ? ORDER BY rowid ASC LIMIT 1').get(userRow.id);
+  const shops = getOwnedShops(db, userRow);
+  const activeShop =
+    shops.find((s) => s.merchant_id === userRow.merchant_id) ?? shops[0] ?? null;
+  const shopName =
+    shops.length > 1
+      ? shops.map((s) => s.name).join('、')
+      : activeShop?.name ?? null;
+  return {
+    userId: userRow.id,
+    account: userRow.account,
+    password: null,
+    active: userRow.active === 1,
+    merchantId: merchant?.id ?? userRow.merchant_id ?? null,
+    merchantName: merchant?.name ?? userRow.display_name ?? null,
+    shopName,
+    contactName: merchant?.contact_name ?? null,
+    contactPhone: maskPhone(merchant?.contact_phone),
+    createdAt: merchant?.created_at ? toShanghaiIso(merchant.created_at) : null,
+  };
+}
+
+export function getMerchantAccount({ db, user }) {
+  if (user.role !== 'MERCHANT') {
+    throw forbidden();
+  }
+  const freshUser = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id) ?? user;
+  return {
+    status: 200,
+    body: { data: serializeMerchantAccountRow(db, freshUser) },
+  };
+}
+
+export function updateMerchantAccount({ db, clock, user, body }) {
+  if (user.role !== 'MERCHANT') {
+    throw forbidden();
+  }
+  const input = asRecord(body);
+  requireOnlyFields(input, ['requestId', 'account', 'password', 'merchantName', 'contactName', 'contactPhone']);
+  const requestId = requireString(input.requestId, 'requestId', { max: 120 });
+  const nextAccount =
+    input.account !== undefined
+      ? requireString(input.account, 'account', { min: 4, max: 30 }).trim()
+      : undefined;
+  if (nextAccount !== undefined && !MERCHANT_ACCOUNT_PATTERN.test(nextAccount)) {
+    throw validationError('账号只能包含字母、数字、点、下划线或横线，长度 4—30。');
+  }
+  const nextPassword = input.password !== undefined ? input.password : undefined;
+  if (
+    nextPassword !== undefined &&
+    (typeof nextPassword !== 'string' || nextPassword.length < 8 || nextPassword.length > 64 || /\s/.test(nextPassword))
+  ) {
+    throw validationError('密码需为 8—64 位且不能包含空格。');
+  }
+  const merchantName =
+    input.merchantName !== undefined
+      ? requireString(input.merchantName, 'merchantName', { min: 2, max: 30 })
+      : undefined;
+  const contactName =
+    input.contactName !== undefined
+      ? requireString(input.contactName, 'contactName', { min: 2, max: 20 })
+      : undefined;
+  const contactPhone =
+    input.contactPhone !== undefined ? normalizePhone(input.contactPhone) : undefined;
+
+  if (
+    nextAccount === undefined &&
+    nextPassword === undefined &&
+    merchantName === undefined &&
+    contactName === undefined &&
+    contactPhone === undefined
+  ) {
+    throw validationError('至少需要提供一个可修改的字段。');
+  }
+
+  const hash = requestHash(input);
+  const now = clock();
+  return transaction(db, () =>
+    runIdempotent(db, { actorId: user.id, operation: 'merchant-account-update', requestId, hash, now }, () => {
+      if (nextAccount !== undefined) {
+        const taken = db
+          .prepare('SELECT id FROM users WHERE account = ? COLLATE NOCASE AND id <> ?')
+          .get(nextAccount, user.id);
+        if (taken) {
+          throw conflict('ACCOUNT_TAKEN', '该账号已被使用，请换一个账号。');
+        }
+        db.prepare('UPDATE users SET account = ? WHERE id = ?').run(nextAccount, user.id);
+      }
+      if (nextPassword !== undefined) {
+        db.prepare('UPDATE users SET password_stored = ? WHERE id = ?').run(hashPassword(nextPassword), user.id);
+      }
+      if (user.merchant_id && (merchantName !== undefined || contactName !== undefined || contactPhone !== undefined)) {
+        const merchant = loadMerchant(db, user.merchant_id);
+        const updatedMerchantName = merchantName ?? merchant.name;
+        const updatedContactName = contactName ?? merchant.contact_name;
+        const updatedContactPhone = contactPhone ?? merchant.contact_phone;
+        db.prepare(
+          'UPDATE merchants SET name = ?, contact_name = ?, contact_phone = ? WHERE id = ?',
+        ).run(updatedMerchantName, updatedContactName, updatedContactPhone, merchant.id);
+      }
+      const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+      return {
+        status: 200,
+        body: { data: serializeMerchantAccountRow(db, updatedUser) },
+      };
+    }),
+  );
+}
+
+export function listAdminMerchantAccounts({ db, user }) {
+  if (user.role !== 'ADMIN') {
+    throw forbidden();
+  }
+  const rows = db
+    .prepare("SELECT * FROM users WHERE role = 'MERCHANT' ORDER BY rowid ASC")
+    .all();
+  return {
+    status: 200,
+    body: {
+      data: {
+        accounts: rows.map((row) => serializeMerchantAccountRow(db, row)),
+      },
+    },
+  };
+}
+
+export function createAdminMerchantAccount({ db, clock, user, body }) {
+  if (user.role !== 'ADMIN') {
+    throw forbidden();
+  }
+  const input = asRecord(body);
+  requireOnlyFields(input, ['requestId', 'account', 'password', 'merchantName', 'contactName', 'contactPhone']);
+  const requestId = requireString(input.requestId, 'requestId', { max: 120 });
+  const account = requireString(input.account, 'account', { min: 4, max: 30 }).trim();
+  if (!MERCHANT_ACCOUNT_PATTERN.test(account)) {
+    throw validationError('账号只能包含字母、数字、点、下划线或横线，长度 4—30。');
+  }
+  const password = input.password;
+  if (typeof password !== 'string' || password.length < 8 || password.length > 64 || /\s/.test(password)) {
+    throw validationError('初始密码需为 8—64 位且不能包含空格。');
+  }
+  const merchantName = requireString(input.merchantName, 'merchantName', { min: 2, max: 30 });
+  const contactName = requireString(input.contactName, 'contactName', { min: 2, max: 20 });
+  const contactPhone = normalizePhone(input.contactPhone);
+  const hash = requestHash(input);
+  const now = clock();
+
+  return transaction(db, () =>
+    runIdempotent(db, { actorId: user.id, operation: 'admin-merchant-account-create', requestId, hash, now }, () => {
+      if (db.prepare('SELECT 1 FROM users WHERE account = ? COLLATE NOCASE').get(account)) {
+        throw conflict('ACCOUNT_TAKEN', '该账号已被使用，请换一个账号。');
+      }
+      const takenPhone = db.prepare('SELECT id FROM merchants WHERE contact_phone = ?').get(contactPhone);
+      if (takenPhone) {
+        throw conflict('CONTACT_PHONE_TAKEN', '该联系电话已被其他商家使用。');
+      }
+      const userId = newId('user');
+      const merchantId = newId('m');
+      db.prepare(
+        `INSERT INTO users (id, account, password_stored, display_name, role, merchant_id, active)
+         VALUES (?, ?, ?, ?, 'MERCHANT', ?, 1)`,
+      ).run(userId, account, hashPassword(password), merchantName, merchantId);
+      db.prepare(
+        `INSERT INTO merchants (id, owner_user_id, name, open_at, close_at, contact_name, contact_phone, status, created_at)
+         VALUES (?, ?, ?, '08:00', '22:00', ?, ?, 'ACTIVE', ?)`,
+      ).run(merchantId, userId, merchantName, contactName, contactPhone, now);
+      const createdUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      return {
+        status: 201,
+        body: { data: serializeMerchantAccountRow(db, createdUser) },
+      };
+    }),
   );
 }

@@ -786,3 +786,63 @@ test('旧版 SQLite 数据库（shops.merchant_id UNIQUE 与旧 order_items）�
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test('档口端修改商家名称与店铺名称后，管理端订单与商家账号列表同步更新', async () => {
+  const { token } = await registerAndLoginMerchant('sync_merchant');
+  const shopRes = await ctx.api('POST', '/merchant/shops', {
+    token,
+    body: { requestId: 'sync-shop-create', shopName: '老名称小馆', location: '一食堂 6 号' },
+  });
+  assert.equal(shopRes.status, 201);
+  const shopId = shopRes.body.data.shop.id;
+
+  const dishRes = await ctx.api('POST', '/merchant/menu', {
+    token,
+    body: { requestId: 'sync-dish-1', type: 'STAPLE', name: '招牌拌面', priceFen: 1400, availableQuantity: 20 },
+  });
+  assert.equal(dishRes.status, 201);
+
+  const student = await ctx.login('student');
+  const orderRes = await ctx.api('POST', '/orders', {
+    token: student,
+    body: orderBody('sync-order-1', { items: [{ dishId: dishRes.body.data.id, quantity: 1 }] }),
+  });
+  assert.equal(orderRes.status, 201);
+  assert.equal(orderRes.body.data.merchantName, '老名称小馆');
+
+  // 档口修改商家名称与店铺名称
+  const profilePatch = await ctx.api('PATCH', '/merchant/profile', {
+    token,
+    body: { requestId: 'sync-profile-patch', merchantName: '全新品牌商家', contactName: '陈店长' },
+  });
+  assert.equal(profilePatch.status, 200);
+  assert.equal(profilePatch.body.data.merchant.name, '全新品牌商家');
+
+  const shopPatch = await ctx.api('PATCH', `/merchant/shops/${shopId}`, {
+    token,
+    body: { requestId: 'sync-shop-patch', expectedVersion: 1, shopName: '新名称旗舰店', location: '一食堂 6 号' },
+  });
+  assert.equal(shopPatch.status, 200);
+  assert.equal(shopPatch.body.data.shop.name, '新名称旗舰店');
+
+  // 管理端查询订单与详情同步看到新店铺名称
+  const admin = await ctx.login('admin');
+  const adminOrders = await ctx.api('GET', '/admin/orders', { token: admin });
+  assert.equal(adminOrders.status, 200);
+  const syncedOrder = adminOrders.body.data.orders.find((o) => o.id === orderRes.body.data.id);
+  assert.ok(syncedOrder);
+  assert.equal(syncedOrder.merchantName, '新名称旗舰店');
+
+  const adminOrderDetail = await ctx.api('GET', `/orders/${orderRes.body.data.id}`, { token: admin });
+  assert.equal(adminOrderDetail.status, 200);
+  assert.equal(adminOrderDetail.body.data.merchantName, '新名称旗舰店');
+
+  // 管理端查询商家账号列表同步看到新商家名称与新店铺名称
+  const adminAccounts = await ctx.api('GET', '/admin/merchant-accounts', { token: admin });
+  assert.equal(adminAccounts.status, 200);
+  const syncedAccount = adminAccounts.body.data.accounts.find((a) => a.account === 'sync_merchant');
+  assert.ok(syncedAccount);
+  assert.equal(syncedAccount.merchantName, '全新品牌商家');
+  assert.equal(syncedAccount.shopName, '新名称旗舰店');
+  assert.equal(syncedAccount.contactName, '陈店长');
+});
