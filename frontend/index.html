@@ -24,16 +24,28 @@
         gap: 26px;
       }
       .app-splash__icon {
+        position: relative;
         width: min(54vw, 264px);
-        height: auto;
-        display: block;
         filter: drop-shadow(0 12px 26px rgba(74, 42, 26, 0.12));
       }
-      .app-splash__leaves { animation: splash-leaves-out 2000ms linear infinite; }
+      .app-splash__base {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .app-splash__leaves {
+        position: absolute;
+        inset: 0;
+        animation: splash-leaves-out 2000ms linear infinite;
+      }
+      .app-splash__leaf {
+        position: absolute;
+        display: block;
+        height: auto;
+      }
       .app-splash__leaf--left { animation: splash-leaf-left 2000ms linear infinite; opacity: 0; }
       .app-splash__leaf--right { animation: splash-leaf-right 2000ms linear infinite; opacity: 0; }
       .app-splash__leaf--center {
-        transform-box: fill-box;
         transform-origin: 50% 100%;
         animation: splash-leaf-center 2000ms cubic-bezier(0.2, 0.9, 0.25, 1.08) infinite;
         opacity: 0;
@@ -82,37 +94,14 @@
   <body>
     <div id="app-splash" class="app-splash" role="status" aria-live="polite" aria-label="正在加载食麦呼">
       <div class="app-splash__inner">
-        <svg class="app-splash__icon" viewBox="0 0 200 200" aria-hidden="true">
-          <rect width="200" height="200" rx="45" fill="#FCE3B6" />
-          <g stroke="#F0A22B" stroke-width="9" stroke-linecap="round">
-            <line x1="136" y1="50" x2="147" y2="32" />
-            <line x1="150" y1="55" x2="169" y2="42" />
-          </g>
-          <path
-            d="M57.1 140.9 A55 55 0 1 1 86.4 156.2 C76 162 62 167 50 172 C54 162 55 151 57.1 140.9 Z"
-            fill="#FDF6E3"
-            stroke="#4A2A1A"
-            stroke-width="9"
-            stroke-linejoin="round"
-          />
-          <g class="app-splash__leaves">
-            <g transform="translate(88 126) rotate(-50)">
-              <g class="app-splash__leaf--left">
-                <path d="M0 0 C-15 -10 -23 -27 0 -46 C23 -27 15 -10 0 0 Z" fill="#F0A22B" />
-              </g>
-            </g>
-            <g transform="translate(108 126) rotate(44)">
-              <g class="app-splash__leaf--right">
-                <path d="M0 0 C-15 -10 -23 -27 0 -46 C23 -27 15 -10 0 0 Z" fill="#F0A22B" />
-              </g>
-            </g>
-            <g transform="translate(99 94) rotate(45)">
-              <g class="app-splash__leaf--center">
-                <path d="M0 0 C-14 -9 -21 -24 0 -40 C21 -24 14 -9 0 0 Z" fill="#F0A22B" />
-              </g>
-            </g>
-          </g>
-        </svg>
+        <div class="app-splash__icon" aria-hidden="true">
+          <img class="app-splash__base" src="/splash/base.png" alt="" />
+          <div class="app-splash__leaves">
+            <img class="app-splash__leaf app-splash__leaf--left" src="/splash/leaf-left.png" alt="" style="left: 33.81%; top: 48.64%; width: 14.75%;" />
+            <img class="app-splash__leaf app-splash__leaf--right" src="/splash/leaf-right.png" alt="" style="left: 48.25%; top: 49.76%; width: 18.58%;" />
+            <img class="app-splash__leaf app-splash__leaf--center" src="/splash/leaf-center.png" alt="" style="left: 46.73%; top: 37.24%; width: 14.99%;" />
+          </div>
+        </div>
         <p class="app-splash__caption">正在加载食麦呼</p>
       </div>
     </div>
