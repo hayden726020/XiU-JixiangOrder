@@ -19,6 +19,7 @@ export type ShopPickerPhase = 'loading' | 'ready' | 'empty' | 'error' | 'unavail
 export interface ShopCardView {
   merchantId: string;
   title: string;
+  location: string | null;
   nameNote: string;
   canteenText: string;
   orderableText: string;
@@ -84,6 +85,7 @@ export function deriveShopCards(
       return {
         merchantId: shop.merchantId,
         title,
+        location: shop.location ?? null,
         nameNote: derived ? DERIVED_NAME_NOTE : hasName ? '' : SHOP_NAME_MISSING,
         canteenText,
         orderableText,
@@ -150,6 +152,8 @@ export interface StallVisualMeta {
 }
 
 function inferCanteenGroup(card: ShopCardView): CanteenGroup {
+  if (/二食堂|canteen-02/i.test(card.location ?? '')) return '二食堂';
+  if (/一食堂|canteen-01/i.test(card.location ?? '')) return '一食堂';
   const combined = `${card.title} ${card.canteenText}`;
   if (/二食堂|canteen-02/i.test(combined)) return '二食堂';
   if (/一食堂|canteen-01/i.test(combined)) return '一食堂';
@@ -171,7 +175,7 @@ export function resolveStallVisual(
     return {
       title: name,
       tag: '面食 · 饺子',
-      location: canteenGroup === '二食堂' ? '二食堂 · 一楼' : '一食堂 · 一楼',
+      location: card.location ?? (canteenGroup === '二食堂' ? '二食堂 · 一楼' : '一食堂 · 一楼'),
       specialties: card.demo ? '手工拉面 · 经典拌面 · 刀削面' : dishSummary || card.orderableText,
       statusLabel,
       isOpen,
@@ -186,7 +190,7 @@ export function resolveStallVisual(
     return {
       title: name,
       tag: '家常热菜',
-      location: canteenGroup === '二食堂' ? '二食堂 · 一楼' : '一食堂 · 一楼',
+      location: card.location ?? (canteenGroup === '二食堂' ? '二食堂 · 一楼' : '一食堂 · 一楼'),
       specialties: card.demo ? '热菜现炒 · 多种套餐 · 经济实惠' : dishSummary || card.orderableText,
       statusLabel,
       isOpen,
@@ -201,7 +205,7 @@ export function resolveStallVisual(
     return {
       title: name,
       tag: '现做小炒',
-      location: canteenGroup === '二食堂' ? '二食堂 · 二楼' : '一食堂 · 二楼',
+      location: card.location ?? (canteenGroup === '二食堂' ? '二食堂 · 二楼' : '一食堂 · 二楼'),
       specialties: card.demo ? '现炒盖饭 · 黑椒鸡腿 · 特色小炒' : dishSummary || card.orderableText,
       statusLabel,
       isOpen,
@@ -212,10 +216,11 @@ export function resolveStallVisual(
       photoAlt: `${name}档口`,
     };
   }
-  const fallbackLocation =
+  const fallbackLocation = card.location ?? (
     canteenGroup !== 'other'
       ? `${canteenGroup} · 校内档口`
-      : card.canteenText.replace(/^所属食堂：/, '') || '校内食堂';
+      : card.canteenText.replace(/^所属食堂：/, '') || '校内食堂'
+  );
   return {
     title: name,
     tag: card.demo ? '样例档口' : '校内档口',

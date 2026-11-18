@@ -275,7 +275,7 @@ function mapSlot(slot: ApiSlot): Slot {
     occupied: slot.booked,
     remaining: slot.remainingCapacity,
     enabled: slot.enabled,
-    full: slot.remainingCapacity <= 0,
+    full: false,
     version: apiVersion(slot.version),
   };
 }
@@ -985,7 +985,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
           body: {
             requestId: input.requestId,
             expectedVersion: input.expectedVersion,
-            capacity: input.capacity,
+
             enabled: input.enabled,
           },
         });
@@ -1055,8 +1055,19 @@ export function createMerchantSource(options: {
   }
 
   const orders = sampleOrders(scenario);
-  const dishWrites = new Map<string, { name: string; type: DishType; unitPriceFen: number; availableQuantity: number; onSale: boolean; version: number }>();
-  const slotWrites = new Map<string, { capacity: number; enabled: boolean; version: number }>();
+  const dishWrites = new Map<string, {
+    name: string;
+    type: DishType;
+    unitPriceFen: number;
+    availableQuantity: number;
+    onSale: boolean;
+    imageUrl: string | null;
+    flavorGroups: Dish['flavorGroups'];
+    sides: Dish['sides'];
+    addOns: Dish['addOns'];
+    version: number;
+  }>();
+  const slotWrites = new Map<string, { enabled: boolean; version: number }>();
   const addedDishes = new Map<string, Dish>();
   const deletedDishes = new Set<string>();
   const dailyMenus = new Map<string, Set<string>>();
@@ -1185,6 +1196,10 @@ export function createMerchantSource(options: {
           unitPriceFen: current?.unitPriceFen ?? dish.unitPriceFen,
           availableQuantity: item.availableQuantity,
           onSale: current?.onSale ?? dish.onSale,
+          imageUrl: current?.imageUrl ?? dish.imageUrl,
+          flavorGroups: current?.flavorGroups ?? dish.flavorGroups,
+          sides: current?.sides ?? dish.sides,
+          addOns: current?.addOns ?? dish.addOns,
           version: (current?.version ?? dish.version ?? 1) + 1,
         });
       }
@@ -1408,6 +1423,9 @@ export function createMerchantSource(options: {
         availableQuantity: input.availableQuantity,
         onSale: input.onSale,
         imageUrl: input.imageUrl === undefined ? current.imageUrl : input.imageUrl,
+        flavorGroups: input.flavorGroups ?? current.flavorGroups,
+        sides: input.sides ?? current.sides,
+        addOns: input.addOns ?? current.addOns,
         version: version + 1,
       };
       dishWrites.set(`${date}:${dishId}`, {
@@ -1416,6 +1434,10 @@ export function createMerchantSource(options: {
         unitPriceFen: updated.unitPriceFen,
         availableQuantity: updated.availableQuantity,
         onSale: updated.onSale,
+        imageUrl: updated.imageUrl,
+        flavorGroups: updated.flavorGroups,
+        sides: updated.sides,
+        addOns: updated.addOns,
         version: updated.version ?? version + 1,
       });
       return { ok: true, data: updated };
@@ -1448,20 +1470,13 @@ export function createMerchantSource(options: {
       if (input.expectedVersion === null || input.expectedVersion !== version) {
         return fail('ORDER_VERSION_CONFLICT', '时段已在其他操作中更新，请重新读取菜单后再保存。');
       }
-      if (input.capacity < current.occupied) {
-        return fail('INVALID_ORDER_STATE', '容量不能低于已占用名额。');
-      }
-      const remaining = Math.max(input.capacity - current.occupied, 0);
       const updated: Slot = {
         ...current,
-        capacity: input.capacity,
         enabled: input.enabled,
-        remaining,
-        full: remaining <= 0,
+        full: false,
         version: version + 1,
       };
       slotWrites.set(slotId, {
-        capacity: updated.capacity,
         enabled: updated.enabled,
         version: updated.version ?? version + 1,
       });

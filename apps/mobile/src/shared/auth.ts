@@ -45,18 +45,22 @@ function parseSession(value: unknown): Session | null {
   };
 }
 
-export async function demoLogin(account: string, password: string): Promise<Session> {
+async function performLogin(
+  endpoint: '/auth/login' | '/auth/demo-login',
+  account: string,
+  password: string,
+): Promise<Session> {
   const trimmedAccount = account.trim();
   if (trimmedAccount.length === 0 || password.length === 0) {
     throw new ApiError({
       code: 'VALIDATION_ERROR',
-      message: '请输入演示账号与密码。',
+      message: '请输入账号与密码。',
       status: 0,
       retryable: false,
     });
   }
 
-  const data = await apiRequest<unknown>('/auth/demo-login', {
+  const data = await apiRequest<unknown>(endpoint, {
     method: 'POST',
     auth: false,
     body: { account: trimmedAccount, password },
@@ -74,6 +78,39 @@ export async function demoLogin(account: string, password: string): Promise<Sess
 
   saveSession(session);
   return session;
+}
+
+export async function login(account: string, password: string): Promise<Session> {
+  return performLogin('/auth/login', account, password);
+}
+
+export async function demoLogin(account: string, password: string): Promise<Session> {
+  return performLogin('/auth/demo-login', account, password);
+}
+
+export interface StudentRegistrationResult {
+  registered: true;
+}
+
+export async function registerStudentAccount(
+  account: string,
+  password: string,
+): Promise<StudentRegistrationResult> {
+  const trimmedAccount = account.trim();
+  const data = await apiRequest<unknown>('/auth/student-register', {
+    method: 'POST',
+    auth: false,
+    body: { account: trimmedAccount, password },
+  });
+  if (!isRecord(data) || data.registered !== true) {
+    throw new ApiError({
+      code: 'INVALID_RESPONSE',
+      message: '注册响应格式不正确。',
+      status: 0,
+      retryable: false,
+    });
+  }
+  return { registered: true };
 }
 
 export interface SessionIdentity {

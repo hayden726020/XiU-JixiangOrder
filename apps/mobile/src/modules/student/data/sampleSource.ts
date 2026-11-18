@@ -17,7 +17,7 @@ import { createRealStudentSource, type RealRequest } from './realSource';
 import { resolveStudentMode } from './mode';
 import { sumFen } from '../utils/money';
 import { ORDER_REMARK_MAX_LENGTH, sanitizeOrderRemark } from '../utils/remark';
-import { DISH_SHORTAGE_SUBMIT, SLOT_UNAVAILABLE_MESSAGE } from '../utils/submitTexts';
+import { DISH_SHORTAGE_SUBMIT, SLOT_CLOSED_MESSAGE, SLOT_UNAVAILABLE_MESSAGE } from '../utils/submitTexts';
 import {
   CROWD_REFERENCE,
   DATES,
@@ -151,6 +151,10 @@ export function createStudentSource({
     if (!slot) {
       throw apiError('VALIDATION_ERROR', '时段不存在。', false);
     }
+    const slotEndMs = Date.parse(`${slot.date}T${slot.end}:00+08:00`);
+    if (!slot.enabled || (Number.isFinite(slotEndMs) && slotEndMs <= clock().getTime())) {
+      throw apiError('SLOT_CLOSED', SLOT_CLOSED_MESSAGE, false);
+    }
     const shortage: string[] = [];
     for (const item of input.items) {
       const dish = findDish(item.dishId);
@@ -242,6 +246,7 @@ export function createStudentSource({
 
   return {
     mode: 'sample',
+    getNow: () => clock(),
 
     async listShops(): Promise<ShopSummary[]> {
       return clone(DEMO_SHOPS);
@@ -251,11 +256,19 @@ export function createStudentSource({
       if (!DATES.includes(date)) {
         throw apiError('VALIDATION_ERROR', '日期只能是今天或明天。', false);
       }
+      const nowMs = clock().getTime();
       return clone({
         date,
         demo: true,
         dishes: DISHES.map((dish) => toDishDto(dish, date)),
-        slots: SLOTS.filter((slot) => slot.date === date).map(toSlotDto),
+        slots: SLOTS.filter((slot) => slot.date === date).map((slot) => {
+          const dto = toSlotDto(slot);
+          const endMs = Date.parse(dto.slotEnd);
+          return {
+            ...dto,
+            enabled: dto.enabled && (!Number.isFinite(endMs) || endMs > nowMs),
+          };
+        }),
       });
     },
 

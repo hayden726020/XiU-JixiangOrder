@@ -289,3 +289,11 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 - 内容：同步当前 `frontend/src` 到 `apps/mobile/src`（29 个文件修改），包含档口端菜品规格/小料展示（`customizationSummary`、`OrderItemCustomization`、`mapOrderItemCustomization`）、学生端确认页与订单页样式、管理端同步改动；同步边界：根配置、`android/`、`README.md`、`index.html`、`capacitor.config.ts`、`vite.config.ts` 保持远端版本，排除全部 `*.sync-conflict-*` 与 `~syncthing~*` 临时文件。
 - 线上订单号修复（2026-11-18 18:55—18:59）：线上 `/opt/jixiang-order/services/api/src/orders.mjs` 被旧版覆盖导致 `orderNo` 丢失，已按线上最新代码打最小补丁（`serializeOrder` 返回 `orderNo`、下单按档口+上海自然日编号）；`db.mjs` 补 `order_no` 迁移与回填；重启后 28 笔订单 0 空号，接口返回 `orderNo`。静态包 `/var/www/jixiang-web/` 同步发布新产物 `index-_P_dtvU3.js`，线上页面实测显示 `#6/#7/#8`。服务端补丁副本在本地工作区 `.runtime/ecs-order-no/`（不入库）。
 - 验证：`frontend/` 下 `tsc --noEmit` 0 错误、`vite build` 成功；无头 Edge 以线上地址 `https://39.96.195.158/` 真实模式实测订单页显示数字订单号。
+
+## 15 2026-11-18 第六轮基线（`frontend/handoff-2026-11-18-r6`）
+
+- 分支：基于远端 `frontend/handoff-2026-11-18-r5`（`84ad0c2`）新建 `frontend/handoff-2026-11-18-r6` 并推送；远端分支头以本次回复中的 `git ls-remote` 输出为准。
+- 内容：同步当前 `frontend/src` 到 `apps/mobile/src`（60 个文件变更，另新增 13 个文件）。学生端新增滑动确认、时段轮盘选择、底部导航/标签栏、页面转场与动效样式、返回键公共能力（`shared/backPress.ts`）、`useSourceNowMs`、`authView`、`slotWheelModel` 与 `newShopVisibility` 测试；档口端恢复 `OrderCard.tsx`、打包费与旧视觉样式，并同步档口/管理端最新改动。
+- 同步边界：只覆盖 `apps/mobile/src`；根配置、`android/`、`README.md`、`index.html`、`capacitor.config.ts`、`vite.config.ts` 保持远端版本，过滤全部 `*.sync-conflict-*`。
+- 线上状态：服务端订单号补丁已于 20:50 以当时线上 19:50 版 `orders.mjs` 为基准重打（保留 `slot.end_at <= now` 校验），37 笔订单 0 空号；前端发布 `index-CLp4ZZ3y.js`，线上页面实测订单页显示 `#14`。
+- 验证：`frontend/` 下 `tsc --noEmit` 0 错误；`vite build` 产物与线上一致。

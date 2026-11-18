@@ -81,6 +81,7 @@ export interface OrderDraft {
   getCustomization(dishId: string): ItemCustomizationSelection | null;
   getLimit(dishId: string): number;
   setSlot(slotId: string): void;
+  clearSlot(): void;
   setDiningMode(mode: DiningMode): void;
   setRemark(text: string): void;
   applyDishCatalog(dishes: DishDto[]): void;
@@ -400,6 +401,17 @@ export function createOrderDraft({
     notifyChange();
   }
 
+  function clearSlot(): void {
+    if (state.slotId === null) {
+      return;
+    }
+    state.slotId = null;
+    state.status = 'idle';
+    state.order = null;
+    state.error = null;
+    notifyChange();
+  }
+
   function setDiningMode(mode: DiningMode): void {
     if (!MODES.has(mode)) {
       throw apiError('VALIDATION_ERROR', '请选择堂食或外带。', false);
@@ -712,6 +724,7 @@ export function createOrderDraft({
     getCustomization,
     getLimit,
     setSlot,
+    clearSlot,
     setDiningMode,
     setRemark,
     applyDishCatalog,

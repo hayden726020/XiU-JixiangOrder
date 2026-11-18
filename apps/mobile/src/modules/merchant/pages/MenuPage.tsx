@@ -56,7 +56,7 @@ interface MenuPageProps {
   onLoadDishLibrary: () => void;
   onSaveDailyMenu: (items: DailyMenuSelection[], requestId: string) => Promise<SourceResult<MenuDay>>;
   slots: SlotDay | null;
-  onSaveSlot: (slot: Slot, patch: { capacity: number; enabled: boolean }, requestId: string) => Promise<SourceResult<Slot>>;
+  onSaveSlot: (slot: Slot, patch: { enabled: boolean }, requestId: string) => Promise<SourceResult<Slot>>;
 }
 
 function shortDate(date: string): string {
@@ -121,7 +121,7 @@ export default function MenuPage({
   const [dishTogglingId, setDishTogglingId] = useState<string | null>(null);
   const [dishToggleFeedback, setDishToggleFeedback] = useState<{ dishId: string; message: string } | null>(null);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
-  const [slotCapacityText, setSlotCapacityText] = useState('');
+
   const [slotEnabled, setSlotEnabled] = useState(true);
   const [slotRequestId, setSlotRequestId] = useState('');
   const [slotSaving, setSlotSaving] = useState(false);
@@ -143,6 +143,26 @@ export default function MenuPage({
   useEffect(() => {
     setCustomizations(loadCustomizations(scope));
   }, [scope]);
+
+  useEffect(() => {
+    if (isSample || !menu) return;
+    const fromServer: Record<string, DishCustomization> = {};
+    for (const item of menu.dishes) {
+      const custom: DishCustomization = {
+        imageUrl: item.imageUrl,
+        flavorGroups: item.flavorGroups,
+        sides: item.sides,
+        addOns: item.addOns,
+      };
+      if (hasCustomization(custom)) {
+        fromServer[item.dishId] = custom;
+      }
+    }
+    setCustomizations(fromServer);
+    setCustomizationStoreError(saveCustomizations(scope, fromServer)
+      ? null
+      : '本机存储空间不足：图片和选项只保留在当前页面，刷新后会丢失。');
+  }, [menu, isSample, scope]);
 
   useEffect(() => {
     setDailyMenuOpen(false);
@@ -179,7 +199,12 @@ export default function MenuPage({
 
   function customizationFor(dish: Dish): DishCustomization {
     return customizations[dish.dishId]
-      ?? { imageUrl: dish.imageUrl, flavorGroups: [], sides: [], addOns: [] };
+      ?? {
+        imageUrl: dish.imageUrl,
+        flavorGroups: dish.flavorGroups,
+        sides: dish.sides,
+        addOns: dish.addOns,
+      };
   }
 
   const dailyLibrary = (() => {
@@ -406,10 +431,22 @@ export default function MenuPage({
       }
       imageUrlForSave = image.imageUrl;
     }
-    const result = await onSaveDish(dish, { ...parsed.patch, imageUrl: imageUrlForSave }, requestId);
+    const result = await onSaveDish(dish, {
+      ...parsed.patch,
+      imageUrl: imageUrlForSave,
+      flavorGroups: custom.value.flavorGroups,
+      sides: custom.value.sides,
+      addOns: custom.value.addOns,
+    }, requestId);
     setDishSaving(false);
     if (result.ok) {
-      const nextCustom = { ...custom.value, imageUrl: isSample ? custom.value.imageUrl : null };
+      const saved = result.data;
+      const nextCustom: DishCustomization = {
+        imageUrl: saved.imageUrl,
+        flavorGroups: saved.flavorGroups,
+        sides: saved.sides,
+        addOns: saved.addOns,
+      };
       if (hasCustomization(nextCustom)) {
         persistCustomizations({ ...customizations, [dish.dishId]: nextCustom });
       } else {
@@ -448,7 +485,7 @@ export default function MenuPage({
 
   function startSlotEdit(slot: Slot) {
     setEditingSlotId(slot.slotId);
-    setSlotCapacityText(String(slot.capacity));
+
     setSlotEnabled(slot.enabled);
     setSlotRequestId(createRequestId('merchant-slot'));
     setSlotError(null);
@@ -462,21 +499,11 @@ export default function MenuPage({
   }
 
   async function submitSlot(slot: Slot) {
-    const text = slotCapacityText.trim();
-    const capacity = Number(text);
-    if (!/^\d+$/.test(text) || !Number.isSafeInteger(capacity) || capacity < 1 || capacity > 1000) {
-      setSlotError('名额必须是 1—1000 的整数。');
-      return;
-    }
-    if (capacity < slot.occupied) {
-      setSlotError(`名额不能低于已预约的 ${slot.occupied} 个。`);
-      return;
-    }
     const requestId = slotRequestId || createRequestId('merchant-slot');
     setSlotRequestId(requestId);
     setSlotSaving(true);
     setSlotError(null);
-    const result = await onSaveSlot(slot, { capacity, enabled: slotEnabled }, requestId);
+    const result = await onSaveSlot(slot, { enabled: slotEnabled }, requestId);
     setSlotSaving(false);
     if (result.ok) {
       setEditingSlotId(null);
@@ -551,10 +578,23 @@ export default function MenuPage({
       }
       imageUrlForSave = image.imageUrl;
     }
-    const result = await onCreateDish({ requestId, ...parsed.value, imageUrl: imageUrlForSave });
+    const result = await onCreateDish({
+      requestId,
+      ...parsed.value,
+      imageUrl: imageUrlForSave,
+      flavorGroups: custom.value.flavorGroups,
+      sides: custom.value.sides,
+      addOns: custom.value.addOns,
+    });
     setNewDishSaving(false);
     if (result.ok) {
-      const nextCustom = { ...custom.value, imageUrl: isSample ? custom.value.imageUrl : null };
+      const saved = result.data;
+      const nextCustom: DishCustomization = {
+        imageUrl: saved.imageUrl,
+        flavorGroups: saved.flavorGroups,
+        sides: saved.sides,
+        addOns: saved.addOns,
+      };
       if (hasCustomization(nextCustom)) {
         persistCustomizations({ ...customizations, [result.data.dishId]: nextCustom });
       }
@@ -1226,7 +1266,7 @@ export default function MenuPage({
               <header className="menu-card__head">
                 <div>
                   <h3>接单时段</h3>
-                  <p>总名额 / 已预约 / 剩余；名额不能低于已预约数量。</p>
+                  <p>只设置时段是否开放接单；开放后学生端即可选择，不限数量。</p>
                 </div>
                 <span className="menu-card__hint">{slots.slots.length} 个时段</span>
               </header>
@@ -1236,17 +1276,14 @@ export default function MenuPage({
                   return (
                     <li
                       key={slot.slotId}
-                      className={slot.full || closed ? 'slot-item slot-item--full' : 'slot-item'}
+                      className={closed ? 'slot-item slot-item--full' : 'slot-item'}
                       data-slot-id={slot.slotId}
                       data-slot-version={slot.version ?? 'missing'}
                     >
                       <span className="slot-item__time">
                         {formatClock(slot.slotStart)}—{formatClock(slot.slotEnd)}
-                        {slot.full ? '（已满）' : closed ? '（已关闭）' : ''}
+                        {closed ? '（已关闭）' : '（开放接单）'}
                       </span>
-                      <span>名额 {slot.capacity}</span>
-                      <span>已占 {slot.occupied}</span>
-                      <span>剩余 {slot.remaining}</span>
                       <button
                         type="button"
                         className="menu-item__edit"
@@ -1267,15 +1304,7 @@ export default function MenuPage({
                     <span className="menu-slot-edit__title">
                       {formatClock(slot.slotStart)}—{formatClock(slot.slotEnd)}
                     </span>
-                    <label className="menu-field">
-                      名额
-                      <input
-                        value={slotCapacityText}
-                        inputMode="numeric"
-                        onChange={(event) => setSlotCapacityText(event.target.value)}
-                        aria-label="时段名额"
-                      />
-                    </label>
+
                     <label className="menu-field menu-field--switch">
                       <input
                         type="checkbox"
@@ -1325,7 +1354,7 @@ export default function MenuPage({
                 菜品图片、口味特征、固定配菜与加购项由商家自己添加和命名，学生端会显示成可点按钮；改完后点「保存菜品与配置」才会生效。
                 {isSample
                   ? '样例模式下图片与选项保存在本机浏览器。'
-                  : '真实模式下图片与选项暂存在本机，服务端字段完成后才会同步给学生端。'}
+                  : '真实模式下点保存会把图片与选项一并提交服务端，页面随后以服务端返回为准。'}
               </p>
               <p data-daily-menu-scope>
                 「制作今日菜单」从菜品库勾选当天上架的菜并设当天库存；没勾选的不进学生端，菜品库本身不删。

@@ -43,7 +43,7 @@ function slotRangeLabel(startIso: string, endIso: string): string {
 export default function OrderTicketCard({ order, mode, onOpenOrder, onAskMerchant }: {
   order: StudentOrder;
   mode: StudentMode;
-  onOpenOrder: (id: string) => void;
+  onOpenOrder: (id: string, trigger?: HTMLElement | null) => void;
   onAskMerchant: (kind: 'remind' | 'contact', order: StudentOrder) => void;
 }) {
   const view = toOrderStatusView(order, { mode });
@@ -77,11 +77,11 @@ export default function OrderTicketCard({ order, mode, onOpenOrder, onAskMerchan
       </div>
     </div>
     <div className="order-ticket__actions">
-      <button type="button" className="order-ticket__detail" onClick={() => onOpenOrder(order.id)}>订单详情</button>
-      {ready && code ? <button type="button" className="order-ticket__primary" onClick={() => onOpenOrder(order.id)}><OrderListIcon name="qr" size={19} />查看取餐码</button>
+      <button type="button" className="order-ticket__detail" onClick={(event) => onOpenOrder(order.id, event.currentTarget)}>订单详情</button>
+      {ready && code ? <button type="button" className="order-ticket__primary" onClick={(event) => onOpenOrder(order.id, event.currentTarget)}><OrderListIcon name="qr" size={19} />查看取餐码</button>
         : preparing ? <button type="button" className="order-ticket__primary" onClick={() => onAskMerchant('remind', order)}><OrderListIcon name="bell" size={19} />催单</button>
         : pending ? <button type="button" className="order-ticket__primary" onClick={() => onAskMerchant('contact', order)}><OrderListIcon name="chat" size={19} />联系商家</button>
-        : <button type="button" className="order-ticket__primary" onClick={() => onOpenOrder(order.id)}>查看订单</button>}
+        : <button type="button" className="order-ticket__primary" onClick={(event) => onOpenOrder(order.id, event.currentTarget)}>查看订单</button>}
     </div>
   </article>;
 }

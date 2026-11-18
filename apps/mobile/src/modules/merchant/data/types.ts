@@ -240,7 +240,7 @@ export interface DeletedDish {
 export interface UpdateSlotInput {
   requestId: string;
   expectedVersion: number | null;
-  capacity: number;
+
   enabled: boolean;
 }
 

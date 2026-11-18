@@ -15,9 +15,9 @@
 - **加购项**：商家自定义名称与加价（0—100 元），学生端可多选，选中后计入合计。
 - 商家可随时增删组、选项、配菜和加购项；保存菜品时一并校验名称长度、重复项和价格格式。
 
-**当前保存范围（必须如实区分）**：样例模式写入本机样例内存；真实模式先写入浏览器 `localStorage`（键 `merchant.dish-customization.v1:real`，样例模式对应 `:sample`），**尚未提交给服务端**。真实模式页面会显示“当前图片先保存在本机”的提示。刷新页面后本机配置仍在；换设备、换浏览器或清缓存会丢失。删除菜品时会一起删除该菜品的图片与选项配置。
+**当前保存范围**：样例模式写入本机样例数据源（`data/source.ts` 的菜品覆盖表），并镜像到浏览器 `localStorage`（键 `merchant.dish-customization.v1:sample`）；真实模式在保存菜品时把 `imageUrl / flavorGroups / sides / addOns` 一并放进 `PUT /merchant/menu/{dishId}` 或 `POST /merchant/menu`，保存成功后页面以服务端返回的菜品为准重新计算列表标记与编辑回显。真实模式加载菜单时也以 `GET /menu` 返回的菜品字段回填，本机 `localStorage`（`:real`）只作镜像缓存，不再遮蔽服务端数据。删除菜品时会一起删除该菜品的图片与选项配置。
 
-**待共同服务补齐的字段（交给后端）**：`imageUrl`（字符串，可为 data URL 或对象存储 URL）、`flavorGroups`（`[{ id, name, required, options: [{ id, name }] }]`）、`sides`（`[{ id, name }]`）、`addOns`（`[{ id, name, priceFen }]`）。`GET /menu` 返回 `imageUrl` 时前端已能读取并在列表显示；其余三个字段需要后端落库并在学生端 `/menu` 回传后，学生端选择按钮才能真正下单。在这些字段落地前，不要把这部分写成“已同步服务端”。
+**服务端字段**：`imageUrl`（字符串，可为 data URL 或对象存储 URL）、`flavorGroups`（`[{ id, name, required, options: [{ id, name, priceFen }] }]`）、`sides`（`[{ id, name, priceFen }]`）、`addOns`（`[{ id, name, priceFen }]`）。现网 `GET /menu` 已回传这些字段，学生端据此渲染选择按钮并带入下单。
 ## 制作今日菜单（2026-11-17 新增）
 
 菜单页的“菜品（N）”标题旁新增「制作今日菜单」，用于从菜品库勾选当天要卖的菜（`pages/MenuPage.tsx` 的 `daily-menu` 面板；样例数据源在 `data/source.ts` 的 `dailyMenus` / `libraryDishes`）：

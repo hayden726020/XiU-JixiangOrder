@@ -12,9 +12,9 @@ export interface StudentSessionGate {
 }
 
 const MESSAGES = {
-  missing: '请先在公共入口完成演示登录。',
+  missing: '请先登录学生账号。',
   expired: '登录已过期，请重新登录。',
-  'wrong-role': '当前登录不是学生身份，请重新登录学生演示账号。',
+  'wrong-role': '当前登录不是学生身份，请重新登录学生账号。',
 } as const;
 
 export function evaluateStudentSession(

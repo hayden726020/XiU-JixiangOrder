@@ -1,5 +1,6 @@
 export const SLOT_OPEN_TEXT = '可预约';
 export const SLOT_CLOSED_TEXT = '该时段已关闭';
+export const SLOT_EXPIRED_TEXT = '该时段已过';
 export const SLOT_UNAVAILABLE_MESSAGE = '该时段暂不可用，请选择其他时段。';
 export const SLOT_CLOSED_MESSAGE = '该时段已关闭，请选择其他时段。';
 export const BACK_TO_SLOT_LABEL = '返回时段页';

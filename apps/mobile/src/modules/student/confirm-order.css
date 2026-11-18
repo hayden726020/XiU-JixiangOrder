@@ -855,11 +855,11 @@
 
 .confirm-checkout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1.12fr);
+  grid-template-columns: auto 1px minmax(0, 1fr);
   align-items: center;
   gap: 0.8rem;
   min-height: 68px;
-  padding: 8px 12px 8px 18px;
+  padding: 8px 12px 8px 16px;
   border-radius: 8px;
   background: #fffbf4;
   -webkit-mask-image:
@@ -968,6 +968,261 @@
   line-height: 1.25;
 }
 
+/* ==========================================================================
+   6. 滑动确认订单动效（Slide to Confirm）
+   ========================================================================== */
+
+.confirm-slide {
+  position: relative;
+  width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.confirm-slide__track {
+  position: relative;
+  width: 100%;
+  height: 52px;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 1px solid #dfceb8;
+  background: #f1e6d6;
+  box-shadow: inset 0 2px 4px rgba(78, 44, 16, 0.08);
+  cursor: pointer;
+  transition: opacity 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.confirm-slide__track.is-disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  border-color: #e5d8c8;
+  background: #f2ebe1;
+  box-shadow: none;
+}
+
+.confirm-slide__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--co-sans);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.confirm-slide__label--empty {
+  color: #7b6855;
+  padding-left: 26px;
+  will-change: opacity;
+}
+
+.confirm-slide__fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #fce07e 0%, #f1c94c 60%, #eabf3a 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  will-change: clip-path, opacity;
+  transition: background 0.35s ease-out;
+}
+
+.confirm-slide__fill.is-done {
+  background: linear-gradient(90deg, #34924c 0%, #297a3d 100%);
+}
+
+.confirm-slide__label--fill {
+  color: #2b1406;
+}
+
+.confirm-slide__label--fill.is-docked-left {
+  padding-left: 26px;
+  padding-right: 0;
+}
+
+.confirm-slide__label--fill.is-docked-right {
+  padding-left: 0;
+  padding-right: 24px;
+}
+
+.confirm-slide__label--fill.is-done {
+  color: #ffffff;
+}
+
+.confirm-slide__label--fill.is-entering {
+  animation: confirm-slide-enter 0.26s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.confirm-slide__label--fill.is-exiting {
+  animation: confirm-slide-exit 0.26s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes confirm-slide-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes confirm-slide-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+    filter: blur(2px);
+  }
+}
+
+.confirm-slide__thumb {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(214, 184, 148, 0.65);
+  background: #ffffff;
+  color: #2b1406;
+  box-shadow: 0 2px 6px rgba(68, 38, 12, 0.16), 0 1px 2px rgba(68, 38, 12, 0.12), inset 0 1px 0 #ffffff;
+  outline: none;
+  touch-action: none;
+  padding: 0;
+  cursor: grab;
+  will-change: transform;
+  transition: box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.confirm-slide__thumb:focus-visible {
+  outline: 2.5px solid #d49d35;
+  outline-offset: 2px;
+}
+
+.confirm-slide__thumb.is-grab {
+  cursor: grab;
+}
+
+.confirm-slide__thumb.is-grabbing {
+  cursor: grabbing;
+  background: #fffdf9;
+  box-shadow: 0 4px 12px rgba(68, 38, 12, 0.22), 0 1px 3px rgba(68, 38, 12, 0.16);
+  border-color: #dfba88;
+}
+
+.confirm-slide__thumb:disabled {
+  cursor: not-allowed;
+  background: #ede3ce;
+  color: #948473;
+  box-shadow: none;
+  border-color: #ded1be;
+}
+
+.confirm-slide__icon-box {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.confirm-slide__arrow {
+  position: absolute;
+  inset: 0;
+  width: 20px;
+  height: 20px;
+  color: #381e0b;
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out, filter 0.2s ease-out;
+}
+
+.confirm-slide__arrow.is-armed {
+  transform: translateX(2px);
+}
+
+.confirm-slide__arrow.is-hidden {
+  transform: translateX(6px);
+  opacity: 0;
+  filter: blur(2px);
+}
+
+.confirm-slide__check {
+  position: absolute;
+  inset: 0;
+  width: 20px;
+  height: 20px;
+  color: #2e7d32;
+  opacity: 0;
+  transform: scale(0.5);
+  filter: blur(2px);
+  transition: opacity 0.22s ease-out, transform 0.22s ease-out, filter 0.22s ease-out;
+}
+
+.confirm-slide__check.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0px);
+}
+
+.confirm-slide__spinner {
+  position: absolute;
+  inset: -2px;
+  width: 24px;
+  height: 24px;
+  color: #d4931a;
+  opacity: 0;
+  animation: confirm-slide-spin 700ms linear infinite;
+  animation-play-state: paused;
+  transition: opacity 0.2s ease-out;
+}
+
+.confirm-slide__spinner.is-visible {
+  opacity: 1;
+  animation-play-state: running;
+  transition-delay: 100ms;
+}
+
+.confirm-slide__spinner-track {
+  stroke: #fae8c3;
+}
+
+.confirm-slide__spinner-arc {
+  stroke: currentColor;
+}
+
+@keyframes confirm-slide-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.confirm-slide__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* 窄屏适配（320px - 360px） */
 @media (max-width: 360px) {
   .confirm-order__cloche {
@@ -1002,8 +1257,12 @@
   }
 
   .confirm-checkout {
-    padding-inline: 0.85rem 0.65rem;
-    gap: 0.5rem;
+    padding-inline: 0.65rem 0.55rem;
+    gap: 0.45rem;
+  }
+
+  .confirm-slide__label {
+    font-size: 14px;
   }
 
   .confirm-submit-btn {
@@ -1016,7 +1275,14 @@
   .confirm-order__back,
   .confirm-shop-bar,
   .confirm-remark-box,
-  .confirm-submit-btn {
+  .confirm-submit-btn,
+  .confirm-slide__track,
+  .confirm-slide__fill,
+  .confirm-slide__thumb,
+  .confirm-slide__arrow,
+  .confirm-slide__check,
+  .confirm-slide__label--fill {
     transition: none;
+    animation: none;
   }
 }

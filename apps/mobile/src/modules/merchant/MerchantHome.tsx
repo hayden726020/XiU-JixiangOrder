@@ -854,8 +854,11 @@ export default function MerchantHome() {
         }
         : current));
       setNotice(
-        `已保存菜品「${result.data.name}」：${formatYuan(result.data.unitPriceFen)}，可售 ${result.data.availableQuantity}，${result.data.onSale ? '在售' : '停售'}，版本 v${result.data.version ?? '未返回'}。`,
+        `${mode === 'sample' ? '样例模式（配菜等改动仅保存在本机，不会写入服务器）：' : ''}已保存菜品「${result.data.name}」：${formatYuan(result.data.unitPriceFen)}，可售 ${result.data.availableQuantity}，${result.data.onSale ? '在售' : '停售'}，版本 v${result.data.version ?? '未返回'}。`,
       );
+    } else if (result.error.code === 'DISH_NOT_FOUND') {
+      setDataVersion((current) => current + 1);
+      setNotice('该菜品在服务端已不存在或不属于当前店铺，已重新读取菜单；请在新列表中重新编辑。');
     }
     return result;
   }
@@ -867,7 +870,7 @@ export default function MerchantHome() {
         ? { ...current, dishes: [...current.dishes, result.data] }
         : current));
       setNotice(
-        `已新增菜品「${result.data.name}」：${formatYuan(result.data.unitPriceFen)}，可售 ${result.data.availableQuantity}，${result.data.onSale ? '在售' : '停售'}，版本 v${result.data.version ?? '未返回'}。`,
+        `${mode === 'sample' ? '样例模式（仅保存在本机，不会写入服务器）：' : ''}已新增菜品「${result.data.name}」：${formatYuan(result.data.unitPriceFen)}，可售 ${result.data.availableQuantity}，${result.data.onSale ? '在售' : '停售'}，版本 v${result.data.version ?? '未返回'}。`,
       );
     }
     return result;
@@ -898,13 +901,12 @@ export default function MerchantHome() {
 
   async function saveSlot(
     slot: SlotDay['slots'][number],
-    patch: { capacity: number; enabled: boolean },
+    patch: { enabled: boolean },
     requestId: string,
   ) {
     const result = await source.updateSlot(menuDate, slot.slotId, {
       requestId,
       expectedVersion: slot.version,
-      capacity: patch.capacity,
       enabled: patch.enabled,
     });
     if (result.ok) {
@@ -915,7 +917,7 @@ export default function MerchantHome() {
         }
         : current));
       setNotice(
-        `时段已更新：${formatClock(result.data.slotStart)}—${formatClock(result.data.slotEnd)}，名额 ${result.data.capacity}，已占 ${result.data.occupied}。`,
+        `时段已更新：${formatClock(result.data.slotStart)}—${formatClock(result.data.slotEnd)}，${result.data.enabled ? '已开放接单' : '已关闭接单'}。`,
       );
     }
     return result;
@@ -1321,7 +1323,7 @@ export default function MerchantHome() {
               <p className='merchant-my__note'>
                 {mode === 'sample'
                   ? '样例菜单、库存与订单保存在当前页面内存，刷新后还原；菜品图片与口味选项保存在本机浏览器。'
-                  : '菜单、订单与账号资料来自演示服务；菜品图片与口味选项暂存在本机，尚未同步到服务端。'}
+                  : '菜单、订单与账号资料来自演示服务；菜品图片与口味选项随保存提交服务端，并以服务端返回为准。'}
               </p>
             </div>
           </details>

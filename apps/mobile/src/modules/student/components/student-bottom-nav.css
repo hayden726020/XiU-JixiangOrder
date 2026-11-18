@@ -1,0 +1,98 @@
+.student-home__nav {
+  box-sizing: border-box;
+  position: sticky;
+  z-index: 20;
+  bottom: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  min-height: calc(70px + env(safe-area-inset-bottom));
+  padding: 0.4rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: #ffffff;
+  border-top: 1px solid rgba(226, 220, 208, 0.55);
+  box-shadow: 0 -6px 22px rgba(15, 23, 42, 0.06);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+}
+
+.student-home__nav.student-home__nav--static {
+  position: static;
+}
+
+.student-home__nav *,
+.student-home__nav *::before,
+.student-home__nav *::after {
+  box-sizing: border-box;
+}
+
+.student-home__nav .student-home__nav-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+  padding: 0.15rem 0.25rem;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+  color: #334155;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: normal;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.student-home__nav .nav-tab-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.14rem;
+  min-width: 78px;
+  max-width: 100%;
+  padding: 0.34rem 0.85rem;
+  border-radius: 999px;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
+}
+
+.student-home__nav .student-home__nav-btn svg {
+  display: block;
+  flex: none;
+  width: 1.42rem;
+  height: 1.42rem;
+}
+
+.student-home__nav .nav-tab-pill span {
+  display: block;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.student-home__nav .student-home__nav-btn.is-active-tab {
+  color: #0d1b36;
+  font-weight: 800;
+}
+
+.student-home__nav .student-home__nav-btn.is-active-tab .nav-tab-pill {
+  background: #ffe37e;
+  box-shadow: 0 2px 8px rgba(253, 214, 72, 0.32);
+}
+
+.student-home__nav .student-home__nav-btn:focus-visible {
+  outline: 2.5px solid #0864e9;
+  outline-offset: 2px;
+  border-radius: 14px;
+}
+
+@media (max-width: 360px) {
+  .student-home__nav .nav-tab-pill {
+    min-width: 62px;
+    padding: 0.34rem 0.5rem;
+  }
+}

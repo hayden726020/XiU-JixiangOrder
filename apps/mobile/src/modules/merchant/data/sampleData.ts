@@ -221,7 +221,7 @@ export function sampleSlots(date: string): SlotDay | null {
     occupied: slot.occupied,
     remaining: Math.max(slot.capacity - slot.occupied, 0),
     enabled: true,
-    full: slot.occupied >= slot.capacity,
+    full: false,
     version: 1,
   }));
   return { date, demo: true, slots };

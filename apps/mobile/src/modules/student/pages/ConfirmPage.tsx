@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { OrderDraft } from '../state/orderDraft';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import type { DemoScenario, DishDto, DraftItemInput, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
@@ -8,9 +8,11 @@ import { formatYuan } from '../utils/money';
 import { toSubmitErrorView } from '../utils/orderSubmitView';
 import { resolveDishPhoto } from '../utils/orderVisuals';
 import { ORDER_REMARK_MAX_LENGTH } from '../utils/remark';
+import { toSlotView } from '../utils/slotView';
+import { useSourceNowMs } from '../state/useSourceNowMs';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
-import RealModeNotice from '../components/RealModeNotice';
+import SlideToConfirm from '../components/SlideToConfirm';
 import dishChickenLeg from '../assets/dish-chicken-leg.png';
 import '../confirm-order.css';
 
@@ -42,15 +44,6 @@ function ChevronRightIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M9 6l6 6-6 6" />
-    </svg>
-  );
-}
-
-function ArrowRightIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 12h14" />
-      <path d="m13 6 6 6-6 6" />
     </svg>
   );
 }
@@ -286,8 +279,8 @@ export interface ConfirmPageProps {
   source: StudentSource;
   draft: OrderDraft;
   shop: ShopSummary;
-  onBack: () => void;
-  onBackToMenu: () => void;
+  onBack: (trigger?: HTMLElement | null) => void;
+  onBackToMenu: (trigger?: HTMLElement | null) => void;
   onSubmitted: (orderId: string) => void;
   onEditCustomization?: (dishId: string) => void;
   hideSampleTools?: boolean;
@@ -309,9 +302,13 @@ export default function ConfirmPage({
   const [menuStatus, setMenuStatus] = useState<LoadStatus>('loading');
   const [scenario, setScenario] = useState<DemoScenario>(() => source.getScenario());
   const [busy, setBusy] = useState(false);
+  const [slideBusy, setSlideBusy] = useState(false);
   const [queryError, setQueryError] = useState('');
   const [remark, setRemark] = useState(() => draft.getState().remark);
+  const [nowMs, syncNowMs] = useSourceNowMs(source);
+  const pendingSubmittedIdRef = useRef<string | null>(null);
 
+  const isBusy = busy || slideBusy;
   const realLoggedOut = source.mode === 'real' && !gate.usable;
 
   useEffect(() => {
@@ -331,6 +328,7 @@ export default function ConfirmPage({
     source.getMenu(snapshot.date).then(
       (data) => {
         if (!cancelled && draft.isMenuReadCurrent(token)) {
+          syncNowMs();
           setMenu(data);
           setMenuStatus('ready');
           draft.applyDishCatalog(filterDishesByShop(data.dishes, shop.merchantId));
@@ -350,11 +348,16 @@ export default function ConfirmPage({
   }, [source, draft, shop.merchantId, snapshot.date, realLoggedOut]);
 
   async function runSubmit(): Promise<void> {
-    if (busy) {
+    if (isBusy) {
       return;
     }
     if (source.mode === 'real' && !gate.usable) {
       refresh();
+      return;
+    }
+    const currentMs = syncNowMs();
+    const currentSlot = menu?.slots.find((slot) => slot.slotId === snapshot.slotId) ?? null;
+    if (menuStatus !== 'ready' || currentSlot === null || !toSlotView(currentSlot, currentMs).selectable) {
       return;
     }
     setBusy(true);
@@ -371,8 +374,44 @@ export default function ConfirmPage({
     }
   }
 
+  async function handleSlideConfirm(): Promise<void> {
+    if (source.mode === 'real' && !gate.usable) {
+      refresh();
+      throw new Error('NOT_LOGGED_IN');
+    }
+    const currentMs = syncNowMs();
+    const currentSlot = menu?.slots.find((slot) => slot.slotId === snapshot.slotId) ?? null;
+    if (menuStatus !== 'ready' || currentSlot === null || !toSlotView(currentSlot, currentMs).selectable) {
+      throw new Error('SLOT_EXPIRED');
+    }
+    setQueryError('');
+    pendingSubmittedIdRef.current = null;
+    const order = await draft.submit();
+    setSnapshot(draft.getState());
+    if (!order) {
+      throw new Error('SUBMIT_FAILED');
+    }
+    pendingSubmittedIdRef.current = order.id;
+  }
+
+  function handleSlideConfirmed(): void {
+    const orderId = pendingSubmittedIdRef.current;
+    pendingSubmittedIdRef.current = null;
+    if (orderId) {
+      onSubmitted(orderId);
+    }
+  }
+
+  function handleSlideBusyChange(nextBusy: boolean): void {
+    setSlideBusy(nextBusy);
+    if (!nextBusy && draft.getState().status === 'success') {
+      draft.resetSubmission();
+      setSnapshot(draft.getState());
+    }
+  }
+
   async function queryResult(): Promise<void> {
-    if (busy) {
+    if (isBusy) {
       return;
     }
     if (source.mode === 'real' && !gate.usable) {
@@ -400,7 +439,7 @@ export default function ConfirmPage({
   }
 
   function changeScenario(next: DemoScenario): void {
-    if (busy || next === scenario) {
+    if (isBusy || next === scenario) {
       return;
     }
     source.setScenario(next);
@@ -475,14 +514,13 @@ export default function ConfirmPage({
         (dish.availableQuantity ?? 0) >= item.quantity
       );
     });
-  const slotReady = menuReady && selectedSlot !== null;
-  const canSubmit =
+  const slotReady = menuReady && selectedSlot !== null && toSlotView(selectedSlot, nowMs).selectable;
+  const slideReady =
     menuReady &&
     itemsReady &&
     slotReady &&
     snapshot.canConfirm &&
     !timedOut &&
-    !busy &&
     (source.mode === 'sample' || gate.usable);
 
   const disabledReason = realLoggedOut
@@ -498,10 +536,9 @@ export default function ConfirmPage({
   if (realLoggedOut) {
     return (
       <section className="confirm-order-page" aria-labelledby="student-confirm-title">
-        <RealModeNotice />
         <header className="confirm-order__hero">
           <div className="confirm-order__nav">
-            <button type="button" className="confirm-order__back" aria-label="返回时段" onClick={onBack}>
+            <button type="button" className="confirm-order__back" aria-label="返回时段" onClick={(event) => onBack(event.currentTarget)}>
               <ChevronLeftIcon />
             </button>
             <div className="confirm-order__title-wrap">
@@ -514,7 +551,7 @@ export default function ConfirmPage({
           <HeroClocheSvg className="confirm-order__cloche" />
         </header>
         <div className="confirm-order__main">
-          <LoginGuide gate={gate} onRecheck={refresh} onBack={onBackToMenu} />
+          <LoginGuide gate={gate} onRecheck={refresh} onBack={() => onBackToMenu()} />
         </div>
       </section>
     );
@@ -522,11 +559,9 @@ export default function ConfirmPage({
 
   return (
     <section className="confirm-order-page" aria-labelledby="student-confirm-title">
-      {source.mode === 'real' ? <RealModeNotice /> : null}
-
       <header className="confirm-order__hero">
         <div className="confirm-order__nav">
-          <button type="button" className="confirm-order__back" aria-label="返回时段" onClick={onBack}>
+          <button type="button" className="confirm-order__back" aria-label="返回时段" onClick={(event) => onBack(event.currentTarget)}>
             <ChevronLeftIcon />
           </button>
           <div className="confirm-order__title-wrap">
@@ -570,7 +605,7 @@ export default function ConfirmPage({
           <div className="confirm-alert-card" role="alert">
             <p>确认信息读取失败，请返回时段页重试。</p>
             <div className="confirm-alert-card__actions">
-              <button type="button" onClick={onBack}>
+              <button type="button" onClick={(event) => onBack(event.currentTarget)}>
                 返回时段页
               </button>
             </div>
@@ -675,8 +710,8 @@ export default function ConfirmPage({
                         type="button"
                         className="confirm-meta-row__slot-btn"
                         aria-label="修改取餐时段"
-                        disabled={busy}
-                        onClick={onBack}
+                        disabled={isBusy}
+                        onClick={(event) => onBack(event.currentTarget)}
                       >
                         <span>{selectedSlot ? slotTimeRange(selectedSlot) : '未选择'}</span>
                         <ChevronRightIcon />
@@ -719,7 +754,7 @@ export default function ConfirmPage({
                       rows={2}
                       placeholder="口味、忌口、取餐提醒等，档口会看到"
                       aria-label="订单备注"
-                      disabled={busy}
+                      disabled={isBusy}
                       onChange={(event) => updateRemark(event.target.value)}
                     />
                     <span className="confirm-remark-box__count" aria-live="polite">
@@ -762,10 +797,10 @@ export default function ConfirmPage({
             <p style={{ fontWeight: 800 }}>结果待确认</p>
             <p>网络超时，订单可能已创建。请先查询结果，不要重复下单。</p>
             <div className="confirm-alert-card__actions">
-              <button type="button" className="is-primary" disabled={busy} onClick={queryResult}>
+              <button type="button" className="is-primary" disabled={isBusy} onClick={queryResult}>
                 查询结果
               </button>
-              <button type="button" disabled={busy} onClick={runSubmit}>
+              <button type="button" disabled={isBusy} onClick={runSubmit}>
                 重试同一请求
               </button>
             </div>
@@ -779,7 +814,7 @@ export default function ConfirmPage({
             <p>{errorView.message}</p>
             <div className="confirm-alert-card__actions">
               {errorView.action === 'retry' ? (
-                <button type="button" className="is-primary" disabled={busy} onClick={runSubmit}>
+                <button type="button" className="is-primary" disabled={isBusy} onClick={runSubmit}>
                   {errorView.actionLabel}
                 </button>
               ) : errorView.action === 'reconfirm' ? (
@@ -789,7 +824,11 @@ export default function ConfirmPage({
               ) : (
                 <button
                   type="button"
-                  onClick={errorView.action === 'back-to-slot' ? onBack : onBackToMenu}
+                  onClick={(event) =>
+                    errorView.action === 'back-to-slot'
+                      ? onBack(event.currentTarget)
+                      : onBackToMenu(event.currentTarget)
+                  }
                 >
                   {errorView.actionLabel}
                 </button>
@@ -814,7 +853,7 @@ export default function ConfirmPage({
                       type="button"
                       className={`confirm-scenario-btn${scenario === option.value ? ' is-active' : ''}`}
                       aria-pressed={scenario === option.value}
-                      disabled={busy}
+                      disabled={isBusy}
                       onClick={() => changeScenario(option.value)}
                     >
                       <span>{option.label}</span>
@@ -842,18 +881,16 @@ export default function ConfirmPage({
             <span className="confirm-checkout__sep" aria-hidden="true" />
 
             <div className="confirm-checkout__right">
-              <button
-                type="button"
-                className="confirm-submit-btn"
-                disabled={!canSubmit}
-                onClick={runSubmit}
-              >
-                <span>{busy ? '提交中…' : '确认下单'}</span>
-                {!busy ? <ArrowRightIcon /> : null}
-              </button>
-              {busy ? (
-                <span className="confirm-checkout__reason">正在提交，请稍候…</span>
-              ) : disabledReason ? (
+              <SlideToConfirm
+                label="确认下单"
+                confirmingLabel="提交中"
+                doneLabel="已下单"
+                disabled={!slideReady || isBusy}
+                onConfirm={handleSlideConfirm}
+                onConfirmed={handleSlideConfirmed}
+                onBusyChange={handleSlideBusyChange}
+              />
+              {disabledReason && !isBusy ? (
                 <span className="confirm-checkout__reason">{disabledReason}</span>
               ) : null}
             </div>

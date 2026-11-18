@@ -101,6 +101,9 @@ function optionalImageUrl(value: unknown): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) return null;
   if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) return trimmed;
+  if (trimmed.startsWith('/api/v1/')) {
+    return buildApiUrl(trimmed.slice('/api/v1'.length)) ?? trimmed;
+  }
   if (trimmed.startsWith('/')) {
     const base = getApiBaseUrl();
     if (base) {

@@ -64,6 +64,7 @@ export function createRealStudentSource(options: RealSourceOptions = {}): Studen
 
   return {
     mode: 'real',
+    getNow: () => (options.now ? options.now() : new Date()),
 
     async listShops(): Promise<ShopSummary[]> {
       try {

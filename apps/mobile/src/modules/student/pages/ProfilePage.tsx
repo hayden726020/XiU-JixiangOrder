@@ -5,18 +5,17 @@ import { writeStudentModeOverride } from '../data/mode';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { clearSession } from '../../../shared/session';
 import { clearPresence } from '../../../shared/location';
-import SampleBanner from '../components/SampleBanner';
-import RealModeNotice from '../components/RealModeNotice';
+import StudentTabBar from '../components/StudentTabBar';
 import studentAvatar from '../assets/student-avatar.png';
 import '../profile.css';
 
 export interface ProfilePageProps {
   source: StudentSource;
   onSwitchMode?: (next: StudentMode) => void;
-  onOpenOrders: (filter?: OrderFilter) => void;
-  onOpenOrder?: (id: string) => void;
-  onGoToShop: () => void;
-  onGoToMenu: () => void;
+  onOpenOrders: (filter?: OrderFilter, trigger?: HTMLElement | null, viaTab?: boolean) => void;
+  onOpenOrder?: (id: string, trigger?: HTMLElement | null) => void;
+  onGoToShop: (trigger?: HTMLElement | null) => void;
+  onGoToMenu: (trigger?: HTMLElement | null) => void;
 }
 
 type ModalType = 'location' | 'dining' | 'feedback' | 'settings' | null;
@@ -209,41 +208,6 @@ function ChevronRightIcon() {
   );
 }
 
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m3 10 9-7 9 7v10H3zM9 21v-7h6v7" />
-    </svg>
-  );
-}
-
-function BowlIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 12h18a9 9 0 0 1-18 0ZM5 21h14" />
-      <path d="M9 8c0-2 2-2 2-4m4 5c0-2 2-2 2-4" />
-    </svg>
-  );
-}
-
-function OrdersIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="5" y="3" width="14" height="18" rx="2" />
-      <path d="M9 8h6M9 12h6M9 16h4" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="8" r="4" fill="currentColor" fillOpacity="0.18" />
-      <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" />
-    </svg>
-  );
-}
-
 function formatSlotBefore(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '预约时段';
@@ -307,6 +271,13 @@ export default function ProfilePage({
   const [clearing, setClearing] = useState(false);
   const [orders, setOrders] = useState<StudentOrder[]>([]);
   const [feedbackDraft, setFeedbackDraft] = useState('');
+  const [displayMode, setDisplayMode] = useState<StudentMode>(source.mode);
+  const [modeAnimDir, setModeAnimDir] = useState<'none' | 'forward' | 'backward'>('none');
+
+  useEffect(() => {
+    setDisplayMode(source.mode);
+    setModeAnimDir('none');
+  }, [source.mode]);
 
   useEffect(() => {
     if (source.mode === 'real' && !gate.usable) {
@@ -350,13 +321,25 @@ export default function ProfilePage({
   }
 
   function handleModeChange(next: StudentMode) {
-    if (next === source.mode) return;
+    if (next === displayMode) return;
+    setModeAnimDir(next === 'real' ? 'forward' : 'backward');
+    setDisplayMode(next);
     writeStudentModeOverride(next);
-    setModal(null);
-    if (onSwitchMode) {
-      onSwitchMode(next);
+    const reduceMotion =
+      typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const commit = () => {
+      setModal(null);
+      if (onSwitchMode) {
+        onSwitchMode(next);
+      } else {
+        window.location.reload();
+      }
+    };
+    if (reduceMotion) {
+      commit();
     } else {
-      window.location.reload();
+      window.setTimeout(commit, 240);
     }
   }
 
@@ -420,8 +403,6 @@ export default function ProfilePage({
 
   return (
     <div className="student-profile" aria-labelledby="profile-title">
-      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
-
       <header className="profile-topbar">
         <div className="profile-topbar__title-wrap">
           <h1 id="profile-title" className="profile-topbar__title">我的</h1>
@@ -478,13 +459,21 @@ export default function ProfilePage({
               <ClipboardIcon />
               <h2>我的订单</h2>
             </div>
-            <button type="button" className="profile-card__more" onClick={() => onOpenOrders('all')}>
+            <button
+              type="button"
+              className="profile-card__more"
+              onClick={(event) => onOpenOrders('all', event.currentTarget, false)}
+            >
               查看全部 <ChevronRightIcon />
             </button>
           </div>
 
           <div className="profile-orders-grid">
-            <button type="button" className="profile-orders-grid__item" onClick={() => onOpenOrders('new')}>
+            <button
+              type="button"
+              className="profile-orders-grid__item"
+              onClick={(event) => onOpenOrders('new', event.currentTarget, false)}
+            >
               <span className="profile-orders-grid__icon">
                 <PendingIcon />
                 {newCount > 0 ? <span className="profile-orders-grid__dot">{newCount}</span> : null}
@@ -492,7 +481,11 @@ export default function ProfilePage({
               <span>待接单</span>
             </button>
 
-            <button type="button" className="profile-orders-grid__item" onClick={() => onOpenOrders('preparing')}>
+            <button
+              type="button"
+              className="profile-orders-grid__item"
+              onClick={(event) => onOpenOrders('preparing', event.currentTarget, false)}
+            >
               <span className="profile-orders-grid__icon">
                 <ChefHatIcon />
                 {preparingCount > 0 ? <span className="profile-orders-grid__dot">{preparingCount}</span> : null}
@@ -500,7 +493,11 @@ export default function ProfilePage({
               <span>制作中</span>
             </button>
 
-            <button type="button" className="profile-orders-grid__item" onClick={() => onOpenOrders('ready')}>
+            <button
+              type="button"
+              className="profile-orders-grid__item"
+              onClick={(event) => onOpenOrders('ready', event.currentTarget, false)}
+            >
               <span className="profile-orders-grid__icon">
                 <BagCheckIcon />
                 {readyCount > 0 ? <span className="profile-orders-grid__dot">{readyCount}</span> : null}
@@ -508,7 +505,11 @@ export default function ProfilePage({
               <span>待取餐</span>
             </button>
 
-            <button type="button" className="profile-orders-grid__item" onClick={() => onOpenOrders('completed')}>
+            <button
+              type="button"
+              className="profile-orders-grid__item"
+              onClick={(event) => onOpenOrders('completed', event.currentTarget, false)}
+            >
               <span className="profile-orders-grid__icon">
                 <CheckCircleIcon />
                 {completedCount > 0 ? <span className="profile-orders-grid__count">{completedCount}</span> : null}
@@ -539,10 +540,10 @@ export default function ProfilePage({
               <button
                 type="button"
                 className="profile-ticket__body"
-                onClick={() =>
+                onClick={(event) =>
                   currentOrder && onOpenOrder
-                    ? onOpenOrder(currentOrder.id)
-                    : onOpenOrders()
+                    ? onOpenOrder(currentOrder.id, event.currentTarget)
+                    : onOpenOrders('progress', event.currentTarget, false)
                 }
               >
                 <div className="profile-ticket__shop-row">
@@ -574,7 +575,7 @@ export default function ProfilePage({
                 </div>
               </button>
             ) : (
-              <button type="button" className="profile-ticket__empty" onClick={onGoToMenu}>
+              <button type="button" className="profile-ticket__empty" onClick={(event) => onGoToMenu(event.currentTarget)}>
                 <span className="profile-ticket__bowl">
                   <BowlBadgeIcon />
                 </span>
@@ -646,25 +647,20 @@ export default function ProfilePage({
         </footer>
       </main>
 
-      {/* 底部导航栏 */}
-      <nav className="profile-nav" aria-label="学生端导航">
-        <button type="button" onClick={onGoToShop}>
-          <HomeIcon />
-          <span>首页</span>
-        </button>
-        <button type="button" onClick={onGoToMenu}>
-          <BowlIcon />
-          <span>点餐</span>
-        </button>
-        <button type="button" onClick={() => onOpenOrders('all')}>
-          <OrdersIcon />
-          <span>订单</span>
-        </button>
-        <button type="button" className="is-active" aria-current="page">
-          <UserIcon />
-          <span>我的</span>
-        </button>
-      </nav>
+      {/* 底部液态双胶囊导航栏 */}
+      <StudentTabBar
+        active="profile"
+        placement="fixed"
+        onSelect={(tab, button) => {
+          if (tab === 'home') {
+            onGoToShop(button);
+          } else if (tab === 'order') {
+            onGoToMenu(button);
+          } else if (tab === 'orders') {
+            onOpenOrders('all', button, true);
+          }
+        }}
+      />
 
       {/* 弹窗 1：位置与隐私保护 */}
       {modal === 'location' ? (
@@ -751,19 +747,26 @@ export default function ProfilePage({
               <p><strong>当前账号</strong>：{displayName}</p>
               <div className="profile-mode-section">
                 <span className="profile-mode-section__label">数据模式切换</span>
-                <div className="profile-mode-switch" role="group" aria-label="切换演示模式与真实模式">
+                <div
+                  className="profile-mode-switch profile-mode-switch--elastic"
+                  role="group"
+                  aria-label="切换演示模式与真实模式"
+                  data-active-index={displayMode === 'sample' ? 0 : 1}
+                  data-anim-dir={modeAnimDir}
+                >
+                  <span className="profile-mode-switch__thumb" aria-hidden="true" />
                   <button
                     type="button"
-                    className={`profile-mode-switch__btn${source.mode === 'sample' ? ' is-active' : ''}`}
-                    aria-pressed={source.mode === 'sample'}
+                    className={`profile-mode-switch__btn${displayMode === 'sample' ? ' is-active' : ''}`}
+                    aria-pressed={displayMode === 'sample'}
                     onClick={() => handleModeChange('sample')}
                   >
                     演示模式
                   </button>
                   <button
                     type="button"
-                    className={`profile-mode-switch__btn${source.mode === 'real' ? ' is-active' : ''}`}
-                    aria-pressed={source.mode === 'real'}
+                    className={`profile-mode-switch__btn${displayMode === 'real' ? ' is-active' : ''}`}
+                    aria-pressed={displayMode === 'real'}
                     onClick={() => handleModeChange('real')}
                   >
                     真实模式

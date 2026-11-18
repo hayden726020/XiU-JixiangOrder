@@ -150,7 +150,7 @@ export function actionErrorText(code: string, message: string, action: OrderActi
     case 'PICKUP_CODE_USED':
       return '该订单已取餐，请勿重复核销；页面正在刷新。';
     case 'ALREADY_CANCELLED':
-      return '订单已取消，本次不会重复返还库存或名额；页面正在刷新。';
+      return '订单已取消，本次不会重复返还库存；页面正在刷新。';
     case 'REQUEST_CONFLICT':
       return '本次请求与之前的内容不一致，已准备新的请求号，请重新点击。';
     case 'UNAUTHENTICATED':

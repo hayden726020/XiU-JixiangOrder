@@ -324,7 +324,7 @@ order,
         <section className="detail-block">
           <h3>缺货取消</h3>
           <p className="merchant-muted">
-            仅未结束订单可取消；取消后模拟退款，并返还菜品库存与尚未开始时段的 1 个名额。
+            仅未结束订单可取消；取消后模拟退款，并返还菜品库存。
           </p>
           <textarea
             value={stockCancelReason}

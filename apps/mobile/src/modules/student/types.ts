@@ -197,6 +197,7 @@ export interface CancelOrderInput {
 
 export interface StudentSource {
   mode: StudentMode;
+  getNow?: () => Date;
   listShops(): Promise<ShopSummary[]>;
   getMenu(date: string): Promise<MenuResponse>;
   getCrowd(slotId: string): Promise<CrowdReference>;
