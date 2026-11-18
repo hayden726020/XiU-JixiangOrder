@@ -88,10 +88,6 @@
 .student-booking:not(.student-booking--confirm) .booking-body > .booking-footer__hint { margin: -1rem 0 0; text-align: center; font-size: .7rem; color: #6b5f52; }
 .student-booking:not(.student-booking--confirm) .booking-body > .student-demo-notice { margin: -1rem 0 0; font-size: .7rem; text-align: center; }
 @media (max-width: 350px) { .booking-ticket__bowl { display: none; } .booking-ticket { grid-template-columns: 38% 1fr; } .booking-ticket__polaroid img { height: 5rem; } }
-body:has(.preview-wrap) { margin: 0; background: #e9e1d6; }
-.preview-wrap { max-width: 430px; min-height: 100vh; margin: 0 auto; box-shadow: 0 0 2rem #3c2a1329; }
-.preview-label { position: sticky; top: 0; z-index: 30; padding: .35rem; background: #4b280c; color: white; text-align: center; font: .75rem "Microsoft YaHei", sans-serif; }
-
 /* Ticket, note and checkout share the compact paper proportions of the reference. */
 .booking-ticket { box-sizing: border-box; min-height: 11rem; padding: .75rem .9rem; align-items: start; }
 .booking-ticket__polaroid { align-self: center; }

@@ -475,7 +475,7 @@ export default function SlotDiningPage({
           <button
             type="button"
             className="booking-submit"
-            disabled={!snapshot.canConfirm}
+            disabled={!snapshot.canConfirm || status !== 'ready' || !selectedSlot || !toSlotView(selectedSlot).selectable}
             onClick={onConfirm}
           >
             去确认订单 <ChevronRightIcon />

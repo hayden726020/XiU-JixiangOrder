@@ -51,7 +51,7 @@ export default function OrderTicketCard({ order, mode, onOpenOrder, onAskMerchan
       <div className="order-ticket__details">
         <h2>{shopName}</h2>
         <p className="order-ticket__dish">{firstDish ? `${firstDish.name} × ${firstDish.quantity}` : '餐品待确认'}{order.items.length > 1 ? ` 等 ${order.items.length} 项` : ''}</p>
-        <p className="order-ticket__meta"><OrderListIcon name="utensils" size={15} />取餐时间：{dateLabel(order.slotStart)}{ready ? '前' : ` – ${dateLabel(order.slotEnd).split(' ').at(-1)}`}</p>
+        <p className="order-ticket__meta"><OrderListIcon name="utensils" size={15} />取餐时间：{dateLabel(order.slotStart)} – {dateLabel(order.slotEnd).split(' ').at(-1)}</p>
         <p className="order-ticket__meta"><OrderListIcon name="pin" size={15} />{shopName.includes('食堂') ? shopName.split('·')[0] : '食堂'} · {view.diningModeText}</p>
         {order.cancelRequest.status === 'PENDING' ? <p className="order-ticket__cancel">取消申请处理中</p> : null}
       </div>

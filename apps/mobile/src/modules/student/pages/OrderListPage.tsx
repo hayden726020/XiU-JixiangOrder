@@ -24,7 +24,7 @@ export interface OrderListPageProps {
 
 function inFilter(order: StudentOrder, filter: OrderFilter): boolean {
   if (filter === 'all') return true;
-  if (filter === 'progress') return order.status === 'ACCEPTED' || order.status === 'PREPARING' || order.status === 'READY';
+  if (filter === 'progress') return order.status === 'NEW' || order.status === 'ACCEPTED' || order.status === 'PREPARING' || order.status === 'READY';
   if (filter === 'completed') return order.status === 'COMPLETED';
   return order.status === 'CANCELLED' || order.paymentStatus === 'SIMULATED_REFUNDED' || order.cancelRequest.status === 'PENDING';
 }

@@ -4,7 +4,7 @@ import SystemCheck from './SystemCheck';
 
 const HOME_ROUTE = '/';
 const CHECK_ROUTE = '/system-check';
-const MERCHANT_TAB_ROUTES = ['/merchant/orders', '/merchant/menu', '/merchant/my'];
+const MERCHANT_TAB_ROUTES = ['/merchant', '/merchant/orders', '/merchant/menu', '/merchant/my'];
 
 function readRoute(): string {
   const hash = window.location.hash.replace(/^#/, '');
@@ -20,10 +20,7 @@ function Home() {
   return (
     <section className="home-panel home-panel--brand" aria-labelledby="home-title">
       <div className="home-polaroids" aria-hidden="true">
-        <span className="home-polaroids__tape" />
-        <span className="home-polaroids__item home-polaroids__item--a" />
-        <span className="home-polaroids__item home-polaroids__item--b" />
-        <span className="home-polaroids__item home-polaroids__item--c" />
+
         <span className="home-polaroids__seal">校园点餐</span>
       </div>
       <p className="home-eyebrow">食麦呼 · 校园预约取餐</p>

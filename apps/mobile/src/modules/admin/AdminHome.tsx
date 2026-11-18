@@ -25,6 +25,7 @@ import OrdersPage from './pages/OrdersPage';
 import OverviewPage from './pages/OverviewPage';
 import SettingsPage from './pages/SettingsPage';
 import type { AdminRoute } from './types';
+import './admin-theme.css';
 
 const ADMIN_ROOT = '/admin';
 

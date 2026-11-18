@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createRequestId } from '../../../shared/requestId';
 import type { Session } from '../../../shared/session';
 import type { MerchantProfile, MerchantSource } from '../data/types';
@@ -140,6 +140,17 @@ export default function OnboardingPage({
   const serverShop = profile?.shop ?? null;
   const serverCompleted = profile?.onboardingStep === 'SHOP_CREATED';
 
+  const merchantNamePrefilled = useRef(false);
+  useEffect(() => {
+    if (merchantNamePrefilled.current || profileLoading || serverMerchant !== null) return;
+    merchantNamePrefilled.current = true;
+    setMerchant((current) => (
+      current.merchantName.trim().length > 0
+        ? current
+        : { ...current, merchantName: accountMerchantName }
+    ));
+  }, [profileLoading, serverMerchant, accountMerchantName]);
+
   const profileHint = mode !== 'real' || !profile
     ? null
     : profile.onboardingStep === 'SHOP_CREATED'
@@ -217,8 +228,7 @@ export default function OnboardingPage({
   async function submitMerchant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
-    const merchantDraft = { ...merchant, merchantName: accountMerchantName };
-    const result = validateMerchantRegistration(merchantDraft);
+    const result = validateMerchantRegistration(merchant);
     if (!result.ok) {
       setErrors(result.errors);
       clearFeedback();
@@ -257,7 +267,7 @@ export default function OnboardingPage({
       return;
     }
     if (serverMerchant === null) {
-      const merchantCheck = validateMerchantRegistration({ ...merchant, merchantName: accountMerchantName });
+      const merchantCheck = validateMerchantRegistration(merchant);
       if (!merchantCheck.ok) {
         setErrors(merchantCheck.errors);
         error('商家资料已修改且不再有效，请重新检查。');
@@ -513,8 +523,20 @@ return (
               noValidate
             >
               <p className="hint" data-field-hint="merchantName">
-                默认使用当前档口账号「{accountMerchantName}」，会显示在「我的」页面。
+                商家名称默认为档口账号「{accountMerchantName}」，可直接修改；它会显示在「我的」页面。
               </p>
+              <div className="onboarding-field">
+                <label htmlFor="onboarding-merchant-name">商家名称</label>
+                <input
+                  id="onboarding-merchant-name"
+                  value={merchant.merchantName}
+                  onChange={(event) => updateMerchant('merchantName', event.target.value)}
+                  maxLength={20}
+                  placeholder="商家名称，2—20 个字符"
+                  data-field="merchantName"
+                />
+                {errors.merchantName && <p className="field-error" role="alert" data-error="merchantName">{errors.merchantName}</p>}
+              </div>
               <div className="onboarding-field">
 
                 <label htmlFor="onboarding-contact-name">店铺负责人</label>
@@ -577,7 +599,7 @@ return (
           <p className="onboarding-summary" data-merchant-preview>
             {serverMerchant !== null
               ? `商家：${serverMerchant.name} · 负责人 ${serverMerchant.contactName ?? '未填写'} · ${serverMerchant.contactPhone ?? '未填写'}`
-              : `商家：${accountMerchantName} · 负责人 ${merchant.contactName} · ${merchant.contactPhone}`}
+              : `商家：${merchant.merchantName || accountMerchantName} · 负责人 ${merchant.contactName} · ${merchant.contactPhone}`}
           </p>
           <div className="onboarding-field">
             <label htmlFor="onboarding-shop-name">店铺名称</label>

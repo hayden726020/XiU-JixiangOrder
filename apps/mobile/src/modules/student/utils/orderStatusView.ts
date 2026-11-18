@@ -72,6 +72,7 @@ export interface OrderStatusView {
   cancelRequestPending: boolean;
   cancelRequestReason: string;
   cancelRequestTimeText: string;
+  canShowCancelAction: boolean;
   dishShopTag: string;
   timeRangeShort: string;
   pickupCodeText: string;
@@ -192,6 +193,7 @@ export function toOrderStatusView(
     cancelRequestPending,
     cancelRequestReason,
     cancelRequestTimeText,
+    canShowCancelAction: order.status !== 'COMPLETED' && order.status !== 'CANCELLED',
     dishShopTag,
     timeRangeShort,
     ...pickupCodeView(order, mode),

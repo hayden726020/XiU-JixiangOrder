@@ -477,47 +477,10 @@ code {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.4rem;
   position: relative;
-  height: 3.5rem;
-  margin: 0 -0.15rem 0.55rem 0;
+  height: 3.1rem;
+  margin: 0 0 0.55rem 0;
   pointer-events: none;
-}
-
-.home-polaroids__tape {
-  position: absolute;
-  top: 0.1rem;
-  left: 0.35rem;
-  width: 3.6rem;
-  height: 1.05rem;
-  background: rgba(255, 213, 37, 0.34);
-  border-left: 1px dashed rgba(163, 125, 16, 0.3);
-  border-right: 1px dashed rgba(163, 125, 16, 0.3);
-  transform: rotate(-7deg);
-}
-
-.home-polaroids__item {
-  flex: none;
-  width: 2.45rem;
-  height: 3.05rem;
-  border: 3px solid #fffdf7;
-  border-radius: 2px;
-  box-shadow: 0 5px 12px rgba(20, 36, 63, 0.13);
-}
-
-.home-polaroids__item--a {
-  background: linear-gradient(160deg, #f2c94c, #e0913c 55%, #b4552f);
-  transform: rotate(-7deg);
-}
-
-.home-polaroids__item--b {
-  background: linear-gradient(160deg, #8fb7a2, #4f7d66 60%, #22483a);
-  transform: rotate(4deg) translateY(3px);
-}
-
-.home-polaroids__item--c {
-  background: linear-gradient(160deg, #f6e7c8, #d6b37b 60%, #8d6a3a);
-  transform: rotate(-2deg) translateY(-2px);
 }
 
 .home-polaroids__seal {

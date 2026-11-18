@@ -1,4 +1,4 @@
-import { useState } from 'react';
+
 import OrderRow from '../components/OrderRow';
 import { DEMO_SCENARIOS } from '../data/sampleData';
 import type { MerchantOrder, MerchantScenario } from '../data/types';
@@ -14,6 +14,8 @@ interface OrderListPageProps {
   page: number;
   pageSize: number;
   total: number;
+  activeGroupKey: string;
+  onGroupChange: (groupKey: string) => void;
   onScenarioChange: (scenario: MerchantScenario) => void;
   onPageChange: (page: number) => void;
   onOpenOrder: (id: string) => void;
@@ -35,6 +37,8 @@ export default function OrderListPage({
   page,
   pageSize,
   total,
+  activeGroupKey,
+  onGroupChange,
   onScenarioChange,
   onPageChange,
   onOpenOrder,
@@ -45,7 +49,7 @@ export default function OrderListPage({
   lastRefreshedAt,
   autoRefreshSeconds,
 }: OrderListPageProps) {
-  const [activeGroupKey, setActiveGroupKey] = useState('new');
+
   const groups = groupOrders(orders, { includeEmpty: true });
   const activeGroup = groups.find((group) => group.key === activeGroupKey) ?? groups[0];
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -136,7 +140,7 @@ export default function OrderListPage({
                   type="button"
                   className={`merchant-status-chip${active ? ' merchant-status-chip--active' : ''}`}
                   aria-pressed={active}
-                  onClick={() => setActiveGroupKey(group.key)}
+                  onClick={() => onGroupChange(group.key)}
                   data-order-status={group.key}
                 >
                   <span className="merchant-status-chip__label">{group.label}</span>
@@ -179,11 +183,9 @@ export default function OrderListPage({
 
       {!loading && !error && total > 0 && (
         <>
-          <p className="hint">
-            {isSample
-              ? `共 ${total} 笔样例订单；点击订单进入详情，可查看预约时间、菜品份数、用餐方式与下一步按钮位置。`
-              : `档口共 ${total} 笔订单，本页 ${orders.length} 笔；点击查看详情。`}
-          </p>
+          {!isSample && (
+            <p className="hint">档口共 {total} 笔订单，本页 {orders.length} 笔；点击查看详情。</p>
+          )}
           {totalPages > 1 && (
             <nav className="merchant-pager" aria-label="订单分页">
               <button
