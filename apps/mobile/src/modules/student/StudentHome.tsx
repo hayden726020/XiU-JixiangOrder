@@ -67,6 +67,19 @@ type DetailFrom = 'menu' | 'orders';
 
 type OrdersBackTo = 'shop' | 'menu';
 
+const VIEW_HASH: Record<StudentView, string> = {
+  shop: '#/student',
+  menu: '#/student/menu',
+  slot: '#/student/slot',
+  confirm: '#/student/confirm',
+  order: '#/student/order',
+  orders: '#/student/orders',
+};
+
+function viewHash(view: StudentView): string {
+  return VIEW_HASH[view];
+}
+
 function StudentHomeApp({ mode }: { mode: StudentMode }) {
   const [source] = useState<StudentSource>(() => createStudentSource({ mode }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
@@ -115,19 +128,23 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
       window.history.back();
       return;
     }
-    window.history.pushState({ module: 'student', studentView: next }, '');
+    window.history.pushState({ module: 'student', studentView: next }, '', viewHash(next));
     setView(next);
     window.scrollTo(0, 0);
   }
 
   function replaceTo(next: StudentView): void {
-    window.history.replaceState({ module: 'student', studentView: next }, '');
+    window.history.replaceState({ module: 'student', studentView: next }, '', viewHash(next));
     setView(next);
     window.scrollTo(0, 0);
   }
 
   useEffect(() => {
-    window.history.replaceState({ module: 'student', studentView: 'shop' }, '');
+    window.history.replaceState(
+      { module: 'student', studentView: 'shop' },
+      '',
+      viewHash('shop'),
+    );
     const onPopState = (event: PopStateEvent) => {
       const state = event.state as { module?: string; studentView?: StudentView } | null;
       if (state && state.module === 'student') {
