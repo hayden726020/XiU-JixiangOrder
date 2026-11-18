@@ -24,11 +24,13 @@ interface HomePageProps {
   mode: 'sample' | 'real';
   statDate: string;
   profile: MerchantProfile | null;
+  merchantDisplayName?: string | null;
   orders: MerchantOrder[];
   slots: SlotDay | null;
   loading: boolean;
   onOpenOrders: (groupKey: string) => void;
   onOpenMenu: () => void;
+  onOpenHours: () => void;
 }
 
 function slotClock(value: string): string {
@@ -55,11 +57,13 @@ export default function HomePage({
   mode,
   statDate,
   profile,
+  merchantDisplayName,
   orders,
   slots,
   loading,
   onOpenOrders,
   onOpenMenu,
+  onOpenHours,
 }: HomePageProps) {
   const todayOrders = orders.filter((order) => orderDay(order) === statDate);
   const activeOrders = todayOrders.filter((order) => order.status !== 'CANCELLED');
@@ -75,16 +79,30 @@ export default function HomePage({
   const hours = openSlots.length > 0
     ? `${slotClock(openSlots[0].slotStart)}—${slotClock(openSlots[openSlots.length - 1].slotEnd)}`
     : '未设置营业时段';
-  const shopName = profile?.shop?.name ?? profile?.merchant?.name ?? '我的档口';
+  const shopName = profile?.shop?.name
+    ?? merchantDisplayName
+    ?? profile?.merchant?.name
+    ?? '我的档口';
 
-  const trendMap = new Map<string, number>();
+  const orderCountByClock = new Map<string, number>();
   for (const order of todayOrders) {
     const label = slotClock(order.slotStart);
-    trendMap.set(label, (trendMap.get(label) ?? 0) + 1);
+    orderCountByClock.set(label, (orderCountByClock.get(label) ?? 0) + 1);
   }
-  const trend = [...trendMap.entries()].sort((left, right) => left[0].localeCompare(right[0]));
-  const maxTrend = Math.max(1, ...trend.map(([, count]) => count));
+  const slotTrend = (slots?.slots ?? []).map((slot) => ({
+    key: slot.slotId,
+    label: slotClock(slot.slotStart),
+    endLabel: slotClock(slot.slotEnd),
+    count: orderCountByClock.get(slotClock(slot.slotStart)) ?? 0,
+    enabled: slot.enabled,
+  }));
+  const fallbackTrend = [...orderCountByClock.entries()]
+    .sort((left, right) => left[0].localeCompare(right[0]))
+    .map(([label, count]) => ({ key: label, label, endLabel: '', count, enabled: true }));
+  const trend = slotTrend.length > 0 ? slotTrend : fallbackTrend;
+  const maxTrend = Math.max(1, ...trend.map((item) => item.count));
   const metric = (value: number) => (loading ? '—' : String(value));
+  const dateLabel = mode === 'sample' ? `演示日 ${formatDate(statDate)} · 样例数据` : `${formatDate(statDate)} · 真实数据`;
 
   return (
     <div className="merchant-home" data-merchant-home>
@@ -103,7 +121,9 @@ export default function HomePage({
             <i />
             {isOpen ? '营业中' : '休息中'}
           </span>
-          <small>今日 {hours}</small>
+          <button type="button" className="merchant-home__hours-link" onClick={onOpenHours}>
+            今日 {hours}
+          </button>
         </div>
         <WheatMark className="merchant-home__grain" />
       </section>
@@ -111,7 +131,7 @@ export default function HomePage({
       <section className="merchant-home__section" aria-labelledby="merchant-home-metrics">
         <header className="merchant-home__section-head">
           <h3 id="merchant-home-metrics">今日经营数据</h3>
-          <span>{formatDate(statDate)} · {mode === 'sample' ? '样例' : '真实'}</span>
+          <span>{dateLabel}</span>
         </header>
         <div className="merchant-home__metrics">
           <article className="merchant-home__metric">
@@ -119,7 +139,7 @@ export default function HomePage({
             <strong>{metric(todayOrders.length)}</strong>
             <small>单</small>
           </article>
-          <article className="merchant-home__metric">
+          <article className="merchant-home__metric merchant-home__metric--pending">
             <span>待接单</span>
             <strong>{metric(pending)}</strong>
             <small>单</small>
@@ -143,7 +163,11 @@ export default function HomePage({
           <span>按状态快速查看</span>
         </header>
         <div className="merchant-home__quick-grid">
-          <button type="button" className="merchant-home__quick" onClick={() => onOpenOrders('new')}>
+          <button
+            type="button"
+            className="merchant-home__quick merchant-home__quick--pending"
+            onClick={() => onOpenOrders('new')}
+          >
             <span className="merchant-home__quick-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M6 3h12l2 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z" />
@@ -185,20 +209,35 @@ export default function HomePage({
           <span>完成率 {completionRate}%</span>
         </header>
         <div className="merchant-home__overview">
-          <div className="merchant-home__trend">
+          <div className="merchant-home__trend-block">
+            <p className="merchant-home__trend-caption">
+              按营业时段统计订单笔数
+              <span>{todayOrders.length} 单 · 峰值 {maxTrend} 单</span>
+            </p>
             {trend.length === 0 ? (
               <p className="merchant-home__trend-empty">今天还没有订单</p>
             ) : (
-              trend.map(([label, count]) => (
-                <div className="merchant-home__trend-col" key={label}>
-                  <b>{count}</b>
-                  <span
-                    className="merchant-home__trend-bar"
-                    style={{ height: `${Math.max(10, Math.round((count / maxTrend) * 56))}px` }}
-                  />
-                  <small>{label}</small>
-                </div>
-              ))
+              <div className="merchant-home__trend" role="img" aria-label="按时段订单分布">
+                {trend.map((item) => (
+                  <div
+                    className={item.enabled ? 'merchant-home__trend-col' : 'merchant-home__trend-col is-off'}
+                    key={item.key}
+                  >
+                    <b>{item.count}</b>
+                    <span className="merchant-home__trend-track">
+                      <span
+                        className="merchant-home__trend-bar"
+                        style={{ height: `${item.count === 0 ? 4 : Math.max(12, Math.round((item.count / maxTrend) * 38))}px` }}
+                      />
+                    </span>
+                    <small>
+                      {item.label}
+                      {item.endLabel ? `—${item.endLabel}` : ''}
+                    </small>
+                    {!item.enabled && <em>休息</em>}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
           <div className="merchant-home__progress">
@@ -214,6 +253,9 @@ export default function HomePage({
               <li><i className="is-active" />进行中 {inProgress}</li>
               <li><i className="is-off" />已取消 {cancelled}</li>
             </ul>
+            <p className="merchant-home__progress-note">
+              {todayOrders.length === 0 ? '暂无订单，数据会随新订单自动更新。' : '数据来自今日订单列表，与订单管理使用同一数据源。'}
+            </p>
           </div>
         </div>
       </section>
@@ -232,9 +274,9 @@ export default function HomePage({
           </button>
           <button type="button" className="merchant-home__tool" onClick={onOpenMenu}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 3v18M12 7l4-4M12 7L8 3M12 17l4 4M12 17l-4 4" />
+              <path d="M4 12h12M12 6l6 6-6 6M20 4v16" />
             </svg>
-            <span>菜品上下架</span>
+            <span>今日菜单</span>
           </button>
           <button type="button" className="merchant-home__tool" onClick={() => onOpenOrders('new')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -242,12 +284,12 @@ export default function HomePage({
             </svg>
             <span>订单管理</span>
           </button>
-          <button type="button" className="merchant-home__tool" onClick={onOpenMenu}>
+          <button type="button" className="merchant-home__tool" onClick={onOpenHours}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="9" />
               <path d="M12 7v5l3 2" />
             </svg>
-            <span>营业时间设置</span>
+            <span>营业时段</span>
           </button>
         </div>
       </section>

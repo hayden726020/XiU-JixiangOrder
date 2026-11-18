@@ -1,4 +1,4 @@
-import type { DishType } from '../data/types';
+import type { DishFlavorGroup, DishOption, DishType } from '../data/types';
 import { isDishType } from './onboarding';
 
 export interface DishPatch {
@@ -7,11 +7,10 @@ export interface DishPatch {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
-}
-
-export interface SlotPatch {
-  capacity: number;
-  enabled: boolean;
+  imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 export type PatchResult<T> =
@@ -49,25 +48,6 @@ export function parseDishPatch(
     return { ok: false, error: '可售数量不能超过 10000。' };
   }
   return { ok: true, patch: { name, type: typeText, priceFen, availableQuantity, onSale } };
-}
-
-export function parseSlotPatch(
-  capacityText: string,
-  occupied: number,
-  enabled: boolean,
-): PatchResult<SlotPatch> {
-  const text = capacityText.trim();
-  if (!/^\d+$/.test(text)) {
-    return { ok: false, error: '接单名额必须是 0 或正整数。' };
-  }
-  const capacity = Number(text);
-  if (!Number.isSafeInteger(capacity) || capacity > 10_000) {
-    return { ok: false, error: '接单名额不能超过 10000。' };
-  }
-  if (capacity < occupied) {
-    return { ok: false, error: `接单名额不能低于已占用 ${occupied} 笔。` };
-  }
-  return { ok: true, patch: { capacity, enabled } };
 }
 
 export function menuWriteErrorText(code: string, message: string): string {

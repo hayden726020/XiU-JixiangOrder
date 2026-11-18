@@ -13,8 +13,8 @@ import {
   diningModeView,
   formatDateTime,
   formatSlot,
+  orderNoLabel,
   paymentText,
-  shortOrderId,
   STATUS_TRACK,
   statusView,
 } from '../state/orderView';
@@ -44,7 +44,7 @@ export default function OrderDetailPage(props: OrderDetailPageProps) {
 }
 
 function OrderDetailContent({
-  order,
+order,
   mode,
   onBack,
   onAction,
@@ -58,6 +58,7 @@ function OrderDetailContent({
   const [stockCancelReason, setStockCancelReason] = useState('');
   const [delayReason, setDelayReason] = useState('');
   const [delayExpectedReadyAt, setDelayExpectedReadyAt] = useState('');
+
 
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
@@ -113,8 +114,8 @@ function OrderDetailContent({
           {order.demo || mode === 'sample' ? '样例订单 · demo=true' : '真实数据 · 演示服务'}
         </p>
         <div className="detail-id">
-          <h2 className="detail-id__short">{shortOrderId(order.id)}</h2>
-          <p className="detail-id__full">订单号：{order.id}</p>
+          <h2 className="detail-id__short">{orderNoLabel(order)}</h2>
+          <p className="detail-id__full">当天第 {order.orderNo ?? '—'} 单</p>
         </div>
         <div className="detail-tags">
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
@@ -139,6 +140,15 @@ function OrderDetailContent({
         <h3>预约时间</h3>
         <p className="detail-emphasis">{formatSlot(order)}</p>
         <p className="hint">档口应在这个时段内做好，到点不一定已好。</p>
+      </section>
+
+      <section className="detail-block detail-block--remark">
+        <h3>订单备注</h3>
+        {order.remark ? (
+          <p className="detail-remark" data-order-remark={order.remark}>{order.remark}</p>
+        ) : (
+          <p className="merchant-muted detail-remark detail-remark--empty">学生未填写备注</p>
+        )}
       </section>
 
       <section className="detail-block">
@@ -373,6 +383,7 @@ function OrderDetailContent({
         {order.diningModeReason && (
           <p className="merchant-muted">变更理由：{order.diningModeReason}</p>
         )}
+        <p className="hint">用餐方式由学生下单时选择，档口不可修改。</p>
 
       </section>
 

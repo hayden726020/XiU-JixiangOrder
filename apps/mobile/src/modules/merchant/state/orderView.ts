@@ -1,18 +1,28 @@
-import type { CancelRequest, DiningMode, MerchantOrder, OrderStatus, PaymentStatus } from '../data/types';
+import type {
+  CancelRequest,
+  DiningMode,
+  DiningModeChangeRequest,
+  MerchantOrder,
+  OrderStatus,
+  PaymentStatus,
+} from '../data/types';
+import { formatYuan } from '../utils/money';
 
 export interface OrderGroup {
   key: string;
   label: string;
   count: number;
   hasPendingCancel: boolean;
+  hasPendingRequest: boolean;
   orders: MerchantOrder[];
 }
 
-const GROUP_DEFS: ReadonlyArray<{ key: string; label: string; statuses: OrderStatus[] }> = [
+const GROUP_DEFS: ReadonlyArray<{ key: string; label: string; statuses: OrderStatus[] | null }> = [
   { key: 'new', label: '待接单', statuses: ['NEW'] },
   { key: 'in-progress', label: '制作中', statuses: ['ACCEPTED', 'PREPARING'] },
   { key: 'ready', label: '可取餐', statuses: ['READY'] },
   { key: 'completed', label: '已完成', statuses: ['COMPLETED'] },
+  { key: 'pending', label: '待处理', statuses: null },
   { key: 'cancelled', label: '已取消', statuses: ['CANCELLED'] },
 ];
 
@@ -41,21 +51,61 @@ export function hasPendingCancel(order: MerchantOrder): boolean {
   return order.cancelRequest.status === 'PENDING';
 }
 
+export function hasPendingDiningModeChange(order: MerchantOrder): boolean {
+  return order.diningModeChange?.status === 'PENDING';
+}
+
+export function hasPendingRequest(order: MerchantOrder): boolean {
+  return hasPendingCancel(order) || hasPendingDiningModeChange(order);
+}
+
+export function diningModeChangeRoute(request?: DiningModeChangeRequest | null): string {
+  const from = request?.fromDiningMode
+    ? DINING_MODE_VIEWS[request.fromDiningMode].label
+    : '原用餐方式';
+  const to = request?.toDiningMode
+    ? DINING_MODE_VIEWS[request.toDiningMode].label
+    : '新用餐方式';
+  return `${from} → ${to}`;
+}
+
+export function pendingRequestSummary(order: MerchantOrder): string | null {
+  const parts: string[] = [];
+  if (hasPendingCancel(order)) {
+    parts.push(`申请退款 ${formatYuan(order.totalFen)}`);
+  }
+  const change = order.diningModeChange;
+  if (change?.status === 'PENDING') {
+    parts.push(diningModeChangeRoute(change));
+  }
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 export function groupOrders(
   orders: MerchantOrder[],
   options: { includeEmpty?: boolean } = {},
 ): OrderGroup[] {
   const groups = GROUP_DEFS.map((definition) => {
     const grouped = orders
-      .filter((order) => definition.statuses.includes(order.status))
-      .sort((left, right) => (left.createdAt === right.createdAt
-        ? left.id.localeCompare(right.id)
-        : left.createdAt < right.createdAt ? 1 : -1));
+      .filter((order) => (definition.statuses === null
+        ? hasPendingRequest(order)
+        : definition.statuses.includes(order.status)))
+      .sort((left, right) => {
+        if (definition.statuses === null) {
+          return left.updatedAt === right.updatedAt
+            ? left.id.localeCompare(right.id)
+            : (left.updatedAt < right.updatedAt ? 1 : -1);
+        }
+        return left.createdAt === right.createdAt
+          ? left.id.localeCompare(right.id)
+          : (left.createdAt < right.createdAt ? 1 : -1);
+      });
     return {
       key: definition.key,
       label: definition.label,
       count: grouped.length,
       hasPendingCancel: grouped.some(hasPendingCancel),
+      hasPendingRequest: grouped.some(hasPendingRequest),
       orders: grouped,
     };
   });
@@ -69,6 +119,12 @@ export function shortOrderId(id: string): string {
   }
   const digits = /(\d+)$/.exec(id);
   return digits ? `#${digits[1]}` : id;
+}
+
+export function orderNoLabel(order: Pick<MerchantOrder, 'orderNo' | 'id'>): string {
+  return order.orderNo === null || order.orderNo === undefined
+    ? shortOrderId(order.id)
+    : `#${order.orderNo}`;
 }
 
 export function formatClock(iso: string): string {
@@ -113,6 +169,13 @@ export function cancelRequestLabel(request: CancelRequest): string {
   if (request.status === 'APPROVED') return '取消申请已批准';
   if (request.status === 'REJECTED') return '取消申请已拒绝';
   return '无取消申请';
+}
+
+export function diningModeChangeLabel(request?: DiningModeChangeRequest | null): string {
+  if (request?.status === 'PENDING') return '学生申请变更用餐方式，请优先处理；当前用餐方式尚未改变';
+  if (request?.status === 'APPROVED') return '用餐方式变更已同意';
+  if (request?.status === 'REJECTED') return '用餐方式变更已拒绝';
+  return '无用餐方式变更申请';
 }
 export function cancellationNote(order: MerchantOrder): string {
   if (order.cancelRequest.status === 'APPROVED') {

@@ -1,6 +1,6 @@
 import type { MerchantOrder } from '../data/types';
 import { getPrimaryAction } from '../state/actionMatrix';
-import { cancellationNote, diningModeView, formatSlot, hasPendingCancel, shortOrderId, statusView } from '../state/orderView';
+import { cancellationNote, diningModeView, formatSlot, hasPendingCancel, orderNoLabel, statusView } from '../state/orderView';
 import { itemsSummary, totalQuantity } from '../utils/money';
 
 interface OrderRowProps {
@@ -20,7 +20,7 @@ export default function OrderRow({ order, onOpen, showCancellationDetails = true
   return (
     <button type="button" className="order-row" data-order-id={order.id} data-status={order.status} onClick={() => onOpen(order.id)}>
       <span className="order-row__top">
-        <span className="order-row__id" title={order.id}>{shortOrderId(order.id)}</span>
+        <span className="order-row__id" title={order.id}>{orderNoLabel(order)}</span>
         <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
         <span className={`merchant-tag merchant-tag--${dining.tone}`}>{dining.label}</span>
         {hasPendingCancel(order) && <span className="merchant-flag">取消申请待处理</span>}
@@ -29,6 +29,12 @@ export default function OrderRow({ order, onOpen, showCancellationDetails = true
         <span className="order-row__slot">{formatSlot(order)}</span>
         <span className="order-row__items">{itemsSummary(order.items)}</span>
       </span>
+      {order.remark && (
+        <span className="order-row__remark" data-order-remark={order.remark}>
+          <span className="order-row__remark-label">备注</span>
+          <span className="order-row__remark-text">{order.remark}</span>
+        </span>
+      )}
       <span className="order-row__bottom">
         <span>共 {totalQuantity(order.items)} 份</span>
         <span className={`order-row__next${primary ? '' : ' order-row__next--muted'}`}>{nextStep}</span>

@@ -10,6 +10,27 @@ interface DishCustomizeEditorProps {
   mode: 'sample' | 'real';
 }
 
+function moveItem<T>(list: T[], index: number, offset: number): T[] {
+  const target = index + offset;
+  if (index < 0 || target < 0 || target >= list.length) return list;
+  const next = [...list];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
+function EmptyImage() {
+  return (
+    <span className="dish-cx__image-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2.5" />
+        <circle cx="9" cy="9.5" r="1.6" />
+        <path d="M3 17l5-5 4 4 3-3 6 6" />
+      </svg>
+      <span>暂无图片</span>
+    </span>
+  );
+}
+
 export default function DishCustomizeEditor({
   value,
   onChange,
@@ -50,6 +71,11 @@ export default function DishCustomizeEditor({
     update({ flavorGroups: value.flavorGroups.filter((group) => group.id !== groupId) });
   }
 
+  function moveGroup(groupId: string, offset: number) {
+    const index = value.flavorGroups.findIndex((group) => group.id === groupId);
+    update({ flavorGroups: moveItem(value.flavorGroups, index, offset) });
+  }
+
   function addGroupOption(groupId: string) {
     update({
       flavorGroups: value.flavorGroups.map((group) => (group.id === groupId
@@ -77,6 +103,26 @@ export default function DishCustomizeEditor({
     });
   }
 
+  function moveGroupOption(groupId: string, optionId: string, offset: number) {
+    update({
+      flavorGroups: value.flavorGroups.map((group) => {
+        if (group.id !== groupId) return group;
+        const index = group.options.findIndex((option) => option.id === optionId);
+        return { ...group, options: moveItem(group.options, index, offset) };
+      }),
+    });
+  }
+
+  function moveSide(sideId: string, offset: number) {
+    const index = value.sides.findIndex((side) => side.id === sideId);
+    update({ sides: moveItem(value.sides, index, offset) });
+  }
+
+  function moveAddOn(addOnId: string, offset: number) {
+    const index = value.addOns.findIndex((addOn) => addOn.id === addOnId);
+    update({ addOns: moveItem(value.addOns, index, offset) });
+  }
+
   async function pickImage(file: File | null) {
     if (!file) return;
     setReadingImage(true);
@@ -98,7 +144,7 @@ export default function DishCustomizeEditor({
         <div className="dish-cx__head">
           <div>
             <h4>菜品图片</h4>
-            <p className="hint">商家自己选图，学生端后续会显示。支持 JPG、PNG、WebP，自动压缩到 640px。</p>
+            <p className="hint">商家自己选图，学生端会按固定比例展示；支持 JPG、PNG、WebP，自动压缩到 640px。</p>
           </div>
         </div>
         <div className="dish-cx__image-row">
@@ -106,7 +152,7 @@ export default function DishCustomizeEditor({
             {value.imageUrl ? (
               <img src={value.imageUrl} alt="菜品图片预览" />
             ) : (
-              <span className="dish-cx__image-empty">暂无图片</span>
+              <EmptyImage />
             )}
           </div>
           <div className="dish-cx__image-actions">
@@ -137,7 +183,7 @@ export default function DishCustomizeEditor({
             )}
             {mode === 'real' && (
               <p className="hint dish-cx__local-note">
-                当前图片先保存在本机，服务端图片字段完成后才会同步到学生端。
+                保存菜品时会把图片上传到服务端，学生端刷新菜单后即可看到。
               </p>
             )}
           </div>
@@ -148,8 +194,8 @@ export default function DishCustomizeEditor({
       <section className="dish-cx__section" data-dish-cx-flavor>
         <div className="dish-cx__head">
           <div>
-            <h4>口味特征（学生单选）</h4>
-            <p className="hint">例如「辣度」下放微辣、中辣、特辣。商家添加，学生点按钮选择。</p>
+            <h4>口味特征</h4>
+            <p className="hint">例如「辣度」下放微辣、中辣、特辣；学生从每组单选一个。</p>
           </div>
           <div className="dish-cx__head-actions">
             <button
@@ -172,10 +218,10 @@ export default function DishCustomizeEditor({
           </div>
         </div>
         {value.flavorGroups.length === 0 ? (
-          <p className="hint">还没有口味特征。可不填；需要时点「添加特征组」。</p>
+          <p className="dish-cx__empty">还没有口味特征。可不填，需要时点「添加特征组」。</p>
         ) : (
           <div className="dish-cx__groups">
-            {value.flavorGroups.map((group) => (
+            {value.flavorGroups.map((group, groupIndex) => (
               <div className="dish-cx__group" key={group.id}>
                 <div className="dish-cx__group-head">
                   <label className="dish-cx__field dish-cx__field--grow">
@@ -197,6 +243,26 @@ export default function DishCustomizeEditor({
                     />
                     学生必须选
                   </label>
+                  <span className="dish-cx__order">
+                    <button
+                      type="button"
+                      className="dish-cx__order-button"
+                      onClick={() => moveGroup(group.id, -1)}
+                      disabled={busy || groupIndex === 0}
+                      aria-label={`上移特征组 ${group.name || '未命名'}`}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="dish-cx__order-button"
+                      onClick={() => moveGroup(group.id, 1)}
+                      disabled={busy || groupIndex === value.flavorGroups.length - 1}
+                      aria-label={`下移特征组 ${group.name || '未命名'}`}
+                    >
+                      ↓
+                    </button>
+                  </span>
                   <button
                     type="button"
                     className="dish-cx__remove-button"
@@ -208,7 +274,7 @@ export default function DishCustomizeEditor({
                   </button>
                 </div>
                 <div className="dish-cx__chips">
-                  {group.options.map((option) => (
+                  {group.options.map((option, optionIndex) => (
                     <span className="dish-cx__chip-edit" key={option.id}>
                       <input
                         value={option.name}
@@ -218,6 +284,26 @@ export default function DishCustomizeEditor({
                         aria-label="特征选项名称"
                         onChange={(event) => updateGroupOption(group.id, option.id, event.target.value)}
                       />
+                      <span className="dish-cx__chip-order">
+                        <button
+                          type="button"
+                          className="dish-cx__chip-move"
+                          onClick={() => moveGroupOption(group.id, option.id, -1)}
+                          disabled={busy || optionIndex === 0}
+                          aria-label={`上移选项 ${option.name || '未命名'}`}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="dish-cx__chip-move"
+                          onClick={() => moveGroupOption(group.id, option.id, 1)}
+                          disabled={busy || optionIndex === group.options.length - 1}
+                          aria-label={`下移选项 ${option.name || '未命名'}`}
+                        >
+                          ↓
+                        </button>
+                      </span>
                       <button
                         type="button"
                         className="dish-cx__chip-remove"
@@ -247,8 +333,8 @@ export default function DishCustomizeEditor({
       <section className="dish-cx__section" data-dish-cx-sides>
         <div className="dish-cx__head">
           <div>
-            <h4>固定配菜（学生选加不加，不加价）</h4>
-            <p className="hint">例如每道菜都配土豆丝：学生可以选「加」或「不加」，不改变价格。</p>
+            <h4>固定配菜</h4>
+            <p className="hint">例如每道菜都配土豆丝；学生可以选「加」或「不加」，不加价。</p>
           </div>
           <button
             type="button"
@@ -261,10 +347,10 @@ export default function DishCustomizeEditor({
           </button>
         </div>
         {value.sides.length === 0 ? (
-          <p className="hint">还没有固定配菜。</p>
+          <p className="dish-cx__empty">还没有固定配菜，学生不会看到配菜选项。</p>
         ) : (
           <div className="dish-cx__rows">
-            {value.sides.map((side) => (
+            {value.sides.map((side, index) => (
               <div className="dish-cx__row" key={side.id}>
                 <label className="dish-cx__field dish-cx__field--grow">
                   配菜名称
@@ -278,7 +364,27 @@ export default function DishCustomizeEditor({
                     })}
                   />
                 </label>
-                <span className="dish-cx__price-static">不加价</span>
+                <span className="dish-cx__price-static">免费</span>
+                <span className="dish-cx__order">
+                  <button
+                    type="button"
+                    className="dish-cx__order-button"
+                    onClick={() => moveSide(side.id, -1)}
+                    disabled={busy || index === 0}
+                    aria-label={`上移配菜 ${side.name || '未命名'}`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="dish-cx__order-button"
+                    onClick={() => moveSide(side.id, 1)}
+                    disabled={busy || index === value.sides.length - 1}
+                    aria-label={`下移配菜 ${side.name || '未命名'}`}
+                  >
+                    ↓
+                  </button>
+                </span>
                 <button
                   type="button"
                   className="dish-cx__remove-button"
@@ -297,8 +403,8 @@ export default function DishCustomizeEditor({
       <section className="dish-cx__section" data-dish-cx-addons>
         <div className="dish-cx__head">
           <div>
-            <h4>加购项（学生可多选，商家自己定价）</h4>
-            <p className="hint">例如卤蛋、饮料、加饭，学生勾选后加价计入合计；定价 0 元就是免费加购。</p>
+            <h4>加购项</h4>
+            <p className="hint">例如卤蛋、饮料、加饭；学生可多选，加价计入合计，定价 0 元为免费加购。</p>
           </div>
           <button
             type="button"
@@ -313,10 +419,10 @@ export default function DishCustomizeEditor({
           </button>
         </div>
         {value.addOns.length === 0 ? (
-          <p className="hint">还没有加购项。</p>
+          <p className="dish-cx__empty">还没有加购项，学生不会看到额外加购。</p>
         ) : (
           <div className="dish-cx__rows">
-            {value.addOns.map((addOn) => (
+            {value.addOns.map((addOn, index) => (
               <div className="dish-cx__row" key={addOn.id}>
                 <label className="dish-cx__field dish-cx__field--grow">
                   加购名称
@@ -342,6 +448,26 @@ export default function DishCustomizeEditor({
                     })}
                   />
                 </label>
+                <span className="dish-cx__order">
+                  <button
+                    type="button"
+                    className="dish-cx__order-button"
+                    onClick={() => moveAddOn(addOn.id, -1)}
+                    disabled={busy || index === 0}
+                    aria-label={`上移加购项 ${addOn.name || '未命名'}`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="dish-cx__order-button"
+                    onClick={() => moveAddOn(addOn.id, 1)}
+                    disabled={busy || index === value.addOns.length - 1}
+                    aria-label={`下移加购项 ${addOn.name || '未命名'}`}
+                  >
+                    ↓
+                  </button>
+                </span>
                 <button
                   type="button"
                   className="dish-cx__remove-button"

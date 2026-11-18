@@ -1,14 +1,14 @@
-
-import OrderRow from '../components/OrderRow';
+import OrderCard from '../components/OrderCard';
 import { DEMO_SCENARIOS } from '../data/sampleData';
 import type { MerchantOrder, MerchantScenario } from '../data/types';
+import type { ActionInput, OrderAction } from '../state/actionMatrix';
 import { groupOrders } from '../state/orderView';
 
 interface OrderListPageProps {
   orders: MerchantOrder[];
   scenario: MerchantScenario;
   isSample: boolean;
-  onboardingCompleted: boolean;
+
   loading: boolean;
   error: string | null;
   page: number;
@@ -19,8 +19,12 @@ interface OrderListPageProps {
   onScenarioChange: (scenario: MerchantScenario) => void;
   onPageChange: (page: number) => void;
   onOpenOrder: (id: string) => void;
+  onAction: (orderId: string, action: OrderAction, input?: ActionInput) => void;
+  pendingCode: string | null;
+  pendingOrderId: string | null;
+  actionError: { code: string; message: string; orderId?: string } | null;
   onOpenMenu: () => void;
-  onOpenSetup: () => void;
+
   onRefresh: () => void;
   refreshing: boolean;
   lastRefreshedAt: string | null;
@@ -31,7 +35,7 @@ export default function OrderListPage({
   orders,
   scenario,
   isSample,
-  onboardingCompleted,
+
   loading,
   error,
   page,
@@ -42,44 +46,41 @@ export default function OrderListPage({
   onScenarioChange,
   onPageChange,
   onOpenOrder,
+  onAction,
+  pendingCode,
+  pendingOrderId,
+  actionError,
   onOpenMenu,
-  onOpenSetup,
+
   onRefresh,
   refreshing,
   lastRefreshedAt,
   autoRefreshSeconds,
 }: OrderListPageProps) {
-
   const groups = groupOrders(orders, { includeEmpty: true });
   const activeGroup = groups.find((group) => group.key === activeGroupKey) ?? groups[0];
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const activeOrders = [...activeGroup.orders].sort((left, right) => {
+    const slotOrder = left.slotStart.localeCompare(right.slotStart);
+    return slotOrder !== 0 ? slotOrder : left.createdAt.localeCompare(right.createdAt);
+  });
 
   return (
     <div className="merchant-view merchant-order-list">
       <header className="merchant-view__header">
         <div>
           <h2>
-            订单列表
+            订单
             {isSample && <span className="merchant-readonly-tag">样例 · demo=true</span>}
           </h2>
           <p className="lead">
             {isSample
-              ? '点上方状态栏切换查看各状态订单；堂食/外带与待处理取消申请一眼可见。'
-              : '真实数据；点上方状态栏切换查看。接单、开始制作、标记可取与核销已接入服务端，成功后状态立即更新。'}
+              ? '按状态切换；卡片内可直接接单、制作、标记可取和核销。'
+              : '按状态切换；高频操作在卡片内完成，成功后以服务端最新状态为准。'}
           </p>
         </div>
         <div className="merchant-view__actions">
-          {!isSample && (
-            <button
-              type="button"
-              className="merchant-link-button"
-              onClick={onOpenSetup}
-              data-open-onboarding
-              data-onboarding-state={onboardingCompleted ? 'completed' : 'pending'}
-            >
-              {onboardingCompleted ? '店铺信息' : '商家注册 / 开店'}
-            </button>
-          )}
+
           <button type="button" className="merchant-link-button" onClick={onOpenMenu} data-open-menu>
             菜单与库存
           </button>
@@ -122,7 +123,18 @@ export default function OrderListPage({
       {loading ? (
         <p className="merchant-empty">正在读取订单…</p>
       ) : error ? (
-        <p className="merchant-empty">订单读取失败：{error}</p>
+        <div className="merchant-empty merchant-empty--error">
+          <p>订单读取失败：{error}</p>
+          <button
+            type="button"
+            className="action-button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing || undefined}
+          >
+            {refreshing ? '重试中…' : '重新加载'}
+          </button>
+        </div>
       ) : orders.length === 0 ? (
         <p className="merchant-empty">
           {total > 0
@@ -144,35 +156,51 @@ export default function OrderListPage({
                   data-order-status={group.key}
                 >
                   <span className="merchant-status-chip__label">{group.label}</span>
-                  {group.key === 'new' && group.count > 0 && (
-                    <span
-                      className="merchant-status-chip__badge merchant-status-chip__badge--alert"
-                      aria-label={`${group.count} 笔待接单`}
-                    >
-                      {group.count}
-                    </span>
-                  )}
+                  {group.key === 'pending' || group.key === 'new' ? (
+                    group.count > 0 && (
+                      <span
+                        className="merchant-status-chip__badge merchant-status-chip__badge--alert"
+                        aria-label={`${group.count} 笔${group.label}`}
+                      >
+                        {group.count}
+                      </span>
+                    )
+                  ) : null}
                 </button>
               );
             })}
           </div>
 
           {activeGroup.count === 0 ? (
-            <p className="merchant-empty">「{activeGroup.label}」暂无订单。</p>
+            <p className="merchant-empty">
+              {activeGroup.key === 'pending'
+                ? '暂无待处理申请：学生可申请退款或更改用餐方式。'
+                : `「${activeGroup.label}」暂无订单。`}
+            </p>
           ) : (
             <section className="order-group" aria-label={activeGroup.label}>
               <h3 className="order-group__title">
                 {activeGroup.label}
                 <span className="order-group__count">{activeGroup.count}</span>
-                {activeGroup.hasPendingCancel && <span className="merchant-flag">有取消申请</span>}
+                <span className="order-group__sort">
+                  {activeGroup.key === 'pending' ? '按申请时间排序' : '按取餐时间排序'}
+                </span>
+                {activeGroup.hasPendingRequest && activeGroup.key !== 'pending' && (
+                  <span className="merchant-flag merchant-flag--pending">有学生申请</span>
+                )}
               </h3>
               <div className="order-group__rows">
-                {activeGroup.orders.map((order) => (
-                  <OrderRow
+                {activeOrders.map((order) => (
+                  <OrderCard
                     key={order.id}
                     order={order}
                     onOpen={onOpenOrder}
-                    showCancellationDetails={!isSample}
+                    onAction={onAction}
+                    pendingCode={pendingCode}
+                    pendingOrderId={pendingOrderId}
+                    actionError={actionError}
+                    showCancellationDetails
+                    showOverdue={!isSample}
                   />
                 ))}
               </div>
@@ -184,7 +212,7 @@ export default function OrderListPage({
       {!loading && !error && total > 0 && (
         <>
           {!isSample && (
-            <p className="hint">档口共 {total} 笔订单，本页 {orders.length} 笔；点击查看详情。</p>
+            <p className="hint">档口共 {total} 笔订单，本页 {orders.length} 笔；点击卡片查看详情。</p>
           )}
           {totalPages > 1 && (
             <nav className="merchant-pager" aria-label="订单分页">
@@ -210,17 +238,6 @@ export default function OrderListPage({
             </nav>
           )}
         </>
-      )}
-
-      {isSample && (
-        <button
-          type="button"
-          className="merchant-order-list__setup"
-          onClick={onOpenSetup}
-          data-open-onboarding
-        >
-          商家注册 / 开店
-        </button>
       )}
     </div>
   );

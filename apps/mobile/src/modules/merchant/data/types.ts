@@ -28,15 +28,32 @@ export interface OrderDelay {
   expectedReadyAt: string;
 }
 
+export interface PackagingFeeSetting {
+  enabled: boolean;
+  feeFen: number;
+}
+
+export interface DiningModeChangeRequest {
+  status: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  reason: string | null;
+  decisionReason: string | null;
+  fromDiningMode: DiningMode | null;
+  toDiningMode: DiningMode | null;
+  requestedAt: string | null;
+}
+
 export interface MerchantOrder {
   id: string;
+  orderNo: number | null;
   items: OrderItem[];
   slotId: string;
   slotStart: string;
   slotEnd: string;
   diningMode: DiningMode;
   diningModeReason: string | null;
+  diningModeChange?: DiningModeChangeRequest;
   totalFen: number;
+  packagingFeeFen?: number | null;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   cancelRequest: CancelRequest;
@@ -47,6 +64,7 @@ export interface MerchantOrder {
   pickedUpAt: string | null;
   delay: OrderDelay | null;
   pickupCode: string | null;
+  remark: string | null;
   demo: boolean;
 }
 
@@ -170,12 +188,6 @@ export interface SetDelayInput {
   requestId: string;
 }
 
-export interface ChangeDiningModeInput {
-  diningMode: DiningMode;
-  reason: string;
-  expectedVersion: number;
-  requestId: string;
-}
 
 export interface UpdateDishInput {
   requestId: string;
@@ -185,6 +197,7 @@ export interface UpdateDishInput {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
 }
 
 export interface DeleteDishInput {
@@ -213,7 +226,31 @@ export interface UpdateSlotInput {
   enabled: boolean;
 }
 
-export type OnboardingStep = 'NONE' | 'REGISTERED' | 'SHOP_CREATED';
+export type OnboardingStep =
+  | 'NONE'
+  | 'UNREGISTERED'
+  | 'REGISTERED'
+  | 'SHOP_CREATED';
+
+export interface MerchantAccount {
+  userId: string;
+  account: string;
+  password: string | null;
+  active: boolean;
+  merchantId: string | null;
+  merchantName: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  createdAt: string | null;
+}
+
+export interface UpdateMerchantAccountInput {
+  requestId: string;
+  account?: string;
+  password?: string;
+  contactName?: string;
+  contactPhone?: string;
+}
 
 export interface MerchantProfile {
   merchant: {
@@ -230,6 +267,7 @@ export interface MerchantProfile {
     description: string | null;
     version: number;
   } | null;
+
   onboardingStep: OnboardingStep;
 }
 
@@ -244,6 +282,8 @@ export interface MerchantProfileUpdateInput {
   requestId: string;
   contactName?: string;
   contactPhone?: string;
+  shopId?: string;
+  shopVersion?: number;
   shopName?: string;
   location?: string;
   description?: string | null;
@@ -263,6 +303,11 @@ export interface CreateDishInput {
   priceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+}
+
+export interface UploadedDishImage {
+  imageUrl: string;
 }
 
 export interface MerchantSource {
@@ -278,13 +323,17 @@ export interface MerchantSource {
   updateProfile: (input: MerchantProfileUpdateInput) => Promise<SourceResult<MerchantProfile>>;
   registerMerchant: (input: MerchantRegistrationInput) => Promise<SourceResult<MerchantProfile>>;
   createShop: (input: CreateShopInput) => Promise<SourceResult<MerchantProfile>>;
+
+  getAccount: () => Promise<SourceResult<MerchantAccount>>;
+  updateAccount: (input: UpdateMerchantAccountInput) => Promise<SourceResult<MerchantAccount>>;
   createDish: (input: CreateDishInput) => Promise<SourceResult<Dish>>;
+  uploadDishImage: (dataUrl: string, requestId: string) => Promise<SourceResult<UploadedDishImage>>;
   advanceOrder: (id: string, input: AdvanceOrderInput) => Promise<SourceResult<MerchantOrder>>;
   verifyOrder: (id: string, input: VerifyOrderInput) => Promise<SourceResult<MerchantOrder>>;
   decideCancellation: (id: string, input: CancelDecisionInput) => Promise<SourceResult<MerchantOrder>>;
   cancelOrder: (id: string, input: MerchantCancelOrderInput) => Promise<SourceResult<MerchantOrder>>;
   setDelay: (id: string, input: SetDelayInput) => Promise<SourceResult<MerchantOrder>>;
-  changeDiningMode: (id: string, input: ChangeDiningModeInput) => Promise<SourceResult<MerchantOrder>>;
+
   updateDish: (date: string, dishId: string, input: UpdateDishInput) => Promise<SourceResult<Dish>>;
   deleteDish: (date: string, dishId: string, input: DeleteDishInput) => Promise<SourceResult<DeletedDish>>;
   updateSlot: (date: string, slotId: string, input: UpdateSlotInput) => Promise<SourceResult<Slot>>;

@@ -12,6 +12,7 @@ import {
   diningModeView,
   formatDateTime,
   formatSlot,
+  orderNoLabel,
   paymentText,
   STATUS_TRACK,
   statusView,
@@ -30,7 +31,7 @@ interface NewOrderDetailPageProps {
 }
 
 export default function NewOrderDetailPage({
-  order,
+order,
   mode,
   onBack,
   onAction,
@@ -42,6 +43,7 @@ export default function NewOrderDetailPage({
   const [cancelReason, setCancelReason] = useState('');
   const [stockCancelReason, setStockCancelReason] = useState('');
   const [showStockCancelForm, setShowStockCancelForm] = useState(false);
+
 
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
@@ -94,7 +96,7 @@ export default function NewOrderDetailPage({
           {order.demo || mode === 'sample' ? '样例订单 · demo=true' : '真实数据 · 演示服务'}
         </p>
         <div className="detail-id">
-          <h2 className="detail-id__short">{order.id}</h2>
+          <h2 className="detail-id__short">{orderNoLabel(order)}</h2>
         </div>
         <div className="detail-tags">
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
@@ -110,6 +112,15 @@ export default function NewOrderDetailPage({
         <h3>预约时间</h3>
         <p className="detail-emphasis">{formatSlot(order)}</p>
         <p className="hint">档口应在这个时段内做好，到点不一定已好。</p>
+      </section>
+
+      <section className="detail-block detail-block--remark">
+        <h3>订单备注</h3>
+        {order.remark ? (
+          <p className="detail-remark" data-order-remark={order.remark}>{order.remark}</p>
+        ) : (
+          <p className="merchant-muted detail-remark detail-remark--empty">学生未填写备注</p>
+        )}
       </section>
 
       <section className="detail-block detail-block--items">
@@ -228,6 +239,7 @@ export default function NewOrderDetailPage({
         <h3>用餐方式</h3>
         <p className="detail-emphasis">{dining.label} · {dining.description}</p>
         {order.diningModeReason && <p className="merchant-muted">变更理由：{order.diningModeReason}</p>}
+        <p className="hint">用餐方式由学生下单时选择，档口不可修改。</p>
 
       </section>
 

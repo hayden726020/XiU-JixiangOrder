@@ -1,29 +1,25 @@
 import type { Dish, MenuDay, MerchantOrder, MerchantScenario, Slot, SlotDay } from './types';
-import dishChickenRice from '../assets/dish-chicken-rice.webp';
-import dishPepperPork from '../assets/dish-pepper-pork.webp';
-import dishSeaweedEggSoup from '../assets/dish-seaweed-egg-soup.webp';
-import dishTomatoEgg from '../assets/dish-tomato-egg.webp';
 
 export const SAMPLE_DATES = ['2026-11-13', '2026-11-14'] as const;
 
 export const DEMO_SCENARIOS: ReadonlyArray<{ value: MerchantScenario; label: string }> = [
   { value: 'normal', label: '正常（5 笔）' },
-
+  { value: 'empty', label: '无订单' },
   { value: 'pending-cancel', label: '待处理取消申请' },
 ];
 
 const DISHES: Record<string, Dish[]> = {
   '2026-11-13': [
-    { dishId: 'demo-dish-01', type: 'STAPLE', name: '演示鸡肉饭', unitPriceFen: 1800, availableQuantity: 40, onSale: true, version: 1, imageUrl: dishChickenRice },
-    { dishId: 'demo-dish-02', type: 'STAPLE', name: '演示番茄炒蛋', unitPriceFen: 900, availableQuantity: 35, onSale: true, version: 1, imageUrl: dishTomatoEgg },
-    { dishId: 'demo-dish-03', type: 'STAPLE', name: '演示青椒肉丝', unitPriceFen: 1500, availableQuantity: 0, onSale: false, version: 1, imageUrl: dishPepperPork },
-    { dishId: 'demo-dish-04', type: 'SNACK', name: '演示紫菜蛋花汤', unitPriceFen: 500, availableQuantity: 50, onSale: true, version: 1, imageUrl: dishSeaweedEggSoup },
+    { dishId: 'demo-dish-01', type: 'STAPLE', name: '演示鸡肉饭', unitPriceFen: 1800, availableQuantity: 40, onSale: true, version: 1, imageUrl: null },
+    { dishId: 'demo-dish-02', type: 'STAPLE', name: '演示番茄炒蛋', unitPriceFen: 900, availableQuantity: 35, onSale: true, version: 1, imageUrl: null },
+    { dishId: 'demo-dish-03', type: 'STAPLE', name: '演示青椒肉丝', unitPriceFen: 1500, availableQuantity: 0, onSale: false, version: 1, imageUrl: null },
+    { dishId: 'demo-dish-04', type: 'SNACK', name: '演示紫菜蛋花汤', unitPriceFen: 500, availableQuantity: 50, onSale: true, version: 1, imageUrl: null },
   ],
   '2026-11-14': [
-    { dishId: 'demo-dish-01', type: 'STAPLE', name: '演示鸡肉饭', unitPriceFen: 1800, availableQuantity: 35, onSale: true, version: 1, imageUrl: dishChickenRice },
-    { dishId: 'demo-dish-02', type: 'STAPLE', name: '演示番茄炒蛋', unitPriceFen: 900, availableQuantity: 30, onSale: true, version: 1, imageUrl: dishTomatoEgg },
-    { dishId: 'demo-dish-03', type: 'STAPLE', name: '演示青椒肉丝', unitPriceFen: 1500, availableQuantity: 20, onSale: true, version: 1, imageUrl: dishPepperPork },
-    { dishId: 'demo-dish-04', type: 'SNACK', name: '演示紫菜蛋花汤', unitPriceFen: 500, availableQuantity: 45, onSale: true, version: 1, imageUrl: dishSeaweedEggSoup },
+    { dishId: 'demo-dish-01', type: 'STAPLE', name: '演示鸡肉饭', unitPriceFen: 1800, availableQuantity: 35, onSale: true, version: 1, imageUrl: null },
+    { dishId: 'demo-dish-02', type: 'STAPLE', name: '演示番茄炒蛋', unitPriceFen: 900, availableQuantity: 30, onSale: true, version: 1, imageUrl: null },
+    { dishId: 'demo-dish-03', type: 'STAPLE', name: '演示青椒肉丝', unitPriceFen: 1500, availableQuantity: 20, onSale: true, version: 1, imageUrl: null },
+    { dishId: 'demo-dish-04', type: 'SNACK', name: '演示紫菜蛋花汤', unitPriceFen: 500, availableQuantity: 45, onSale: true, version: 1, imageUrl: null },
   ],
 };
 
@@ -36,6 +32,7 @@ const SLOT_DEFS = [
 const NORMAL_ORDERS: MerchantOrder[] = [
   {
     id: 'demo-order-001',
+    orderNo: 2,
     items: [{ dishId: 'demo-dish-01', name: '演示鸡肉饭', quantity: 1, unitPriceFen: 1800 }],
     slotId: 'demo-slot-20261113-lunch',
     slotStart: '2026-11-13T11:30:00+08:00',
@@ -53,10 +50,12 @@ const NORMAL_ORDERS: MerchantOrder[] = [
     pickedUpAt: null,
     delay: null,
     pickupCode: null,
+    remark: '不要香菜，米饭少一点',
     demo: true,
   },
   {
     id: 'demo-order-002',
+    orderNo: 4,
     items: [
       { dishId: 'demo-dish-02', name: '演示番茄炒蛋', quantity: 2, unitPriceFen: 900 },
       { dishId: 'demo-dish-03', name: '演示青椒肉丝', quantity: 1, unitPriceFen: 1500 },
@@ -77,10 +76,12 @@ const NORMAL_ORDERS: MerchantOrder[] = [
     pickedUpAt: null,
     delay: null,
     pickupCode: null,
+    remark: '两份分开打包，谢谢',
     demo: true,
   },
   {
     id: 'demo-order-003',
+    orderNo: 1,
     items: [
       { dishId: 'demo-dish-01', name: '演示鸡肉饭', quantity: 1, unitPriceFen: 1800 },
       { dishId: 'demo-dish-04', name: '演示紫菜蛋花汤', quantity: 1, unitPriceFen: 500 },
@@ -101,10 +102,12 @@ const NORMAL_ORDERS: MerchantOrder[] = [
     pickedUpAt: null,
     delay: null,
     pickupCode: 'DEMO-572913',
+    remark: '少辣，不要葱',
     demo: true,
   },
   {
     id: 'demo-order-004',
+    orderNo: 3,
     items: [{ dishId: 'demo-dish-02', name: '演示番茄炒蛋', quantity: 2, unitPriceFen: 900 }],
     slotId: 'demo-slot-20261113-lunch',
     slotStart: '2026-11-13T11:30:00+08:00',
@@ -122,10 +125,12 @@ const NORMAL_ORDERS: MerchantOrder[] = [
     pickedUpAt: '2026-11-13T11:42:00+08:00',
     delay: null,
     pickupCode: null,
+    remark: null,
     demo: true,
   },
   {
     id: 'demo-order-005',
+    orderNo: 5,
     items: [{ dishId: 'demo-dish-03', name: '演示青椒肉丝', quantity: 1, unitPriceFen: 1500 }],
     slotId: 'demo-slot-20261113-tail',
     slotStart: '2026-11-13T12:30:00+08:00',
@@ -143,6 +148,7 @@ const NORMAL_ORDERS: MerchantOrder[] = [
     pickedUpAt: null,
     delay: null,
     pickupCode: null,
+    remark: null,
     demo: true,
   },
 ];

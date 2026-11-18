@@ -10,14 +10,12 @@ export interface OrderAction {
   needsReason?: boolean;
   needsPickupCode?: boolean;
   needsExpectedReadyAt?: boolean;
-
 }
 
 export interface ActionInput {
   pickupCode?: string;
   reason?: string;
   expectedReadyAt?: string;
-
 }
 
 const ORDER_PATH = '/merchant/orders/{id}';

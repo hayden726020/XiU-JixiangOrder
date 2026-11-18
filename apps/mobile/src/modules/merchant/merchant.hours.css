@@ -1,0 +1,56 @@
+.business-hours-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-bottom: 0.5rem;
+}
+
+.business-hours-page__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.business-hours-page .merchant-view__header {
+  margin: 0;
+}
+
+.business-hours-page .merchant-view__header h2 {
+  margin: 0;
+}
+
+.business-hours-page .menu-card {
+  padding: 0.7rem 0.8rem;
+}
+
+.business-hours-page .slot-list {
+  margin-top: 0.1rem;
+}
+
+.business-hours-page .menu-slot-edit {
+  margin-top: 0.45rem;
+}
+
+.merchant-home__hours-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 0.58rem;
+  line-height: 1.2;
+  text-align: right;
+  cursor: pointer;
+}
+
+.merchant-home__hours-link:hover,
+.merchant-home__hours-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+@media (max-width: 380px) {
+  .merchant-home__hours-link {
+    font-size: 0.54rem;
+  }
+}
