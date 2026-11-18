@@ -127,6 +127,7 @@ function StudentHomeApp({
   const [shopNotice, setShopNotice] = useState('');
   const previewStarted = useRef(false);
   const pendingShopTabRef = useRef<'home' | 'order' | null>(null);
+  const orderFromSubmitRef = useRef(false);
 
   useEffect(() => {
     if (!previewSlot || previewStarted.current) return;
@@ -165,7 +166,7 @@ function StudentHomeApp({
       return;
     }
     const isTabSwitch =
-      (view === 'shop' || view === 'orders' || view === 'profile') &&
+      (view === 'shop' || view === 'menu' || view === 'orders' || view === 'profile') &&
       (next === 'shop' || next === 'orders' || next === 'profile');
 
     const update = () => {
@@ -181,13 +182,15 @@ function StudentHomeApp({
     }
   }
 
-  function replaceTo(next: StudentView, nextShopTab: 'home' | 'order' = shopTab): void {
-    const update = () => {
-      window.history.replaceState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
-      setView(next);
+  function replaceToOrder(id: string): void {
+    orderFromSubmitRef.current = true;
+    runSurfaceTransition(() => {
+      setDetailFrom('menu');
+      setOrderId(id);
+      window.history.replaceState({ module: 'student', studentView: 'order', shopTab }, '');
+      setView('order');
       window.scrollTo(0, 0);
-    };
-    runDirectionTransition(update, 'forward');
+    });
   }
 
   useEffect(() => {
@@ -234,6 +237,7 @@ function StudentHomeApp({
   }, []);
 
   function openOrder(id: string, trigger?: HTMLElement | null): void {
+    orderFromSubmitRef.current = false;
     setOrderId(id);
     goTo('order', 'push', shopTab, trigger);
   }
@@ -316,7 +320,14 @@ function StudentHomeApp({
       <OrderDetailPage
         source={source}
         orderId={orderId}
-        onBack={(trigger) => goTo(backTarget, 'back', shopTab, trigger)}
+        onBack={(trigger) => {
+          if (orderFromSubmitRef.current) {
+            orderFromSubmitRef.current = false;
+            window.history.go(-2);
+            return;
+          }
+          goTo(backTarget, 'back', shopTab, trigger);
+        }}
         backLabel={backTarget === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
         onGoToHome={(trigger) => {
           setShopTab('home');
@@ -371,7 +382,7 @@ function StudentHomeApp({
         shop={currentShop}
         onBack={(trigger) => goTo('slot', 'back', shopTab, trigger)}
         onBackToMenu={(trigger) => goTo('menu', 'back', shopTab, trigger)}
-        onSubmitted={(id) => { setDetailFrom('menu'); setOrderId(id); replaceTo('order'); }}
+        onSubmitted={(id) => replaceToOrder(id)}
       />
     );
   }

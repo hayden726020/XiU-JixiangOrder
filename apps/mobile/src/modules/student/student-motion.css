@@ -765,7 +765,7 @@
 .home-promo-banner:hover:not(:disabled) .home-pill-cta svg,
 .profile-privacy-card:hover:not(:disabled) .profile-privacy-card__arrow svg,
 .order-stall-card:hover:not(.is-disabled) .order-stall-card__go svg {
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
 
 /* ==========================================================================
@@ -780,7 +780,7 @@
   .student-booking:not(.student-booking--confirm) .booking-slot__dot,
   .student-booking:not(.student-booking--confirm) .booking-slot__dot svg,
   .meal-dish__cx-options button {
-    transition-duration: 60ms;
+    transition-duration: 60ms !important;
   }
 
   .meal-menu__dates--elastic .meal-menu__dates-thumb,
@@ -823,8 +823,8 @@
   .home-circle-cta svg,
   .profile-privacy-card__arrow svg,
   .order-stall-card__go svg {
-    transition: none;
-    animation: none;
+    transition: none !important;
+    animation: none !important;
   }
 
   .meal-menu .meal-dish__stepper button:first-child:not(:disabled):active,
@@ -870,12 +870,12 @@
   .profile-privacy-card:active:not(:disabled),
   .profile-topbar__gear:active:not(:disabled),
   .profile-card__more:active:not(:disabled) {
-    transform: none;
-    opacity: 1;
+    transform: none !important;
+    opacity: 1 !important;
   }
 
   .student-booking:not(.student-booking--confirm) .booking-mode.is-active .booking-mode__check,
   .student-booking:not(.student-booking--confirm) .booking-mode:active .booking-mode__check {
-    transform: translateY(-50%);
+    transform: translateY(-50%) !important;
   }
 }
