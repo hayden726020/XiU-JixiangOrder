@@ -133,6 +133,15 @@ export default function OnboardingPage({
     );
 
   const accountMerchantName = resolveAccountMerchantName(session);
+  const [prefilledAccountName, setPrefilledAccountName] = useState(false);
+
+  useEffect(() => {
+    if (prefilledAccountName) return;
+    if (merchant.merchantName.trim().length === 0 && accountMerchantName) {
+      setMerchant((current) => (current.merchantName ? current : { ...current, merchantName: accountMerchantName }));
+    }
+    setPrefilledAccountName(true);
+  }, [accountMerchantName, merchant.merchantName, prefilledAccountName]);
 
   const serverMerchant = profile?.merchant ?? null;
   const serverShop = profile?.shop ?? null;
@@ -221,10 +230,7 @@ export default function OnboardingPage({
   async function submitMerchant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
-    const result = validateMerchantRegistration({
-      ...merchant,
-      merchantName: accountMerchantName,
-    });
+    const result = validateMerchantRegistration(merchant);
     if (!result.ok) {
       setErrors(result.errors);
       clearFeedback();
@@ -263,10 +269,7 @@ export default function OnboardingPage({
       return;
     }
     if (serverMerchant === null) {
-      const merchantCheck = validateMerchantRegistration({
-        ...merchant,
-        merchantName: accountMerchantName,
-      });
+      const merchantCheck = validateMerchantRegistration(merchant);
       if (!merchantCheck.ok) {
         setErrors(merchantCheck.errors);
         error('商家资料已修改且不再有效，请重新检查。');
@@ -521,10 +524,19 @@ return (
               onSubmit={submitMerchant}
               noValidate
             >
-              <div className="merchant-my-info__readonly" data-field-readonly="merchantName">
-                <span>商家名称</span>
-                <strong data-onboarding-merchant-name>{accountMerchantName}</strong>
-                <p>商家名称跟随当前档口登录账号，不能单独修改。</p>
+              <div className="onboarding-field">
+                <label htmlFor="onboarding-merchant-name">商家名称</label>
+                <input
+                  id="onboarding-merchant-name"
+                  value={merchant.merchantName}
+                  onChange={(event) => updateMerchant('merchantName', event.target.value)}
+                  maxLength={30}
+                  placeholder="商家名称，2—30 个字符"
+                  autoComplete="organization"
+                  data-field="merchantName"
+                  data-onboarding-merchant-name
+                />
+                {errors.merchantName && <p className="field-error" role="alert" data-error="merchantName">{errors.merchantName}</p>}
               </div>
               <div className="onboarding-field">
 
@@ -588,7 +600,7 @@ return (
           <p className="onboarding-summary" data-merchant-preview>
             {serverMerchant !== null
               ? `商家：${displayMerchantName} · 负责人 ${serverMerchant.contactName ?? '未填写'} · ${serverMerchant.contactPhone ?? '未填写'}`
-              : `商家：${accountMerchantName} · 负责人 ${merchant.contactName} · ${merchant.contactPhone}`}
+              : `商家：${merchant.merchantName || accountMerchantName} · 负责人 ${merchant.contactName} · ${merchant.contactPhone}`}
           </p>
           <div className="onboarding-field">
             <label htmlFor="onboarding-shop-name">店铺名称</label>

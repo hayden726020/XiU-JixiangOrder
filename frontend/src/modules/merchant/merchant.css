@@ -4984,6 +4984,16 @@
   background: var(--m-brand-strong);
 }
 
+.app-shell--merchant .merchant-home__trend-block {
+  min-width: 0;
+}
+
+.app-shell--merchant .merchant-home__trend {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+
 /* ── 首页：常用功能 ───────────────────────────────────────────── */
 .app-shell--merchant .merchant-home__tools {
   grid-template-columns: repeat(4, minmax(0, 1fr));
