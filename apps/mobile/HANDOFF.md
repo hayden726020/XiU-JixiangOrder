@@ -21,7 +21,7 @@
 - 本次基线内容：档口端新增数据模式选择页（`#/merchant/source`）、钱包页与「我的」页；注册第 1 步删除「商家名称」输入，服务端仍要求 `merchantName`，页面自动取当前档口账号名（`session.user.displayName`，截断 20 字符，兜底「档口商家」）；学生端订单/菜单页拆分为 `BookingTicket`、`OrderDishCard`、`OrderListIcons`、`OrderMenuIcons`、`OrderTicketCard` 组件；管理端恢复非订单详情页的横幅与导航。
 - 本次验证：`tsc --noEmit` 0 错误、`vite build` 成功；无头浏览器 390px 确认注册页无商家名称输入、表单仅「店铺负责人」「联系电话」两项、空表单 2 项校验、填写后可进入第 2 步。本次未重打 APK、未做真机验收。
 - 本地 `frontend/src` 与 `.git-sync/apps/mobile/src` 已逐文件一致；`README.md`、`package.json`、`capacitor.config.ts`、`android/` 仍以远端为准，不用本地临时副本覆盖。
-- 2026-11-18 基线：新分支 `frontend/handoff-2026-11-18`，包含上一轮已提交但未推送的 `a0dc038 feat(mobile): 档口端先登录后入驻并支持我的信息修改`，以及本轮档口端首页工作台、注册页商家名称可改、退出后再进入必须重新登录等改动；远端 2026-11-17 分支头为 `1cc7f47`（用 GitHub API 核对）。
+- 2026-11-18 基线：新分支 `frontend/handoff-2026-11-18` 已推送，远端分支头 `a6cd08f docs(mobile): 记录 2026-11-18 基线、退出重登与注册名称验收`，其父为档口首页改版提交（本地等价提交 `9ab78df`，树 `4ba593a`），再往前是 2026-11-17 未推送的先登录后入驻改动（本地 `a0dc038`）；远端树与本地 `e5c9d24` 的树 `6916d6a` 完全一致，哈希差异来自 API 推送。本轮内容：档口端首页工作台、注册页商家名称可改、退出后再进入必须重新登录；远端 2026-11-17 分支头为 `1cc7f47`（用 GitHub API 核对）。
 - 本轮同时纳入并行会话已完成的改动：档口首页工作台 `pages/HomePage.tsx` 与 `#/merchant` 首页 tab、`merchant.css`/`login.css` 视觉改版与 7 张品牌/菜品图片、管理端 `admin-theme.css`、学生端订单页与 `shared/styles.css` 若干调整；这些改动在本地 `tsc` 与 `vite build` 下均通过。
 - **远端 `apps/mobile/android` 是正式安卓工程**：`versionCode 14`、`versionName "1.13"`，Manifest 已声明 `ACCESS_COARSE_LOCATION` / `ACCESS_FINE_LOCATION`，`capacitor.config.ts` 含 `android.allowMixedContent: true`。
 - **本地 `frontend/android` 与 `frontend/capacitor.config.ts` 是本次为出包新生成的临时模板**：`versionCode 2`、`versionName "0.1.0"`，未覆盖远端正式工程。禁止把本地 `android/` 整目录覆盖到远端 `apps/mobile/android`。

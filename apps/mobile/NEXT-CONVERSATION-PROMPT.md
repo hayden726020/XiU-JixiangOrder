@@ -39,7 +39,7 @@
 ## Git 基线
 
 - 远端：`https://github.com/hayden726020/XiU-JixiangOrder.git`，默认分支 `main`。
-- 远端基线分支：`frontend/baseline-2026-11-17`；专用分支 `frontend/handoff-2026-11-18` 为 2026-11-18 新基线（由 `1cc7f47` 之后继续，包含 `a0dc038 feat(mobile): 档口端先登录后入驻并支持我的信息修改` 与本轮提交）。上一轮 `frontend/handoff-2026-11-17` 远端头为 `1cc7f47`，勿强推覆盖。
+- 远端基线分支：`frontend/baseline-2026-11-17`；专用分支 `frontend/handoff-2026-11-18` 为 2026-11-18 新基线，已推送，远端头 `a6cd08f`（docs 提交），树 `6916d6a` 与本地 `e5c9d24` 一致；其父为档口首页改版提交（本地等价 `9ab78df`，树 `4ba593a`）。上一轮 `frontend/handoff-2026-11-17` 远端头为 `1cc7f47`，勿强推覆盖。
 - 远端历史里存在 `ef68433`/`fbbac94`/`d321d90` 三个同内容重复提交（GitHub API 推送产生）；不要再强推本地旧提交。
 - GitHub HTTPS 会间歇性超时或 `Connection was reset`；重试即可，或加 `-c http.version=HTTP/1.1`。本次 `github.com:443` 持续不可达而 `api.github.com` 可达，最终通过 GitHub REST API 上传变更树、创建提交并新建分支引用；远端与本地哈希不同但树一致。
 - 远端没有 `frontend/`；本地副本对应远端 `apps/mobile`。
