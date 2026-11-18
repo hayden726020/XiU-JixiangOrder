@@ -435,6 +435,9 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
             requestId: input.requestId,
             contactName: input.contactName,
             contactPhone: input.contactPhone,
+            shopName: input.shopName,
+            location: input.location,
+            description: input.description,
           },
         });
         return mapProfile(data);
@@ -700,7 +703,6 @@ function persistSampleProfile(profile: MerchantProfile): void {
   }
 }
 
-
 export function createMerchantSource(options: {
   mode?: 'sample' | 'real';
   scenario?: MerchantScenario;
@@ -893,13 +895,30 @@ export function createMerchantSource(options: {
       const contactPhone = input.contactPhone?.trim().replace(/[\s-]/g, '')
         || sampleProfile.merchant.contactPhone
         || '';
+      const merchant = {
+        ...sampleProfile.merchant,
+        contactName,
+        contactPhone,
+      };
+      const shop = sampleProfile.shop;
+      const shopName = input.shopName?.trim() || shop?.name || '';
+      const location = input.location?.trim() || shop?.location || '';
+      const descriptionText = input.description === undefined
+        ? shop?.description ?? null
+        : (input.description ?? '').trim();
+      const description = descriptionText && descriptionText.length > 0 ? descriptionText : null;
       sampleProfile = {
         ...sampleProfile,
-        merchant: {
-          ...sampleProfile.merchant,
-          contactName,
-          contactPhone,
-        },
+        merchant,
+        shop: shop
+          ? {
+            ...shop,
+            name: shopName,
+            location,
+            description,
+            version: shop.version + 1,
+          }
+          : null,
       };
       persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };

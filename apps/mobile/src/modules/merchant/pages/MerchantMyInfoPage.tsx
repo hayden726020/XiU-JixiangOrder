@@ -5,6 +5,7 @@ import type { Session } from '../../../shared/session';
 import type { MerchantProfile, MerchantSource } from '../data/types';
 import {
   validateMerchantContact,
+  validateShop,
   type OnboardingErrors,
 } from '../state/onboarding';
 
@@ -30,22 +31,30 @@ export default function MerchantMyInfoPage({
   onBack,
 }: MerchantMyInfoPageProps) {
   const merchant = profile?.merchant ?? null;
+  const shop = profile?.shop ?? null;
   const merchantName = merchant?.name ?? session?.user.displayName ?? '未注册商家';
   const storedPhone = merchant?.contactPhone ?? '';
   const phoneMasked = isMaskedPhone(storedPhone);
 
   const [contactName, setContactName] = useState(merchant?.contactName ?? '');
   const [phoneInput, setPhoneInput] = useState(phoneMasked ? '' : storedPhone);
+  const [shopName, setShopName] = useState(shop?.name ?? '');
+  const [location, setLocation] = useState(shop?.location ?? '');
+  const [description, setDescription] = useState(shop?.description ?? '');
   const [errors, setErrors] = useState<OnboardingErrors>({});
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const next = profile?.merchant ?? null;
-    setContactName(next?.contactName ?? '');
-    const phone = next?.contactPhone ?? '';
+    const nextMerchant = profile?.merchant ?? null;
+    const nextShop = profile?.shop ?? null;
+    setContactName(nextMerchant?.contactName ?? '');
+    const phone = nextMerchant?.contactPhone ?? '';
     setPhoneInput(isMaskedPhone(phone) ? '' : phone);
+    setShopName(nextShop?.name ?? '');
+    setLocation(nextShop?.location ?? '');
+    setDescription(nextShop?.description ?? '');
   }, [profile]);
 
   function info(text: string) {
@@ -75,12 +84,17 @@ export default function MerchantMyInfoPage({
       return;
     }
     const phoneChanged = phoneInput.trim().length > 0;
-    const check = validateMerchantContact({
+    const contactCheck = validateMerchantContact({
       contactName,
       contactPhone: phoneChanged ? phoneInput : phoneMasked ? null : '',
     });
-    if (!check.ok) {
-      setErrors(check.errors);
+    const shopCheck = shop ? validateShop({ shopName, location, description }) : null;
+    const nextErrors: OnboardingErrors = {
+      ...(contactCheck.ok ? {} : contactCheck.errors),
+      ...(shopCheck && !shopCheck.ok ? shopCheck.errors : {}),
+    };
+    if (Object.keys(nextErrors).length > 0 || !contactCheck.ok || (shopCheck && !shopCheck.ok)) {
+      setErrors(nextErrors);
       setFeedback(null);
       return;
     }
@@ -89,8 +103,15 @@ export default function MerchantMyInfoPage({
     try {
       const saved = await source.updateProfile({
         requestId: createRequestId('merchant-profile'),
-        contactName: check.value.contactName,
-        ...(check.value.contactPhone === null ? {} : { contactPhone: check.value.contactPhone }),
+        contactName: contactCheck.value.contactName,
+        ...(contactCheck.value.contactPhone === null ? {} : { contactPhone: contactCheck.value.contactPhone }),
+        ...(shop && shopCheck?.ok
+          ? {
+            shopName: shopCheck.value.shopName,
+            location: shopCheck.value.location,
+            description: shopCheck.value.description,
+          }
+          : {}),
       });
       if (!saved.ok) {
         if (saved.error.code === 'ONBOARDING_API_MISSING') {
@@ -107,8 +128,8 @@ export default function MerchantMyInfoPage({
       const nextPhone = saved.data.merchant?.contactPhone ?? '';
       setPhoneInput(isMaskedPhone(nextPhone) ? '' : nextPhone);
       info(mode === 'sample'
-        ? '我的信息已保存到本机样例数据，注册资料与「我的」页面会同步更新。'
-        : '我的信息已保存到服务端，「我的」页面与注册资料同步更新。');
+        ? '我的信息已保存到本机样例数据，入驻完成页与「我的」页面会同步更新。'
+        : '我的信息已保存到服务端，入驻完成页与「我的」页面同步更新。');
     } finally {
       setSaving(false);
     }
@@ -141,6 +162,8 @@ export default function MerchantMyInfoPage({
           <strong data-my-info-merchant-name>{merchantName}</strong>
           <p>商家名称跟随当前档口登录账号，不能单独修改。</p>
         </div>
+
+        <h3 className="merchant-my-info__section">个人信息</h3>
 
         <div className="merchant-my-info__field">
           <label htmlFor="merchant-my-info-name">店铺负责人</label>
@@ -186,6 +209,80 @@ export default function MerchantMyInfoPage({
             </p>
           )}
         </div>
+
+        {shop ? (
+          <>
+            <h3 className="merchant-my-info__section">店铺资料</h3>
+
+            <div className="merchant-my-info__field">
+              <label htmlFor="merchant-my-info-shop-name">店铺名称</label>
+              <input
+                id="merchant-my-info-shop-name"
+                value={shopName}
+                onChange={(event) => {
+                  setShopName(event.target.value);
+                  clearError('shopName');
+                  setFeedback(null);
+                }}
+                maxLength={30}
+                placeholder="店铺名称，2—30 个字符"
+                data-my-info-field="shopName"
+              />
+              {errors.shopName && (
+                <p className="merchant-my-info__error" role="alert" data-my-info-error="shopName">
+                  {errors.shopName}
+                </p>
+              )}
+            </div>
+
+            <div className="merchant-my-info__field">
+              <label htmlFor="merchant-my-info-location">档口位置</label>
+              <input
+                id="merchant-my-info-location"
+                value={location}
+                onChange={(event) => {
+                  setLocation(event.target.value);
+                  clearError('location');
+                  setFeedback(null);
+                }}
+                maxLength={50}
+                placeholder="例如：一食堂二楼 3 号档口"
+                data-my-info-field="location"
+              />
+              {errors.location && (
+                <p className="merchant-my-info__error" role="alert" data-my-info-error="location">
+                  {errors.location}
+                </p>
+              )}
+            </div>
+
+            <div className="merchant-my-info__field">
+              <label htmlFor="merchant-my-info-description">店铺简介（可选）</label>
+              <textarea
+                id="merchant-my-info-description"
+                value={description}
+                onChange={(event) => {
+                  setDescription(event.target.value);
+                  clearError('description');
+                  setFeedback(null);
+                }}
+                maxLength={100}
+                rows={3}
+                placeholder="最多 100 个字符"
+                data-my-info-field="description"
+              />
+              {errors.description && (
+                <p className="merchant-my-info__error" role="alert" data-my-info-error="description">
+                  {errors.description}
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <p className="merchant-my-info__notice" role="status">
+            当前账号尚未创建店铺；完成开店后，店铺名称、档口位置与店铺简介会显示在这里并可以修改。
+          </p>
+        )}
 
         <button
           type="submit"

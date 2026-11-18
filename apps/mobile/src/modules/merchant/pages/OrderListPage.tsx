@@ -1,4 +1,4 @@
-import { useState } from 'react';
+
 import OrderRow from '../components/OrderRow';
 import { DEMO_SCENARIOS } from '../data/sampleData';
 import type { MerchantOrder, MerchantScenario } from '../data/types';
@@ -14,6 +14,8 @@ interface OrderListPageProps {
   page: number;
   pageSize: number;
   total: number;
+  activeGroupKey: string;
+  onGroupChange: (groupKey: string) => void;
   onScenarioChange: (scenario: MerchantScenario) => void;
   onPageChange: (page: number) => void;
   onOpenOrder: (id: string) => void;
@@ -35,6 +37,8 @@ export default function OrderListPage({
   page,
   pageSize,
   total,
+  activeGroupKey,
+  onGroupChange,
   onScenarioChange,
   onPageChange,
   onOpenOrder,
@@ -45,7 +49,7 @@ export default function OrderListPage({
   lastRefreshedAt,
   autoRefreshSeconds,
 }: OrderListPageProps) {
-  const [activeGroupKey, setActiveGroupKey] = useState('new');
+
   const groups = groupOrders(orders, { includeEmpty: true });
   const activeGroup = groups.find((group) => group.key === activeGroupKey) ?? groups[0];
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -136,7 +140,7 @@ export default function OrderListPage({
                   type="button"
                   className={`merchant-status-chip${active ? ' merchant-status-chip--active' : ''}`}
                   aria-pressed={active}
-                  onClick={() => setActiveGroupKey(group.key)}
+                  onClick={() => onGroupChange(group.key)}
                   data-order-status={group.key}
                 >
                   <span className="merchant-status-chip__label">{group.label}</span>
@@ -177,34 +181,46 @@ export default function OrderListPage({
         </>
       )}
 
-      {!isSample && !loading && !error && total > 0 && (
-        <p className="hint">
-          档口共 {total} 笔订单，本页 {orders.length} 笔；点击查看详情。
-        </p>
+      {!loading && !error && total > 0 && (
+        <>
+          {!isSample && (
+            <p className="hint">档口共 {total} 笔订单，本页 {orders.length} 笔；点击查看详情。</p>
+          )}
+          {totalPages > 1 && (
+            <nav className="merchant-pager" aria-label="订单分页">
+              <button
+                type="button"
+                className="merchant-link-button"
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1}
+              >
+                上一页
+              </button>
+              <span className="merchant-pager__status">
+                第 {page} / {totalPages} 页 · 共 {total} 笔
+              </span>
+              <button
+                type="button"
+                className="merchant-link-button"
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages}
+              >
+                下一页
+              </button>
+            </nav>
+          )}
+        </>
       )}
 
-      {!loading && !error && totalPages > 1 && (
-        <nav className="merchant-pager" aria-label="订单分页">
-          <button
-            type="button"
-            className="merchant-link-button"
-            onClick={() => onPageChange(page - 1)}
-            disabled={page <= 1}
-          >
-            上一页
-          </button>
-          <span className="merchant-pager__status">
-            第 {page} / {totalPages} 页 · 共 {total} 笔
-          </span>
-          <button
-            type="button"
-            className="merchant-link-button"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages}
-          >
-            下一页
-          </button>
-        </nav>
+      {isSample && (
+        <button
+          type="button"
+          className="merchant-order-list__setup"
+          onClick={onOpenSetup}
+          data-open-onboarding
+        >
+          商家注册 / 开店
+        </button>
       )}
     </div>
   );

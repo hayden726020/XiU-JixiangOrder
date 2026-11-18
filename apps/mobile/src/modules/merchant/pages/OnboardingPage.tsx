@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createRequestId } from '../../../shared/requestId';
 import type { Session } from '../../../shared/session';
 import type { MerchantProfile, MerchantSource } from '../data/types';
@@ -30,7 +30,6 @@ interface OnboardingPageProps {
   profileLoading: boolean;
   profileError: string | null;
   onProfileChange: (profile: MerchantProfile) => void;
-
   onBack: () => void;
   onCancel: () => void;
   onComplete: () => void;
@@ -111,7 +110,6 @@ export default function OnboardingPage({
   profileLoading,
   profileError,
   onProfileChange,
-
   onBack,
   onCancel,
   onComplete,
@@ -141,6 +139,17 @@ export default function OnboardingPage({
   const serverMerchant = profile?.merchant ?? null;
   const serverShop = profile?.shop ?? null;
   const serverCompleted = profile?.onboardingStep === 'SHOP_CREATED';
+
+  const merchantNamePrefilled = useRef(false);
+  useEffect(() => {
+    if (merchantNamePrefilled.current || profileLoading || serverMerchant !== null) return;
+    merchantNamePrefilled.current = true;
+    setMerchant((current) => (
+      current.merchantName.trim().length > 0
+        ? current
+        : { ...current, merchantName: accountMerchantName }
+    ));
+  }, [profileLoading, serverMerchant, accountMerchantName]);
 
   const profileHint = mode !== 'real' || !profile
     ? null
@@ -185,22 +194,6 @@ export default function OnboardingPage({
       setCompleted({ merchant: profile.merchant !== null, shop: true });
     }
   }, [profile]);
-
-  useEffect(() => {
-    if (serverMerchant) {
-      setMerchant({
-        merchantName: serverMerchant.name,
-        contactName: serverMerchant.contactName ?? '',
-        contactPhone: serverMerchant.contactPhone ?? '',
-      });
-      return;
-    }
-    setMerchant((current) => (
-      current.merchantName.trim().length > 0
-        ? current
-        : { ...current, merchantName: accountMerchantName }
-    ));
-  }, [serverMerchant, accountMerchantName]);
 
   function clearError(field: OnboardingField) {
     setErrors((current) => {
@@ -341,7 +334,6 @@ export default function OnboardingPage({
   if (profileLoading || (mode === 'sample' && profile === null && profileError === null)) {
     return (
       <div className="merchant-view onboarding-page">
-
         <OnboardingHero />
         <OnboardingWall />
         <section className="onboarding-overview" data-onboarding-loading="true">
@@ -359,7 +351,6 @@ export default function OnboardingPage({
   if (serverCompleted && profile?.merchant && profile.shop) {
     return (
       <div className="merchant-view onboarding-page">
-
         <OnboardingHero />
         <OnboardingWall />
         <section className="onboarding-overview onboarding-completed" data-onboarding-completed="true">
@@ -429,7 +420,6 @@ export default function OnboardingPage({
 
   return (
     <div className="merchant-view onboarding-page">
-
       <OnboardingHero />
       <OnboardingWall />
       <section className="onboarding-overview" aria-labelledby="onboarding-title">
@@ -533,7 +523,7 @@ return (
               noValidate
             >
               <p className="hint" data-field-hint="merchantName">
-                商家名称按这里填写的内容显示在「我的」页面，默认可直接使用档口账号「{accountMerchantName}」。
+                商家名称默认为档口账号「{accountMerchantName}」，可直接修改；它会显示在「我的」页面。
               </p>
               <div className="onboarding-field">
                 <label htmlFor="onboarding-merchant-name">商家名称</label>
@@ -542,8 +532,7 @@ return (
                   value={merchant.merchantName}
                   onChange={(event) => updateMerchant('merchantName', event.target.value)}
                   maxLength={20}
-                  placeholder={`例如：${accountMerchantName}`}
-                  autoComplete="organization"
+                  placeholder="商家名称，2—20 个字符"
                   data-field="merchantName"
                 />
                 {errors.merchantName && <p className="field-error" role="alert" data-error="merchantName">{errors.merchantName}</p>}
@@ -610,7 +599,7 @@ return (
           <p className="onboarding-summary" data-merchant-preview>
             {serverMerchant !== null
               ? `商家：${serverMerchant.name} · 负责人 ${serverMerchant.contactName ?? '未填写'} · ${serverMerchant.contactPhone ?? '未填写'}`
-              : `商家：${merchant.merchantName} · 负责人 ${merchant.contactName} · ${merchant.contactPhone}`}
+              : `商家：${merchant.merchantName || accountMerchantName} · 负责人 ${merchant.contactName} · ${merchant.contactPhone}`}
           </p>
           <div className="onboarding-field">
             <label htmlFor="onboarding-shop-name">店铺名称</label>

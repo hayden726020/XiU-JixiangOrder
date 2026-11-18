@@ -20,6 +20,7 @@ import type {
   SourceResult,
 } from './data/types';
 import MenuPage from './pages/MenuPage';
+import HomePage from './pages/HomePage';
 import MerchantLoginPage from './pages/MerchantLoginPage';
 import MerchantMyInfoPage from './pages/MerchantMyInfoPage';
 import OnboardingPage from './pages/OnboardingPage';
@@ -43,11 +44,30 @@ import { logout } from '../../shared/auth';
 
 import { getApiBaseInfo } from '../../shared/config';
 import { createRequestId } from '../../shared/requestId';
-import { getSession, subscribeSession, type Session } from '../../shared/session';
+import { getSession, subscribeSession, clearSession, type Session } from '../../shared/session';
 import merchantAvatar from './assets/merchant-avatar-default.webp';
 import './merchant.css';
 
 type DataMode = 'sample' | 'real';
+
+const DATA_MODE_STORAGE_KEY = 'merchant-data-mode-v1';
+
+function readStoredDataMode(): DataMode | null {
+  try {
+    const raw = window.localStorage.getItem(DATA_MODE_STORAGE_KEY);
+    return raw === 'real' || raw === 'sample' ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistDataMode(next: DataMode): void {
+  try {
+    window.localStorage.setItem(DATA_MODE_STORAGE_KEY, next);
+  } catch {
+    // 存储不可用时只影响下次进入的默认模式，不影响本次会话。
+  }
+}
 
 const ORDERS_PAGE_SIZE = 20;
 const AUTO_REFRESH_MS = 15000;
@@ -62,6 +82,7 @@ const MY_INFO_ROUTE = `${MERCHANT_ROUTE}/my/info`;
 const WALLET_ROUTE = `${MERCHANT_ROUTE}/wallet`;
 
 type View =
+  | { name: 'home' }
   | { name: 'list' }
   | { name: 'detail'; orderId: string }
   | { name: 'menu' }
@@ -89,7 +110,7 @@ function orderIdFromRoute(route: string): string | null {
 function viewFromRoute(): View {
   const route = merchantRoute();
   if (route === SETUP_ROUTE) return { name: 'setup' };
-  if (route === MERCHANT_ROUTE) return { name: 'setup' };
+  if (route === MERCHANT_ROUTE) return { name: 'home' };
   if (route === SOURCE_ROUTE) return { name: 'source' };
   if (route === MENU_ROUTE) return { name: 'menu' };
   if (route === ORDERS_ROUTE) return { name: 'list' };
@@ -102,10 +123,12 @@ function viewFromRoute(): View {
 }
 
 export default function MerchantHome() {
-  const initialMode: DataMode = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).get('mode') === 'real'
-    ? 'real'
-    : 'sample';
+  const urlMode = import.meta.env.DEV
+    ? new URLSearchParams(window.location.search).get('mode')
+    : null;
+  const initialMode: DataMode = urlMode === 'real' || urlMode === 'sample'
+    ? urlMode
+    : (readStoredDataMode() ?? 'sample');
   const [mode, setMode] = useState<DataMode>(initialMode);
   const [scenario, setScenario] = useState<MerchantScenario>('normal');
   const [view, setView] = useState<View>(viewFromRoute);
@@ -131,7 +154,10 @@ export default function MerchantHome() {
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionRequestIds = useRef(new Map<string, string>());
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
+  const [homeOrders, setHomeOrders] = useState<MerchantOrder[]>([]);
+  const [homeOrdersLoading, setHomeOrdersLoading] = useState(false);
   const [orderPage, setOrderPage] = useState(1);
+  const [orderGroupKey, setOrderGroupKey] = useState('new');
   const [orderPageInfo, setOrderPageInfo] = useState({ page: 1, pageSize: ORDERS_PAGE_SIZE, total: 0 });
   const [menu, setMenu] = useState<MenuDay | null>(null);
   const [slots, setSlots] = useState<SlotDay | null>(null);
@@ -162,6 +188,10 @@ export default function MerchantHome() {
 
 
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
+
+  useEffect(() => {
+    persistDataMode(mode);
+  }, [mode]);
 
   useEffect(() => {
     if (view.name !== 'wallet') return;
@@ -201,7 +231,7 @@ export default function MerchantHome() {
         setView({ name: 'source' });
         setNotice(null);
       } else if (route === MERCHANT_ROUTE) {
-        setView({ name: 'setup' });
+        setView({ name: 'home' });
         setNotice(null);
       } else if (route === ORDERS_ROUTE) {
         setView({ name: 'list' });
@@ -223,11 +253,11 @@ export default function MerchantHome() {
   function handleMerchantLoggedIn() {
     clearActionState();
     setNotice(null);
-    setView({ name: 'setup' });
+    setView({ name: 'home' });
     setOrderPage(1);
     setDataVersion((current) => current + 1);
-    if (merchantRoute() !== SETUP_ROUTE) {
-      window.location.hash = SETUP_ROUTE;
+    if (merchantRoute() !== MERCHANT_ROUTE) {
+      window.location.hash = MERCHANT_ROUTE;
     }
   }
 
@@ -240,6 +270,8 @@ export default function MerchantHome() {
       } catch {
         // logout 已在 finally 清除本地会话；服务端不可达时同样回角色入口。
       }
+    } else {
+      clearSession();
     }
     window.location.hash = '/';
   }
@@ -314,6 +346,22 @@ export default function MerchantHome() {
       alive = false;
     };
   }, [source, menuDate, orderPage, session?.user.id, mode, merchantLoggedIn, dataVersion]);
+
+  useEffect(() => {
+    if (view.name !== 'home') return;
+    if (mode === 'real' && !merchantLoggedIn) return;
+    let alive = true;
+    setHomeOrdersLoading(true);
+    void (async () => {
+      const result = await source.getOrders(1, 100);
+      if (!alive) return;
+      if (result.ok) setHomeOrders(result.data.orders);
+      setHomeOrdersLoading(false);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [view.name, source, mode, merchantLoggedIn, dataVersion, session?.user.id]);
 
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
@@ -427,12 +475,18 @@ export default function MerchantHome() {
 
   function backToList() {
     clearActionState();
+    setOrderGroupKey('new');
     if (merchantRoute() !== ORDERS_ROUTE) {
       window.location.hash = ORDERS_ROUTE;
     }
     restoreListScroll.current = true;
     setView({ name: 'list' });
     setNotice(null);
+  }
+
+  function openOrders(groupKey: string) {
+    backToList();
+    setOrderGroupKey(groupKey);
   }
 
   function openMenu() {
@@ -443,6 +497,12 @@ export default function MerchantHome() {
     setNotice(null);
   }
 
+  function openHome() {
+    clearActionState();
+    window.location.hash = MERCHANT_ROUTE;
+    setView({ name: 'home' });
+    setNotice(null);
+  }
 
   function openSetup() {
     clearActionState();
@@ -576,7 +636,7 @@ export default function MerchantHome() {
   useEffect(() => {
     if (view.name !== 'source') return;
     if (profile === null || profile.merchant) return;
-    window.location.hash = SETUP_ROUTE;
+    window.location.hash = MERCHANT_ROUTE;
     setView({ name: 'setup' });
   }, [view.name, profile]);
 
@@ -783,7 +843,7 @@ export default function MerchantHome() {
   }
 
   return (
-    <section className={`module-panel merchant-panel${view.name === 'list' ? ' merchant-panel--order-list' : ''}${view.name === 'detail' && activeOrder?.status === 'NEW' ? ' merchant-panel--new-order-detail' : ''}${view.name === 'menu' && mode === 'sample' ? ' merchant-panel--sample-menu' : ''}${view.name === 'setup' ? ' merchant-panel--onboarding' : ''}${view.name === 'source' ? ' merchant-panel--source' : ''}`}>
+    <section data-merchant-view={view.name} className={`module-panel merchant-panel${view.name === 'list' ? ' merchant-panel--order-list' : ''}${view.name === 'detail' && activeOrder?.status === 'NEW' ? ' merchant-panel--new-order-detail' : ''}${view.name === 'menu' && mode === 'sample' ? ' merchant-panel--sample-menu' : ''}${view.name === 'setup' ? ' merchant-panel--onboarding' : ''}${view.name === 'source' ? ' merchant-panel--source' : ''}`}>
       <div className="merchant-source">
         <span className="merchant-source__label">数据源</span>
         <button
@@ -802,7 +862,7 @@ export default function MerchantHome() {
         </button>
       </div>
 
-      {mode === 'sample' || isFlowView ? null : (
+      {mode === 'sample' || isFlowView || view.name === 'home' ? null : (
         <div className="merchant-real-banner" role="status">
           <strong>真实数据 · 演示服务（DRAFT v0.3 联调候选）</strong>
           <span>服务地址：{apiBase.baseUrl ?? '未配置'}{apiBase.problem ? `（${apiBase.problem}）` : ''}</span>
@@ -833,6 +893,19 @@ export default function MerchantHome() {
         </div>
       )}
 
+      {view.name === 'home' && (
+        <HomePage
+          mode={mode}
+          statDate={mode === 'sample' ? menuDate : today}
+          profile={profile}
+          orders={homeOrders.length > 0 ? homeOrders : orders}
+          slots={slots}
+          loading={homeOrdersLoading || loading}
+          onOpenOrders={openOrders}
+          onOpenMenu={openMenu}
+        />
+      )}
+
       {view.name === 'list' && (
         <OrderListPage
           orders={orders}
@@ -844,6 +917,8 @@ export default function MerchantHome() {
           page={orderPageInfo.page}
           pageSize={orderPageInfo.pageSize}
           total={orderPageInfo.total}
+          activeGroupKey={orderGroupKey}
+          onGroupChange={setOrderGroupKey}
           onScenarioChange={changeScenario}
           onPageChange={changeOrderPage}
           onOpenOrder={openOrder}
@@ -1002,8 +1077,19 @@ export default function MerchantHome() {
         />
       )}
 
-      {(merchantLoggedIn || mode === 'sample') && !isFlowView && (
+      {(merchantLoggedIn || mode === 'sample') && view.name !== 'source' && (
       <nav className='merchant-tabbar' aria-label='底部导航'>
+        <button
+          type='button'
+          className={`merchant-tab-item${view.name === 'home' ? ' is-active' : ''}`}
+          onClick={openHome}
+        >
+          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+            <path d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' />
+            <polyline points='9 22 9 12 15 12 15 22' />
+          </svg>
+          <span>首页</span>
+        </button>
         <button
           type='button'
           className={`merchant-tab-item${view.name === 'menu' ? ' is-active' : ''}`}

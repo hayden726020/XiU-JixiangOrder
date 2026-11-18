@@ -4,7 +4,7 @@ import SystemCheck from './SystemCheck';
 
 const HOME_ROUTE = '/';
 const CHECK_ROUTE = '/system-check';
-const MERCHANT_TAB_ROUTES = ['/merchant/orders', '/merchant/menu', '/merchant/my'];
+const MERCHANT_TAB_ROUTES = ['/merchant', '/merchant/orders', '/merchant/menu', '/merchant/my'];
 
 function readRoute(): string {
   const hash = window.location.hash.replace(/^#/, '');

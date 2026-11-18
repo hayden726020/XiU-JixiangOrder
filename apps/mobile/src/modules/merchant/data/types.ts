@@ -244,6 +244,9 @@ export interface MerchantProfileUpdateInput {
   requestId: string;
   contactName?: string;
   contactPhone?: string;
+  shopName?: string;
+  location?: string;
+  description?: string | null;
 }
 
 export interface CreateShopInput {
