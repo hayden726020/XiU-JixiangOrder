@@ -29,6 +29,20 @@ type DetailFrom = 'menu' | 'orders';
 
 type OrdersBackTo = 'shop' | 'menu' | 'profile';
 
+const VIEW_HASH: Record<StudentView, string> = {
+  shop: '#/student',
+  menu: '#/student/menu',
+  slot: '#/student/slot',
+  confirm: '#/student/confirm',
+  order: '#/student/order',
+  orders: '#/student/orders',
+  profile: '#/student/profile',
+};
+
+function viewHash(view: StudentView): string {
+  return VIEW_HASH[view];
+}
+
 function previewSlotRequested(): boolean {
   if (new URLSearchParams(window.location.search).get('preview') === 'slot') {
     return true;
@@ -157,19 +171,31 @@ function StudentHomeApp({
       window.history.back();
       return;
     }
-    window.history.pushState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
+    window.history.pushState(
+      { module: 'student', studentView: next, shopTab: nextShopTab },
+      '',
+      viewHash(next),
+    );
     setView(next);
     window.scrollTo(0, 0);
   }
 
   function replaceTo(next: StudentView, nextShopTab: 'home' | 'order' = shopTab): void {
-    window.history.replaceState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
+    window.history.replaceState(
+      { module: 'student', studentView: next, shopTab: nextShopTab },
+      '',
+      viewHash(next),
+    );
     setView(next);
     window.scrollTo(0, 0);
   }
 
   useEffect(() => {
-    window.history.replaceState({ module: 'student', studentView: 'shop', shopTab: 'home' }, '');
+    window.history.replaceState(
+      { module: 'student', studentView: 'shop', shopTab: 'home' },
+      '',
+      viewHash('shop'),
+    );
     const onPopState = (event: PopStateEvent) => {
       const state = event.state as {
         module?: string;
