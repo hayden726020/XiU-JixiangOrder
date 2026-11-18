@@ -57,6 +57,12 @@ import {
   type SpecialBusinessDay,
 } from './state/serviceSettings';
 import { playNewOrderChime, unlockNotificationSound } from './utils/notifySound';
+import { readMerchantAvatar } from './utils/avatarImage';
+import {
+  clearMerchantAvatar,
+  loadMerchantAvatar,
+  saveMerchantAvatar,
+} from './state/merchantAvatar';
 import {
   loadPackagingFeeSetting,
   parsePackagingFeeText,
@@ -95,6 +101,8 @@ import './merchant.v2-fix.css';
 import './merchant.hours.css';
 import './merchant.v5.css';
 import './merchant.v7.css';
+
+import './merchant.avatar.css';
 
 type DataMode = 'sample' | 'real';
 
@@ -222,6 +230,12 @@ export default function MerchantHome() {
   const [packagingSetting, setPackagingSetting] = useState<PackagingFeeSetting>(
     () => loadPackagingFeeSetting(initialMode),
   );
+  const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(
+    () => loadMerchantAvatar(initialMode),
+  );
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarFeedback, setAvatarFeedback] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [packagingOpen, setPackagingOpen] = useState(false);
   const [packagingDraftEnabled, setPackagingDraftEnabled] = useState(false);
   const [packagingFeeInput, setPackagingFeeInput] = useState('1.00');
@@ -294,6 +308,11 @@ export default function MerchantHome() {
     setPackagingDraftEnabled(stored.enabled);
     setPackagingFeeInput((stored.feeFen / 100).toFixed(2));
     setPackagingFeedback(null);
+  }, [mode]);
+
+  useEffect(() => {
+    setAvatarDataUrl(loadMerchantAvatar(mode));
+    setAvatarFeedback(null);
   }, [mode]);
 
   useEffect(() => {
@@ -548,6 +567,8 @@ export default function MerchantHome() {
     })
     : null;
   const myShopName = profile?.shop?.name ?? merchantName ?? accountDisplayName ?? '我的档口';
+  const avatarNote = avatarFeedback?.text
+    ?? (avatarDataUrl ? '头像只保存在本机浏览器，尚未同步到服务端。' : null);
   const hasShop = Boolean(profile?.shop);
   const myOpenSlots = (mySlots?.slots ?? []).filter((slot) => slot.enabled);
   const myIsOpen = myOpenSlots.length > 0;
@@ -992,6 +1013,37 @@ export default function MerchantHome() {
     window.location.hash = MY_INFO_ROUTE;
     setView({ name: 'my-info' });
     setNotice(null);
+  }
+
+  function openAvatarPicker() {
+    if (avatarBusy) return;
+    avatarInputRef.current?.click();
+  }
+
+  async function handleAvatarFile(file: File | null) {
+    if (!file || avatarBusy) return;
+    setAvatarBusy(true);
+    setAvatarFeedback(null);
+    const result = await readMerchantAvatar(file);
+    if (!result.ok) {
+      setAvatarBusy(false);
+      setAvatarFeedback({ tone: 'error', text: result.error });
+      return;
+    }
+    const saved = saveMerchantAvatar(mode, result.dataUrl);
+    setAvatarBusy(false);
+    if (!saved.ok) {
+      setAvatarFeedback({ tone: 'error', text: saved.error });
+      return;
+    }
+    setAvatarDataUrl(result.dataUrl);
+    setAvatarFeedback({ tone: 'info', text: '已保存到本机浏览器，尚未同步到服务端。' });
+  }
+
+  function resetAvatar() {
+    clearMerchantAvatar(mode);
+    setAvatarDataUrl(null);
+    setAvatarFeedback({ tone: 'info', text: '已恢复默认头像。' });
   }
 
   function togglePackagingPanel() {
@@ -1570,8 +1622,38 @@ export default function MerchantHome() {
 
           </header>
           <div className='merchant-my__card'>
-            <div className='merchant-my__avatar'>
-              <img src={merchantAvatar} alt='商家头像' />
+            <div className='merchant-my__avatar-block'>
+              <button
+                type='button'
+                className='merchant-my__avatar'
+                onClick={openAvatarPicker}
+                disabled={avatarBusy}
+                aria-label={avatarDataUrl ? '更换店铺头像' : '设置店铺头像'}
+                data-my-avatar-button
+              >
+                <img src={avatarDataUrl ?? merchantAvatar} alt='商家头像' />
+              </button>
+              <button
+                type='button'
+                className='merchant-my__avatar-edit'
+                onClick={openAvatarPicker}
+                disabled={avatarBusy}
+                data-my-avatar-edit
+              >
+                {avatarBusy ? '处理中…' : '换头像'}
+              </button>
+              <input
+                ref={avatarInputRef}
+                className='merchant-my__avatar-input'
+                type='file'
+                accept='image/jpeg,image/png,image/webp'
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  event.target.value = '';
+                  void handleAvatarFile(file);
+                }}
+                data-my-avatar-input
+              />
             </div>
             <div className='merchant-my__identity'>
               <div className='merchant-my__name-row'>
@@ -1587,6 +1669,28 @@ export default function MerchantHome() {
               </small>
             </div>
           </div>
+
+          {avatarNote && (
+            <p
+              className={`merchant-my__avatar-note${avatarFeedback?.tone === 'error' ? ' is-error' : ''}`}
+              role={avatarFeedback?.tone === 'error' ? 'alert' : 'status'}
+              data-my-avatar-note
+              data-feedback-tone={avatarFeedback?.tone ?? 'info'}
+            >
+              <span>{avatarNote}</span>
+              {avatarDataUrl && (
+                <button
+                  type='button'
+                  className='merchant-my__avatar-reset'
+                  onClick={resetAvatar}
+                  disabled={avatarBusy}
+                  data-my-avatar-reset
+                >
+                  恢复默认
+                </button>
+              )}
+            </p>
+          )}
 
           <div className='merchant-my__group' data-my-profile>
             <h3 className='merchant-my__group-title'>
@@ -1895,8 +1999,8 @@ export default function MerchantHome() {
               </div>
               <p className='merchant-my__note'>
                 {mode === 'sample'
-                  ? '样例菜单、库存与订单保存在当前页面内存，刷新后还原；菜品图片与口味选项保存在本机浏览器。'
-                  : '菜单、订单与账号资料来自演示服务；菜品图片与口味选项暂存在本机，尚未同步到服务端。'}
+                  ? '样例菜单、库存与订单保存在当前页面内存，刷新后还原；菜品图片、口味选项与头像保存在本机浏览器。'
+                  : '菜单、订单与账号资料来自演示服务；菜品图片、口味选项与头像暂存在本机，尚未同步到服务端。'}
               </p>
             </div>
           </details>

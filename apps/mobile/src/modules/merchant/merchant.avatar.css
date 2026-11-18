@@ -1,0 +1,83 @@
+.app-shell--merchant .merchant-my__avatar-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.app-shell--merchant button.merchant-my__avatar {
+  padding: 0;
+  border: 1px solid var(--m-brand-line);
+  background: var(--m-surface-2);
+  cursor: pointer;
+}
+
+.app-shell--merchant button.merchant-my__avatar:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.app-shell--merchant button.merchant-my__avatar:focus-visible {
+  outline: 2px solid var(--m-brand);
+  outline-offset: 2px;
+}
+
+.app-shell--merchant .merchant-my__avatar-edit {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-card);
+  color: var(--m-brand-ink);
+  font-size: 0.66rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-shell--merchant .merchant-my__avatar-edit:hover:not(:disabled) {
+  background: var(--m-surface-2);
+}
+
+.app-shell--merchant .merchant-my__avatar-edit:disabled {
+  cursor: default;
+  color: var(--m-muted);
+}
+
+.app-shell--merchant .merchant-my__avatar-input {
+  display: none;
+}
+
+.app-shell--merchant .merchant-my__avatar-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0 0.25rem;
+  color: var(--m-muted);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.app-shell--merchant .merchant-my__avatar-note.is-error {
+  color: #b3261e;
+}
+
+.app-shell--merchant .merchant-my__avatar-reset {
+  margin-left: auto;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--m-muted);
+  font-size: 0.66rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-shell--merchant .merchant-my__avatar-reset:hover {
+  background: var(--m-surface-2);
+  color: var(--m-ink);
+}
