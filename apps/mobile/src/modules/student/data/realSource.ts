@@ -1,5 +1,6 @@
 import { apiRequest, type ApiRequestOptions } from '../../../shared/apiClient';
 import type {
+  CancelOrderInput,
   CreateOrderInput,
   CrowdReference,
   DemoScenario,
@@ -39,7 +40,7 @@ function defaultRequest<T>(path: string, options?: ApiRequestOptions): Promise<T
 function orderBody(input: CreateOrderInput): Record<string, unknown> {
   return {
     requestId: input.requestId,
-    items: input.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
+    items: input.items.map((item) => ({ ...item })),
     slotId: input.slotId,
     diningMode: input.diningMode,
     ...(input.remark ? { remark: input.remark } : {}),
@@ -128,6 +129,29 @@ export function createRealStudentSource(options: RealSourceOptions = {}): Studen
     async listOrders(): Promise<StudentOrder[]> {
       const payload = await request<unknown>('/orders');
       return mapOrdersResponse(payload, { where: '订单列表' });
+    },
+
+    async cancelOrder(id: string, input: CancelOrderInput): Promise<StudentOrder> {
+      if (typeof id !== 'string' || id.trim() === '') {
+        throw apiError('VALIDATION_ERROR', '订单编号不能为空。', false);
+      }
+      if (
+        typeof input?.requestId !== 'string' ||
+        input.requestId.trim() === '' ||
+        !Number.isInteger(input.expectedVersion)
+      ) {
+        throw apiError('VALIDATION_ERROR', '取消请求缺少请求号或订单版本。', false);
+      }
+      const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
+      const payload = await request<unknown>(`/orders/${encodeURIComponent(id)}/cancel`, {
+        method: 'POST',
+        body: {
+          requestId: input.requestId,
+          expectedVersion: input.expectedVersion,
+          ...(reason ? { reason } : {}),
+        },
+      });
+      return mapOrderResponse(payload, { demo: false, where: '取消响应' });
     },
 
     setScenario(): DemoScenario {

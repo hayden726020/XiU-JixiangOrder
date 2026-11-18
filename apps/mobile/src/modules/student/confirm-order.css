@@ -444,6 +444,18 @@
   overflow-wrap: anywhere;
 }
 
+.confirm-item__edit {
+  align-self: flex-start;
+  margin-top: 0.24rem;
+  padding: 0.16rem 0.55rem;
+  border: 1px dashed #c99452;
+  border-radius: 0.38rem;
+  background: #fff6e6;
+  color: #8a4a0f;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .confirm-item__qty {
   margin-top: 0.16rem;
   display: inline-flex;

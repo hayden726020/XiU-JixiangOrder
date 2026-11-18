@@ -227,6 +227,7 @@ export const CROWD_REFERENCE: Record<string, CrowdReference> = {
 
 export const DEMO_ORDER_001: StudentOrder = {
   id: 'demo-order-001',
+  orderNo: 1,
   merchantId: 'demo-merchant-01',
   merchantName: '一食堂·家常档',
   items: [{ dishId: 'demo-dish-01', name: '演示鸡肉饭', quantity: 1, unitPriceFen: 1800 }],
@@ -250,6 +251,7 @@ export const DEMO_ORDER_001: StudentOrder = {
 
 export const DEMO_ORDER_CANCEL_PENDING: StudentOrder = {
   id: 'demo-order-cancel-001',
+  orderNo: 1,
   merchantId: 'demo-merchant-03',
   merchantName: '风味小炒',
   items: [{ dishId: 'demo-dish-chicken', name: '黑椒鸡腿饭', quantity: 1, unitPriceFen: 1400 }],
@@ -273,6 +275,7 @@ export const DEMO_ORDER_CANCEL_PENDING: StudentOrder = {
 
 export const DEMO_ORDER_READY_001: StudentOrder = {
   id: 'demo-order-ready-001',
+  orderNo: 2,
   merchantId: 'demo-merchant-03',
   merchantName: '风味小炒',
   items: [{ dishId: 'demo-dish-chicken', name: '黑椒鸡腿饭', quantity: 1, unitPriceFen: 1400 }],
@@ -296,6 +299,7 @@ export const DEMO_ORDER_READY_001: StudentOrder = {
 
 export const DEMO_ORDER_PREPARING_002: StudentOrder = {
   id: 'demo-order-prep-002',
+  orderNo: 1,
   merchantId: 'demo-merchant-02',
   merchantName: '面食档',
   items: [{ dishId: 'demo-dish-beef-noodle', name: '红烧牛肉面', quantity: 1, unitPriceFen: 1600 }],
@@ -319,6 +323,7 @@ export const DEMO_ORDER_PREPARING_002: StudentOrder = {
 
 export const DEMO_ORDER_COMPLETED_003: StudentOrder = {
   id: 'demo-order-done-003',
+  orderNo: 1,
   merchantId: 'demo-merchant-01',
   merchantName: '大众窗口',
   items: [{ dishId: 'demo-dish-tomato-egg', name: '番茄炒蛋饭', quantity: 1, unitPriceFen: 1200 }],
@@ -360,6 +365,9 @@ export function toDishDto(dish: SampleDish, date: string): DishDto {
     unitPriceFen: dish.unitPriceFen,
     availableQuantity: dish.availability[date] ?? 0,
     onSale: dish.onSale[date] === true,
+    flavorGroups: [],
+    sides: [],
+    addOns: [],
   };
 }
 

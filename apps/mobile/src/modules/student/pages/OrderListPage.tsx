@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SourceError, StudentOrder, StudentSource } from '../types';
 import { toSourceError } from '../types';
 import { toOrderListErrorView } from '../utils/orderListView';
+import { orderNoText } from '../utils/orderStatusView';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import LoginGuide from '../components/LoginGuide';
 import OrderMenuIcon from '../components/OrderMenuIcons';
@@ -66,7 +67,7 @@ export default function OrderListPage({ source, onBack, onOpenOrder, onGoToHome,
     .filter((order) => inFilter(order, filter))
     .filter((order) => {
       const q = query.trim().toLocaleLowerCase();
-      return !q || [order.id, order.merchantName ?? '', ...order.items.map((item) => item.name)]
+      return !q || [order.id, String(order.orderNo ?? ''), order.merchantName ?? '', ...order.items.map((item) => item.name)]
         .some((value) => value.toLocaleLowerCase().includes(q));
     }), [orders, filter, query]);
   const progressCount = orders.filter((order) => inFilter(order, 'progress')).length;
@@ -96,7 +97,7 @@ export default function OrderListPage({ source, onBack, onOpenOrder, onGoToHome,
       {!realLoggedOut && status === 'loading' ? <p className="meal-orders__state" role="status">正在读取订单…</p> : null}
       {!realLoggedOut && status === 'error' && errorView ? <div className="meal-orders__state meal-orders__state--error" role="alert"><p>{errorView.message}</p>{errorView.action === 'login' ? <button type="button" onClick={() => { window.location.hash = '/system-check'; }}>去公共入口登录</button> : <button type="button" onClick={() => setReloadToken((value) => value + 1)}>重新读取</button>}</div> : null}
       {!realLoggedOut && status === 'empty' ? <div className="meal-orders__state"><p>还没有订单，去挑一份喜欢的餐吧。</p><button type="button" onClick={onGoToShop || onBack}>去点餐</button></div> : null}
-      {!realLoggedOut && status === 'ready' ? <main className="meal-orders__cards" aria-label="订单列表">{visibleOrders.length ? visibleOrders.map((order) => <OrderTicketCard key={order.id} order={order} mode={source.mode} onOpenOrder={onOpenOrder} onAskMerchant={(kind, selected) => setNotice(kind === 'remind' ? `暂无在线催单服务。请凭订单号 ${selected.id} 到 ${selected.merchantName || '档口'} 咨询。` : `请凭订单号 ${selected.id} 到 ${selected.merchantName || '档口'} 联系商家。`)} />) : <div className="meal-orders__state">没有符合条件的订单</div>}</main> : null}
+      {!realLoggedOut && status === 'ready' ? <main className="meal-orders__cards" aria-label="订单列表">{visibleOrders.length ? visibleOrders.map((order) => <OrderTicketCard key={order.id} order={order} mode={source.mode} onOpenOrder={onOpenOrder} onAskMerchant={(kind, selected) => setNotice(kind === 'remind' ? `暂无在线催单服务。请凭订单号 ${orderNoText(selected)} 到 ${selected.merchantName || '档口'} 咨询。` : `请凭订单号 ${orderNoText(selected)} 到 ${selected.merchantName || '档口'} 联系商家。`)} />) : <div className="meal-orders__state">没有符合条件的订单</div>}</main> : null}
     </div>
     <nav className="meal-orders__nav" aria-label="学生端导航">
       <button type="button" onClick={onGoToHome || onGoToShop || onBack}><OrderMenuIcon name="home" size={27} /><span>首页</span></button>

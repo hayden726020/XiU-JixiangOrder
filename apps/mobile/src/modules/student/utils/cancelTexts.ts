@@ -28,7 +28,7 @@ export const CANCEL_REJECTED_TEXT = '档口未通过取消申请，订单继续�
 
 export const CANCEL_DECISION_MISSING = '档口未填写理由';
 
-export const CANCEL_SAMPLE_TEXT = '样例模式不提供真实取消；仅展示规则与结果。';
+export const CANCEL_SAMPLE_TEXT = '样例模式仅在本地模拟取消，不会调用服务端。';
 
 export const CANCEL_INVALID_TEXT = '订单状态与取消申请不一致，暂不提供操作。';
 

@@ -11,6 +11,10 @@ import { toOrderShopView, type OrderShopView } from './orderShopView';
 
 const STEPS = ['已下单', '已接单', '制作中', '可取餐', '已完成'];
 
+export function orderNoText(order: Pick<StudentOrder, 'orderNo' | 'id'>): string {
+  return typeof order.orderNo === 'number' ? String(order.orderNo) : order.id;
+}
+
 const STATUS_VIEW: Record<OrderStatus, { label: string; activeIndex: number }> = {
   NEW: { label: '待接单', activeIndex: 0 },
   ACCEPTED: { label: '已接单', activeIndex: 1 },
@@ -50,6 +54,20 @@ export interface OrderItemView {
   quantity: number;
   unitPriceText: string;
   subtotalText: string;
+  customizationText: string;
+}
+
+function customizationTextOf(item: OrderItem): string {
+  const customization = item.customization;
+  if (!customization) {
+    return '';
+  }
+  const parts = [
+    ...customization.flavorSelections.map((entry) => `${entry.groupName}：${entry.optionName}`),
+    ...customization.sides.map((side) => side.name),
+    ...customization.addOns.map((addOn) => `${addOn.name} +${formatYuan(addOn.priceFen)}`),
+  ];
+  return parts.join('、');
 }
 
 export interface OrderStatusView {
@@ -180,6 +198,7 @@ export function toOrderStatusView(
       quantity: item.quantity,
       unitPriceText: formatYuan(item.unitPriceFen),
       subtotalText: formatYuan(item.unitPriceFen * item.quantity),
+      customizationText: customizationTextOf(item),
     })),
     totalText: formatYuan(order.totalFen),
     slotRangeText: slotRangeText(order),

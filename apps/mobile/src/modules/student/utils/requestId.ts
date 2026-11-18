@@ -29,12 +29,20 @@ export interface RequestIdKeeperOptions {
   prefix?: string;
 }
 
-function normalizeItems(items: DraftItemInput[]): Array<[string, number]> {
+function normalizeItems(items: DraftItemInput[]): Array<Record<string, unknown>> {
   return items
     .filter((item) => Number.isInteger(item.quantity) && item.quantity > 0)
     .slice()
     .sort((a, b) => String(a.dishId).localeCompare(String(b.dishId)))
-    .map((item): [string, number] => [item.dishId, item.quantity]);
+    .map((item) => ({
+      dishId: item.dishId,
+      quantity: item.quantity,
+      selectedFlavors: (item.selectedFlavors ?? [])
+        .map((entry) => ({ groupId: entry.groupId, optionId: entry.optionId }))
+        .sort((a, b) => `${a.groupId}|${a.optionId}`.localeCompare(`${b.groupId}|${b.optionId}`)),
+      selectedSides: [...(item.selectedSides ?? [])].sort(),
+      selectedAddOns: [...(item.selectedAddOns ?? [])].sort(),
+    }));
 }
 
 export function buildDraftFingerprint(draft: DraftFingerprintInput): string {

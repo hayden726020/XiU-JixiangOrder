@@ -72,14 +72,21 @@ export function deriveCancelAreaView(
   order: StudentOrder,
   { mode = 'sample' }: DeriveCancelAreaOptions = {},
 ): CancelAreaView {
-  if (mode === 'sample') {
-    return { ...empty('sample'), noticeText: CANCEL_SAMPLE_TEXT };
-  }
-
   if (isInvalidCombination(order)) {
     return { ...empty('invalid'), noticeText: CANCEL_INVALID_TEXT };
   }
 
+  const view = deriveActiveView(order);
+  if (mode === 'sample' && view.actionLabel !== null) {
+    return {
+      ...view,
+      noticeText: view.noticeText ? `${view.noticeText} ${CANCEL_SAMPLE_TEXT}` : CANCEL_SAMPLE_TEXT,
+    };
+  }
+  return view;
+}
+
+function deriveActiveView(order: StudentOrder): CancelAreaView {
   const request = order.cancelRequest?.status ?? 'NONE';
   const decisionReason = decisionOf(order);
 
