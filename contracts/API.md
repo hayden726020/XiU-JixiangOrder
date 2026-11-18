@@ -7,6 +7,7 @@ DRAFT v0.3（2026-11-13 联调冻结候选）与 v0.4 增补（2026-11-14）分�
 **v0.5 增补（2026-11-17，DRAFT，待三人确认）**：订单增加可选 `remark`（≤50 字，未填写返回 null，学生下单写入并在三端订单响应回读）；档口 `PUT /merchant/menu/{dishId}` 增加 `name`、`type` 校验与写入，并新增 `DELETE /merchant/menu/{dishId}`（存在未结束订单返回 409 `DISH_IN_USE`）。演示服务已实现并通过自动测试（90/90）。
 
 **v0.6 增补（2026-11-17，DRAFT，待三人确认）**：档口创建店铺前必须上传营业执照与食品经营许可证，并由管理端审核通过；新增档口资质上传/查询、管理端资质接收/审核、管理端生成商家账号与商家端账号资料修改。演示环境为满足“管理端与商家端账号信息同步”，`users.password_plain` 保存可读密码；正式上线必须移除该字段并改为不可逆哈希与重置密码流程。服务端自动测试 100/100。
+**v0.7 变更（2026-11-18，DRAFT，待三人确认）**：取消档口资质审核。档口注册不再要求上传营业执照与食品经营许可证，`POST /merchant/shops` 不再校验资质；删除档口资质上传/查询与管理端资质接收/审核接口及 `QUALIFICATION_*` 错误码。商家账号与初始密码统一由管理端生成（`POST /admin/merchant-accounts`），管理端与商家端的账号密码双向同步保留（`GET/PATCH /merchant/account`、`GET /admin/merchant-accounts`）。
 
 **v0.7 增补（2026-11-17，DRAFT，待三人确认）**：`GET /menu` 增加可选 `merchantId` 查询参数，传入时只返回该店铺菜品；档口端菜单与库存页面必须携带本店 `merchantId`，从源头避免拿到别家菜品。不传时仍返回全部菜品，供学生首页推荐与店铺选择页一次加载使用；菜品为常驻菜单，`date` 只筛选时段，不按日期拆分菜品（如要每日菜单，需另行增加每日菜单表与契约）。服务端自动测试 101/101。
 
@@ -79,13 +80,10 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | PUT /merchant/slots/{slotId} | requestId, expectedVersion, capacity, enabled | 容量不得低于已占用量；不静默取消既有订单；成功返回时段与新 version；旧 expectedVersion 返回 `MENU_VERSION_CONFLICT` |
 | GET /merchant/profile | 当前会话的商家/店铺状态 | 只返回本人商家；未注册返回 `merchant=null`、`onboardingStep=UNREGISTERED`；见 v0.4 增补 |
 | POST /merchant/registration | requestId, merchantName, contactName, contactPhone | 201 返回与 profile 相同的 `merchant/shop/onboardingStep`；重复注册 409 `MERCHANT_ALREADY_REGISTERED`，手机号冲突 409 `CONTACT_PHONE_TAKEN` |
-| POST /merchant/shops | requestId, shopName, location, description? | 201 返回与 profile 相同的结构；首版单店，重复创建 409 `SHOP_ALREADY_EXISTS`；必须已有审核通过的资质，否则 409 `QUALIFICATION_REQUIRED/QUALIFICATION_PENDING/QUALIFICATION_REJECTED` |
-| POST /merchant/qualifications | requestId, businessLicense{fileName,mimeType,base64}, foodPermit{同左} | 两证必填；JPG/PNG/WebP/PDF、单文件 ≤2MB；提交后状态 PENDING，重新上传会重置为 PENDING 并 version+1 |
-| GET /merchant/qualifications | - | 返回本档口资质状态、文件名与审核原因，不返回文件内容 |
+| POST /merchant/shops | requestId, shopName, location, description? | 201 返回与 profile 相同的结构；首版单店，重复创建 409 `SHOP_ALREADY_EXISTS`；账号已具备商家资料即可创建，无需上传任何资质文件 |
 | GET /merchant/account | - | 商家读取自己的账号与联系信息，管理端读取同源数据 |
 | PATCH /merchant/account | requestId, account?, password?, contactName?, contactPhone? | 商家修改账号资料；账号重复 409 `ACCOUNT_TAKEN`，手机号重复 409 `CONTACT_PHONE_TAKEN`；修改后管理端刷新即同步 |
-| GET /admin/merchant-qualifications | query=status(PENDING/APPROVED/REJECTED) | 管理端接收档口营业执照与食品经营许可证，返回商家名、联系人、状态、文件名、提交时间 |
-| POST /admin/merchant-qualifications/{merchantId}/review | requestId, expectedVersion, decision=APPROVE/REJECT, reason? | REJECT 必填 reason；旧版本 409 `QUALIFICATION_VERSION_CONFLICT`；通过后档口才能创建店铺 |
+
 | GET /admin/merchant-accounts | - | 管理端商家账号列表；演示环境包含 `password_plain`，正式上线移除 |
 | POST /admin/merchant-accounts | requestId, account, password, merchantName, contactName, contactPhone | 生成并保存商家账号；账号重复 409 `ACCOUNT_TAKEN`，手机号重复 409 `CONTACT_PHONE_TAKEN` |
 | POST /merchant/menu | requestId, type, name, priceFen, availableQuantity, onSale? | 新增菜品归属当前商家；同店重名 409 `DISH_NAME_DUPLICATE`；成功后立即出现在 `GET /menu` |
@@ -205,8 +203,6 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 | 409 | REQUEST_CONFLICT / ORDER_VERSION_CONFLICT | 不创建另一单；核对或刷新再确认 |
 | 409 | INVALID_ORDER_STATE / ALREADY_CANCELLED | 显示当前状态，不重复修改或返还 |
 | 409 | DISH_IN_USE | 该菜品存在未结束订单，提示先停售或等待订单结束，不删除菜品 |
-| 409 | QUALIFICATION_REQUIRED / QUALIFICATION_PENDING / QUALIFICATION_REJECTED | 资质未上传、审核中或已驳回；页面引导上传或等待，不创建店铺 |
-| 409 | QUALIFICATION_VERSION_CONFLICT | 资质已被其他操作更新，刷新后重试 |
 | 409 | ACCOUNT_TAKEN / MERCHANT_ACCOUNT_CONFLICT | 账号重复或同一商家被多个账号绑定；保留输入并提示更换或解绑 |
 | 409 | MERCHANT_ALREADY_REGISTERED / CONTACT_PHONE_TAKEN / SHOP_ALREADY_EXISTS / DISH_NAME_DUPLICATE / MERCHANT_NOT_REGISTERED | 保留输入并显示明确原因；不重复创建或覆盖已有资料 |
 | 409 | PICKUP_CODE_USED / PICKUP_CODE_INVALID | 核销未成功，不改已取状态 |
@@ -225,7 +221,7 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 
 ## 正式确认前仍需补齐
 
-v0.3 已补齐档口菜单、订单列表、分页、延迟、取消审批、用餐方式理由与取餐码过滤，并已由演示服务实现和自动测试覆盖。v0.4 增补的商家注册/创建店铺/新增菜品与 `dishes[].type` 已实现并通过服务端自动测试（82/82），档口端真实调用层已就绪；订单响应（含管理端）已返回 `merchantId/merchantName`，管理端页面字段复验另列。v0.5 增补的订单备注、菜品改名/改类别与删除菜品已实现，服务端自动测试 90/90；v0.6 增补的档口资质上传/管理端审核、开店前置、管理端商家账号生成与商家端资料同步已实现并通过 100/100 自动测试。三人确认、档口端真实上传联调记录与正式部署仍待补，演示环境的明文密码同步不能用于正式上线。仍需三人本人书面追认（代签汇总“同意”已完成）、档口端真实保存联调记录、真机可访问服务地址、Android 两机联调记录、现场食堂范围/提醒阈值和服务端正式部署方式；在这些完成前不能宣称正式接口或正式联调。
+v0.3 已补齐档口菜单、订单列表、分页、延迟、取消审批、用餐方式理由与取餐码过滤，并已由演示服务实现和自动测试覆盖。v0.4 增补的商家注册/创建店铺/新增菜品与 `dishes[].type` 已实现并通过服务端自动测试（82/82），档口端真实调用层已就绪；订单响应（含管理端）已返回 `merchantId/merchantName`，管理端页面字段复验另列。v0.5 增补的订单备注、菜品改名/改类别与删除菜品已实现，服务端自动测试 90/90；v0.6 增补的档口资质上传/管理端审核、开店前置、管理端商家账号生成与商家端资料同步已实现并通过 100/100 自动测试。v0.7 取消档口资质审核：删除资质上传/查询与管理端审核接口及 `QUALIFICATION_*` 错误码，创建店铺不再校验资质，商家账号与初始密码由管理端生成、两端账号密码同步保留；服务端自动测试以实际运行结果为准。三人确认、档口端真实上传联调记录与正式部署仍待补，演示环境的明文密码同步不能用于正式上线。仍需三人本人书面追认（代签汇总“同意”已完成）、档口端真实保存联调记录、真机可访问服务地址、Android 两机联调记录、现场食堂范围/提醒阈值和服务端正式部署方式；在这些完成前不能宣称正式接口或正式联调。
 
 ## 客户端接入口径（v0.3 延续）
 

@@ -6,6 +6,13 @@ import {
 } from './errors.mjs';
 import { generatePickupCode } from './security.mjs';
 import {
+  customizationOfRow,
+  parseAddOns,
+  parseFlavorGroups,
+  parseSides,
+  resolveOrderItemCustomization,
+} from './customization.mjs';
+import {
   asRecord,
   newId,
   nowIso,
@@ -85,8 +92,19 @@ function loadOrder(db, orderId) {
 
 function loadItems(db, orderId) {
   return db
-    .prepare('SELECT dish_id, name, quantity, unit_price_fen, merchant_id FROM order_items WHERE order_id = ? ORDER BY rowid')
+    .prepare('SELECT dish_id, name, quantity, unit_price_fen, merchant_id, customization_json FROM order_items WHERE order_id = ? ORDER BY rowid')
     .all(orderId);
+}
+
+function parseCustomizationJson(raw) {
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 export function serializeOrder(db, row, user) {
@@ -95,6 +113,7 @@ export function serializeOrder(db, row, user) {
     name: item.name,
     quantity: item.quantity,
     unitPriceFen: item.unit_price_fen,
+    customization: parseCustomizationJson(item.customization_json),
   }));
   const canSeePickupCode =
     user.role === 'STUDENT' &&
@@ -214,16 +233,18 @@ export function createOrder({ db, clock, user, body }) {
     throw validationError('items 必须包含 1 到 20 个菜品。');
   }
 
+  const rawLineItems = [];
   const quantities = new Map();
   for (const rawItem of input.items) {
     const item = asRecord(rawItem);
     for (const key of Object.keys(item)) {
-      if (key !== 'dishId' && key !== 'quantity') {
-        throw validationError('items 只允许 dishId 与 quantity。');
+      if (!['dishId', 'quantity', 'selectedFlavors', 'selectedSides', 'selectedAddOns'].includes(key)) {
+        throw validationError('items 只允许 dishId、quantity、selectedFlavors、selectedSides 与 selectedAddOns。');
       }
     }
     const dishId = requireString(item.dishId, 'items[].dishId', { max: 120 });
     const quantity = requireInteger(item.quantity, 'items[].quantity', { min: 1, max: 99 });
+    rawLineItems.push({ dishId, quantity, rawItem: item });
     quantities.set(dishId, (quantities.get(dishId) ?? 0) + quantity);
   }
 
@@ -258,6 +279,17 @@ export function createOrder({ db, clock, user, body }) {
         throw validationError('同一订单只能包含同一档口的菜品。');
       }
       const merchantId = dishes[0].dish.merchant_id;
+      const dishById = new Map(dishes.map(({ dish }) => [dish.id, dish]));
+      const resolvedLines = rawLineItems.map((line) => {
+        const dish = dishById.get(line.dishId);
+        const { extraUnitPriceFen, customization } = resolveOrderItemCustomization(dish, line.rawItem);
+        return {
+          dish,
+          quantity: line.quantity,
+          unitPriceFen: dish.price_fen + extraUnitPriceFen,
+          customization,
+        };
+      });
 
       const updateDish = db.prepare(
         `UPDATE dishes SET available_quantity = available_quantity - ?, version = version + 1
@@ -280,7 +312,7 @@ export function createOrder({ db, clock, user, body }) {
         throw conflict('SLOT_FULL', '该时段名额已满，请选择其他时段。');
       }
 
-      const totalFen = dishes.reduce((sum, { dish, quantity }) => sum + dish.price_fen * quantity, 0);
+      const totalFen = resolvedLines.reduce((sum, line) => sum + line.unitPriceFen * line.quantity, 0);
       const orderId = newId('ord');
       const merchant = db.prepare('SELECT name FROM merchants WHERE id = ?').get(merchantId);
       db.prepare(
@@ -292,11 +324,19 @@ export function createOrder({ db, clock, user, body }) {
       ).run(orderId, user.id, merchantId, merchant?.name ?? null, slot.id, diningMode, remark, totalFen, now, now);
 
       const insertItem = db.prepare(
-        `INSERT INTO order_items (order_id, dish_id, name, quantity, unit_price_fen, merchant_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO order_items (order_id, dish_id, name, quantity, unit_price_fen, merchant_id, customization_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       );
-      for (const { dish, quantity } of dishes) {
-        insertItem.run(orderId, dish.id, dish.name, quantity, dish.price_fen, dish.merchant_id);
+      for (const line of resolvedLines) {
+        insertItem.run(
+          orderId,
+          line.dish.id,
+          line.dish.name,
+          line.quantity,
+          line.unitPriceFen,
+          line.dish.merchant_id,
+          line.customization ? JSON.stringify(line.customization) : null,
+        );
       }
 
       const row = loadOrder(db, orderId);
@@ -588,6 +628,15 @@ export function updateMerchantDish({ db, clock, user, params, body }) {
   const type = input.type === undefined
     ? dish.type
     : requireEnum(input.type, 'type', DISH_TYPES);
+  const nextFlavorGroupsJson = input.flavorGroups !== undefined
+    ? JSON.stringify(parseFlavorGroups(input.flavorGroups))
+    : dish.flavor_groups_json;
+  const nextSidesJson = input.sides !== undefined
+    ? JSON.stringify(parseSides(input.sides))
+    : dish.sides_json;
+  const nextAddOnsJson = input.addOns !== undefined
+    ? JSON.stringify(parseAddOns(input.addOns))
+    : dish.add_ons_json;
   return transaction(db, () =>
     runIdempotent(db, { actorId: user.id, operation: `update-dish:${dish.id}`, requestId, hash, now }, () => {
       assertVersion({ version: dish.version }, input.expectedVersion, {
@@ -595,9 +644,26 @@ export function updateMerchantDish({ db, clock, user, params, body }) {
         message: '菜品已发生变化，请刷新菜单后重试。',
       });
       db.prepare(
-        `UPDATE dishes SET name = ?, type = ?, price_fen = ?, available_quantity = ?, on_sale = ?, version = version + 1
+        `UPDATE dishes SET name = ?, type = ?, price_fen = ?, available_quantity = ?, on_sale = ?,
+           flavor_groups_json = ?, sides_json = ?, add_ons_json = ?, version = version + 1
          WHERE id = ? AND version = ?`,
-      ).run(name, type, priceFen, availableQuantity, input.onSale ? 1 : 0, dish.id, dish.version);
+      ).run(
+        name,
+        type,
+        priceFen,
+        availableQuantity,
+        input.onSale ? 1 : 0,
+        nextFlavorGroupsJson,
+        nextSidesJson,
+        nextAddOnsJson,
+        dish.id,
+        dish.version,
+      );
+      const customization = customizationOfRow({
+        flavor_groups_json: nextFlavorGroupsJson,
+        sides_json: nextSidesJson,
+        add_ons_json: nextAddOnsJson,
+      });
       return {
         status: 200,
         body: {
@@ -610,6 +676,9 @@ export function updateMerchantDish({ db, clock, user, params, body }) {
             availableQuantity,
             onSale: input.onSale,
             version: dish.version + 1,
+            flavorGroups: customization.flavorGroups,
+            sides: customization.sides,
+            addOns: customization.addOns,
           },
         },
       };
@@ -759,16 +828,22 @@ export function listMenu({ db, clock, query }) {
   const dishRows = requestedMerchant === null
     ? db.prepare('SELECT * FROM dishes ORDER BY merchant_id, id').all()
     : db.prepare('SELECT * FROM dishes WHERE merchant_id = ? ORDER BY id').all(requestedMerchant);
-  const dishes = dishRows.map((dish) => ({
-    id: dish.id,
-    merchantId: dish.merchant_id,
-    type: dish.type,
-    name: dish.name,
-    priceFen: dish.price_fen,
-    availableQuantity: dish.available_quantity,
-    onSale: dish.on_sale === 1,
-    version: dish.version,
-  }));
+  const dishes = dishRows.map((dish) => {
+    const customization = customizationOfRow(dish);
+    return {
+      id: dish.id,
+      merchantId: dish.merchant_id,
+      type: dish.type,
+      name: dish.name,
+      priceFen: dish.price_fen,
+      availableQuantity: dish.available_quantity,
+      onSale: dish.on_sale === 1,
+      version: dish.version,
+      flavorGroups: customization.flavorGroups,
+      sides: customization.sides,
+      addOns: customization.addOns,
+    };
+  });
   return { status: 200, body: { data: { date: requested, slots, dishes } } };
 }
 

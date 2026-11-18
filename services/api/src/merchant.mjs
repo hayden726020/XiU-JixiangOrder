@@ -2,6 +2,7 @@ import { conflict, forbidden, notFound, validationError } from './errors.mjs';
 import { readSetting } from './db.mjs';
 import { runIdempotent, transaction } from './orders.mjs';
 import { hashPassword } from './security.mjs';
+import { parseAddOns, parseFlavorGroups, parseSides } from './customization.mjs';
 import {
   asRecord,
   newId,
@@ -15,8 +16,7 @@ import {
 
 const DISH_TYPES = ['STAPLE', 'SNACK', 'DRINK', 'SET'];
 const PHONE_PATTERN = /^1\d{10}$/;
-const QUALIFICATION_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-const MAX_QUALIFICATION_BASE64 = 2_800_000;
+
 
 function maskPhone(phone) {
   if (typeof phone !== 'string' || phone.length !== 11) {
@@ -82,29 +82,6 @@ function loadShop(db, merchantId) {
   return db.prepare('SELECT * FROM shops WHERE merchant_id = ?').get(merchantId) ?? null;
 }
 
-function serializeQualification(row) {
-  if (!row) return null;
-  return {
-    merchantId: row.merchant_id,
-    status: row.status,
-    businessLicense: {
-      fileName: row.business_license_name,
-      mimeType: row.business_license_mime,
-    },
-    foodPermit: {
-      fileName: row.food_permit_name,
-      mimeType: row.food_permit_mime,
-    },
-    submittedAt: toShanghaiIso(row.submitted_at),
-    reviewedAt: row.reviewed_at ? toShanghaiIso(row.reviewed_at) : null,
-    reviewReason: row.review_reason ?? null,
-    version: row.version,
-  };
-}
-
-function loadQualification(db, merchantId) {
-  return db.prepare('SELECT * FROM merchant_qualifications WHERE merchant_id = ?').get(merchantId) ?? null;
-}
 
 function parseAccount(value) {
   const account = requireString(value, 'account', { min: 4, max: 30 }).trim();
@@ -136,41 +113,19 @@ function merchantAccountView(userRow, merchantRow) {
   };
 }
 
-function parseQualificationFile(value, label) {
-  const file = asRecord(value);
-  requireOnlyFields(file, ['fileName', 'mimeType', 'base64']);
-  const fileName = requireString(file.fileName, `${label}.fileName`, { min: 1, max: 120 });
-  if (!/\.(jpe?g|png|webp|pdf)$/i.test(fileName)) {
-    throw validationError(`${label} 仅支持 JPG、PNG、WebP 或 PDF。`);
-  }
-  const mimeType = requireEnum(file.mimeType, `${label}.mimeType`, QUALIFICATION_MIME_TYPES);
-  const base64 = requireString(file.base64, `${label}.base64`, { max: MAX_QUALIFICATION_BASE64 });
-  if (!/^[A-Za-z0-9+/=\r\n]+$/.test(base64)) {
-    throw validationError(`${label} 文件内容格式不正确。`);
-  }
-  return { fileName, mimeType, base64 };
-}
 
 function profiledData(db, merchantId) {
   const merchant = loadMerchant(db, merchantId);
   const shop = loadShop(db, merchant.id);
-  const qualification = loadQualification(db, merchant.id);
   const registered = typeof merchant.contact_phone === 'string' && merchant.contact_phone.length > 0;
   const onboardingStep = !registered
     ? 'UNREGISTERED'
     : shop
       ? 'SHOP_CREATED'
-      : !qualification
-        ? 'REGISTERED'
-        : qualification.status === 'PENDING'
-          ? 'QUALIFICATION_PENDING'
-          : qualification.status === 'REJECTED'
-            ? 'QUALIFICATION_REJECTED'
-            : 'QUALIFICATION_APPROVED';
+      : 'REGISTERED';
   return {
     merchant: serializeMerchant(merchant),
     shop: shop ? serializeShop(shop) : null,
-    qualification: serializeQualification(qualification),
     onboardingStep,
   };
 }
@@ -291,16 +246,7 @@ export function createShop({ db, clock, user, body }) {
         if (loadShop(db, merchant.id)) {
           throw conflict('SHOP_ALREADY_EXISTS', '该商家已创建店铺，首版只支持一个店铺。');
         }
-        const qualification = loadQualification(db, merchant.id);
-        if (!qualification) {
-          throw conflict('QUALIFICATION_REQUIRED', '请先上传营业执照与食品经营许可证。');
-        }
-        if (qualification.status === 'PENDING') {
-          throw conflict('QUALIFICATION_PENDING', '资质正在审核，预计一个工作日内完成。');
-        }
-        if (qualification.status === 'REJECTED') {
-          throw conflict('QUALIFICATION_REJECTED', '资质审核未通过，请修改后重新上传。');
-        }
+
         const id = newId('s');
         db.prepare(
           `INSERT INTO shops (id, merchant_id, name, location, description, version, created_at, updated_at)
@@ -315,187 +261,10 @@ export function createShop({ db, clock, user, body }) {
   );
 }
 
-export function getMerchantQualification({ db, user }) {
-  if (user.role !== 'MERCHANT') {
-    throw forbidden();
-  }
-  if (!user.merchant_id) {
-    throw notFound('MERCHANT_NOT_REGISTERED', '请先完成商家注册。');
-  }
-  const qualification = loadQualification(db, user.merchant_id);
-  if (!qualification) {
-    throw notFound('QUALIFICATION_NOT_FOUND', '该商家尚未提交资质。');
-  }
-  return { status: 200, body: { data: serializeQualification(qualification) } };
-}
 
-export function uploadMerchantQualification({ db, clock, user, body }) {
-  if (user.role !== 'MERCHANT') {
-    throw forbidden();
-  }
-  const input = asRecord(body);
-  requireOnlyFields(input, ['requestId', 'businessLicense', 'foodPermit']);
-  const requestId = requireString(input.requestId, 'requestId', { max: 120 });
-  const businessLicense = parseQualificationFile(input.businessLicense, 'businessLicense');
-  const foodPermit = parseQualificationFile(input.foodPermit, 'foodPermit');
-  const hash = requestHash(input);
-  const now = clock();
-  if (!user.merchant_id) {
-    throw conflict('MERCHANT_NOT_REGISTERED', '请先完成商家注册。');
-  }
-  return transaction(db, () =>
-    runIdempotent(
-      db,
-      { actorId: user.id, operation: 'qualification-upload', requestId, hash, now },
-      () => {
-        const existing = loadQualification(db, user.merchant_id);
-        if (existing) {
-          db.prepare(
-            `UPDATE merchant_qualifications SET
-               business_license_name = ?, business_license_mime = ?, business_license_data = ?,
-               food_permit_name = ?, food_permit_mime = ?, food_permit_data = ?,
-               status = 'PENDING', review_reason = NULL, reviewed_at = NULL, reviewed_by = NULL,
-               submitted_at = ?, version = version + 1
-             WHERE merchant_id = ?`,
-          ).run(
-            businessLicense.fileName,
-            businessLicense.mimeType,
-            businessLicense.base64,
-            foodPermit.fileName,
-            foodPermit.mimeType,
-            foodPermit.base64,
-            now,
-            user.merchant_id,
-          );
-        } else {
-          db.prepare(
-            `INSERT INTO merchant_qualifications
-               (merchant_id, business_license_name, business_license_mime, business_license_data,
-                food_permit_name, food_permit_mime, food_permit_data, status, submitted_at, version)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, 1)`,
-          ).run(
-            user.merchant_id,
-            businessLicense.fileName,
-            businessLicense.mimeType,
-            businessLicense.base64,
-            foodPermit.fileName,
-            foodPermit.mimeType,
-            foodPermit.base64,
-            now,
-          );
-        }
-        return {
-          status: 201,
-          body: { data: serializeQualification(loadQualification(db, user.merchant_id)) },
-        };
-      },
-    ),
-  );
-}
 
-export function listMerchantQualifications({ db, query }) {
-  const status = query.get('status');
-  if (status && !['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
-    throw validationError('status 取值无效。');
-  }
-  const where = status ? 'WHERE q.status = ?' : '';
-  const params = status ? [status] : [];
-  const rows = db
-    .prepare(
-      `SELECT q.*, m.name AS merchant_name, m.contact_name, m.contact_phone
-       FROM merchant_qualifications q
-       JOIN merchants m ON m.id = q.merchant_id
-       ${where}
-       ORDER BY q.submitted_at DESC, q.merchant_id`,
-    )
-    .all(...params);
-  return {
-    status: 200,
-    body: {
-      data: {
-        qualifications: rows.map((row) => ({
-          ...serializeQualification(row),
-          merchantName: row.merchant_name,
-          contactName: row.contact_name ?? null,
-          contactPhone: maskPhone(row.contact_phone),
-        })),
-      },
-    },
-  };
-}
 
-export function reviewMerchantQualification({ db, clock, user, params, body }) {
-  if (user.role !== 'ADMIN') {
-    throw forbidden();
-  }
-  const input = asRecord(body);
-  requireOnlyFields(input, ['requestId', 'expectedVersion', 'decision', 'reason']);
-  const requestId = requireString(input.requestId, 'requestId', { max: 120 });
-  const expectedVersion = requireInteger(input.expectedVersion, 'expectedVersion', { min: 1, max: 1_000_000 });
-  const decision = requireEnum(input.decision, 'decision', ['APPROVE', 'REJECT']);
-  const reason = decision === 'REJECT'
-    ? requireString(input.reason, 'reason', { min: 2, max: 200 })
-    : null;
-  const hash = requestHash(input);
-  const now = clock();
-  const row = loadQualification(db, params.merchantId);
-  if (!row) {
-    throw notFound('QUALIFICATION_NOT_FOUND', '该商家尚未提交资质。');
-  }
-  return transaction(db, () =>
-    runIdempotent(
-      db,
-      {
-        actorId: user.id,
-        operation: `review-qualification:${params.merchantId}`,
-        requestId,
-        hash,
-        now,
-      },
-      () => {
-        if (row.version !== expectedVersion) {
-          throw conflict('QUALIFICATION_VERSION_CONFLICT', '资质已发生变化，请刷新后重试。');
-        }
-        const status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
-        db.prepare(
-          `UPDATE merchant_qualifications
-           SET status = ?, review_reason = ?, reviewed_at = ?, reviewed_by = ?, version = version + 1
-           WHERE merchant_id = ? AND version = ?`,
-        ).run(status, reason, now, user.id, params.merchantId, expectedVersion);
-        return {
-          status: 200,
-          body: { data: serializeQualification(loadQualification(db, params.merchantId)) },
-        };
-      },
-    ),
-  );
-}
 
-export function getMerchantQualificationFile({ db, user, params }) {
-  if (user.role !== 'ADMIN' && user.role !== 'MERCHANT') {
-    throw forbidden();
-  }
-  const merchantId = user.role === 'ADMIN' ? params.merchantId : user.merchant_id;
-  if (!merchantId) {
-    throw notFound('MERCHANT_NOT_REGISTERED', '请先完成商家注册。');
-  }
-  const row = loadQualification(db, merchantId);
-  if (!row) {
-    throw notFound('QUALIFICATION_NOT_FOUND', '该商家尚未提交资质。');
-  }
-  const file = params.kind === 'business-license'
-    ? {
-      fileName: row.business_license_name,
-      mimeType: row.business_license_mime,
-      base64: row.business_license_data,
-    }
-    : {
-      fileName: row.food_permit_name,
-      mimeType: row.food_permit_mime,
-      base64: row.food_permit_data,
-    };
-  return { status: 200, body: { data: file } };
-}
 
 export function getMerchantAccount({ db, user }) {
   if (user.role !== 'MERCHANT') {
@@ -663,7 +432,7 @@ export function createDish({ db, clock, user, body }) {
     throw forbidden();
   }
   const input = asRecord(body);
-  requireOnlyFields(input, ['requestId', 'type', 'name', 'priceFen', 'availableQuantity', 'onSale']);
+  requireOnlyFields(input, ['requestId', 'type', 'name', 'priceFen', 'availableQuantity', 'onSale', 'flavorGroups', 'sides', 'addOns']);
   const requestId = requireString(input.requestId, 'requestId', { max: 120 });
   const type = requireEnum(input.type, 'type', DISH_TYPES);
   const name = requireString(input.name, 'name', { min: 1, max: 30 });
@@ -673,6 +442,9 @@ export function createDish({ db, clock, user, body }) {
     throw validationError('onSale 必须是布尔值。');
   }
   const onSale = input.onSale ?? true;
+  const flavorGroups = input.flavorGroups !== undefined ? parseFlavorGroups(input.flavorGroups) : [];
+  const sides = input.sides !== undefined ? parseSides(input.sides) : [];
+  const addOns = input.addOns !== undefined ? parseAddOns(input.addOns) : [];
   const hash = requestHash(input);
   const now = clock();
 
@@ -693,9 +465,21 @@ export function createDish({ db, clock, user, body }) {
         }
         const id = newId('dish');
         db.prepare(
-          `INSERT INTO dishes (id, merchant_id, type, name, price_fen, available_quantity, on_sale, version)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-        ).run(id, merchant.id, type, name, priceFen, availableQuantity, onSale ? 1 : 0);
+          `INSERT INTO dishes (id, merchant_id, type, name, price_fen, available_quantity, on_sale, version,
+             flavor_groups_json, sides_json, add_ons_json)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+        ).run(
+          id,
+          merchant.id,
+          type,
+          name,
+          priceFen,
+          availableQuantity,
+          onSale ? 1 : 0,
+          JSON.stringify(flavorGroups),
+          JSON.stringify(sides),
+          JSON.stringify(addOns),
+        );
         return {
           status: 201,
           body: {
@@ -708,6 +492,9 @@ export function createDish({ db, clock, user, body }) {
               availableQuantity,
               onSale,
               version: 1,
+              flavorGroups,
+              sides,
+              addOns,
             },
           },
         };

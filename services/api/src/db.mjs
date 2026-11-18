@@ -31,9 +31,64 @@ export const DEMO_MERCHANTS = [
 ];
 
 export const DEMO_DISHES = [
-  { id: 'demo-dish-01', merchantId: 'demo-merchant-01', type: 'STAPLE', name: '演示鸡肉饭', priceFen: 1800, quantity: 20 },
-  { id: 'demo-dish-02', merchantId: 'demo-merchant-02', type: 'STAPLE', name: '演示素面', priceFen: 1200, quantity: 15 },
-  { id: 'demo-dish-03', merchantId: 'demo-merchant-01', type: 'SET', name: '演示套餐', priceFen: 2200, quantity: 8 },
+  {
+    id: 'demo-dish-01',
+    merchantId: 'demo-merchant-01',
+    type: 'STAPLE',
+    name: '演示鸡肉饭',
+    priceFen: 1800,
+    quantity: 20,
+    flavorGroups: [{
+      id: 'grp_spicy',
+      name: '辣度',
+      required: true,
+      options: [
+        { id: 'opt_mild', name: '微辣', priceFen: 0 },
+        { id: 'opt_hot', name: '重辣', priceFen: 0 },
+      ],
+    }],
+    sides: [
+      { id: 'side_egg', name: '卤蛋', priceFen: 0 },
+      { id: 'side_greens', name: '时蔬', priceFen: 0 },
+    ],
+    addOns: [
+      { id: 'addon_meat', name: '加肉', priceFen: 300 },
+      { id: 'addon_soup', name: '加汤', priceFen: 100 },
+    ],
+  },
+  {
+    id: 'demo-dish-02',
+    merchantId: 'demo-merchant-02',
+    type: 'STAPLE',
+    name: '演示素面',
+    priceFen: 1200,
+    quantity: 15,
+    flavorGroups: [{
+      id: 'grp_soup',
+      name: '汤底',
+      required: true,
+      options: [
+        { id: 'opt_clear', name: '清汤', priceFen: 0 },
+        { id: 'opt_spicy', name: '麻辣', priceFen: 0 },
+      ],
+    }],
+    sides: [{ id: 'side_greens', name: '青菜', priceFen: 0 }],
+    addOns: [
+      { id: 'addon_noodle', name: '加面', priceFen: 200 },
+      { id: 'addon_egg', name: '加蛋', priceFen: 200 },
+    ],
+  },
+  {
+    id: 'demo-dish-03',
+    merchantId: 'demo-merchant-01',
+    type: 'SET',
+    name: '演示套餐',
+    priceFen: 2200,
+    quantity: 8,
+    flavorGroups: [],
+    sides: [{ id: 'side_soup', name: '例汤', priceFen: 0 }],
+    addOns: [{ id: 'addon_rice', name: '加饭', priceFen: 200 }],
+  },
 ];
 
 // 契约 2026-11-13 冻结：午餐固定 3 个时段，12:30—13:00 样例为已满。
@@ -111,7 +166,10 @@ CREATE TABLE IF NOT EXISTS dishes (
   price_fen INTEGER NOT NULL CHECK (price_fen >= 0),
   available_quantity INTEGER NOT NULL CHECK (available_quantity >= 0),
   on_sale INTEGER NOT NULL DEFAULT 1,
-  version INTEGER NOT NULL DEFAULT 1
+  version INTEGER NOT NULL DEFAULT 1,
+  flavor_groups_json TEXT NOT NULL DEFAULT '[]',
+  sides_json TEXT NOT NULL DEFAULT '[]',
+  add_ons_json TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS slots (
@@ -157,6 +215,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INTEGER NOT NULL,
   unit_price_fen INTEGER NOT NULL,
   merchant_id TEXT NOT NULL,
+  customization_json TEXT,
   PRIMARY KEY (order_id, dish_id)
 );
 
@@ -228,6 +287,19 @@ export function createDatabase(path = ':memory:') {
   if (!dishColumns.some((column) => column.name === 'type')) {
     db.exec("ALTER TABLE dishes ADD COLUMN type TEXT NOT NULL DEFAULT 'STAPLE';");
   }
+  if (!dishColumns.some((column) => column.name === 'flavor_groups_json')) {
+    db.exec("ALTER TABLE dishes ADD COLUMN flavor_groups_json TEXT NOT NULL DEFAULT '[]';");
+  }
+  if (!dishColumns.some((column) => column.name === 'sides_json')) {
+    db.exec("ALTER TABLE dishes ADD COLUMN sides_json TEXT NOT NULL DEFAULT '[]';");
+  }
+  if (!dishColumns.some((column) => column.name === 'add_ons_json')) {
+    db.exec("ALTER TABLE dishes ADD COLUMN add_ons_json TEXT NOT NULL DEFAULT '[]';");
+  }
+  const itemColumns = db.prepare('PRAGMA table_info(order_items)').all();
+  if (!itemColumns.some((column) => column.name === 'customization_json')) {
+    db.exec('ALTER TABLE order_items ADD COLUMN customization_json TEXT;');
+  }
   return db;
 }
 
@@ -283,11 +355,37 @@ export function seedDemoData(db, { now, passwords }) {
 
   const insertDish = db.prepare(
     `INSERT OR IGNORE INTO dishes
-     (id, merchant_id, type, name, price_fen, available_quantity, on_sale, version)
-     VALUES (?, ?, ?, ?, ?, ?, 1, 1)`,
+     (id, merchant_id, type, name, price_fen, available_quantity, on_sale, version,
+      flavor_groups_json, sides_json, add_ons_json)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?)`,
   );
   for (const dish of DEMO_DISHES) {
-    insertDish.run(dish.id, dish.merchantId, dish.type, dish.name, dish.priceFen, dish.quantity);
+    insertDish.run(
+      dish.id,
+      dish.merchantId,
+      dish.type,
+      dish.name,
+      dish.priceFen,
+      dish.quantity,
+      JSON.stringify(dish.flavorGroups ?? []),
+      JSON.stringify(dish.sides ?? []),
+      JSON.stringify(dish.addOns ?? []),
+    );
+  }
+  const fillDemoCustomization = db.prepare(
+    `UPDATE dishes SET flavor_groups_json = ?, sides_json = ?, add_ons_json = ?
+     WHERE id = ? AND flavor_groups_json = '[]' AND sides_json = '[]' AND add_ons_json = '[]'`,
+  );
+  for (const dish of DEMO_DISHES) {
+    if (!dish.flavorGroups?.length && !dish.sides?.length && !dish.addOns?.length) {
+      continue;
+    }
+    fillDemoCustomization.run(
+      JSON.stringify(dish.flavorGroups ?? []),
+      JSON.stringify(dish.sides ?? []),
+      JSON.stringify(dish.addOns ?? []),
+      dish.id,
+    );
   }
 
   const insertSlot = db.prepare(

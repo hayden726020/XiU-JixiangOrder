@@ -35,15 +35,10 @@ import {
   createShop,
   getMerchantAccount,
   getMerchantProfile,
-  getMerchantQualification,
-  getMerchantQualificationFile,
   listMerchantAccounts,
-  listMerchantQualifications,
   listMerchants,
   registerMerchant,
-  reviewMerchantQualification,
   updateMerchantAccount,
-  uploadMerchantQualification,
 } from './merchant.mjs';
 
 function withAuth(roles, handler) {
@@ -148,21 +143,7 @@ export function createApp({ db, clock, logger = () => {} }) {
     },
     {
       method: 'GET',
-      pattern: /^\/api\/v1\/merchant\/qualifications$/,
-      handler: withAuth(['MERCHANT'], getMerchantQualification),
-    },
-    {
-      method: 'POST',
-      pattern: /^\/api\/v1\/merchant\/qualifications$/,
-      handler: withBody(['MERCHANT'], uploadMerchantQualification),
-    },
-    {
-      method: 'GET',
-      pattern: /^\/api\/v1\/merchant\/qualifications\/files\/(?<kind>business-license|food-permit)$/,
-      handler: withAuth(['MERCHANT'], (ctx) => getMerchantQualificationFile({ ...ctx, params: decodeParams(ctx.params) })),
-    },
-    {
-      method: 'GET',
+
       pattern: /^\/api\/v1\/admin\/merchant-accounts$/,
       handler: withAuth(['ADMIN'], listMerchantAccounts),
     },
@@ -182,21 +163,7 @@ export function createApp({ db, clock, logger = () => {} }) {
       handler: withBody(['MERCHANT'], updateMerchantAccount),
     },
     {
-      method: 'GET',
-      pattern: /^\/api\/v1\/admin\/merchant-qualifications$/,
-      handler: withAuth(['ADMIN'], (ctx) => listMerchantQualifications({ ...ctx, query: queryOf(ctx.req) })),
-    },
-    {
-      method: 'POST',
-      pattern: /^\/api\/v1\/admin\/merchant-qualifications\/(?<merchantId>[^/]+)\/review$/,
-      handler: withBody(['ADMIN'], (ctx) => reviewMerchantQualification({ ...ctx, params: decodeParams(ctx.params) })),
-    },
-    {
-      method: 'GET',
-      pattern: /^\/api\/v1\/admin\/merchant-qualifications\/(?<merchantId>[^/]+)\/files\/(?<kind>business-license|food-permit)$/,
-      handler: withAuth(['ADMIN'], (ctx) => getMerchantQualificationFile({ ...ctx, params: decodeParams(ctx.params) })),
-    },
-    {
+
       method: 'POST',
       pattern: /^\/api\/v1\/merchant\/registration$/,
       handler: withBody(['MERCHANT'], registerMerchant),

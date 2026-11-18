@@ -72,40 +72,6 @@ async function createShop(token = newMerchant, requestId = 'onboarding-shop-1') 
   return response.body.data;
 }
 
-const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
-
-function qualificationBody(requestId, overrides = {}) {
-  return {
-    requestId,
-    businessLicense: { fileName: 'business-license.png', mimeType: 'image/png', base64: PNG_BASE64 },
-    foodPermit: { fileName: 'food-permit.png', mimeType: 'image/png', base64: PNG_BASE64 },
-    ...overrides,
-  };
-}
-
-async function uploadAndApprove(token = newMerchant, requestId = 'onboarding-qualification-1') {
-  const uploaded = await ctx.api('POST', '/merchant/qualifications', {
-    token,
-    body: qualificationBody(requestId),
-  });
-  assert.equal(uploaded.status, 201);
-  const admin = await ctx.login('admin');
-  const reviewed = await ctx.api(
-    'POST',
-    `/admin/merchant-qualifications/${uploaded.body.data.merchantId}/review`,
-    {
-      token: admin,
-      body: {
-        requestId: `${requestId}-review`,
-        expectedVersion: uploaded.body.data.version,
-        decision: 'APPROVE',
-      },
-    },
-  );
-  assert.equal(reviewed.status, 200);
-  assert.equal(reviewed.body.data.status, 'APPROVED');
-  return reviewed.body.data;
-}
 
 test('未登录访问商家注册接口返回 401', async () => {
   for (const [method, path, body] of [
@@ -243,7 +209,7 @@ test('未注册账号创建店铺返回 MERCHANT_NOT_REGISTERED', async () => {
 
 test('创建店铺成功，profile 进入 SHOP_CREATED', async () => {
   const merchant = await registerMerchant();
-  await uploadAndApprove();
+
   const shop = await createShop();
   assert.match(shop.shop.id, /^s_/);
   assert.equal(shop.shop.merchantId, merchant.merchant.id);
@@ -261,7 +227,7 @@ test('创建店铺成功，profile 进入 SHOP_CREATED', async () => {
 
 test('重复创建店铺返回 SHOP_ALREADY_EXISTS，同 requestId 重试仍返回首次结果', async () => {
   await registerMerchant();
-  await uploadAndApprove();
+
   const first = await createShop(newMerchant, 'onboarding-shop-1');
   const retry = await ctx.api('POST', '/merchant/shops', {
     token: newMerchant,
