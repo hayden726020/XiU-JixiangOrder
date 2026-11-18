@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "contractVersion": "DRAFT v0.5",
+    "fictional": true,
+    "implemented": true,
+    "note": "档口钱包占位（v0.5 增补）的接口行为样例：服务端行为真实存在（合法 MERCHANT 会话固定返回 501 NOT_IMPLEMENTED 占位），但余额与提现能力尚未接入；样例为虚构数据，message 与档口端前端 real 模式短路文案逐字同源。"
+  },
+  "cases": [
+    {
+      "method": "GET",
+      "path": "/merchant/wallet",
+      "status": 501,
+      "body": {
+        "error": {
+          "code": "NOT_IMPLEMENTED",
+          "message": "钱包暂未接入共同服务；余额与提现暂不可用。",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/merchant/wallet/withdraw",
+      "status": 501,
+      "body": {
+        "error": {
+          "code": "NOT_IMPLEMENTED",
+          "message": "钱包暂未接入共同服务；提现暂不可用。",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/merchant/wallet",
+      "status": 401,
+      "body": {
+        "error": {
+          "code": "UNAUTHENTICATED",
+          "message": "请先登录。",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/merchant/wallet",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "你无权执行此操作。",
+          "retryable": false
+        }
+      }
+    }
+  ]
+}

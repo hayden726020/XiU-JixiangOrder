@@ -29,6 +29,7 @@ import {
 } from './location.mjs';
 import { getAdminSettings, putAdminSettings } from './admin.mjs';
 import { createDish, createShop, getMerchantProfile, listMerchants, registerMerchant } from './merchant.mjs';
+import { getMerchantWallet, requestMerchantWithdraw } from './wallet.mjs';
 
 function withAuth(roles, handler) {
   return async (ctx) => {
@@ -144,6 +145,16 @@ export function createApp({ db, clock, logger = () => {} }) {
       method: 'POST',
       pattern: /^\/api\/v1\/merchant\/menu$/,
       handler: withBody(['MERCHANT'], createDish),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/api\/v1\/merchant\/wallet$/,
+      handler: withAuth(['MERCHANT'], getMerchantWallet),
+    },
+    {
+      method: 'POST',
+      pattern: /^\/api\/v1\/merchant\/wallet\/withdraw$/,
+      handler: withBody(['MERCHANT'], requestMerchantWithdraw),
     },
 
     {

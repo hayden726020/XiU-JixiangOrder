@@ -4,6 +4,8 @@ DRAFT v0.3（联调冻结候选），仍待三人确认，不能作为正式发�
 
 **v0.4 增补（2026-11-14）**：在 v0.3 之上新增商家注册、创建店铺、新增菜品、`GET /merchant/profile`、`GET /merchants`（学生店铺列表）与订单 `merchantId/merchantName`，并给 `GET /menu` 的 `dishes[]` 增加 `type`。v0.4 增补已由 `services/api` 实现并通过自动测试，仍待三人确认；v0.3 既有端点口径不变。
 
+**v0.5 增补（2026-11-18）**：新增 `GET /merchant/wallet` 与 `POST /merchant/wallet/withdraw`（档口钱包占位，501 NOT_IMPLEMENTED）。钱包暂未接入共同服务；余额与提现暂不可用。提现暂不可用。v0.5 增补已由 services/api 实现并通过自动测试，仍待三人确认；v0.3/v0.4 既有端点口径不变。
+
 ## 基础格式
 
 成功响应为 { "data": ... }，错误为 { "error": { "code": "...", "message": "...", "retryable": false } }。金额为整数分，日期按 Asia/Shanghai，时间戳带 +08:00 或明确的时区。所有 ID 都是不透明字符串。
@@ -74,6 +76,8 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | POST /merchant/registration | requestId, merchantName, contactName, contactPhone | 201 返回与 profile 相同的 `merchant/shop/onboardingStep`；重复注册 409 `MERCHANT_ALREADY_REGISTERED`，手机号冲突 409 `CONTACT_PHONE_TAKEN` |
 | POST /merchant/shops | requestId, shopName, location, description? | 201 返回与 profile 相同的结构；首版单店，重复创建 409 `SHOP_ALREADY_EXISTS` |
 | POST /merchant/menu | requestId, type, name, priceFen, availableQuantity, onSale? | 新增菜品归属当前商家；同店重名 409 `DISH_NAME_DUPLICATE`；成功后立即出现在 `GET /menu` |
+| GET /merchant/wallet | 当前档口查看钱包 | 501 NOT_IMPLEMENTED"钱包暂未接入共同服务；余额与提现暂不可用。"占位；余额与提现暂不可用；见 v0.5 增补 |
+| POST /merchant/wallet/withdraw | 档口发起提现（占位） | 501 NOT_IMPLEMENTED"钱包暂未接入共同服务；提现暂不可用。"占位；不进行金额与幂等校验；见 v0.5 增补 |
 | GET /dining/config | 当前公开的食堂范围配置 | { canteenId, name, center{latitude,longitude}, radiusMeters, accuracyToleranceMeters, updatedAt, demo }；这是食堂边界，不是学生位置 |
 | PUT /me/location | requestId, presence=INSIDE/OUTSIDE/UNKNOWN | 按会话身份保存判断，返回服务端 observedAt 和 expiresAt；拒绝多余坐标字段 |
 | DELETE /me/location | 清除本人位置判断 | 重复删除仍成功，不删除订单、不阻碍继续下单 |
@@ -142,6 +146,25 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 - 跨店访问按不存在处理：`MERCHANT_NOT_FOUND`/`SHOP_NOT_FOUND`/`DISH_NOT_FOUND`（404），不泄露其他商家是否存在。
 - 只支持今天和明天；其他日期返回 VALIDATION_ERROR。
 
+### 商家钱包占位（v0.5 增补）
+
+新增 `GET /merchant/wallet` 与 `POST /merchant/wallet/withdraw`，均为档口钱包占位接口：仅 `MERCHANT` 会话可调用；未登录返回 401 UNAUTHENTICATED，会话过期返回 401 SESSION_EXPIRED，非 MERCHANT 角色返回 403 FORBIDDEN，与既有口径一致；合法 MERCHANT 会话调用一律返回 501 NOT_IMPLEMENTED，本轮不提供真实余额与提现语义。
+
+GET 占位响应：
+
+```json
+{ "error": { "code": "NOT_IMPLEMENTED", "message": "钱包暂未接入共同服务；余额与提现暂不可用。", "retryable": false } }
+```
+
+POST 占位响应（请求体为合法 JSON 时同样原样返回占位，不进行金额与幂等校验）：
+
+```json
+{ "error": { "code": "NOT_IMPLEMENTED", "message": "钱包暂未接入共同服务；提现暂不可用。", "retryable": false } }
+```
+
+- 占位文案与档口端前端 real 模式短路文案逐字同源（来源：`apps/mobile/src/modules/merchant/data/source.ts` 第 418/424 行）。
+- 本轮不定义 `WalletSummary` 等钱包字段结构；未来真实钱包接口（余额来源、提现规则、幂等）另行立规格并升级契约版本。
+
 ### 学生店铺列表与订单店铺字段（v0.4 增补）
 
 `GET /merchants`（已登录会话可读，未登录 401）返回 `{ data: { merchants: [{ merchantId, name, canteenId, orderable, sortOrder }] } }`：
@@ -191,6 +214,7 @@ level 为 CROWDED、NO_ALERT、UNKNOWN；NO_ALERT 文案仍须说明不代表有
 | 409 | INVALID_ORDER_STATE / ALREADY_CANCELLED | 显示当前状态，不重复修改或返还 |
 | 409 | MERCHANT_ALREADY_REGISTERED / CONTACT_PHONE_TAKEN / SHOP_ALREADY_EXISTS / DISH_NAME_DUPLICATE / MERCHANT_NOT_REGISTERED | 保留输入并显示明确原因；不重复创建或覆盖已有资料 |
 | 409 | PICKUP_CODE_USED / PICKUP_CODE_INVALID | 核销未成功，不改已取状态 |
+| 501 | NOT_IMPLEMENTED | 能力尚未开放，提示"钱包暂未接入共同服务；余额与提现暂不可用。"（查询）/"钱包暂未接入共同服务；提现暂不可用。"（提现）；不重试，不回退样例数据 |
 | 503 | SERVICE_UNAVAILABLE | 明确失败或结果待确认，重试同请求；不返回样例成功 |
 
 返回错误码和易懂 message。具体是否可重试由 retryable 字段说明；网络超时不代表操作未发生，客户端按同一 requestId 恢复查询或重试。
