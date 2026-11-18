@@ -1,0 +1,147 @@
+/* ==========================================================================
+   效果 A：iOS 风格 Push / Pop 全页侧滑过渡（340ms）
+   ========================================================================== */
+::view-transition-group(root) {
+  animation-duration: 340ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation-duration: 340ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+html[data-nav-direction="forward"]::view-transition-old(root) {
+  z-index: 1;
+  animation-name: ios-push-old;
+}
+
+html[data-nav-direction="forward"]::view-transition-new(root) {
+  z-index: 2;
+  animation-name: ios-push-new;
+}
+
+html[data-nav-direction="back"]::view-transition-old(root) {
+  z-index: 2;
+  animation-name: ios-pop-old;
+}
+
+html[data-nav-direction="back"]::view-transition-new(root) {
+  z-index: 1;
+  animation-name: ios-pop-new;
+}
+
+html[data-nav-fallback="forward"] .app-shell,
+html[data-nav-fallback="back"] .app-shell {
+  animation: ios-fallback-reveal 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes ios-push-old {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(-20%, 0, 0) scale(0.96);
+    opacity: 0.72;
+  }
+}
+
+@keyframes ios-push-new {
+  from {
+    transform: translate3d(100%, 0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes ios-pop-old {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes ios-pop-new {
+  from {
+    transform: translate3d(-20%, 0, 0) scale(0.96);
+    opacity: 0.72;
+  }
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ios-fallback-reveal {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   效果 B：轻量级视图内切换（220ms ease-out）
+   支持显式挂载 data-student-surface，或通过 runSurfaceTransition 单次标记
+   ========================================================================== */
+html[data-student-surface]::view-transition-group(root),
+html[data-student-surface]::view-transition-old(root),
+html[data-student-surface]::view-transition-new(root),
+html[data-student-page-animating]:not([data-nav-direction])::view-transition-group(root),
+html[data-student-page-animating]:not([data-nav-direction])::view-transition-old(root),
+html[data-student-page-animating]:not([data-nav-direction])::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: ease-out;
+}
+
+html[data-student-surface]::view-transition-old(root),
+html[data-student-surface][data-nav-direction]::view-transition-old(root),
+html[data-student-page-animating]:not([data-nav-direction])::view-transition-old(root) {
+  z-index: 1;
+  animation-name: student-page-out;
+}
+
+html[data-student-surface]::view-transition-new(root),
+html[data-student-surface][data-nav-direction]::view-transition-new(root),
+html[data-student-page-animating]:not([data-nav-direction])::view-transition-new(root) {
+  z-index: 2;
+  animation-name: student-page-in;
+}
+
+html[data-student-surface][data-nav-fallback] .app-shell,
+html[data-student-surface][data-student-nav-fallback] .app-shell,
+html[data-student-nav-fallback]:not([data-nav-fallback]) .app-shell {
+  animation: student-page-in 220ms ease-out both;
+}
+
+@keyframes student-page-out {
+  from { opacity: 1; }
+  to { opacity: 0.72; }
+}
+
+@keyframes student-page-in {
+  from { transform: translate3d(12px, 0, 0); opacity: 0; }
+  to { transform: translate3d(0, 0, 0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-nav-fallback] .app-shell,
+  html[data-student-nav-fallback] .app-shell,
+  html[data-student-surface][data-nav-fallback] .app-shell,
+  html[data-student-surface][data-student-nav-fallback] .app-shell {
+    animation: none;
+  }
+}

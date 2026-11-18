@@ -28,6 +28,10 @@ body {
 
 button {
   font: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 code {
@@ -119,14 +123,20 @@ code {
   border-radius: 0.9rem;
   color: var(--ink);
   cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: border-color 140ms ease, transform 140ms cubic-bezier(0.22, 1, 0.36, 1), opacity 140ms ease, box-shadow 140ms ease;
 }
 
 .module-card:hover,
 .module-card:focus-visible {
   border-color: var(--green-700);
   transform: translateY(-1px);
-  outline: none;
+  outline: 2.5px solid #a88300;
+  outline-offset: 2px;
+}
+
+.module-card:active:not(:disabled) {
+  transform: scale(0.975);
+  opacity: 0.84;
 }
 
 .module-card__title {
@@ -168,12 +178,21 @@ code {
   color: var(--green-900);
   font-size: 0.86rem;
   cursor: pointer;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 180ms ease, border-color 180ms ease, opacity 180ms ease;
 }
 
 .back-link:hover,
 .back-link:focus-visible {
   border-color: var(--green-700);
-  outline: none;
+  outline: 2.5px solid #a88300;
+  outline-offset: 2px;
+}
+
+.back-link:active:not(:disabled) {
+  transform: scale(0.95);
+  opacity: 0.78;
+  background-color: #e4effb;
+  border-color: #1971e2;
 }
 
 .badge {
@@ -527,9 +546,31 @@ code {
   background: #2f7a2c;
   color: #ffffff;
   box-shadow: 0 10px 22px rgba(47, 122, 44, 0.2);
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease, opacity 140ms ease;
 }
 
 .home-panel--brand .check-entry:hover,
 .home-panel--brand .check-entry:focus-visible {
   background: #276b25;
+}
+
+.home-panel--brand .check-entry:active:not(:disabled) {
+  transform: scale(0.975);
+  opacity: 0.88;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .module-card,
+  .back-link,
+  .home-panel--brand .check-entry {
+    transition: none;
+  }
+
+  .module-card:hover,
+  .module-card:active:not(:disabled),
+  .back-link:active:not(:disabled),
+  .home-panel--brand .check-entry:active:not(:disabled) {
+    transform: none;
+    opacity: 1;
+  }
 }

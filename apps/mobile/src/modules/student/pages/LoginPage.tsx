@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { ApiError, demoLogin, roleLabel } from '../../../shared';
+import { login, registerStudentAccount, roleLabel } from '../../../shared';
 import { clearSession } from '../../../shared/session';
 import type { StudentSessionGate } from '../state/sessionGate';
+import {
+  describeAuthError,
+  validateStudentRegisterInput,
+  type StudentAuthMode,
+} from '../utils/authView';
 import '../login.css';
 
 export interface LoginPageProps {
@@ -12,8 +17,8 @@ export interface LoginPageProps {
 const GATE_MESSAGE: Record<StudentSessionGate['kind'], string> = {
   ok: '',
   missing: '',
-  expired: '登录已过期，请重新输入演示账号登录。',
-  'wrong-role': '当前登录不是学生身份，请改用学生演示账号登录。',
+  expired: '登录已过期，请重新输入学生账号登录。',
+  'wrong-role': '当前登录不是学生身份，请改用学生账号登录。',
 };
 
 const WALL_PHOTOS = ['cafeteria', 'noodle', 'table', 'rice', 'trays'] as const;
@@ -32,25 +37,6 @@ function WallFrames({ reverse = false }: { reverse?: boolean }) {
       ))}
     </>
   );
-}
-
-function describeLoginError(error: unknown): string {
-  if (!(error instanceof ApiError)) {
-    return '登录未完成，请稍后重试。';
-  }
-  switch (error.code) {
-    case 'UNAUTHENTICATED':
-      return '账号或密码不正确，请核对管理员线下提供的演示账号。';
-    case 'API_BASE_NOT_CONFIGURED':
-      return `登录服务地址尚未配置：${error.message}`;
-    case 'NETWORK_ERROR':
-    case 'NETWORK_TIMEOUT':
-    case 'NOT_FOUND':
-    case 'HTTP_ERROR':
-      return `${error.message} 请先在「公共能力自检」里确认服务地址是否可用。`;
-    default:
-      return `${error.message}（${error.code}）`;
-  }
 }
 
 function FieldIcon({ type }: { type: 'account' | 'password' }) {
@@ -81,37 +67,78 @@ function FieldIcon({ type }: { type: 'account' | 'password' }) {
 }
 
 export default function LoginPage({ gate, onSwitchToSample }: LoginPageProps) {
+  const [mode, setMode] = useState<StudentAuthMode>('login');
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registeredNotice, setRegisteredNotice] = useState<string | null>(null);
 
   const gateMessage = GATE_MESSAGE[gate.kind];
   const submitDisabled = busy;
+  const isRegister = mode === 'register';
+
+  function switchMode(nextMode: StudentAuthMode): void {
+    if (busy || nextMode === mode) {
+      return;
+    }
+    setMode(nextMode);
+    setPassword('');
+    setError(null);
+    if (nextMode === 'register') {
+      setRegisteredNotice(null);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busy) {
       return;
     }
+
+    if (isRegister) {
+      const validationMessage = validateStudentRegisterInput(account, password);
+      if (validationMessage) {
+        setError(validationMessage);
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      setRegisteredNotice(null);
+      try {
+        const normalizedAccount = account.trim().toLowerCase();
+        await registerStudentAccount(account, password);
+        setAccount(normalizedAccount);
+        setPassword('');
+        setMode('login');
+        setRegisteredNotice(`账号「${normalizedAccount}」注册成功，请输入密码登录。`);
+      } catch (registerError) {
+        setError(describeAuthError(registerError, 'register'));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     if (account.trim().length === 0 || password.length === 0) {
-      setError('请输入演示账号与密码。');
+      setError('请输入学生账号与密码。');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const session = await demoLogin(account, password);
+      const session = await login(account, password);
       if (session.user.role !== 'STUDENT') {
         clearSession();
         setPassword('');
-        setError(`该账号的角色是${roleLabel(session.user.role)}，不是学生；请使用学生演示账号。`);
+        setError(`该账号的角色是${roleLabel(session.user.role)}，不是学生；请使用学生账号登录。`);
         return;
       }
       setPassword('');
+      setRegisteredNotice(null);
     } catch (loginError) {
       setPassword('');
-      setError(describeLoginError(loginError));
+      setError(describeAuthError(loginError, 'login'));
     } finally {
       setBusy(false);
     }
@@ -122,7 +149,7 @@ export default function LoginPage({ gate, onSwitchToSample }: LoginPageProps) {
       <header className="student-login-brand">
         <div className="student-login-brand__row">
           <p className="student-login-brand__name">
-            吉祥点餐
+            食麦呼
             <svg className="student-login-brand__spark" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 d="M12 1.5c.9 4.6 2.9 6.6 7.5 7.5-4.6.9-6.6 2.9-7.5 7.5-.9-4.6-2.9-6.6-7.5-7.5 4.6-.9 6.6-2.9 7.5-7.5Z"
@@ -181,27 +208,66 @@ export default function LoginPage({ gate, onSwitchToSample }: LoginPageProps) {
       </div>
 
       <div className="student-login-card">
-        <h2 className="student-login-card__title">学生端登录</h2>
+        <div className="student-login-card__head">
+          <h2 className="student-login-card__title">
+            {isRegister ? '学生账号注册' : '学生端登录'}
+          </h2>
+          <div className="student-login-mode-switch" role="tablist" aria-label="登录或注册切换">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isRegister}
+              className={`student-login-mode-switch__btn${!isRegister ? ' is-active' : ''}`}
+              disabled={busy}
+              onClick={() => switchMode('login')}
+            >
+              登录
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isRegister}
+              className={`student-login-mode-switch__btn${isRegister ? ' is-active' : ''}`}
+              disabled={busy}
+              onClick={() => switchMode('register')}
+            >
+              注册
+            </button>
+          </div>
+        </div>
 
-        {gateMessage ? (
+        {!isRegister && registeredNotice ? (
+          <p className="student-login-card__success" role="status">
+            {registeredNotice}
+          </p>
+        ) : null}
+
+        {!isRegister && gateMessage ? (
           <p className="student-login-card__gate" role="status">
             {gateMessage}
           </p>
         ) : null}
 
+        {isRegister ? (
+          <div className="student-login-rules" aria-label="注册规则说明">
+            <span className="student-login-rules__chip">账号：4–32 位字母/数字/下划线</span>
+            <span className="student-login-rules__chip">密码：8–128 位 · 注册后登录</span>
+          </div>
+        ) : null}
+
         <form className="student-login-form" onSubmit={handleSubmit} noValidate>
           <div className="student-login-field">
             <FieldIcon type="account" />
-            <label htmlFor="student-login-account">演示账号</label>
+            <label htmlFor="student-login-account">{isRegister ? '注册账号' : '学生账号'}</label>
             <span className="student-login-field__divider" aria-hidden="true" />
             <input
               id="student-login-account"
               name="account"
               type="text"
               value={account}
-              placeholder="请输入演示账号"
+              placeholder={isRegister ? '4-32 位字母、数字或下划线' : '请输入学生账号或演示账号'}
               autoComplete="username"
-              maxLength={120}
+              maxLength={isRegister ? 32 : 120}
               disabled={busy}
               onChange={(event) => setAccount(event.target.value)}
             />
@@ -209,16 +275,16 @@ export default function LoginPage({ gate, onSwitchToSample }: LoginPageProps) {
 
           <div className="student-login-field">
             <FieldIcon type="password" />
-            <label htmlFor="student-login-password">密码</label>
+            <label htmlFor="student-login-password">{isRegister ? '设置密码' : '登录密码'}</label>
             <span className="student-login-field__divider" aria-hidden="true" />
             <input
               id="student-login-password"
               name="password"
               type="password"
               value={password}
-              placeholder="请输入密码"
-              autoComplete="current-password"
-              maxLength={200}
+              placeholder={isRegister ? '设置 8-128 位登录密码' : '请输入密码'}
+              autoComplete={isRegister ? 'new-password' : 'current-password'}
+              maxLength={isRegister ? 128 : 200}
               disabled={busy}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -231,7 +297,15 @@ export default function LoginPage({ gate, onSwitchToSample }: LoginPageProps) {
           ) : null}
 
           <button type="submit" className="student-login-submit" disabled={submitDisabled}>
-            <span>{busy ? '正在登录…' : '登录学生端'}</span>
+            <span>
+              {busy
+                ? isRegister
+                  ? '正在注册…'
+                  : '正在登录…'
+                : isRegister
+                  ? '注册学生账号'
+                  : '登录学生端'}
+            </span>
             <svg
               className="student-login-submit__arrow"
               viewBox="0 0 24 24"
@@ -248,9 +322,20 @@ export default function LoginPage({ gate, onSwitchToSample }: LoginPageProps) {
           </button>
         </form>
 
+        <div className="student-login-card__switch-row">
+          <button
+            type="button"
+            className="student-login-card__switch-link"
+            disabled={busy}
+            onClick={() => switchMode(isRegister ? 'login' : 'register')}
+          >
+            {isRegister ? '已有学生账号？返回登录 →' : '还没有账号？立即注册学生账号 →'}
+          </button>
+        </div>
+
         <p className="student-login-card__hint">
           <span aria-hidden="true" />
-          演示账号由管理员线下提供
+          {isRegister ? '注册仅创建学生身份，完成后请登录' : '支持新注册学生账号或线下演示账号'}
           <span aria-hidden="true" />
         </p>
 

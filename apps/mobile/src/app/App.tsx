@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  navigateToHash,
+  runAfterBackPress,
+  runAfterPressTransition,
+} from '../shared/backPress';
 import { mobileModules } from './moduleRegistry';
 import SystemCheck from './SystemCheck';
 
@@ -10,10 +15,6 @@ function readRoute(): string {
   const hash = window.location.hash.replace(/^#/, '');
   const normalized = hash.replace(/\/+$/, '');
   return normalized.length > 0 ? normalized : HOME_ROUTE;
-}
-
-function navigate(route: string): void {
-  window.location.hash = route;
 }
 
 function Home() {
@@ -34,7 +35,9 @@ function Home() {
             key={module.id}
             type="button"
             className="module-card"
-            onClick={() => navigate(module.route)}
+            onClick={(event) =>
+              runAfterPressTransition(event.currentTarget, () => navigateToHash(module.route), 'forward')
+            }
           >
             <span className="module-card__title">{module.title}</span>
             <span className="module-card__desc">{module.subtitle}</span>
@@ -44,7 +47,13 @@ function Home() {
           </button>
         ))}
       </div>
-      <button type="button" className="check-entry" onClick={() => navigate(CHECK_ROUTE)}>
+      <button
+        type="button"
+        className="check-entry"
+        onClick={(event) =>
+          runAfterPressTransition(event.currentTarget, () => navigateToHash(CHECK_ROUTE), 'forward')
+        }
+      >
         公共能力自检（服务、登录与定位）
       </button>
     </section>
@@ -56,7 +65,11 @@ function NotFound() {
     <section className="module-panel" aria-labelledby="not-found-title">
       <h2 id="not-found-title">未找到该入口</h2>
       <p className="lead">当前地址没有对应的角色模块，请返回角色入口重新选择。</p>
-      <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
+      <button
+        type="button"
+        className="back-link"
+        onClick={(event) => runAfterBackPress(event.currentTarget, () => navigateToHash(HOME_ROUTE))}
+      >
         ← 返回角色入口
       </button>
     </section>
@@ -69,9 +82,13 @@ export default function App() {
   const currentRoute = useRef(route);
 
   useEffect(() => {
-    const onHashChange = () => setRoute(readRoute());
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    const onRouteChange = () => setRoute(readRoute());
+    window.addEventListener('hashchange', onRouteChange);
+    window.addEventListener('app:navigate', onRouteChange);
+    return () => {
+      window.removeEventListener('hashchange', onRouteChange);
+      window.removeEventListener('app:navigate', onRouteChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -106,7 +123,11 @@ export default function App() {
       <main className="app-main">
         {route === CHECK_ROUTE ? (
           <>
-            <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
+            <button
+              type="button"
+              className="back-link"
+              onClick={(event) => runAfterBackPress(event.currentTarget, () => navigateToHash(HOME_ROUTE))}
+            >
               ← 返回角色入口
             </button>
             <SystemCheck />
@@ -115,12 +136,20 @@ export default function App() {
           <>
             {isMerchant
               ? merchantCanGoBack && (
-                <button type="button" className="back-link" onClick={() => window.history.back()}>
+                <button
+                  type="button"
+                  className="back-link"
+                  onClick={(event) => runAfterBackPress(event.currentTarget, () => window.history.back())}
+                >
                   ← 返回上一页
                 </button>
               )
               : (
-                <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
+                <button
+                  type="button"
+                  className="back-link"
+                  onClick={(event) => runAfterBackPress(event.currentTarget, () => navigateToHash(HOME_ROUTE))}
+                >
                   ← 返回角色入口
                 </button>
               )}
