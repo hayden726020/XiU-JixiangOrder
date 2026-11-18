@@ -32,7 +32,7 @@
   padding: calc(0.9rem + env(safe-area-inset-top)) 1.1rem 3.4rem;
   background:
     linear-gradient(180deg, rgba(233, 242, 251, 0) 55%, rgba(233, 242, 251, 0.9) 100%),
-    url("./assets/campus-hero.png") center 42% / cover no-repeat;
+    url("./assets/campus-hero.webp") center 42% / cover no-repeat;
 }
 
 .booking-nav {
@@ -103,7 +103,7 @@
   width: 100%;
   height: 100%;
   border-radius: 2px;
-  background: url("./assets/cafeteria-contact-sheet.png") left bottom / 200% 200% no-repeat;
+  background: url("./assets/cafeteria-contact-sheet.webp") left bottom / 200% 200% no-repeat;
 }
 
 .booking-dish__note {
@@ -682,7 +682,7 @@
   padding-bottom: 2.2rem;
   background:
     linear-gradient(180deg, rgba(233, 242, 251, 0) 55%, rgba(233, 242, 251, 0.95) 100%),
-    url("./assets/campus-hero.png") center 40% / cover no-repeat;
+    url("./assets/campus-hero.webp") center 40% / cover no-repeat;
 }
 
 .confirm-bubble {
@@ -732,7 +732,7 @@
   height: 4.8rem;
   margin: -1.1rem -1rem 1rem;
   border-radius: 18px 18px 0 0;
-  background: url("./assets/cafeteria-contact-sheet.png") right top / 200% 200% no-repeat;
+  background: url("./assets/cafeteria-contact-sheet.webp") right top / 200% 200% no-repeat;
   overflow: hidden;
 }
 
@@ -778,7 +778,7 @@
   width: 4.2rem;
   height: 3.5rem;
   border-radius: 8px;
-  background: url("./assets/cafeteria-contact-sheet.png") left bottom / 200% 200% no-repeat;
+  background: url("./assets/cafeteria-contact-sheet.webp") left bottom / 200% 200% no-repeat;
   box-shadow: 0 4px 10px rgba(7, 22, 56, 0.12);
   border: 1.5px solid #fff;
 }

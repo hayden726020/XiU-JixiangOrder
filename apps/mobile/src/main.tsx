@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import App from './app/App';
 import './shared/styles.css';
 import './shared/page-transition.css';
+import { disableNativeTextSelection } from './shared/noNativeTextSelection';
+
+disableNativeTextSelection();
 
 const rootElement = document.getElementById('root');
 
@@ -15,3 +18,9 @@ createRoot(rootElement).render(
     <App />
   </StrictMode>,
 );
+
+if (import.meta.env.PROD && window.isSecureContext && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}

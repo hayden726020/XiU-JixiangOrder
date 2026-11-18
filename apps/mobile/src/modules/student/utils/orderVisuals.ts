@@ -1,13 +1,13 @@
 import type { DishDto } from '../types';
 import type { StallPhotoKey } from './shopSelectView';
 import stallCounterMianshi from '../assets/stall-counter-mianshi.jpg';
-import stallCounterJiachang from '../assets/stall-counter-jiachang.png';
-import stallCounterXiaochao from '../assets/stall-counter-xiaochao.png';
-import dishBeefNoodle from '../assets/dish-beef-noodle.png';
+import stallCounterJiachang from '../assets/stall-counter-jiachang.webp';
+import stallCounterXiaochao from '../assets/stall-counter-xiaochao.webp';
+import dishBeefNoodle from '../assets/dish-beef-noodle.webp';
 import dishZhajiangNoodle from '../assets/dish-zhajiang-noodle.jpg';
 import dishChickenColdNoodle from '../assets/dish-chicken-cold-noodle.jpg';
 import dishTomatoEgg from '../assets/dish-tomato-egg.jpg';
-import dishChickenLeg from '../assets/dish-chicken-leg.png';
+import dishChickenLeg from '../assets/dish-chicken-leg.webp';
 import loginFoodRice from '../assets/login-food-rice.jpg';
 import loginTrays from '../assets/login-trays.jpg';
 

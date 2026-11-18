@@ -5,6 +5,8 @@ import { filterDishesByShop } from '../utils/dishShopFilter';
 import { formatYuan } from '../utils/money';
 import { toSourceErrorView } from '../utils/sourceErrorView';
 import { SHOP_SWITCH_NOTICE } from '../utils/shopTexts';
+import { preloadImages } from '../../../shared/imagePreload';
+import { getCachedMenu, setCachedMenu } from '../state/studentDataCache';
 import OrderDishCard from '../components/OrderDishCard';
 import OrderMenuIcon from '../components/OrderMenuIcons';
 import StudentTabBar from '../components/StudentTabBar';
@@ -51,32 +53,46 @@ export interface MenuPageProps {
 
 export default function OrderMenuPage({ source, draft, shop, onBackToShops, onProceed, onViewSampleOrder, onViewCancelOrder, onOpenOrders, onGoHome, onGoProfile, focusDishId = null, onFocusHandled }: MenuPageProps) {
   const [snapshot, setSnapshot] = useState(() => draft.getState());
-  const [menu, setMenu] = useState<MenuResponse | null>(null);
-  const [status, setStatus] = useState<LoadStatus>('loading');
+  const date = snapshot.date;
+  const initialMenu = getCachedMenu(source, date);
+  const [menu, setMenu] = useState<MenuResponse | null>(() => initialMenu);
+  const [status, setStatus] = useState<LoadStatus>(() => (initialMenu ? 'ready' : 'loading'));
   const [errorText, setErrorText] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [category, setCategory] = useState<Category>('全部');
   const [dateAnimDir, setDateAnimDir] = useState<'none' | 'forward' | 'backward'>('none');
-  const date = snapshot.date;
 
   useEffect(() => {
     let cancelled = false;
     const token = draft.beginMenuRead();
-    setStatus('loading');
+    const cached = getCachedMenu(source, date);
+    if (cached && reloadToken === 0) {
+      setMenu(cached);
+      setStatus('ready');
+      draft.applyDishCatalog(filterDishesByShop(cached.dishes, shop.merchantId));
+      setSnapshot(draft.getState());
+    } else {
+      setStatus('loading');
+    }
     setErrorText('');
     source.getMenu(date).then(
       (data) => {
         if (cancelled || !draft.isMenuReadCurrent(token)) return;
+        setCachedMenu(source, date, data);
+        const filtered = filterDishesByShop(data.dishes, shop.merchantId);
+        preloadImages(filtered.map((dish) => dish.imageUrl));
         setMenu(data);
         setStatus('ready');
-        draft.applyDishCatalog(filterDishesByShop(data.dishes, shop.merchantId));
+        draft.applyDishCatalog(filtered);
         setSnapshot(draft.getState());
       },
       (error: unknown) => {
         if (cancelled || !draft.isMenuReadCurrent(token)) return;
-        setMenu(null);
-        setStatus('error');
-        setErrorText(toSourceErrorView(error));
+        if (getCachedMenu(source, date) === null || reloadToken > 0) {
+          setMenu(null);
+          setStatus('error');
+          setErrorText(toSourceErrorView(error));
+        }
       },
     );
     return () => { cancelled = true; };
@@ -88,8 +104,9 @@ export default function OrderMenuPage({ source, draft, shop, onBackToShops, onPr
     if (currentIndex >= 0 && nextIndex !== currentIndex) {
       setDateAnimDir(nextIndex > currentIndex ? 'forward' : 'backward');
     }
-    setMenu(null);
-    setStatus('loading');
+    const cachedNext = getCachedMenu(source, next);
+    setMenu(cachedNext);
+    setStatus(cachedNext ? 'ready' : 'loading');
     setSnapshot(draft.getState());
   }
 

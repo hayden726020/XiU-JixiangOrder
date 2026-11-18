@@ -4,6 +4,7 @@ import { toSourceError } from '../types';
 import { toOrderListErrorView } from '../utils/orderListView';
 import { orderNoText } from '../utils/orderStatusView';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
+import { getCachedOrders, setCachedOrders } from '../state/studentDataCache';
 import LoginGuide from '../components/LoginGuide';
 import OrderListIcon from '../components/OrderListIcons';
 import OrderTicketCard from '../components/OrderTicketCard';
@@ -51,8 +52,12 @@ export default function OrderListPage({
   onGoToProfile,
 }: OrderListPageProps) {
   const { gate, refresh } = useStudentSessionGate();
-  const [orders, setOrders] = useState<StudentOrder[]>([]);
-  const [status, setStatus] = useState<ListStatus>('loading');
+  const realLoggedOut = source.mode === 'real' && !gate.usable;
+  const initialOrders = !realLoggedOut ? getCachedOrders(source) : null;
+  const [orders, setOrders] = useState<StudentOrder[]>(() => initialOrders ?? []);
+  const [status, setStatus] = useState<ListStatus>(() =>
+    initialOrders ? (initialOrders.length ? 'ready' : 'empty') : 'loading',
+  );
   const [error, setError] = useState<SourceError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [filter, setFilter] = useState<OrderFilter>(initialFilter);
@@ -61,7 +66,6 @@ export default function OrderListPage({
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [notice, setNotice] = useState('');
-  const realLoggedOut = source.mode === 'real' && !gate.usable;
 
   useEffect(() => {
     setFilter(initialFilter);
@@ -71,19 +75,28 @@ export default function OrderListPage({
   useEffect(() => {
     if (realLoggedOut) return;
     let cancelled = false;
-    setStatus('loading');
+    const cached = getCachedOrders(source);
+    if (cached && reloadToken === 0) {
+      setOrders(cached);
+      setStatus(cached.length ? 'ready' : 'empty');
+    } else {
+      setStatus('loading');
+    }
     setError(null);
     source.listOrders().then(
       (data) => {
         if (cancelled) return;
+        setCachedOrders(source, data);
         setOrders(data);
         setStatus(data.length ? 'ready' : 'empty');
       },
       (failure: unknown) => {
         if (cancelled) return;
-        setOrders([]);
-        setError(toSourceError(failure));
-        setStatus('error');
+        if (getCachedOrders(source) === null || reloadToken > 0) {
+          setOrders([]);
+          setError(toSourceError(failure));
+          setStatus('error');
+        }
       },
     );
     return () => { cancelled = true; };
@@ -155,7 +168,7 @@ export default function OrderListPage({
       {!realLoggedOut && status === 'loading' ? <p className="meal-orders__state" role="status">正在读取订单…</p> : null}
       {!realLoggedOut && status === 'error' && errorView ? <div className="meal-orders__state meal-orders__state--error" role="alert"><p>{errorView.message}</p>{errorView.action === 'login' ? <button type="button" onClick={() => { window.location.hash = '/system-check'; }}>去公共入口登录</button> : <button type="button" onClick={() => setReloadToken((value) => value + 1)}>重新读取</button>}</div> : null}
       {!realLoggedOut && status === 'empty' ? <div className="meal-orders__state"><p>还没有订单，去挑一份喜欢的餐吧。</p><button type="button" onClick={(event) => (onGoToShop || onBack)(event.currentTarget)}>去点餐</button></div> : null}
-      {!realLoggedOut && status === 'ready' ? <main className="meal-orders__cards" aria-label="订单列表">{visibleOrders.length ? visibleOrders.map((order) => <OrderTicketCard key={order.id} order={order} mode={source.mode} onOpenOrder={onOpenOrder} onAskMerchant={(kind, selected) => setNotice(kind === 'remind' ? `暂无在线催单服务。请凭订单号 ${orderNoText(selected)} 到 ${selected.merchantName || '档口'} 咨询。` : `请凭订单号 ${orderNoText(selected)} 到 ${selected.merchantName || '档口'} 联系商家。`)} />) : <div className="meal-orders__state">没有符合条件的订单</div>}</main> : null}
+      {!realLoggedOut && status === 'ready' ? <main className="meal-orders__cards" aria-label="订单列表">{visibleOrders.length ? visibleOrders.map((order, index) => <OrderTicketCard key={order.id} index={index} order={order} mode={source.mode} onOpenOrder={onOpenOrder} onAskMerchant={(kind, selected) => setNotice(kind === 'remind' ? `暂无在线催单服务。请凭订单号 ${orderNoText(selected)} 到 ${selected.merchantName || '档口'} 咨询。` : `请凭订单号 ${orderNoText(selected)} 到 ${selected.merchantName || '档口'} 联系商家。`)} />) : <div className="meal-orders__state">没有符合条件的订单</div>}</main> : null}
     </div>
     <StudentTabBar
       active="orders"

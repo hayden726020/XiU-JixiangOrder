@@ -19,8 +19,8 @@ import wallPhoto3 from '../assets/wall-3.webp';
 import wallPhoto4 from '../assets/wall-4.webp';
 import wallPhoto5 from '../assets/wall-5.webp';
 import wallPhoto6 from '../assets/wall-6.webp';
-import brandChef from '../assets/brand-chef.png';
-import brandWordmark from '../assets/brand-wordmark-v2.png';
+import brandChef from '../assets/brand-chef.webp';
+import brandWordmark from '../assets/brand-wordmark-v2.webp';
 
 type Step = 1 | 2;
 

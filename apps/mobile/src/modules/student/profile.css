@@ -365,10 +365,79 @@
 }
 
 /* 3. 当前订单票券卡：外层承接 drop-shadow（避免被同元素 mask-image 裁掉投影），内层 .profile-ticket__paper 负责真镂空凹孔与底边波浪齿孔 */
+.profile-ticket-deck {
+  position: relative;
+  height: 14.4rem;
+  isolation: isolate;
+}
+
+.profile-ticket-deck:has(> :only-child) {
+  height: 13.8rem;
+}
+
+.profile-ticket-deck__card {
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: 13.2rem;
+  cursor: pointer;
+  user-select: none;
+  will-change: transform;
+  transform-origin: center top;
+}
+
+.profile-ticket-deck__card:focus-visible {
+  outline: 2.5px solid #d98d0b;
+  outline-offset: 3px;
+}
+
+.profile-ticket-deck__card .profile-ticket__paper {
+  min-height: 13.2rem;
+}
+
+.profile-ticket__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.48rem;
+}
+
+.profile-ticket__hint {
+  color: #78695b;
+  font-size: 0.69rem;
+}
+
+.profile-ticket__detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.2rem 0;
+  border: 0;
+  background: transparent;
+  color: #8b5607 !important;
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+}
+
+.profile-ticket__detail svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
 .profile-ticket {
   position: relative;
   isolation: isolate;
   filter:
+    drop-shadow(0 1px 2px rgba(72, 40, 10, 0.16))
+    drop-shadow(0 6px 14px rgba(78, 44, 12, 0.12));
+}
+
+.profile-ticket.profile-ticket-deck__card {
+  position: absolute;
+  inset: 0 0 auto;
+  filter:
+    brightness(var(--deck-brightness, 1))
     drop-shadow(0 1px 2px rgba(72, 40, 10, 0.16))
     drop-shadow(0 6px 14px rgba(78, 44, 12, 0.12));
 }

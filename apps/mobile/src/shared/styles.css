@@ -34,6 +34,29 @@ button {
   user-select: none;
 }
 
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+html,
+body,
+#root,
+#root * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#root input,
+#root textarea,
+#root select,
+#root [contenteditable]:not([contenteditable="false"]) {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 code {
   display: inline-block;
   padding: 0.1rem 0.35rem;

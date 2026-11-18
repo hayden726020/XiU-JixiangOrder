@@ -13,7 +13,7 @@ import { useSourceNowMs } from '../state/useSourceNowMs';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
 import SlideToConfirm from '../components/SlideToConfirm';
-import dishChickenLeg from '../assets/dish-chicken-leg.png';
+import dishChickenLeg from '../assets/dish-chicken-leg.webp';
 import '../confirm-order.css';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -635,7 +635,7 @@ export default function ConfirmPage({
                       <li key={line.dishId} className="confirm-item">
                         <div className="confirm-item__polaroid">
                           <span className="confirm-item__tape" aria-hidden="true" />
-                          <img src={line.photo} alt={`${line.name}（仅供参考）`} />
+                          <img src={line.photo} alt={`${line.name}（仅供参考）`} decoding="async" />
                         </div>
                         <div className="confirm-item__info">
                           <h3 className="confirm-item__name">{line.name}</h3>

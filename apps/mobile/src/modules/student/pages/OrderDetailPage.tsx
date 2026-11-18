@@ -41,12 +41,12 @@ import { derivePollingView } from '../utils/pollingView';
 import LoginGuide from '../components/LoginGuide';
 import OrderCrowdNote from '../components/OrderCrowdNote';
 import StudentTabBar from '../components/StudentTabBar';
-import dishChickenLeg from '../assets/dish-chicken-leg.png';
-import dishBeefNoodle from '../assets/dish-beef-noodle.png';
+import dishChickenLeg from '../assets/dish-chicken-leg.webp';
+import dishBeefNoodle from '../assets/dish-beef-noodle.webp';
 import dishZhajiangNoodle from '../assets/dish-zhajiang-noodle.jpg';
 import dishChickenColdNoodle from '../assets/dish-chicken-cold-noodle.jpg';
 import dishTomatoEgg from '../assets/dish-tomato-egg.jpg';
-import friedRice from '../assets/fried-rice.png';
+import friedRice from '../assets/fried-rice.webp';
 import loginFoodRice from '../assets/login-food-rice.jpg';
 import '../order-detail.css';
 
@@ -835,6 +835,7 @@ export default function OrderDetailPage({
                           className="detail-item__photo"
                           src={dishPhotoFor(item.name)}
                           alt={item.name}
+                          decoding="async"
                         />
                       </div>
                       <div className="detail-item__info">

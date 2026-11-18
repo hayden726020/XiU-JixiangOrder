@@ -6,7 +6,7 @@
   padding: calc(1.4rem + env(safe-area-inset-top)) 1.15rem 1.8rem;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(250, 247, 238, 0.9) 100%),
-    url("../assets/campus-hero.png") center 35% / cover no-repeat;
+    url("../assets/campus-hero.webp") center 35% / cover no-repeat;
 }
 
 .home-hero__content {

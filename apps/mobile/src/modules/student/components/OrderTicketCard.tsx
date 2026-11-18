@@ -2,7 +2,7 @@ import type { StudentOrder } from '../types';
 import { formatYuan } from '../utils/money';
 import { orderNoText, toOrderStatusView } from '../utils/orderStatusView';
 import type { StudentMode } from '../types';
-import ricePhoto from '../assets/fried-rice.png';
+import ricePhoto from '../assets/fried-rice.webp';
 import noodlePhoto from '../assets/login-food-noodle.jpg';
 import chickenPhoto from '../assets/dish-chicken-rice.png';
 import tomatoEggPhoto from '../assets/dish-tomato-egg.jpg';
@@ -40,9 +40,10 @@ function slotRangeLabel(startIso: string, endIso: string): string {
   return `${when} ${startTime}-${fmt(end)}`;
 }
 
-export default function OrderTicketCard({ order, mode, onOpenOrder, onAskMerchant }: {
+export default function OrderTicketCard({ order, mode, index = 0, onOpenOrder, onAskMerchant }: {
   order: StudentOrder;
   mode: StudentMode;
+  index?: number;
   onOpenOrder: (id: string, trigger?: HTMLElement | null) => void;
   onAskMerchant: (kind: 'remind' | 'contact', order: StudentOrder) => void;
 }) {
@@ -62,7 +63,7 @@ export default function OrderTicketCard({ order, mode, onOpenOrder, onAskMerchan
       <span>下单时间：{dateLabel(order.createdAt)}</span>
     </div>
     <div className="order-ticket__body">
-      <img className="order-ticket__photo" src={photoFor(order)} alt="" loading="lazy" />
+      <img className="order-ticket__photo" src={photoFor(order)} alt="" loading={index > 4 ? 'lazy' : 'eager'} decoding="async" />
       <div className="order-ticket__details">
         <h2>{shopName}</h2>
         <p className="order-ticket__dish">{firstDish ? `${firstDish.name} × ${firstDish.quantity}` : '餐品待确认'}{order.items.length > 1 ? ` 等 ${order.items.length} 项` : ''}</p>

@@ -30,6 +30,13 @@ import HomeFeed from '../components/HomeFeed';
 import OrderCategoryGrid from '../components/OrderCategoryGrid';
 import StudentTabBar from '../components/StudentTabBar';
 import { runSurfaceTransition } from '../../../shared/backPress';
+import { preloadImages } from '../../../shared/imagePreload';
+import {
+  getCachedMenu,
+  getCachedShops,
+  setCachedMenu,
+  setCachedShops,
+} from '../state/studentDataCache';
 import '../student-home.css';
 
 export interface ShopSelectPageProps {
@@ -164,17 +171,28 @@ export default function ShopSelectPage({
 }: ShopSelectPageProps) {
   const [internalTab, setInternalTab] = useState<'home' | 'order' | 'mine'>('home');
   const activeTab = controlledTab ?? internalTab;
-  const [shops, setShops] = useState<ShopSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [visitedTabs, setVisitedTabs] = useState<{ home: boolean; order: boolean }>(() => ({
+    home: (controlledTab ?? 'home') === 'home',
+    order: controlledTab === 'order',
+  }));
+  const initialMenuDate =
+    source.mode === 'real' ? todayAndTomorrow(new Date())[0] : draft.getState().date;
+  const initialShops = getCachedShops(source);
+  const initialMenu = getCachedMenu(source, initialMenuDate);
+  const [shops, setShops] = useState<ShopSummary[]>(() => initialShops ?? []);
+  const [loading, setLoading] = useState(() => initialShops === null);
   const [error, setError] = useState<SourceError | null>(null);
-  const [listSource, setListSource] = useState<ShopListSource>('server');
+  const [listSource, setListSource] = useState<ShopListSource>(() =>
+    source.mode === 'sample' ? 'demo' : 'server',
+  );
   const [reloadToken, setReloadToken] = useState(0);
-  const [shopReloadToken, setShopReloadToken] = useState(0);
   const [derivedBusy, setDerivedBusy] = useState(false);
   const [derivedError, setDerivedError] = useState('');
-  const [dishes, setDishes] = useState<DishDto[]>([]);
+  const [dishes, setDishes] = useState<DishDto[]>(() =>
+    initialMenu ? initialMenu.dishes.filter((dish) => dish.onSale && dish.availableQuantity > 0) : [],
+  );
   const [menuError, setMenuError] = useState(false);
-  const [menuLoading, setMenuLoading] = useState(true);
+  const [menuLoading, setMenuLoading] = useState(() => initialMenu === null);
   const [selectedCategory, setSelectedCategory] = useState<OrderCategoryId>('all');
   const [activeFilter, setActiveFilter] = useState<OrderFilterId>('all');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -183,11 +201,19 @@ export default function ShopSelectPage({
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const nudgeTimerRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    if (activeTab === 'home' || activeTab === 'order') {
+      setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
+    }
+  }, [activeTab]);
+
   function selectTab(next: 'home' | 'order' | 'mine'): void {
     runSurfaceTransition(() => {
       if (next === 'order') {
         resetOrderFilters();
-        setShopReloadToken((value) => value + 1);
+      }
+      if (next === 'home' || next === 'order') {
+        setVisitedTabs((prev) => (prev[next] ? prev : { ...prev, [next]: true }));
       }
       setInternalTab(next);
       if (next !== 'mine') {
@@ -199,46 +225,66 @@ export default function ShopSelectPage({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    const cached = getCachedShops(source);
+    if (cached === null) {
+      setLoading(true);
+    } else {
+      setShops(cached);
+      setLoading(false);
+    }
     setError(null);
     setDerivedError('');
-    setListSource('server');
+    setListSource(source.mode === 'sample' ? 'demo' : 'server');
     source.listShops().then(
       (data) => {
         if (cancelled) return;
+        setCachedShops(source, data);
         setShops(data);
         setListSource(source.mode === 'sample' ? 'demo' : 'server');
         setLoading(false);
       },
       (failure: unknown) => {
         if (cancelled) return;
-        setShops([]);
-        setError(toSourceError(failure));
+        if (getCachedShops(source) === null) {
+          setShops([]);
+          setError(toSourceError(failure));
+        }
         setLoading(false);
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [source, reloadToken, shopReloadToken]);
+  }, [source, reloadToken]);
 
   useEffect(() => {
     let cancelled = false;
-    setMenuError(false);
-    setMenuLoading(true);
     const recommendationDate =
       source.mode === 'real' ? todayAndTomorrow(new Date())[0] : draft.getState().date;
+    const cached = getCachedMenu(source, recommendationDate);
+    if (cached === null) {
+      setMenuLoading(true);
+    } else {
+      setDishes(cached.dishes.filter((dish) => dish.onSale && dish.availableQuantity > 0));
+      setMenuLoading(false);
+    }
+    setMenuError(false);
     source.getMenu(recommendationDate).then(
       (menu) => {
         if (!cancelled) {
-          setDishes(menu.dishes.filter((dish) => dish.onSale && dish.availableQuantity > 0));
+          setCachedMenu(source, recommendationDate, menu);
+          const available = menu.dishes.filter((dish) => dish.onSale && dish.availableQuantity > 0);
+          setDishes(available);
           setMenuLoading(false);
+          preloadImages(available.map((dish) => dish.imageUrl));
         }
       },
       () => {
         if (!cancelled) {
-          setDishes([]);
-          setMenuError(true);
+          if (getCachedMenu(source, recommendationDate) === null) {
+            setDishes([]);
+            setMenuError(true);
+          }
           setMenuLoading(false);
         }
       },
@@ -348,8 +394,12 @@ export default function ShopSelectPage({
     >
       <div className="student-home__scroll">
         {/* TAB 1: 点餐页面 */}
-        {activeTab === 'order' && (
-          <div className="order-feed">
+        {visitedTabs.order && (
+          <div
+            className="order-feed"
+            hidden={activeTab !== 'order'}
+            style={activeTab === 'order' ? undefined : { display: 'none' }}
+          >
             <header className="order-topbar">
               <div className="order-topbar__brand">
                 <div className="order-topbar__title-row">
@@ -483,7 +533,7 @@ export default function ShopSelectPage({
                   className="order-section__more"
                   onClick={() => {
                     resetOrderFilters();
-                    setShopReloadToken((value) => value + 1);
+                    setReloadToken((value) => value + 1);
                   }}
                 >
                   刷新全部店铺 <Icon name="arrow" />
@@ -602,7 +652,7 @@ export default function ShopSelectPage({
                     </div>
                   ) : (
                     <div className="order-stall-list" role="list" aria-label="推荐档口列表">
-                      {visibleCards.map(({ card, shop, visual, previewDishes }) => (
+                      {visibleCards.map(({ card, shop, visual, previewDishes }, cardIndex) => (
                         <article
                           key={card.merchantId}
                           role="listitem"
@@ -617,7 +667,8 @@ export default function ShopSelectPage({
                               <img
                                 src={STALL_PHOTOS[visual.photoKey]}
                                 alt={visual.photoAlt}
-                                loading="lazy"
+                                loading={cardIndex < 3 ? 'eager' : 'lazy'}
+                                decoding="async"
                               />
                             </div>
 
@@ -681,7 +732,8 @@ export default function ShopSelectPage({
                                   <img
                                     src={dish.imageUrl ?? resolveDishPhoto(dish.name, dishIndex)}
                                     alt={dish.name}
-                                    loading="lazy"
+                                    loading={cardIndex < 3 ? 'eager' : 'lazy'}
+                                    decoding="async"
                                   />
                                   <span className="order-dish-thumb__scrim" aria-hidden="true" />
                                   <span className="order-dish-thumb__caption">
@@ -715,25 +767,31 @@ export default function ShopSelectPage({
         )}
 
         {/* TAB 2: 首页视图 (轮播与推荐) */}
-        {activeTab === 'home' && (
-          <HomeFeed
-            mode={source.mode}
-            picker={picker}
-            shops={shops}
-            dishes={dishes}
-            error={error}
-            menuLoading={menuLoading}
-            menuError={menuError}
-            notice={notice}
-            derivedBusy={derivedBusy}
-            derivedError={derivedError}
-            onEnterShop={onEnterShop}
-            onGoToOrderTab={() => {
-              selectTab('order');
-            }}
-            onRetry={() => setReloadToken((value) => value + 1)}
-            onLoadDerivedShops={loadDerivedShops}
-          />
+        {visitedTabs.home && (
+          <div
+            hidden={activeTab !== 'home'}
+            style={activeTab === 'home' ? undefined : { display: 'none' }}
+          >
+            <HomeFeed
+              mode={source.mode}
+              picker={picker}
+              shops={shops}
+              dishes={dishes}
+              error={error}
+              menuLoading={menuLoading}
+              menuError={menuError}
+              notice={notice}
+              derivedBusy={derivedBusy}
+              derivedError={derivedError}
+              onEnterShop={onEnterShop}
+              onGoToOrderTab={() => {
+                selectTab('order');
+              }}
+              onRetry={() => setReloadToken((value) => value + 1)}
+              onLoadDerivedShops={loadDerivedShops}
+              isActive={activeTab === 'home'}
+            />
+          </div>
         )}
 
         {/* TAB 3: 我的视图 (当未传 onOpenProfile 时的兜底) */}

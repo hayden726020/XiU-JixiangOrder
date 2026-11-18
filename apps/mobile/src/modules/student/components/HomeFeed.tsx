@@ -11,13 +11,14 @@ import {
 } from '../utils/shopTexts';
 import { formatYuan } from '../utils/money';
 import { resolveDishPhoto } from '../utils/orderVisuals';
+import { preloadImages } from '../../../shared/imagePreload';
 import DemoModeNotice from './DemoModeNotice';
 import './home-feed.css';
-import noodleCounterPhoto from '../assets/noodle-counter.png';
-import stallCounterJiachang from '../assets/stall-counter-jiachang.png';
-import stallCounterXiaochao from '../assets/stall-counter-xiaochao.png';
-import dishChickenLeg from '../assets/dish-chicken-leg.png';
-import warmNoodleBanner from '../assets/warm-noodle-banner.jpg';
+import noodleCounterPhoto from '../assets/noodle-counter.webp';
+import stallCounterJiachang from '../assets/stall-counter-jiachang.webp';
+import stallCounterXiaochao from '../assets/stall-counter-xiaochao.webp';
+import dishChickenLeg from '../assets/dish-chicken-leg.webp';
+import warmNoodleBanner from '../assets/warm-noodle-banner.webp';
 
 export interface HomeFeedProps {
   mode: StudentMode;
@@ -34,6 +35,7 @@ export interface HomeFeedProps {
   onGoToOrderTab: () => void;
   onRetry: () => void;
   onLoadDerivedShops: () => void;
+  isActive?: boolean;
 }
 
 interface PolaroidSlide {
@@ -229,6 +231,7 @@ export default function HomeFeed({
   onGoToOrderTab,
   onRetry,
   onLoadDerivedShops,
+  isActive = true,
 }: HomeFeedProps) {
   const [activeSlide, setActiveSlide] = useState(1);
   const [carouselPaused, setCarouselPaused] = useState(false);
@@ -245,7 +248,12 @@ export default function HomeFeed({
     null;
 
   useEffect(() => {
+    preloadImages(recommendedDishes.map((dish) => dish.imageUrl));
+  }, [recommendedDishes]);
+
+  useEffect(() => {
     if (
+      !isActive ||
       picker.phase !== 'ready' ||
       carouselPaused ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -254,7 +262,7 @@ export default function HomeFeed({
     }
     const timer = window.setInterval(() => setActiveSlide((index) => (index + 1) % 3), 4500);
     return () => window.clearInterval(timer);
-  }, [picker.phase, carouselPaused]);
+  }, [isActive, picker.phase, carouselPaused]);
 
   function moveSlide(direction: -1 | 1): void {
     setActiveSlide((index) => (index + direction + 3) % 3);
@@ -407,7 +415,7 @@ export default function HomeFeed({
                         onClick={(event) => handleSlideActivate(slide, index, isCenter, event.currentTarget)}
                       >
                         <span className="home-polaroid-card__frame">
-                          <img src={slide.photo} alt={slide.photoAlt} />
+                          <img src={slide.photo} alt={slide.photoAlt} decoding="async" />
                         </span>
                         <span className="home-polaroid-card__caption">
                           <span className="home-polaroid-card__label-wrap">
@@ -493,6 +501,7 @@ export default function HomeFeed({
                   <img
                     src={featuredDish.imageUrl ?? resolveHomeDishPhoto(featuredDish.name, 0)}
                     alt={featuredDish.name}
+                    decoding="async"
                   />
                   <span className="home-featured-card__badge">
                     <CrownIcon />
@@ -541,6 +550,7 @@ export default function HomeFeed({
                           <img
                             src={dish.imageUrl ?? resolveHomeDishPhoto(dish.name, index + 1)}
                             alt={dish.name}
+                            decoding="async"
                           />
                         </span>
                         <span className="home-small-card__body">
@@ -583,6 +593,7 @@ export default function HomeFeed({
               src={warmNoodleBanner}
               alt=""
               aria-hidden="true"
+              decoding="async"
             />
             <span className="home-promo-banner__scrim" aria-hidden="true" />
             <span className="home-promo-banner__copy">

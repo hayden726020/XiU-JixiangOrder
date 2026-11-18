@@ -11,7 +11,7 @@ export default function BookingTicket({ name, shop, quantity, amountFen }: {
   return <div className="booking-ticket">
     <span className="booking-ticket__torn" aria-hidden="true" />
     <div className="booking-ticket__polaroid">{hasMatchingPhoto
-      ? <img src={chickenPhoto} alt="鸡肉饭展示" />
+      ? <img src={chickenPhoto} alt="鸡肉饭展示" decoding="async" />
       : <span className="booking-ticket__placeholder" aria-hidden="true">今日餐食</span>}</div>
     <div className="booking-ticket__details">
       <h3>{name}</h3>

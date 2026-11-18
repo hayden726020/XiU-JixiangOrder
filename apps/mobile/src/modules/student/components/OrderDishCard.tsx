@@ -136,7 +136,7 @@ export default function OrderDishCard({ dish, quantity, index, customization, on
 
   return <li ref={cardRef} className={`meal-dish${view.kind === 'OFF_SALE' ? ' is-off' : ''}`} data-dish-id={dish.dishId}>
     <span className="meal-dish__tape" aria-hidden="true" />
-    <div className="meal-dish__photo"><img src={photo} alt="" loading={index > 2 ? 'lazy' : 'eager'} onError={(event) => {
+    <div className="meal-dish__photo"><img src={photo} alt="" loading={index > 5 ? 'lazy' : 'eager'} decoding="async" onError={(event) => {
       if (event.currentTarget.src !== visual.photo) {
         event.currentTarget.src = visual.photo;
       }

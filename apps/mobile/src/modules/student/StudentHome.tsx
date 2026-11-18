@@ -28,6 +28,7 @@ import type { ShopSummary, StudentMode, StudentSource } from './types';
 import { SHOP_SWITCH_BUSY } from './utils/shopTexts';
 import { todayAndTomorrow } from './utils/dates';
 import { filterDishesByShop } from './utils/dishShopFilter';
+import { scheduleCoreStudentImagePreload } from './utils/preloadAssets';
 import './student.css';
 
 type StudentView = 'shop' | 'menu' | 'slot' | 'confirm' | 'order' | 'orders' | 'profile';
@@ -128,6 +129,10 @@ function StudentHomeApp({
   const previewStarted = useRef(false);
   const pendingShopTabRef = useRef<'home' | 'order' | null>(null);
   const orderFromSubmitRef = useRef(false);
+
+  useEffect(() => {
+    scheduleCoreStudentImagePreload();
+  }, []);
 
   useEffect(() => {
     if (!previewSlot || previewStarted.current) return;

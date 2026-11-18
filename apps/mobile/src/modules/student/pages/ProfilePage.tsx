@@ -3,9 +3,12 @@ import type { StudentMode, StudentOrder, StudentSource } from '../types';
 import type { OrderFilter } from './OrderListPage';
 import { writeStudentModeOverride } from '../data/mode';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
+import { getCachedOrders, setCachedOrders } from '../state/studentDataCache';
 import { clearSession } from '../../../shared/session';
 import { clearPresence } from '../../../shared/location';
 import StudentTabBar from '../components/StudentTabBar';
+import ProfileOrderDeck from '../components/ProfileOrderDeck';
+import { activeOrdersForDeck } from '../utils/profileOrderDeck';
 import studentAvatar from '../assets/student-avatar.png';
 import '../profile.css';
 
@@ -239,24 +242,6 @@ function activeSubtitle(order: StudentOrder): string {
   return `已提交订单，预计 ${endText}取餐`;
 }
 
-function pickCurrentOrder(orders: StudentOrder[]): StudentOrder | null {
-  const priority: Record<StudentOrder['status'], number> = {
-    READY: 4,
-    PREPARING: 3,
-    ACCEPTED: 2,
-    NEW: 1,
-    COMPLETED: 0,
-    CANCELLED: 0,
-  };
-  const active = orders.filter((o) => priority[o.status] > 0);
-  if (active.length === 0) return null;
-  return active.sort((a, b) => {
-    const diff = priority[b.status] - priority[a.status];
-    if (diff !== 0) return diff;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  })[0];
-}
-
 export default function ProfilePage({
   source,
   onSwitchMode,
@@ -269,7 +254,9 @@ export default function ProfilePage({
   const [modal, setModal] = useState<ModalType>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
-  const [orders, setOrders] = useState<StudentOrder[]>([]);
+  const [orders, setOrders] = useState<StudentOrder[]>(() =>
+    source.mode === 'real' && !gate.usable ? [] : (getCachedOrders(source) ?? []),
+  );
   const [feedbackDraft, setFeedbackDraft] = useState('');
   const [displayMode, setDisplayMode] = useState<StudentMode>(source.mode);
   const [modeAnimDir, setModeAnimDir] = useState<'none' | 'forward' | 'backward'>('none');
@@ -285,12 +272,16 @@ export default function ProfilePage({
       return;
     }
     let cancelled = false;
+    const cached = getCachedOrders(source);
+    if (cached !== null) setOrders(cached);
     source.listOrders().then(
       (list) => {
-        if (!cancelled) setOrders(list);
+        if (cancelled) return;
+        setCachedOrders(source, list);
+        setOrders(list);
       },
       () => {
-        if (!cancelled) setOrders([]);
+        if (!cancelled && getCachedOrders(source) === null) setOrders([]);
       },
     );
     return () => {
@@ -373,33 +364,61 @@ export default function ProfilePage({
   ).length;
   const readyCount = orders.filter((o) => o.status === 'READY').length;
   const completedCount = orders.filter((o) => o.status === 'COMPLETED').length;
-  const currentOrder = pickCurrentOrder(orders);
-  const ticketBadgeText =
-    source.mode === 'sample'
-      ? '制作中'
-      : currentOrder
-        ? activeStatusText(currentOrder)
-        : '去点餐';
-  const ticketShopName =
-    source.mode === 'sample'
-      ? '旭日食堂 · 江西小炒'
-      : currentOrder?.merchantName?.trim() || '校园食堂档口';
-  const ticketSubtitle =
-    source.mode === 'sample'
-      ? '餐品制作中，预计 10:40 前可取餐'
-      : currentOrder
-        ? activeSubtitle(currentOrder)
-        : '';
-  const ticketCode =
-    source.mode === 'sample'
-      ? '0836'
-      : currentOrder?.pickupCode || '待出码';
-  const ticketTime =
-    source.mode === 'sample'
-      ? '10:40 前'
-      : currentOrder
-        ? formatSlotBefore(currentOrder.slotEnd)
-        : '--:--';
+  const ticketOrders: (StudentOrder | null)[] = source.mode === 'sample'
+    ? [null]
+    : activeOrdersForDeck(orders);
+  const deckItems = ticketOrders.map((order) => ({
+    id: order?.id ?? 'sample-current-order',
+    label: order ? `${order.merchantName || '校园食堂档口'}，${activeStatusText(order)}` : '旭日食堂 · 江西小炒，制作中',
+    content: (
+      <div className="profile-ticket__paper">
+        <div className="profile-ticket__head">
+          <div className="profile-ticket__title-wrap">
+            <h2>当前订单</h2>
+            <TicketScribbleSvg />
+          </div>
+          <span className="profile-ticket__tape-badge">
+            {order ? activeStatusText(order) : '制作中'}
+          </span>
+        </div>
+        <div className="profile-ticket__divider is-top" aria-hidden="true" />
+        <div className="profile-ticket__shop-row">
+          <span className="profile-ticket__bowl"><BowlBadgeIcon /></span>
+          <div className="profile-ticket__shop-info">
+            <strong>{order ? order.merchantName?.trim() || '校园食堂档口' : '旭日食堂 · 江西小炒'}</strong>
+            <p>{order ? activeSubtitle(order) : '餐品制作中，预计 10:40 前可取餐'}</p>
+          </div>
+          <PostmarkStampSvg />
+        </div>
+        <div className="profile-ticket__divider is-bottom" aria-hidden="true" />
+        <div className="profile-ticket__code-row">
+          <div className="profile-ticket__code-col">
+            <span className="profile-ticket__label">取餐码</span>
+            <strong className="profile-ticket__code">{order?.pickupCode || (order ? '待出码' : '0836')}</strong>
+          </div>
+          <div className="profile-ticket__sep" aria-hidden="true" />
+          <div className="profile-ticket__time-col">
+            <span className="profile-ticket__label is-time"><ClockIcon />预计取餐时间</span>
+            <strong className="profile-ticket__time">{order ? formatSlotBefore(order.slotEnd) : '10:40 前'}</strong>
+          </div>
+        </div>
+        <div className="profile-ticket__actions">
+          <span className="profile-ticket__hint">单击卡片切换订单</span>
+          <button
+            type="button"
+            className="profile-ticket__detail"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (order && onOpenOrder) onOpenOrder(order.id, event.currentTarget);
+              else onOpenOrders('progress', event.currentTarget, false);
+            }}
+          >
+            查看详情 <ChevronRightIcon />
+          </button>
+        </div>
+      </div>
+    ),
+  }));
 
   return (
     <div className="student-profile" aria-labelledby="profile-title">
@@ -424,7 +443,7 @@ export default function ProfilePage({
           <div className="profile-polaroid">
             <span className="profile-polaroid__tape" aria-hidden="true" />
             <div className="profile-polaroid__photo">
-              <img src={studentAvatar} alt="学生卡通头像" />
+              <img src={studentAvatar} alt="学生卡通头像" decoding="async" />
             </div>
             <span className="profile-polaroid__caption">食麦呼 ♡</span>
           </div>
@@ -520,61 +539,18 @@ export default function ProfilePage({
         </section>
 
         {/* 3. 当前订单票券卡 */}
-        <section className="profile-ticket" aria-label="当前订单">
+        {deckItems.length ? <ProfileOrderDeck items={deckItems} /> : <section className="profile-ticket" aria-label="当前订单">
           <div className="profile-ticket__paper">
             <div className="profile-ticket__head">
               <div className="profile-ticket__title-wrap">
                 <h2>当前订单</h2>
                 <TicketScribbleSvg />
               </div>
-              {currentOrder || source.mode === 'sample' ? (
-                <span className="profile-ticket__tape-badge">{ticketBadgeText}</span>
-              ) : (
-                <span className="profile-ticket__tape-badge is-idle">去点餐</span>
-              )}
+              <span className="profile-ticket__tape-badge is-idle">去点餐</span>
             </div>
 
             <div className="profile-ticket__divider is-top" aria-hidden="true" />
 
-            {currentOrder || source.mode === 'sample' ? (
-              <button
-                type="button"
-                className="profile-ticket__body"
-                onClick={(event) =>
-                  currentOrder && onOpenOrder
-                    ? onOpenOrder(currentOrder.id, event.currentTarget)
-                    : onOpenOrders('progress', event.currentTarget, false)
-                }
-              >
-                <div className="profile-ticket__shop-row">
-                  <span className="profile-ticket__bowl">
-                    <BowlBadgeIcon />
-                  </span>
-                  <div className="profile-ticket__shop-info">
-                    <strong>{ticketShopName}</strong>
-                    <p>{ticketSubtitle}</p>
-                  </div>
-                  <PostmarkStampSvg />
-                </div>
-
-                <div className="profile-ticket__divider is-bottom" aria-hidden="true" />
-
-                <div className="profile-ticket__code-row">
-                  <div className="profile-ticket__code-col">
-                    <span className="profile-ticket__label">取餐码</span>
-                    <strong className="profile-ticket__code">{ticketCode}</strong>
-                  </div>
-                  <div className="profile-ticket__sep" aria-hidden="true" />
-                  <div className="profile-ticket__time-col">
-                    <span className="profile-ticket__label is-time">
-                      <ClockIcon />
-                      预计取餐时间
-                    </span>
-                    <strong className="profile-ticket__time">{ticketTime}</strong>
-                  </div>
-                </div>
-              </button>
-            ) : (
               <button type="button" className="profile-ticket__empty" onClick={(event) => onGoToMenu(event.currentTarget)}>
                 <span className="profile-ticket__bowl">
                   <BowlBadgeIcon />
@@ -585,9 +561,8 @@ export default function ProfilePage({
                 </div>
                 <ChevronRightIcon />
               </button>
-            )}
           </div>
-        </section>
+        </section>}
 
         {/* 4. 常用服务卡片 */}
         <section className="profile-card profile-services-card" aria-label="常用服务">
