@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { registerModuleBackHandler } from '../../shared/backPress';
 import {
   getApiBaseInfo,
   getSession,
@@ -24,8 +23,11 @@ import {
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrdersPage from './pages/OrdersPage';
 import OverviewPage from './pages/OverviewPage';
+
+import MerchantAccountsPage from './pages/MerchantAccountsPage';
 import SettingsPage from './pages/SettingsPage';
 import type { AdminRoute } from './types';
+import './admin-theme.css';
 
 const ADMIN_ROOT = '/admin';
 
@@ -37,6 +39,8 @@ interface AdminLocation {
 const navItems: Array<{ route: AdminRoute; href: string; label: string }> = [
   { route: 'overview', href: '#/admin', label: '概览' },
   { route: 'orders', href: '#/admin/orders', label: '订单与异常' },
+
+  { route: 'merchantAccounts', href: '#/admin/merchant-accounts', label: '商家账号' },
   { route: 'settings', href: '#/admin/settings', label: '营业与配置' },
 ];
 
@@ -57,6 +61,10 @@ function readLocation(): AdminLocation {
   }
   if (hash === `${ADMIN_ROOT}/settings`) {
     return { route: 'settings', orderId: null };
+  }
+
+  if (hash === `${ADMIN_ROOT}/merchant-accounts`) {
+    return { route: 'merchantAccounts', orderId: null };
   }
   return { route: 'overview', orderId: null };
 }
@@ -79,23 +87,6 @@ export default function AdminHome() {
 
   useEffect(() => subscribeSession(() => setSession(getSession())), []);
 
-  useEffect(() => {
-    return registerModuleBackHandler(() => {
-      if (session?.user.role !== 'ADMIN') {
-        return false;
-      }
-      if (location.route === 'orderDetail') {
-        window.location.hash = '#/admin/orders';
-        return true;
-      }
-      if (location.route === 'orders' || location.route === 'settings') {
-        window.location.hash = '#/admin';
-        return true;
-      }
-      return false;
-    });
-  }, [location.route, session?.user.role]);
-
   const source = useMemo(
     () => createAdminSource({ mode, simulateError: mode === 'sample' ? simulateError : 'none' }),
     [mode, simulateError],
@@ -105,7 +96,8 @@ export default function AdminHome() {
   const isOrders = location.route === 'orders';
   const isOrderDetail = location.route === 'orderDetail';
   const isSettings = location.route === 'settings';
-  const isFocusedPage = isOverview || isOrders || isOrderDetail || isSettings;
+
+  const isMerchantAccounts = location.route === 'merchantAccounts';
   const baseInfo = getApiBaseInfo();
   const activeNav = location.route === 'orderDetail' ? 'orders' : location.route;
 
@@ -169,10 +161,10 @@ export default function AdminHome() {
 
   return (
     <section
-      className={`module-panel admin-panel${isOverview ? ' admin-panel--overview' : ''}${isOrders ? ' admin-panel--orders' : ''}${isOrderDetail ? ' admin-panel--order-detail' : ''}${isSettings ? ' admin-panel--settings' : ''}`}
+      className={`module-panel admin-panel${isOverview ? ' admin-panel--overview' : ''}${isOrders ? ' admin-panel--orders' : ''}${isOrderDetail ? ' admin-panel--order-detail' : ''}${isSettings ? ' admin-panel--settings' : ''}${isMerchantAccounts ? ' admin-panel--merchant-accounts' : ''}`}
       aria-labelledby="admin-title"
     >
-      {!isFocusedPage ? (
+      {location.route !== 'orderDetail' ? (
         <>
           {mode === 'sample' ? (
             <SampleBanner />
@@ -238,7 +230,7 @@ export default function AdminHome() {
         </>
       ) : null}
 
-      {!isFocusedPage ? (
+      {location.route !== 'orderDetail' ? (
         <nav className="admin-nav" aria-label="管理端页面">
           {navItems.map((item) => (
             <a
@@ -266,6 +258,9 @@ export default function AdminHome() {
         />
       ) : location.route === 'settings' ? (
         <SettingsPage source={source} />
+
+      ) : location.route === 'merchantAccounts' ? (
+        <MerchantAccountsPage source={source} />
       ) : (
         <OverviewPage
           mode={mode}

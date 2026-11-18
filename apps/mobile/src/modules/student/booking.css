@@ -32,7 +32,7 @@
   padding: calc(0.9rem + env(safe-area-inset-top)) 1.1rem 3.4rem;
   background:
     linear-gradient(180deg, rgba(233, 242, 251, 0) 55%, rgba(233, 242, 251, 0.9) 100%),
-    url("./assets/campus-hero.webp") center 42% / cover no-repeat;
+    url("./assets/campus-hero.png") center 42% / cover no-repeat;
 }
 
 .booking-nav {
@@ -103,7 +103,7 @@
   width: 100%;
   height: 100%;
   border-radius: 2px;
-  background: url("./assets/cafeteria-contact-sheet.webp") left bottom / 200% 200% no-repeat;
+  background: url("./assets/cafeteria-contact-sheet.png") left bottom / 200% 200% no-repeat;
 }
 
 .booking-dish__note {
@@ -211,7 +211,6 @@
   border-radius: 14px;
   background: #fff;
   color: var(--booking-navy);
-  transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
   cursor: pointer;
 }
 
@@ -239,30 +238,22 @@
   border-radius: 50%;
   background: #fff;
   color: var(--booking-navy);
-  transition: background-color 220ms ease, border-color 220ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .booking-mode__check svg {
   width: 0.75rem;
   height: 0.75rem;
-  opacity: 0;
-  transform: scale(.45);
-  transition: opacity 150ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .booking-mode.is-active {
   border-color: #ecd23f;
   background: #fff3c4;
-  box-shadow: 0 3px 10px rgba(118, 92, 0, .08);
 }
 
 .booking-mode.is-active .booking-mode__check {
   border-color: #ecd23f;
   background: var(--booking-yellow);
-  transform: scale(1.08);
 }
-.booking-mode.is-active .booking-mode__check svg { opacity: 1; transform: scale(1); }
-.booking-mode:active .booking-mode__check { transform: scale(.82); }
 
 .booking-slots__head {
   display: flex;
@@ -345,11 +336,11 @@
   white-space: nowrap;
   cursor: pointer;
   box-sizing: border-box;
-  transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 180ms cubic-bezier(.16, 1, .3, 1);
+  transition: all 0.15s ease;
 }
 
 .booking-slot__dot {
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 15px;
@@ -360,9 +351,6 @@
   margin-right: 5px;
   flex-shrink: 0;
   box-sizing: border-box;
-  opacity: 0;
-  transform: scale(.5);
-  transition: opacity 150ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .booking-slot__dot::after {
@@ -378,15 +366,11 @@
   border-color: #f0cf65;
   background: #fef8e2;
   color: var(--booking-navy);
-  box-shadow: 0 3px 8px rgba(118, 92, 0, .08);
 }
 
 .booking-slot.is-active .booking-slot__dot {
-  opacity: 1;
-  transform: scale(1);
+  display: inline-flex;
 }
-
-.booking-slot:not(:disabled):active { transform: scale(.97); }
 
 .booking-slot:disabled {
   background: #f2f5f9;
@@ -698,7 +682,7 @@
   padding-bottom: 2.2rem;
   background:
     linear-gradient(180deg, rgba(233, 242, 251, 0) 55%, rgba(233, 242, 251, 0.95) 100%),
-    url("./assets/campus-hero.webp") center 40% / cover no-repeat;
+    url("./assets/campus-hero.png") center 40% / cover no-repeat;
 }
 
 .confirm-bubble {
@@ -748,7 +732,7 @@
   height: 4.8rem;
   margin: -1.1rem -1rem 1rem;
   border-radius: 18px 18px 0 0;
-  background: url("./assets/cafeteria-contact-sheet.webp") right top / 200% 200% no-repeat;
+  background: url("./assets/cafeteria-contact-sheet.png") right top / 200% 200% no-repeat;
   overflow: hidden;
 }
 
@@ -794,7 +778,7 @@
   width: 4.2rem;
   height: 3.5rem;
   border-radius: 8px;
-  background: url("./assets/cafeteria-contact-sheet.webp") left bottom / 200% 200% no-repeat;
+  background: url("./assets/cafeteria-contact-sheet.png") left bottom / 200% 200% no-repeat;
   box-shadow: 0 4px 10px rgba(7, 22, 56, 0.12);
   border: 1.5px solid #fff;
 }
@@ -1131,19 +1115,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .booking-mode,
-  .booking-mode__check,
-  .booking-mode__check svg,
-  .booking-slot,
-  .booking-slot__dot { transition-duration: 60ms; }
-  .booking-mode__check,
-  .booking-mode.is-active .booking-mode__check,
-  .booking-mode__check svg,
-  .booking-mode.is-active .booking-mode__check svg,
-  .booking-mode:active .booking-mode__check,
-  .booking-slot__dot,
-  .booking-slot.is-active .booking-slot__dot,
-  .booking-slot:not(:disabled):active { transform: none; }
   .booking-location__toggle {
     transition: none;
   }

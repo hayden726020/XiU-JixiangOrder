@@ -63,27 +63,6 @@
 
 .order-nav__back:active {
   transform: scale(0.92);
-  opacity: 0.76;
-  background: #e4effb;
-}
-
-.app-shell .order-nav__back.back-navigation-pending {
-  transform: scale(0.92);
-  opacity: 0.76;
-  background: #e4effb;
-  transition: transform 75ms cubic-bezier(0.22, 1, 0.36, 1), opacity 75ms ease, background-color 75ms ease;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .order-nav__back {
-    transition: none;
-  }
-
-  .order-nav__back:active,
-  .app-shell .order-nav__back.back-navigation-pending {
-    transform: none;
-    opacity: 1;
-  }
 }
 
 .order-nav__back svg {

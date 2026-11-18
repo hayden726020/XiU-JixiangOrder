@@ -1,4 +1,10 @@
-export type AdminRoute = 'overview' | 'orders' | 'orderDetail' | 'settings';
+export type AdminRoute =
+  | 'overview'
+  | 'orders'
+  | 'orderDetail'
+  | 'settings'
+
+  | 'merchantAccounts';
 
 export type DiningMode = 'DINE_IN' | 'TAKEAWAY';
 
@@ -77,4 +83,25 @@ export interface CrowdSettings {
 export interface AdminSettings {
   dining: DiningSettings;
   crowd: CrowdSettings;
+}
+
+export interface AdminMerchantAccount {
+  userId: string;
+  account: string;
+  password: string | null;
+  active: boolean;
+  merchantId: string | null;
+  merchantName: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  createdAt: string | null;
+}
+
+export interface CreateMerchantAccountInput {
+  requestId: string;
+  account: string;
+  password: string;
+  merchantName: string;
+  contactName: string;
+  contactPhone: string;
 }

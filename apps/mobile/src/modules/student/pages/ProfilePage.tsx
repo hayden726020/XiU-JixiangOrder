@@ -259,21 +259,24 @@ export default function ProfilePage({
           type="button"
           onClick={onGoToShop}
         >
-          <span className="nav-tab-pill"><HomeIcon /><span>首页</span></span>
+          <HomeIcon />
+          <span>首页</span>
         </button>
 
         <button
           type="button"
           onClick={onGoToMenu}
         >
-          <span className="nav-tab-pill"><BowlIcon /><span>点餐</span></span>
+          <BowlIcon />
+          <span>点餐</span>
         </button>
 
         <button
           type="button"
           onClick={onOpenOrders}
         >
-          <span className="nav-tab-pill"><OrdersIcon /><span>订单</span></span>
+          <OrdersIcon />
+          <span>订单</span>
         </button>
 
         <button
@@ -281,7 +284,9 @@ export default function ProfilePage({
           className="is-active-tab"
           aria-current="page"
         >
-          <span className="nav-tab-pill"><UserIcon /><span>我的</span></span>
+          <UserIcon />
+          <span>我的</span>
+          <span className="nav-pill-blob" aria-hidden="true" />
         </button>
       </nav>
 

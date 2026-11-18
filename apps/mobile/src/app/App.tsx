@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { navigateToHash, runAfterBackPress, runAfterPressTransition } from '../shared/backPress';
+import { useEffect, useRef, useState } from 'react';
 import { mobileModules } from './moduleRegistry';
 import SystemCheck from './SystemCheck';
 
 const HOME_ROUTE = '/';
 const CHECK_ROUTE = '/system-check';
+const MERCHANT_TAB_ROUTES = ['/merchant', '/merchant/orders', '/merchant/menu', '/merchant/my'];
 
 function readRoute(): string {
   const hash = window.location.hash.replace(/^#/, '');
@@ -13,12 +13,17 @@ function readRoute(): string {
 }
 
 function navigate(route: string): void {
-  navigateToHash(route);
+  window.location.hash = route;
 }
 
 function Home() {
   return (
-    <section className="home-panel" aria-labelledby="home-title">
+    <section className="home-panel home-panel--brand" aria-labelledby="home-title">
+      <div className="home-polaroids" aria-hidden="true">
+
+        <span className="home-polaroids__seal">校园点餐</span>
+      </div>
+      <p className="home-eyebrow">食麦呼 · 校园预约取餐</p>
       <h2 id="home-title">角色入口预览</h2>
       <p className="lead">
         三个角色最终共用一个安装包。当前已接通公共入口、学生、档口和管理员样例模块；服务端最小实现尚未接入业务页面，这里点击入口不构成角色授权。
@@ -29,7 +34,7 @@ function Home() {
             key={module.id}
             type="button"
             className="module-card"
-            onClick={(event) => runAfterPressTransition(event.currentTarget, () => navigate(module.route))}
+            onClick={() => navigate(module.route)}
           >
             <span className="module-card__title">{module.title}</span>
             <span className="module-card__desc">{module.subtitle}</span>
@@ -39,7 +44,7 @@ function Home() {
           </button>
         ))}
       </div>
-      <button type="button" className="check-entry" onClick={(event) => runAfterPressTransition(event.currentTarget, () => navigate(CHECK_ROUTE))}>
+      <button type="button" className="check-entry" onClick={() => navigate(CHECK_ROUTE)}>
         公共能力自检（服务、登录与定位）
       </button>
     </section>
@@ -51,7 +56,7 @@ function NotFound() {
     <section className="module-panel" aria-labelledby="not-found-title">
       <h2 id="not-found-title">未找到该入口</h2>
       <p className="lead">当前地址没有对应的角色模块，请返回角色入口重新选择。</p>
-      <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, () => navigate(HOME_ROUTE))}>
+      <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
         ← 返回角色入口
       </button>
     </section>
@@ -60,46 +65,65 @@ function NotFound() {
 
 export default function App() {
   const [route, setRoute] = useState(readRoute);
+  const [previousRoute, setPreviousRoute] = useState<string | null>(null);
+  const currentRoute = useRef(route);
 
   useEffect(() => {
     const onHashChange = () => setRoute(readRoute());
     window.addEventListener('hashchange', onHashChange);
-    window.addEventListener('app:navigate', onHashChange);
-    return () => {
-      window.removeEventListener('hashchange', onHashChange);
-      window.removeEventListener('app:navigate', onHashChange);
-    };
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  useEffect(() => {
+    if (currentRoute.current === route) return;
+    setPreviousRoute(currentRoute.current);
+    currentRoute.current = route;
+  }, [route]);
 
   const activeModule = mobileModules.find(
     (module) => route === module.route || route.startsWith(`${module.route}/`),
   );
   const ActiveComponent = activeModule?.Component;
   const isMerchant = activeModule?.id === 'merchant';
+  const merchantCanGoBack = isMerchant
+    && previousRoute !== null
+    && previousRoute !== route
+    && (previousRoute === '/merchant' || previousRoute.startsWith('/merchant/'))
+    && !MERCHANT_TAB_ROUTES.includes(route);
+
+  const isHome = route === HOME_ROUTE;
 
   return (
-    <div className={`app-shell${isMerchant ? ' app-shell--merchant' : ''}`}>
-      <header className="app-header">
+    <div className={`app-shell${isMerchant ? ' app-shell--merchant' : ''}${isHome ? ' app-shell--home' : ''}`}>
+      <header className={`app-header${isHome ? ' app-header--home' : ''}`}>
         <div>
           <p className="app-kicker">单 APK · 三角色共用</p>
           <h1>食麦呼</h1>
         </div>
-        <span className="app-version">{isMerchant ? '商家端' : 'Day2 联调'}</span>
+        <span className="app-version">{isMerchant ? 'S1 样例' : 'Day2 联调'}</span>
       </header>
 
       <main className="app-main">
         {route === CHECK_ROUTE ? (
           <>
-            <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, () => navigate(HOME_ROUTE))}>
+            <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
               ← 返回角色入口
             </button>
             <SystemCheck />
           </>
         ) : ActiveComponent ? (
           <>
-            <button type="button" className="back-link" onClick={(event) => runAfterBackPress(event.currentTarget, () => navigate(HOME_ROUTE))}>
-              ← 返回角色入口
-            </button>
+            {isMerchant
+              ? merchantCanGoBack && (
+                <button type="button" className="back-link" onClick={() => window.history.back()}>
+                  ← 返回上一页
+                </button>
+              )
+              : (
+                <button type="button" className="back-link" onClick={() => navigate(HOME_ROUTE)}>
+                  ← 返回角色入口
+                </button>
+              )}
             <ActiveComponent />
           </>
         ) : route === HOME_ROUTE ? (

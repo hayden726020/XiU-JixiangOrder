@@ -33,21 +33,6 @@
   padding-bottom: calc(5.2rem + env(safe-area-inset-bottom));
 }
 
-.student-profile > .student-home__nav {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 100;
-}
-
-@media (min-width: 520px) {
-  .student-profile > .student-home__nav {
-    max-width: 520px;
-    margin-inline: auto;
-  }
-}
-
 /* 顶部封面背景与大标题区域 */
 .profile-hero {
   position: relative;

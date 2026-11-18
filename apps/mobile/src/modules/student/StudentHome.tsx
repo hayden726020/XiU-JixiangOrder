@@ -1,7 +1,4 @@
-import { useEffect, useState } from 'react';
-import { flushSync } from 'react-dom';
-import { registerModuleBackHandler } from '../../shared/backPress';
-import { sampleDates } from './data/sampleData';
+import { useEffect, useRef, useState } from 'react';
 import { createStudentSource } from './data/sampleSource';
 import { resolveStudentMode } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
@@ -11,6 +8,7 @@ import {
   saveDraftSnapshot,
   type DraftSelection,
 } from './state/draftSnapshot';
+import LoginPage from './pages/LoginPage';
 import ConfirmPage from './pages/ConfirmPage';
 import MenuPage from './pages/MenuPage';
 import OrderDetailPage from './pages/OrderDetailPage';
@@ -18,109 +16,50 @@ import OrderListPage from './pages/OrderListPage';
 import ShopSelectPage from './pages/ShopSelectPage';
 import SlotDiningPage from './pages/SlotDiningPage';
 import ProfilePage from './pages/ProfilePage';
-import LoginPage from './pages/LoginPage';
 import { useStudentSessionGate } from './state/useStudentSessionGate';
-import type { ShopSummary, StudentMode, StudentSource } from './types';
-import { SHOP_CLOSED_REASON, SHOP_SWITCH_BUSY } from './utils/shopTexts';
+import type { ShopSummary, StudentSource } from './types';
+import { SHOP_SWITCH_BUSY } from './utils/shopTexts';
+import { todayAndTomorrow } from './utils/dates';
+import { filterDishesByShop } from './utils/dishShopFilter';
 import './student.css';
-import './student-global.css';
-
-const MODE_OVERRIDE_KEY = 'xiu.student.modeOverride.v1';
-
-function readModeOverride(): StudentMode | null {
-  try {
-    const value = window.localStorage.getItem(MODE_OVERRIDE_KEY);
-    return value === 'real' || value === 'sample' ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeModeOverride(mode: StudentMode): void {
-  try {
-    window.localStorage.setItem(MODE_OVERRIDE_KEY, mode);
-  } catch {
-    return;
-  }
-}
-
-function ModeSwitch({
-  mode,
-  onChange,
-}: {
-  mode: StudentMode;
-  onChange: (next: StudentMode) => void;
-}) {
-  return (
-    <div className="student-mode-switch" role="group" aria-label="数据模式切换">
-      <button
-        type="button"
-        className={`student-mode-switch__item${mode === 'sample' ? ' is-active' : ''}`}
-        aria-pressed={mode === 'sample'}
-        onClick={() => onChange('sample')}
-      >
-        演示模式
-      </button>
-      <button
-        type="button"
-        className={`student-mode-switch__item${mode === 'real' ? ' is-active' : ''}`}
-        aria-pressed={mode === 'real'}
-        onClick={() => onChange('real')}
-      >
-        真实模式
-      </button>
-    </div>
-  );
-}
 
 type StudentView = 'shop' | 'menu' | 'slot' | 'confirm' | 'order' | 'orders' | 'profile';
 
 type DetailFrom = 'menu' | 'orders';
 
-type OrdersBackTo = 'shop' | 'menu' | 'profile';
+type OrdersBackTo = 'shop' | 'menu';
 
-export default function StudentHome() {
-  const [mode, setMode] = useState<StudentMode>(() => readModeOverride() ?? resolveStudentMode());
-  const { gate } = useStudentSessionGate();
-
-  function switchMode(next: StudentMode): void {
-    if (next === mode) {
-      return;
-    }
-    writeModeOverride(next);
-    setMode(next);
+function previewSlotRequested(): boolean {
+  if (new URLSearchParams(window.location.search).get('preview') === 'slot') {
+    return true;
   }
-
-  return (
-    <>
-      <ModeSwitch mode={mode} onChange={switchMode} />
-      {mode === 'real' && !gate.usable ? (
-        <LoginPage gate={gate} />
-      ) : (
-        <StudentHomeApp key={mode} mode={mode} />
-      )}
-    </>
-  );
+  const hashQuery = window.location.hash.split('?')[1] ?? '';
+  return new URLSearchParams(hashQuery).get('preview') === 'slot';
 }
 
-function StudentHomeApp({ mode }: { mode: StudentMode }) {
-  useEffect(() => {
-    document.documentElement.dataset.studentSurface = '';
-    return () => {
-      delete document.documentElement.dataset.studentSurface;
-    };
-  }, []);
+export default function StudentHome() {
+  const { gate } = useStudentSessionGate();
+  const sampleMode = resolveStudentMode() === 'sample';
+  const previewSlot = sampleMode && previewSlotRequested();
 
-  const [source] = useState<StudentSource>(() => createStudentSource({ mode }));
+  if (!gate.usable && !sampleMode) {
+    return <LoginPage gate={gate} />;
+  }
+
+  return <StudentHomeApp previewSlot={previewSlot} />;
+}
+
+function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
+  const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
     if (source.mode === 'real') {
-      return readDraftSnapshot({ allowedDates: sampleDates(new Date()) });
+      return readDraftSnapshot({ allowedDates: todayAndTomorrow(new Date()) });
     }
     return null;
   });
   const [draft] = useState(() => {
     if (source.mode === 'real') {
-      const dates = sampleDates(new Date());
+      const dates = todayAndTomorrow(new Date());
       return createOrderDraft({
         source,
         allowedDates: dates,
@@ -147,126 +86,70 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
     return createOrderDraft({ source });
   });
   const [view, setView] = useState<StudentView>('shop');
-  const [shopLandingTab, setShopLandingTab] = useState<'home' | 'order'>('home');
+  const [shopTab, setShopTab] = useState<'home' | 'order'>('home');
   const [currentShop, setCurrentShop] = useState<ShopSummary | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [detailFrom, setDetailFrom] = useState<DetailFrom>('menu');
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
   const [shopNotice, setShopNotice] = useState('');
+  const previewStarted = useRef(false);
 
   useEffect(() => {
-    return registerModuleBackHandler(() => {
-      if (view === 'confirm') {
-        goTo('slot', 'replace');
-        return true;
+    if (!previewSlot || previewStarted.current) return;
+    previewStarted.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const shops = await source.listShops();
+        if (cancelled || shops.length === 0) return;
+        const shop = shops[0];
+        const entered = draft.setShop(shop.merchantId);
+        if (!entered.ok) return;
+        const menu = await source.getMenu(draft.getState().date);
+        if (cancelled) return;
+        const dishes = filterDishesByShop(menu.dishes, shop.merchantId);
+        draft.applyDishCatalog(dishes);
+        const dish = dishes.find((item) => item.onSale === true && item.availableQuantity > 0);
+        if (dish) draft.setQuantity(dish, 1);
+        setCurrentShop(shop);
+        goTo('slot');
+      } catch {
+        setShopNotice('样例预览未能自动进入预约页，请手动选择店铺。');
       }
-      if (view === 'slot') {
-        goTo('menu', 'replace');
-        return true;
-      }
-      if (view === 'order') {
-        if (currentShop === null || detailFrom === 'orders') {
-          goTo('orders', 'replace');
-        } else {
-          goTo('menu', 'replace');
-        }
-        return true;
-      }
-      if (view === 'orders') {
-        if (ordersBackTo === 'profile') {
-          goTo('profile', 'replace');
-        } else if (currentShop !== null && ordersBackTo === 'menu') {
-          goTo('menu', 'replace');
-        } else {
-          setShopLandingTab('home');
-          goTo('shop', 'replace');
-        }
-        return true;
-      }
-      if (view === 'profile' || view === 'menu') {
-        setShopLandingTab('home');
-        goTo('shop', 'replace');
-        return true;
-      }
-      if (view === 'shop' && shopLandingTab !== 'home') {
-        setShopLandingTab('home');
-        return true;
-      }
-      return false;
-    });
-  }, [view, currentShop, detailFrom, ordersBackTo, shopLandingTab]);
+    })();
+    return () => { cancelled = true; };
+  }, [previewSlot, source, draft]);
 
-  function applyViewTransition(next: StudentView): void {
-    const commit = () => {
-      setView(next);
-      window.scrollTo(0, 0);
-    };
-    if (
-      next === view ||
-      document.documentElement.dataset.navDirection ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-      commit();
+  function goTo(next: StudentView, nav: 'push' | 'back' = 'push'): void {
+    if (nav === 'back') {
+      window.history.back();
       return;
     }
-
-    if (document.startViewTransition) {
-      const root = document.documentElement;
-      const transitionId = String(performance.now());
-      root.dataset.studentPageAnimating = transitionId;
-      try {
-        const transition = document.startViewTransition(() => flushSync(commit));
-        const clearMarker = () => {
-          if (root.dataset.studentPageAnimating === transitionId) {
-            delete root.dataset.studentPageAnimating;
-          }
-        };
-        void transition.finished.then(clearMarker, clearMarker);
-      } catch {
-        delete root.dataset.studentPageAnimating;
-        commit();
-      }
-    } else {
-      commit();
-      document.documentElement.dataset.studentNavFallback = '';
-      window.setTimeout(() => {
-        delete document.documentElement.dataset.studentNavFallback;
-      }, 220);
-    }
+    window.history.pushState({ module: 'student', studentView: next }, '');
+    setView(next);
+    window.scrollTo(0, 0);
   }
 
-  function goTo(next: StudentView, nav: 'push' | 'back' | 'replace' = 'push'): void {
-    if (nav === 'back') {
-      const state = window.history.state as { module?: string; studentView?: StudentView } | null;
-      if (state && state.module === 'student' && state.studentView !== 'shop') {
-        window.history.back();
-        return;
-      }
-    }
-    if (nav === 'replace') {
-      window.history.replaceState({ module: 'student', studentView: next }, '');
-    } else {
-      window.history.pushState({ module: 'student', studentView: next }, '');
-    }
-    applyViewTransition(next);
+  function replaceTo(next: StudentView): void {
+    window.history.replaceState({ module: 'student', studentView: next }, '');
+    setView(next);
+    window.scrollTo(0, 0);
   }
 
   useEffect(() => {
     window.history.replaceState({ module: 'student', studentView: 'shop' }, '');
     const onPopState = (event: PopStateEvent) => {
       const state = event.state as { module?: string; studentView?: StudentView } | null;
-      const nextView = state && state.module === 'student' ? (state.studentView ?? 'shop') : 'shop';
-      setView(nextView);
+      if (state && state.module === 'student') {
+        setView(state.studentView ?? 'shop');
+      } else {
+        setView('shop');
+      }
       window.scrollTo(0, 0);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
-
-  function goToShop(tab: 'home' | 'order' = 'home', nav: 'push' | 'back' = 'push'): void {
-    setShopLandingTab(tab);
-    goTo('shop', nav);
-  }
 
   function openOrder(id: string): void {
     setOrderId(id);
@@ -279,11 +162,6 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
   }
 
   function enterShop(shop: ShopSummary): void {
-    if (shop.active === false) {
-      setShopNotice(SHOP_CLOSED_REASON);
-      goTo('shop');
-      return;
-    }
     const result = draft.setShop(shop.merchantId);
     if (result.reason === 'busy') {
       setShopNotice(SHOP_SWITCH_BUSY);
@@ -309,42 +187,19 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
     goTo('orders');
   }
 
-  if (currentShop === null && view === 'orders') {
-    return (
-      <OrderListPage
-        source={source}
-        onBack={() => ordersBackTo === 'profile' ? goTo('profile', 'back') : goToShop('home', 'back')}
-        backLabel={ordersBackTo === 'profile' ? '← 返回我的' : '← 返回店铺选择'}
-        onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => goToShop('home')}
-        onGoToShop={() => goToShop('order')}
-        onGoToProfile={() => goTo('profile')}
-      />
-    );
-  }
-
-  if (currentShop === null && view === 'order' && orderId !== null) {
-    return (
-      <OrderDetailPage
-        source={source}
-        orderId={orderId}
-        onBack={() => goTo('orders', 'back')}
-        backLabel="← 返回我的订单"
-        onGoToHome={() => goToShop('home')}
-        onGoToShop={() => goToShop('order')}
-        onGoToOrders={() => goTo('orders')}
-        onGoToProfile={() => goTo('profile')}
-      />
-    );
-  }
-
   if (view === 'profile') {
     return (
       <ProfilePage
         source={source}
-        onOpenOrders={() => openOrders('profile')}
-        onGoToShop={() => goToShop('home')}
-        onGoToMenu={() => goToShop('order')}
+        onOpenOrders={() => openOrders('shop')}
+        onGoToShop={() => {
+          setShopTab('home');
+          goTo('shop');
+        }}
+        onGoToMenu={() => {
+          setShopTab('order');
+          goTo('shop');
+        }}
       />
     );
   }
@@ -356,8 +211,8 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
         draft={draft}
         currentShop={currentShop}
         notice={shopNotice || draft.getState().notice || ''}
-        activeTab={shopLandingTab}
-        onTabChange={setShopLandingTab}
+        activeTab={shopTab}
+        onTabChange={setShopTab}
         onEnterShop={enterShop}
         onOpenOrders={() => openOrders('shop')}
         onOpenProfile={() => goTo('profile')}
@@ -385,26 +240,27 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
         shop={currentShop}
         onBack={() => goTo('slot', 'back')}
         onBackToMenu={() => goTo('menu', 'back')}
-        onSubmitted={(id) => {
-          setDetailFrom('menu');
-          setOrderId(id);
-          goTo('order', 'replace');
-        }}
+        onSubmitted={(id) => { setDetailFrom('menu'); setOrderId(id); replaceTo('order'); }}
       />
     );
   }
 
   if (view === 'orders') {
     const backToShops = ordersBackTo === 'shop';
-    const backTarget: StudentView = ordersBackTo === 'profile' ? 'profile' : backToShops ? 'shop' : 'menu';
     return (
       <OrderListPage
         source={source}
-        onBack={() => goTo(backTarget, 'back')}
-        backLabel={ordersBackTo === 'profile' ? '← 返回我的' : backToShops ? '← 返回店铺选择' : '← 返回菜单'}
+        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
+        backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => goToShop('home')}
-        onGoToShop={() => goToShop('order')}
+        onGoToHome={() => {
+          setShopTab('home');
+          goTo('shop');
+        }}
+        onGoToShop={() => {
+          setShopTab('order');
+          goTo('shop');
+        }}
         onGoToProfile={() => goTo('profile')}
       />
     );
@@ -418,8 +274,14 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
         orderId={orderId}
         onBack={() => goTo(backTarget, 'back')}
         backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
-        onGoToHome={() => goToShop('home')}
-        onGoToShop={() => goToShop('order')}
+        onGoToHome={() => {
+          setShopTab('home');
+          goTo('shop');
+        }}
+        onGoToShop={() => {
+          setShopTab('order');
+          goTo('shop');
+        }}
         onGoToOrders={() => goTo('orders')}
         onGoToProfile={() => goTo('profile')}
       />
@@ -431,12 +293,18 @@ function StudentHomeApp({ mode }: { mode: StudentMode }) {
       source={source}
       draft={draft}
       shop={currentShop}
-      onBackToShops={() => goToShop('order', 'back')}
+      onBackToShops={() => {
+        setShopTab('order');
+        goTo('shop', 'back');
+      }}
       onProceed={() => goTo('slot')}
       onViewSampleOrder={() => openOrderFrom('menu', 'demo-order-001')}
       onViewCancelOrder={() => openOrderFrom('menu', 'demo-order-cancel-001')}
       onOpenOrders={() => openOrders('menu')}
-      onGoHome={() => goToShop('home')}
+      onGoHome={() => {
+        setShopTab('home');
+        goTo('shop');
+      }}
       onGoProfile={() => goTo('profile')}
     />
   );

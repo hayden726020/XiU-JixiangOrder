@@ -1,5 +1,11 @@
 import { ApiError, apiRequest } from '../../../shared';
-import type { AdminSettings, Order, OrderStatus } from '../types';
+import type {
+  AdminMerchantAccount,
+  AdminSettings,
+  CreateMerchantAccountInput,
+  Order,
+  OrderStatus,
+} from '../types';
 import { sampleOrders, sampleSettings } from './sample';
 
 export type AdminSourceMode = 'sample' | 'live';
@@ -62,6 +68,9 @@ export interface AdminSource {
   getOrder(id: string): Promise<Order | null>;
   getSettings(): Promise<AdminSettings>;
   updateSettings(request: SettingsUpdateRequest): Promise<SettingsUpdateResult>;
+
+  listMerchantAccounts(): Promise<AdminMerchantAccount[]>;
+  createMerchantAccount(input: CreateMerchantAccountInput): Promise<AdminMerchantAccount>;
 }
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -174,6 +183,37 @@ function parseSettingsUpdate(value: unknown, section: AdminSettingsSection): Set
   return { section, version: value.version };
 }
 
+
+function parseMerchantAccount(value: unknown): AdminMerchantAccount {
+  if (!isRecord(value)) throw invalidResponse();
+  return {
+    userId: typeof value.userId === 'string' ? value.userId : '',
+    account: typeof value.account === 'string' ? value.account : '',
+    password: typeof value.password === 'string' ? value.password : null,
+    active: value.active !== false,
+    merchantId: typeof value.merchantId === 'string' ? value.merchantId : null,
+    merchantName: typeof value.merchantName === 'string' ? value.merchantName : null,
+    contactName: typeof value.contactName === 'string' ? value.contactName : null,
+    contactPhone: typeof value.contactPhone === 'string' ? value.contactPhone : null,
+    createdAt: typeof value.createdAt === 'string' ? value.createdAt : null,
+  };
+}
+
+
+let sampleMerchantAccountState: AdminMerchantAccount[] = [
+  {
+    userId: 'demo-user-merchant-01',
+    account: 'demo-merchant',
+    password: 'demo-pass',
+    active: true,
+    merchantId: 'demo-merchant-01',
+    merchantName: '一食堂·家常档',
+    contactName: '王师傅',
+    contactPhone: '138****8888',
+    createdAt: '2026-11-13T08:00:00+08:00',
+  },
+];
+
 function samplePage(query: AdminOrderQuery): AdminOrderPage {
   const filtered =
     query.status === 'ALL'
@@ -272,6 +312,26 @@ export function createAdminSource(options: {
         });
         return parseSettingsUpdate(data, request.section);
       },
+
+      listMerchantAccounts: async () => {
+        const data = await apiRequest<unknown>('/admin/merchant-accounts');
+        if (!isRecord(data) || !Array.isArray(data.accounts)) throw invalidResponse();
+        return data.accounts.map(parseMerchantAccount);
+      },
+      createMerchantAccount: async (input) => {
+        const data = await apiRequest<unknown>('/admin/merchant-accounts', {
+          method: 'POST',
+          body: {
+            requestId: input.requestId,
+            account: input.account,
+            password: input.password,
+            merchantName: input.merchantName,
+            contactName: input.contactName,
+            contactPhone: input.contactPhone,
+          },
+        });
+        return parseMerchantAccount(data);
+      },
     };
   }
 
@@ -287,6 +347,23 @@ export function createAdminSource(options: {
         status: 0,
         retryable: false,
       });
+    },
+
+    listMerchantAccounts: async () => structuredClone(sampleMerchantAccountState),
+    createMerchantAccount: async (input) => {
+      const created: AdminMerchantAccount = {
+        userId: `demo-user-${input.account}`,
+        account: input.account,
+        password: input.password,
+        active: true,
+        merchantId: `demo-merchant-${sampleMerchantAccountState.length + 1}`,
+        merchantName: input.merchantName,
+        contactName: input.contactName,
+        contactPhone: input.contactPhone,
+        createdAt: new Date().toISOString(),
+      };
+      sampleMerchantAccountState = [...sampleMerchantAccountState, created];
+      return structuredClone(created);
     },
   };
   return applySimulation(sample, options.simulateError ?? 'none');

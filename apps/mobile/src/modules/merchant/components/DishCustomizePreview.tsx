@@ -27,8 +27,8 @@ export default function DishCustomizePreview({ value, dishName, unitPriceFen }: 
   return (
     <div className="dish-cx-preview" data-dish-cx-preview>
       <div className="dish-cx-preview__head">
-        <h4>学生端效果（预览）</h4>
-        <span className="merchant-readonly-tag">只预览，不下单</span>
+        <h4>学生端预览</h4>
+        <span className="merchant-readonly-tag">预览 · 不会下单</span>
       </div>
       <div className="dish-cx-preview__card">
         <div className="dish-cx-preview__dish">
@@ -36,7 +36,7 @@ export default function DishCustomizePreview({ value, dishName, unitPriceFen }: 
             {value.imageUrl ? (
               <img src={value.imageUrl} alt="" />
             ) : (
-              <span>无图</span>
+              <span className="dish-cx-preview__image-empty">暂无图片</span>
             )}
           </div>
           <div className="dish-cx-preview__title">

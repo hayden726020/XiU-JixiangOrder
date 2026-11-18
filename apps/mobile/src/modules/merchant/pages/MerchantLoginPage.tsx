@@ -8,10 +8,8 @@ export interface MerchantLoginPageProps {
   devDemoPassword?: string;
   apiBaseUrl: string | null;
   apiBaseProblem?: string | null;
-  initialIntent?: 'orders' | 'setup';
-  onLoggedIn: (targetView?: 'list' | 'setup') => void;
+  onLoggedIn: () => void;
   onUseSample: () => void;
-  onOpenSampleSetup?: () => void;
 }
 
 function describeLoginError(error: unknown): string {
@@ -65,10 +63,8 @@ export default function MerchantLoginPage({
   devDemoPassword,
   apiBaseUrl,
   apiBaseProblem,
-  initialIntent = 'orders',
   onLoggedIn,
   onUseSample,
-  onOpenSampleSetup,
 }: MerchantLoginPageProps) {
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
@@ -80,11 +76,7 @@ export default function MerchantLoginPage({
       ? `当前登录身份是${roleLabel(session.user.role)}，不是档口账号；登录档口账号会覆盖当前会话。`
       : '';
 
-  async function signIn(
-    nextAccount: string,
-    nextPassword: string,
-    targetView: 'list' | 'setup' = initialIntent === 'setup' ? 'setup' : 'list',
-  ): Promise<void> {
+  async function signIn(nextAccount: string, nextPassword: string): Promise<void> {
     if (busy) {
       return;
     }
@@ -103,7 +95,7 @@ export default function MerchantLoginPage({
         return;
       }
       setPassword('');
-      onLoggedIn(targetView);
+      onLoggedIn();
     } catch (loginError) {
       setPassword('');
       setError(describeLoginError(loginError));
@@ -121,8 +113,8 @@ export default function MerchantLoginPage({
     <section className="merchant-login-screen" aria-labelledby="merchant-login-heading">
       <header className="merchant-login-hero">
         <div className="merchant-login-hero__top">
-          <p className="merchant-login-brand">吉祥点餐</p>
-          <span className="merchant-login-hero__tag">档口端 · 真实模式</span>
+          <p className="merchant-login-brand">食麦呼</p>
+          <span className="merchant-login-hero__tag">档口端 · 先登录再入驻</span>
         </div>
         <h2 id="merchant-login-heading">档口工作台</h2>
         <p className="merchant-login-hero__lead">
@@ -181,20 +173,7 @@ export default function MerchantLoginPage({
           ) : null}
 
           <button type="submit" className="merchant-login-submit" disabled={busy}>
-            {busy
-              ? '正在登录…'
-              : initialIntent === 'setup'
-                ? '登录并进入商家注册 / 开店'
-                : '登录档口端'}
-          </button>
-          <button
-            type="button"
-            className="merchant-login-quick"
-            disabled={busy}
-            onClick={() => void signIn(account, password, 'setup')}
-            data-login-setup
-          >
-            登录后直接进入「商家注册 / 开店」
+            {busy ? '正在登录…' : '登录档口端'}
           </button>
         </form>
 
@@ -210,21 +189,13 @@ export default function MerchantLoginPage({
         ) : null}
 
         <p className="merchant-login-hint">
-          演示账号与密码由管理员线下提供；登录成功后读取真实菜单与订单，也可进入「商家注册 / 开店」。
+          演示账号与密码由管理员线下提供；登录成功后读取真实菜单与订单，失败不回退样例。
         </p>
       </div>
 
       <div className="merchant-login-actions">
-        <button
-          type="button"
-          className="merchant-login-link"
-          onClick={onOpenSampleSetup ?? onUseSample}
-          data-open-sample-setup
-        >
-          商家注册 / 开店（样例模式）
-        </button>
         <button type="button" className="merchant-login-link" onClick={onUseSample}>
-          先看样例订单
+          先看样例数据
         </button>
         <button
           type="button"

@@ -1,7 +1,7 @@
 @import url("https://miaoda.feishu.cn/fonts/css2?family=Ma+Shan+Zheng&display=swap");
 
 .app-shell:has(.student-login-screen) {
-  background: #fffdf7;
+  background: #fbf7ea;
 }
 
 .app-shell:has(.student-login-screen) > .app-header,
@@ -15,16 +15,10 @@
 }
 
 .student-login-screen {
-  --login-bg: #fffdf7;
-  --login-cream: #f3e3b5;
-  --login-surface: #ffffff;
-  --login-wheat: #e8cc75;
-  --login-ink: #302b24;
-  --login-navy: #302b24;
-  --login-yellow: #e8cc75;
-  --login-poster-yellow: #e8cc75;
-  --login-muted: #6e6454;
-  --login-subtle: #8c816f;
+  --login-navy: #14243f;
+  --login-ink: #123b4e;
+  --login-yellow: #ffd525;
+  --login-poster-yellow: #e5c95c;
   --login-calligraphy: "Ma Shan Zheng", "FZShuti", "方正舒体", "STXingkai", "华文行楷", "STKaiti", "KaiTi", "Kaiti SC", serif;
   position: relative;
   display: flex;
@@ -32,12 +26,12 @@
   min-height: 100dvh;
   padding: 0 0 calc(1.1rem + env(safe-area-inset-bottom));
   background:
-    repeating-linear-gradient(0deg, rgba(48, 43, 36, 0.018) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(90deg, rgba(48, 43, 36, 0.014) 0 1px, transparent 1px 3px),
-    radial-gradient(circle at 16% 6%, rgba(243, 227, 181, 0.55), transparent 44%),
-    radial-gradient(circle at 92% 30%, rgba(243, 227, 181, 0.35), transparent 48%),
-    linear-gradient(180deg, #fffdf7 0%, #fdf8ec 62%, #faf2de 100%);
-  color: var(--login-ink);
+    repeating-linear-gradient(0deg, rgba(120, 100, 60, 0.028) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120, 100, 60, 0.02) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 16% 6%, rgba(255, 213, 37, 0.3), transparent 42%),
+    radial-gradient(circle at 92% 30%, rgba(255, 246, 221, 0.9), transparent 46%),
+    linear-gradient(180deg, #fdf8e9 0%, #fbf5e6 55%, #f7f1df 100%);
+  color: var(--login-navy);
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   overflow-x: clip;
 }
@@ -87,12 +81,12 @@
 
 .student-login-brand__tag {
   margin: 0;
-  padding: 0.12rem 0.55rem;
-  border-radius: 5px;
-  background: var(--login-cream);
-  color: var(--login-ink);
+  padding: 0.1rem 0.5rem;
+  border-radius: 3px;
+  background: rgba(255, 252, 240, 0.72);
+  color: #5c6a5a;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.22em;
   line-height: 1.35;
   white-space: nowrap;
@@ -100,7 +94,7 @@
 
 .student-login-brand__subtitle {
   margin: 0.35rem 0 0;
-  color: var(--login-muted);
+  color: #687067;
   font-size: 0.82rem;
   font-weight: 500;
   letter-spacing: 0.18em;
@@ -177,8 +171,11 @@
   animation: login-wall-drift-right 58s linear infinite;
 }
 
-.student-login-wall:hover .student-login-wall__row {
-  animation-play-state: paused;
+/* 仅在有精确指针（鼠标）的设备上悬停暂停；触屏点按不会残留 hover 态 */
+@media (hover: hover) and (pointer: fine) {
+  .student-login-wall:hover .student-login-wall__row {
+    animation-play-state: paused;
+  }
 }
 
 .student-login-wall__frame {
@@ -259,23 +256,15 @@
   z-index: 2;
   margin: 1.35rem 1.1rem 0;
   padding: 1.45rem 1.25rem 1.2rem;
-  background: var(--login-surface);
-  border-radius: 18px 18px 16px 16px;
-  box-shadow: 0 14px 32px rgba(48, 43, 36, 0.08), 0 0 0 1px rgba(232, 204, 117, 0.36);
-}
-
-.student-login-card__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1.15rem;
+  background: #fffdf7;
+  border-radius: 20px 20px 16px 16px;
+  box-shadow: 0 16px 38px rgba(20, 36, 63, 0.13), 0 0 0 1px rgba(228, 220, 198, 0.62);
 }
 
 .student-login-card__title {
-  margin: 0;
-  color: var(--login-ink);
-  font-size: 1.45rem;
+  margin: 0 0 1.3rem;
+  color: #141414;
+  font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: 0.03em;
   line-height: 1.25;
@@ -288,84 +277,17 @@
   height: 4px;
   margin-top: 7px;
   border-radius: 3px;
-  background: var(--login-wheat);
+  background: #e8d24b;
   transform: rotate(-0.6deg);
-}
-
-.student-login-mode-switch {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.22rem;
-  border: 1px solid #eadfc2;
-  border-radius: 999px;
-  background: var(--login-bg);
-  box-shadow: inset 0 1px 2px rgba(48, 43, 36, 0.04);
-}
-
-.student-login-mode-switch__btn {
-  padding: 0.34rem 0.78rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--login-muted);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.student-login-mode-switch__btn.is-active {
-  background: var(--login-cream);
-  color: var(--login-ink);
-  box-shadow: 0 2px 8px rgba(48, 43, 36, 0.09);
-}
-
-.student-login-mode-switch__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.student-login-card__success {
-  margin: 0 0 0.85rem;
-  padding: 0.55rem 0.75rem;
-  border-left: 3px solid var(--login-wheat);
-  border-radius: 0.45rem;
-  background: #faf2d8;
-  color: var(--login-ink);
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.student-login-rules {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin: 0 0 0.9rem;
-}
-
-.student-login-rules__chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.26rem 0.6rem;
-  border: 1px dashed var(--login-wheat);
-  border-radius: 6px;
-  background: rgba(243, 227, 181, 0.45);
-  color: var(--login-ink);
-  font-size: 0.73rem;
-  font-weight: 600;
-  line-height: 1.35;
 }
 
 .student-login-card__gate {
   margin: 0 0 0.85rem;
   padding: 0.5rem 0.7rem;
-  border-left: 3px solid var(--login-wheat);
+  border-left: 3px solid #f1b73d;
   border-radius: 0.4rem;
   background: #fff8e3;
-  color: var(--login-ink);
+  color: #7c5513;
   font-size: 0.78rem;
   line-height: 1.5;
 }
@@ -382,29 +304,28 @@
   height: 52px;
   margin-bottom: 0.9rem;
   padding: 0 0.9rem;
-  border: 1.5px solid #e6dec8;
+  border: 1.5px solid #dddcd2;
   border-radius: 10px;
-  background: var(--login-bg);
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  background: #ffffff;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .student-login-field:focus-within {
-  border-color: var(--login-wheat);
-  background: var(--login-surface);
-  box-shadow: 0 0 0 3px rgba(232, 204, 117, 0.28);
+  border-color: #2f7a2c;
+  box-shadow: 0 0 0 3px rgba(47, 122, 44, 0.12);
 }
 
 .student-login-field__icon {
   flex: none;
   width: 1.15rem;
   height: 1.15rem;
-  color: var(--login-ink);
+  color: #3a3a3a;
 }
 
 .student-login-field label {
   flex: none;
   width: 4em;
-  color: var(--login-ink);
+  color: #222222;
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -416,7 +337,7 @@
   align-self: center;
   width: 1px;
   height: 1.2rem;
-  background: #e8dfc8;
+  background: #e5e4cb;
 }
 
 .student-login-field input {
@@ -426,13 +347,13 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--login-ink);
+  color: var(--login-navy);
   font: inherit;
   font-size: 0.95rem;
 }
 
 .student-login-field input::placeholder {
-  color: var(--login-subtle);
+  color: #8f907f;
 }
 
 .student-login-field input:focus-visible {
@@ -440,11 +361,11 @@
 }
 
 .student-login-field:has(input:disabled) {
-  background: #f5efe0;
+  background: #f4f2e9;
 }
 
 .student-login-field input:disabled {
-  color: var(--login-subtle);
+  color: #8a8f85;
 }
 
 .student-login-card__error {
@@ -453,7 +374,7 @@
   border-left: 3px solid #d98324;
   border-radius: 0.45rem;
   background: #fff5e6;
-  color: #8b3f0c;
+  color: #96460f;
   font-size: 0.79rem;
   line-height: 1.5;
 }
@@ -467,16 +388,16 @@
   height: 54px;
   margin-top: 0.4rem;
   padding: 0 1rem;
-  border: 1px solid rgba(206, 173, 78, 0.42);
-  border-radius: 12px;
-  background: var(--login-wheat);
-  color: var(--login-ink);
+  border: 0;
+  border-radius: 13px;
+  background: #2f7a2c;
+  color: #ffffff;
   font: inherit;
-  font-size: 1.08rem;
+  font-size: 1.1rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(232, 204, 117, 0.34);
+  box-shadow: 0 8px 18px rgba(47, 122, 44, 0.22);
   transition: background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
 
@@ -487,8 +408,8 @@
 
 .student-login-submit:hover:not(:disabled),
 .student-login-submit:focus-visible:not(:disabled) {
-  background: #dfc062;
-  box-shadow: 0 10px 22px rgba(232, 204, 117, 0.44);
+  background: #276a24;
+  box-shadow: 0 10px 22px rgba(47, 122, 44, 0.28);
   outline: none;
 }
 
@@ -497,45 +418,11 @@
 }
 
 .student-login-submit:disabled {
-  background: var(--login-wheat);
-  color: var(--login-ink);
+  background: #2f7a2c;
+  color: #ffffff;
   opacity: 0.6;
   box-shadow: none;
   cursor: progress;
-}
-
-.student-login-card__switch-row {
-  display: flex;
-  justify-content: center;
-  margin-top: 0.8rem;
-}
-
-.student-login-card__switch-link {
-  padding: 0.25rem 0.5rem;
-  border: 0;
-  background: transparent;
-  color: var(--login-ink);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: var(--login-wheat);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
-}
-
-.student-login-card__switch-link:hover:not(:disabled),
-.student-login-card__switch-link:focus-visible:not(:disabled) {
-  color: #1c1813;
-  text-decoration-color: #d4b24c;
-  outline: none;
-}
-
-.student-login-card__switch-link:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .student-login-card__hint {
@@ -543,7 +430,7 @@
   align-items: center;
   gap: 0.6rem;
   margin: 0.95rem 0 0;
-  color: var(--login-subtle);
+  color: #7d8567;
   font-size: 0.72rem;
   line-height: 1.4;
   text-align: center;
@@ -553,7 +440,7 @@
 .student-login-card__hint span {
   flex: 1;
   height: 1px;
-  background: #e8dfc8;
+  background: #dcd9bd;
 }
 
 /* ---------- 页脚与零散装饰 ---------- */
@@ -566,7 +453,7 @@
   margin-top: auto;
   padding: 1.15rem 1.1rem 0;
   text-align: center;
-  color: var(--login-subtle);
+  color: #7c857b;
   font-size: 0.74rem;
   line-height: 1.5;
 }
@@ -577,7 +464,7 @@
 
 .student-login-foot__brand {
   margin-top: 0.4rem !important;
-  color: var(--login-ink);
+  color: #14532d;
   font-weight: 700;
   letter-spacing: 0.12em;
 }

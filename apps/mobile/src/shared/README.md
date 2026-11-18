@@ -53,7 +53,7 @@ guard.reset(); // 仅在明确结束该操作或开始另一笔订单后调用
 - `loadSessionIdentity()` 调用 `GET /me` 校验服务端认定的角色。
 - `logout()` 调用 `POST /auth/logout` 并清除本地会话。
 - `getSession()` / `subscribeSession()` 供页面显示状态；**本地角色只用于界面提示，不能作为权限依据**。
-- 学生会话按服务端 `expiresAt` 持久保存在 `localStorage`，应用重启后可继续使用，过期或退出登录时清除；档口和管理员会话仅保存在 `sessionStorage`。令牌不写日志、不进 URL、不进入错误报告。
+- 令牌只保存在内存与 `sessionStorage`，不写日志、不进 URL、不进入错误报告。
 - 演示账号与密码由 spcuteag 线下交付，不写入仓库、示例或进度文件。
 
 ## 一次性定位

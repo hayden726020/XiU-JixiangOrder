@@ -147,6 +147,7 @@ function buildPolaroidSlides(
   const homeCard =
     cards.find((card) => /家常|大众/.test(card.title) && card.merchantId !== wokCard?.merchantId) ??
     cards.find((card) => card.merchantId !== wokCard?.merchantId) ??
+    cards[0] ??
     null;
 
   const leftShop = wokCard ? shopOf(wokCard.merchantId) : null;
@@ -229,21 +230,18 @@ export default function HomeFeed({
   onRetry,
   onLoadDerivedShops,
 }: HomeFeedProps) {
-  const [activeSlide, setActiveSlide] = useState(2);
+  const [activeSlide, setActiveSlide] = useState(1);
   const [carouselPaused, setCarouselPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
-  const shopOf = (id: string) =>
-    picker.cards.some((card) => card.merchantId === id && card.enterable)
-      ? shops.find((shop) => shop.merchantId === id && shop.active !== false) ?? null
-      : null;
+  const shopOf = (id: string) => shops.find((shop) => shop.merchantId === id) ?? null;
   const slides = buildPolaroidSlides(picker.cards, shopOf);
   const recommendedDishes = pickHomeDishes(dishes, shopOf);
   const featuredDish = recommendedDishes[0] ?? null;
   const secondaryDishes = recommendedDishes.slice(1, 3);
   const noodleShop =
-    shops.find((shop) => /面|粉|饺/.test(shop.name) && shopOf(shop.merchantId) !== null) ??
-    shops.find((shop) => shopOf(shop.merchantId) !== null) ??
+    shops.find((shop) => /面|粉|饺/.test(shop.name) && shop.orderable !== false) ??
+    shops.find((shop) => shop.orderable !== false) ??
     null;
 
   useEffect(() => {

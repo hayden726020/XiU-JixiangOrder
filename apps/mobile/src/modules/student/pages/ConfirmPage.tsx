@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { runAfterBackPress } from '../../../shared/backPress';
 import type { OrderDraft } from '../state/orderDraft';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import type { DemoScenario, MenuResponse, ShopSummary, SlotDto, StudentSource } from '../types';
@@ -11,6 +10,7 @@ import { toSubmitErrorView } from '../utils/orderSubmitView';
 import { ORDER_REMARK_MAX_LENGTH } from '../utils/remark';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
+import RealModeNotice from '../components/RealModeNotice';
 import SampleBanner from '../components/SampleBanner';
 import '../booking.css';
 
@@ -270,13 +270,14 @@ export default function ConfirmPage({
   if (realLoggedOut) {
     return (
       <section className="student-booking student-booking--confirm" aria-labelledby="student-confirm-title">
+        <RealModeNotice />
         <div className="booking-hero">
           <div className="booking-nav">
-            <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
+            <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={onBack}>
               <ChevronLeftIcon />
             </button>
             <h2 id="student-confirm-title" className="booking-nav__title">确认订单</h2>
-            <span />
+            <span className="booking-nav__mode">真实接口</span>
           </div>
         </div>
         <div className="booking-body" style={{ marginTop: '0.8rem' }}>
@@ -288,15 +289,15 @@ export default function ConfirmPage({
 
   return (
     <section className="student-booking student-booking--confirm" aria-labelledby="student-confirm-title">
-      {source.mode === 'sample' ? <SampleBanner /> : null}
+      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
 
       <div className="booking-hero">
         <div className="booking-nav">
-          <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
+          <button type="button" className="booking-nav__back student-back" aria-label="返回时段" onClick={onBack}>
             <ChevronLeftIcon />
           </button>
           <h2 id="student-confirm-title" className="booking-nav__title">确认订单</h2>
-          {source.mode === 'sample' ? <span className="booking-nav__mode">样例数据</span> : <span />}
+          <span className="booking-nav__mode">{source.mode === 'sample' ? '样例数据' : '真实接口'}</span>
         </div>
         <div className="confirm-bubble">
           <span className="confirm-bubble__spark" aria-hidden="true">✦</span>
@@ -316,7 +317,7 @@ export default function ConfirmPage({
         {menuStatus === 'error' ? (
           <div className="booking-error" role="alert">
             <p>确认信息读取失败，请返回时段页重试。</p>
-            <button type="button" className="student-back" onClick={(event) => runAfterBackPress(event.currentTarget, onBack)}>
+            <button type="button" onClick={onBack}>
               返回时段页
             </button>
           </div>

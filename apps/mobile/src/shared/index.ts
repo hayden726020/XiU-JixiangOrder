@@ -22,15 +22,7 @@ export {
   type SessionRole,
   type SessionUser,
 } from './session';
-export {
-  demoLogin,
-  loadSessionIdentity,
-  login,
-  logout,
-  registerStudentAccount,
-  type SessionIdentity,
-  type StudentRegistrationResult,
-} from './auth';
+export { demoLogin, loadSessionIdentity, logout, type SessionIdentity } from './auth';
 export {
   DEMO_DINING_CONFIG,
   checkLocationPermission,

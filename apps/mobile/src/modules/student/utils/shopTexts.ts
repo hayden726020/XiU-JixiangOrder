@@ -9,12 +9,12 @@ export const SAMPLE_ONLY_LABEL = '仅样例';
 export const CANTEEN_MISSING = '所属食堂未提供';
 export const ORDERABLE_MISSING = '可下单状态未提供';
 export const ORDERABLE_YES = '可下单';
-export const ORDERABLE_NO = '当前非营业提示，未发布阶段仍可预约';
+export const ORDERABLE_NO = '暂不可下单';
 export const SHOP_NAME_MISSING = '店铺名称未提供';
 
 export const SHOP_SWITCH_NOTICE = '已切换店铺，请重新选择';
 export const SHOP_SWITCH_BUSY = '正在提交，请等待结果';
-export const SHOP_CLOSED_REASON = '该店铺当前已停用';
+export const SHOP_CLOSED_REASON = '该店铺暂不可下单';
 export const SHOP_FOREIGN_ITEM_NOTICE = '已移除不属于当前店铺的菜品，请重新确认';
 
 export const SHOP_LIST_UNAVAILABLE_TEXT = '服务端未提供店铺列表';

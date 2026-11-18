@@ -26,7 +26,6 @@ export function buildMenuDerivedShops(dishes: DishDto[]): ShopSummary[] {
     merchantId,
     name: merchantId,
     canteenId: null,
-    active: null,
     orderable: null,
     demo: false,
     sortOrder: null,

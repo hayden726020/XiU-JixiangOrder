@@ -13,6 +13,7 @@ export const DISH_TYPE_OPTIONS: ReadonlyArray<{ value: DishType; label: string }
 ];
 
 export type OnboardingField =
+  | 'merchantName'
   | 'contactName'
   | 'contactPhone'
   | 'shopName'
@@ -24,6 +25,7 @@ export type OnboardingField =
   | 'quantityText';
 
 export interface MerchantRegistrationDraft {
+  merchantName: string;
   contactName: string;
   contactPhone: string;
 }
@@ -71,6 +73,40 @@ export function dishTypeLabel(type: DishType | null): string {
   return DISH_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? '未分类';
 }
 
+export const DEFAULT_SAMPLE_MERCHANT_NAME = '档口商家';
+
+export function resolveAccountMerchantName(
+  session: { user: { role: SessionRole; displayName?: string | null } } | null | undefined,
+  fallback = DEFAULT_SAMPLE_MERCHANT_NAME,
+): string {
+  if (session?.user.role === 'MERCHANT') {
+    const raw = session.user.displayName?.trim() ?? '';
+    if (raw.length >= 2) {
+      return raw.slice(0, 30);
+    }
+  }
+  return fallback;
+}
+
+export function resolveEffectiveMerchantName(options: {
+  mode: 'sample' | 'real';
+  session: { user: { role: SessionRole; displayName?: string | null } } | null | undefined;
+  serverMerchantName?: string | null;
+  fallback?: string;
+}): string {
+  const accountName = options.session?.user.role === 'MERCHANT'
+    ? (options.session.user.displayName?.trim() || '')
+    : '';
+  if (options.mode === 'real') {
+    if (accountName.length > 0) return accountName;
+    if (options.serverMerchantName?.trim()) return options.serverMerchantName.trim();
+    return options.fallback ?? DEFAULT_SAMPLE_MERCHANT_NAME;
+  }
+  if (options.serverMerchantName?.trim()) return options.serverMerchantName.trim();
+  if (accountName.length >= 2) return accountName.slice(0, 30);
+  return options.fallback ?? DEFAULT_SAMPLE_MERCHANT_NAME;
+}
+
 export function canUseOnboarding(
   role: SessionRole | null | undefined,
   merchantId: string | null | undefined,
@@ -92,9 +128,13 @@ export function validateMerchantRegistration(
   draft: MerchantRegistrationDraft,
 ): OnboardingResult<MerchantRegistrationDraft> {
   const errors: OnboardingErrors = {};
+  const merchantName = trimText(draft.merchantName);
   const contactName = trimText(draft.contactName);
   const contactPhone = normalizePhone(draft.contactPhone);
 
+  if (merchantName.length < 2 || merchantName.length > 30) {
+    errors.merchantName = '商家名称需为 2—30 个字符。';
+  }
   if (contactName.length < 2 || contactName.length > 20) {
     errors.contactName = '店铺负责人需为 2—20 个字符。';
   }
@@ -105,7 +145,7 @@ export function validateMerchantRegistration(
   if (Object.keys(errors).length > 0) {
     return { ok: false, errors };
   }
-  return { ok: true, value: { contactName, contactPhone } };
+  return { ok: true, value: { merchantName, contactName, contactPhone } };
 }
 
 export function validateShop(draft: ShopDraft): OnboardingResult<ShopDraft> {
@@ -179,4 +219,32 @@ export function validateNewDish(draft: NewDishDraft): OnboardingResult<NewDishVa
       onSale: true,
     },
   };
+}
+export interface MerchantContactDraft {
+  contactName: string;
+  contactPhone: string | null;
+}
+
+export interface MerchantContactValue {
+  contactName: string;
+  contactPhone: string | null;
+}
+
+export function validateMerchantContact(
+  draft: MerchantContactDraft,
+): OnboardingResult<MerchantContactValue> {
+  const errors: OnboardingErrors = {};
+  const contactName = trimText(draft.contactName);
+  const contactPhone = draft.contactPhone === null ? null : normalizePhone(draft.contactPhone);
+
+  if (contactName.length < 2 || contactName.length > 20) {
+    errors.contactName = '店铺负责人需为 2—20 个字符。';
+  }
+  if (contactPhone !== null && !/^1[3-9]\d{9}$/.test(contactPhone)) {
+    errors.contactPhone = '请输入 11 位手机号。';
+  }
+  if (Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, value: { contactName, contactPhone } };
 }

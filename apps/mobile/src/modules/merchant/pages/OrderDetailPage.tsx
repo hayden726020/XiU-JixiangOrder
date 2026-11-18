@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import ActionBar from '../components/ActionBar';
-import type { DiningMode, MerchantOrder } from '../data/types';
+import type { MerchantOrder } from '../data/types';
 import {
   getOrderActions,
   getPrimaryAction,
@@ -44,7 +44,7 @@ export default function OrderDetailPage(props: OrderDetailPageProps) {
 }
 
 function OrderDetailContent({
-  order,
+order,
   mode,
   onBack,
   onAction,
@@ -58,14 +58,7 @@ function OrderDetailContent({
   const [stockCancelReason, setStockCancelReason] = useState('');
   const [delayReason, setDelayReason] = useState('');
   const [delayExpectedReadyAt, setDelayExpectedReadyAt] = useState('');
-  const [diningReason, setDiningReason] = useState('');
-  const [diningModeInput, setDiningModeInput] = useState<DiningMode>(
-    order.diningMode === 'DINE_IN' ? 'TAKEAWAY' : 'DINE_IN',
-  );
 
-  useEffect(() => {
-    setDiningModeInput(order.diningMode === 'DINE_IN' ? 'TAKEAWAY' : 'DINE_IN');
-  }, [order.diningMode]);
 
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
@@ -74,7 +67,7 @@ function OrderDetailContent({
   const rejectAction = actions.find((action) => action.code === 'REJECT_CANCEL');
   const stockCancelAction = actions.find((action) => action.code === 'CANCEL_ORDER');
   const delayAction = actions.find((action) => action.code === 'SET_DELAY');
-  const diningAction = actions.find((action) => action.code === 'CHANGE_DINING_MODE');
+
   const mainActions = actions.filter(
     (action) => action.kind === 'primary' && action.code !== 'VERIFY' && action.code !== 'CANCEL_ORDER',
   );
@@ -83,7 +76,7 @@ function OrderDetailContent({
   const errorFor = (code: string) => (actionError?.code === code ? actionError.message : null);
   const cancelError = errorFor('APPROVE_CANCEL') ?? errorFor('REJECT_CANCEL');
   const otherError = actionError
-    && !['VERIFY', 'APPROVE_CANCEL', 'REJECT_CANCEL', 'CANCEL_ORDER', 'SET_DELAY', 'CHANGE_DINING_MODE']
+    && !['VERIFY', 'APPROVE_CANCEL', 'REJECT_CANCEL', 'CANCEL_ORDER', 'SET_DELAY']
       .includes(actionError.code)
     ? actionError.message
     : null;
@@ -381,46 +374,7 @@ function OrderDetailContent({
         {order.diningModeReason && (
           <p className="merchant-muted">变更理由：{order.diningModeReason}</p>
         )}
-        {diningAction && (
-          <>
-            <p className="merchant-muted">变更为</p>
-            <select
-              value={diningModeInput}
-              onChange={(event) => setDiningModeInput(event.target.value as DiningMode)}
-              aria-label="变更后的用餐方式"
-            >
-              <option value="DINE_IN">堂食</option>
-              <option value="TAKEAWAY">外带</option>
-            </select>
-            <textarea
-              value={diningReason}
-              onChange={(event) => setDiningReason(event.target.value)}
-              placeholder="填写确认变更理由"
-              rows={2}
-              aria-label="用餐方式变更理由"
-            />
-            <button
-              type="button"
-              className="action-button action-button--secondary"
-              onClick={() => onAction(diningAction, {
-                reason: diningReason,
-                diningMode: diningModeInput,
-              })}
-              disabled={busy(diningAction)}
-              aria-busy={busy(diningAction) || undefined}
-            >
-              {busyLabel(diningAction)}
-            </button>
-            {errorFor('CHANGE_DINING_MODE') && (
-              <p className="action-feedback action-feedback--error" role="alert" data-placeholder-state="error">
-                {errorFor('CHANGE_DINING_MODE')}
-              </p>
-            )}
-            <p className="hint">
-              需档口明确确认，只有未结束订单才可变更；保存后学生端读取同一结果。
-            </p>
-          </>
-        )}
+        <p className="hint">用餐方式由学生下单时选择，档口不可修改。</p>
       </section>
 
       <section className="detail-block">
