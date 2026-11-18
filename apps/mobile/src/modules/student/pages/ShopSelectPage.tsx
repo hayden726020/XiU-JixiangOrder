@@ -167,6 +167,7 @@ export default function ShopSelectPage({
   const [error, setError] = useState<SourceError | null>(null);
   const [listSource, setListSource] = useState<ShopListSource>('server');
   const [reloadToken, setReloadToken] = useState(0);
+  const [shopReloadToken, setShopReloadToken] = useState(0);
   const [derivedBusy, setDerivedBusy] = useState(false);
   const [derivedError, setDerivedError] = useState('');
   const [dishes, setDishes] = useState<DishDto[]>([]);
@@ -181,6 +182,10 @@ export default function ShopSelectPage({
   const nudgeTimerRef = useRef<number | null>(null);
 
   function selectTab(next: 'home' | 'order' | 'mine'): void {
+    if (next === 'order') {
+      resetOrderFilters();
+      setShopReloadToken((value) => value + 1);
+    }
     setInternalTab(next);
     if (next !== 'mine') {
       onTabChange?.(next);
@@ -210,7 +215,7 @@ export default function ShopSelectPage({
     return () => {
       cancelled = true;
     };
-  }, [source, reloadToken]);
+  }, [source, reloadToken, shopReloadToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -471,9 +476,12 @@ export default function ShopSelectPage({
                 <button
                   type="button"
                   className="order-section__more"
-                  onClick={resetOrderFilters}
+                  onClick={() => {
+                    resetOrderFilters();
+                    setShopReloadToken((value) => value + 1);
+                  }}
                 >
-                  发现更多 <Icon name="arrow" />
+                  刷新全部店铺 <Icon name="arrow" />
                 </button>
               </div>
 

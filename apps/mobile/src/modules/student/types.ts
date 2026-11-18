@@ -22,6 +22,7 @@ export interface ShopSummary {
   merchantId: string;
   name: string;
   canteenId: string | null;
+  location?: string | null;
   orderable: boolean | null;
   demo: boolean;
   sortOrder: number | null;
