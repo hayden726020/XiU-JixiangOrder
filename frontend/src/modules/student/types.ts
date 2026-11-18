@@ -22,9 +22,35 @@ export interface ShopSummary {
   merchantId: string;
   name: string;
   canteenId: string | null;
+  location?: string | null;
   orderable: boolean | null;
   demo: boolean;
   sortOrder: number | null;
+}
+
+export interface DishFlavorOption {
+  id: string;
+  name: string;
+  priceFen: number;
+}
+
+export interface DishFlavorGroup {
+  id: string;
+  name: string;
+  required: boolean;
+  options: DishFlavorOption[];
+}
+
+export interface DishSide {
+  id: string;
+  name: string;
+  priceFen: number;
+}
+
+export interface DishAddOn {
+  id: string;
+  name: string;
+  priceFen: number;
 }
 
 export interface DishDto {
@@ -34,6 +60,32 @@ export interface DishDto {
   unitPriceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+  flavorGroups: DishFlavorGroup[];
+  sides: DishSide[];
+  addOns: DishAddOn[];
+}
+
+export interface SelectedFlavor {
+  groupId: string;
+  optionId: string;
+}
+
+export interface ItemCustomizationSelection {
+  selectedFlavors: SelectedFlavor[];
+  selectedSides: string[];
+  selectedAddOns: string[];
+}
+
+export interface OrderItemCustomization {
+  flavorSelections: Array<{
+    groupId: string;
+    groupName: string;
+    optionId: string;
+    optionName: string;
+  }>;
+  sides: Array<{ id: string; name: string }>;
+  addOns: Array<{ id: string; name: string; priceFen: number }>;
 }
 
 export interface SlotDto {
@@ -73,11 +125,13 @@ export interface OrderItem {
   name: string;
   quantity: number;
   unitPriceFen: number;
+  customization?: OrderItemCustomization | null;
 }
 
 export interface CancelRequest {
   status: CancelRequestStatus;
   reason: string | null;
+  decisionReason?: string | null;
 }
 
 export interface OrderDelay {
@@ -87,6 +141,7 @@ export interface OrderDelay {
 
 export interface StudentOrder {
   id: string;
+  orderNo?: number | null;
   merchantId: string | null;
   merchantName: string | null;
   items: OrderItem[];
@@ -107,11 +162,15 @@ export interface StudentOrder {
   pickupCode: string | null;
   demo: boolean;
   local?: boolean;
+  remark?: string | null;
 }
 
 export interface DraftItemInput {
   dishId: string;
   quantity: number;
+  selectedFlavors?: SelectedFlavor[];
+  selectedSides?: string[];
+  selectedAddOns?: string[];
 }
 
 export interface CreateOrderInput {
@@ -119,6 +178,7 @@ export interface CreateOrderInput {
   items: DraftItemInput[];
   slotId: string;
   diningMode: DiningMode;
+  remark?: string;
 }
 
 export interface QueryOrderResultInput {
@@ -126,6 +186,13 @@ export interface QueryOrderResultInput {
   items?: DraftItemInput[];
   slotId?: string | null;
   diningMode?: DiningMode | null;
+  remark?: string;
+}
+
+export interface CancelOrderInput {
+  requestId: string;
+  expectedVersion: number;
+  reason?: string;
 }
 
 export interface StudentSource {
@@ -137,6 +204,7 @@ export interface StudentSource {
   queryOrderResult(input: QueryOrderResultInput | string): Promise<StudentOrder>;
   getOrder(id: string): Promise<StudentOrder>;
   listOrders(): Promise<StudentOrder[]>;
+  cancelOrder(id: string, input: CancelOrderInput): Promise<StudentOrder>;
   setScenario(next: DemoScenario): DemoScenario;
   getScenario(): DemoScenario;
 }

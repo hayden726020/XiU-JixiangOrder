@@ -3,12 +3,15 @@ import type {
   DiningMode,
   DishDto,
   DraftItemInput,
+  ItemCustomizationSelection,
+  SelectedFlavor,
   SourceError,
   StudentOrder,
   StudentSource,
 } from '../types';
 import { apiError, isApiError, toSourceError } from '../types';
 import { sumFen } from '../utils/money';
+import { sanitizeOrderRemark } from '../utils/remark';
 import { DISH_LIMIT_TEXT, DISH_SHORTAGE_NOTICE } from '../utils/submitTexts';
 import { SHOP_FOREIGN_ITEM_NOTICE, SHOP_SWITCH_NOTICE } from '../utils/shopTexts';
 import { filterDishesByShop } from '../utils/dishShopFilter';
@@ -28,11 +31,17 @@ export interface SetShopResult {
   reason: SetShopReason;
 }
 
+export interface SetCustomizationResult {
+  ok: boolean;
+  message: string | null;
+}
+
 export interface DraftState {
   date: string;
   shopId: string | null;
   slotId: string | null;
   diningMode: DiningMode | null;
+  remark: string;
   status: DraftStatus;
   order: StudentOrder | null;
   error: SourceError | null;
@@ -68,9 +77,12 @@ export interface OrderDraft {
   isMenuReadCurrent(token: number): boolean;
   setDate(date: string): boolean;
   setQuantity(dish: DishDto, quantity: number): number;
+  setCustomization(dish: DishDto, selection: ItemCustomizationSelection): SetCustomizationResult;
+  getCustomization(dishId: string): ItemCustomizationSelection | null;
   getLimit(dishId: string): number;
   setSlot(slotId: string): void;
   setDiningMode(mode: DiningMode): void;
+  setRemark(text: string): void;
   applyDishCatalog(dishes: DishDto[]): void;
   restoreSelection(selection: DraftSelection): boolean;
   canProceedToSlot(): boolean;
@@ -96,11 +108,14 @@ export function createOrderDraft({
   const quantities = new Map<string, number>();
   const prices = new Map<string, number>();
   const limits = new Map<string, number>();
+  const selections = new Map<string, ItemCustomizationSelection>();
+  const catalog = new Map<string, DishDto>();
   const state: DraftState = {
     date: startDate,
     shopId: null,
     slotId: null,
     diningMode: null,
+    remark: '',
     status: 'idle',
     order: null,
     error: null,
@@ -112,20 +127,69 @@ export function createOrderDraft({
 
   let catalogDishIds = new Set<string>();
 
+  function selectionOf(dishId: string): ItemCustomizationSelection | null {
+    return selections.get(dishId) ?? null;
+  }
+
+  function addOnExtraFen(dishId: string, addOnIds: string[] | undefined): number {
+    if (!addOnIds || addOnIds.length === 0) {
+      return 0;
+    }
+    const dish = catalog.get(dishId);
+    if (!dish) {
+      return 0;
+    }
+    const chosen = new Set(addOnIds);
+    return dish.addOns
+      .filter((addOn) => chosen.has(addOn.id))
+      .reduce((sum, addOn) => sum + Math.max(0, addOn.priceFen ?? 0), 0);
+  }
+
   function getItems(): DraftItemInput[] {
     return [...quantities.entries()]
       .filter(([, quantity]) => quantity > 0)
       .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
-      .map(([dishId, quantity]) => ({ dishId, quantity }));
+      .map(([dishId, quantity]) => {
+        const selection = selectionOf(dishId);
+        if (!selection) {
+          return { dishId, quantity };
+        }
+        return {
+          dishId,
+          quantity,
+          ...(selection.selectedFlavors.length > 0
+            ? { selectedFlavors: selection.selectedFlavors.map((item) => ({ ...item })) }
+            : {}),
+          ...(selection.selectedSides.length > 0
+            ? { selectedSides: selection.selectedSides.slice() }
+            : {}),
+          ...(selection.selectedAddOns.length > 0
+            ? { selectedAddOns: selection.selectedAddOns.slice() }
+            : {}),
+        };
+      });
   }
 
   function getTotalQuantity(): number {
     return getItems().reduce((sum, item) => sum + item.quantity, 0);
   }
 
+  function missingRequiredFlavor(item: DraftItemInput): string | null {
+    const dish = catalog.get(item.dishId);
+    if (!dish) {
+      return null;
+    }
+    const chosen = new Set((item.selectedFlavors ?? []).map((entry) => entry.groupId));
+    const missing = dish.flavorGroups.find((group) => group.required && !chosen.has(group.id));
+    return missing ? missing.name : null;
+  }
+
   function getPreviewFen(): number {
     return sumFen(
-      getItems().map((item) => ({ unitPriceFen: prices.get(item.dishId) ?? 0, quantity: item.quantity })),
+      getItems().map((item) => ({
+        unitPriceFen: (prices.get(item.dishId) ?? 0) + addOnExtraFen(item.dishId, item.selectedAddOns),
+        quantity: item.quantity,
+      })),
     );
   }
 
@@ -136,7 +200,8 @@ export function createOrderDraft({
   }
 
   function canProceedToSlot(): boolean {
-    return getItems().length > 0;
+    const items = getItems();
+    return items.length > 0 && items.every((item) => missingRequiredFlavor(item) === null);
   }
 
   function hasForeignItem(): boolean {
@@ -149,7 +214,7 @@ export function createOrderDraft({
 
   function canConfirm(): boolean {
     return (
-      getItems().length > 0 &&
+      canProceedToSlot() &&
       state.slotId !== null &&
       state.diningMode !== null &&
       !hasForeignItem()
@@ -196,11 +261,14 @@ export function createOrderDraft({
     quantities.clear();
     prices.clear();
     limits.clear();
+    selections.clear();
+    catalog.clear();
 
     catalogDishIds = new Set<string>();
     state.shopId = merchantId;
     state.slotId = null;
     state.diningMode = null;
+    state.remark = '';
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -223,8 +291,11 @@ export function createOrderDraft({
     quantities.clear();
     prices.clear();
     limits.clear();
+    selections.clear();
+    catalog.clear();
     state.slotId = null;
     state.diningMode = null;
+    state.remark = '';
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -248,6 +319,7 @@ export function createOrderDraft({
       return quantities.get(dish.dishId) ?? 0;
     }
     const next = Math.max(0, Math.min(wanted, limit));
+    catalog.set(dish.dishId, dish);
     prices.set(dish.dishId, dish.unitPriceFen ?? 0);
     limits.set(dish.dishId, limit);
     if (next === 0) {
@@ -262,6 +334,62 @@ export function createOrderDraft({
 
   function getLimit(dishId: string): number {
     return limits.get(dishId) ?? 0;
+  }
+
+  function getCustomization(dishId: string): ItemCustomizationSelection | null {
+    return selectionOf(dishId);
+  }
+
+  function setCustomization(
+    dish: DishDto,
+    selection: ItemCustomizationSelection,
+  ): SetCustomizationResult {
+    if (!dish || typeof dish.dishId !== 'string') {
+      return { ok: false, message: '菜品信息不完整。' };
+    }
+    const groupById = new Map(dish.flavorGroups.map((group) => [group.id, group]));
+    const chosenGroups = new Set<string>();
+    const flavors: SelectedFlavor[] = [];
+    for (const entry of selection.selectedFlavors) {
+      const group = groupById.get(entry.groupId);
+      if (!group) {
+        return { ok: false, message: '口味选项已变化，请刷新菜单后重试。' };
+      }
+      if (chosenGroups.has(group.id)) {
+        return { ok: false, message: `「${group.name}」只能选择一个选项。` };
+      }
+      if (!group.options.some((option) => option.id === entry.optionId)) {
+        return { ok: false, message: `「${group.name}」的选项已变化，请重新选择。` };
+      }
+      chosenGroups.add(group.id);
+      flavors.push({ groupId: group.id, optionId: entry.optionId });
+    }
+    for (const group of dish.flavorGroups) {
+      if (group.required && !chosenGroups.has(group.id)) {
+        return { ok: false, message: `请选择必选口味「${group.name}」。` };
+      }
+    }
+    const sideIds = new Set(dish.sides.map((side) => side.id));
+    if (selection.selectedSides.some((id) => !sideIds.has(id))) {
+      return { ok: false, message: '配菜选项已变化，请刷新菜单后重试。' };
+    }
+    const addOnIds = new Set(dish.addOns.map((addOn) => addOn.id));
+    if (selection.selectedAddOns.some((id) => !addOnIds.has(id))) {
+      return { ok: false, message: '加购选项已变化，请刷新菜单后重试。' };
+    }
+    catalog.set(dish.dishId, dish);
+    selections.set(dish.dishId, {
+      selectedFlavors: flavors,
+      selectedSides: [...new Set(selection.selectedSides)],
+      selectedAddOns: [...new Set(selection.selectedAddOns)],
+    });
+    if ((quantities.get(dish.dishId) ?? 0) === 0 && dish.onSale === true && (dish.availableQuantity ?? 0) > 0) {
+      quantities.set(dish.dishId, 1);
+      prices.set(dish.dishId, dish.unitPriceFen ?? 0);
+      limits.set(dish.dishId, Math.max(0, dish.availableQuantity ?? 0));
+    }
+    notifyChange();
+    return { ok: true, message: null };
   }
 
   function setSlot(slotId: string): void {
@@ -280,33 +408,61 @@ export function createOrderDraft({
     notifyChange();
   }
 
+  function setRemark(text: string): void {
+    const next = sanitizeOrderRemark(typeof text === 'string' ? text : '');
+    if (next === state.remark) {
+      return;
+    }
+    state.remark = next;
+    if (state.status !== 'submitting') {
+      requestIds.complete();
+      submission = null;
+      state.status = 'idle';
+      state.order = null;
+      state.error = null;
+    }
+    notifyChange();
+  }
+
   function applyDishCatalog(dishes: DishDto[]): void {
     if (state.shopId === null) {
       quantities.clear();
       prices.clear();
       limits.clear();
+      selections.clear();
+      catalog.clear();
 
       catalogDishIds = new Set<string>();
       notifyChange();
       return;
     }
     const filtered = filterDishesByShop(dishes, state.shopId);
-    const catalog = new Map(filtered.map((dish) => [dish.dishId, dish]));
+    const nextCatalog = new Map(filtered.map((dish) => [dish.dishId, dish]));
 
-    catalogDishIds = new Set(catalog.keys());
+    catalogDishIds = new Set(nextCatalog.keys());
+    catalog.clear();
+    for (const [dishId, dish] of nextCatalog) {
+      catalog.set(dishId, dish);
+    }
     let changed = false;
     for (const [dishId, quantity] of [...quantities.entries()]) {
-      const dish = catalog.get(dishId);
+      const dish = nextCatalog.get(dishId);
       if (!dish) {
         quantities.delete(dishId);
         prices.delete(dishId);
         limits.delete(dishId);
+        selections.delete(dishId);
         changed = true;
         continue;
       }
       const limit = dish.onSale === true ? Math.max(0, dish.availableQuantity ?? 0) : 0;
       prices.set(dishId, dish.unitPriceFen ?? 0);
       limits.set(dishId, limit);
+      const selection = selections.get(dishId);
+      if (selection && !selectionStillValid(dish, selection)) {
+        selections.delete(dishId);
+        changed = true;
+      }
       if (limit === 0) {
         changed = true;
       } else if (quantity > limit) {
@@ -314,9 +470,35 @@ export function createOrderDraft({
       }
     }
     if (changed) {
-      state.notice = '部分菜品已变化，请重新确认';
+      state.notice = '部分菜品或配菜已变化，请重新确认';
     }
     notifyChange();
+  }
+
+  function selectionStillValid(
+    dish: DishDto,
+    selection: ItemCustomizationSelection,
+  ): boolean {
+    const groups = new Map(dish.flavorGroups.map((group) => [group.id, group]));
+    const chosenGroups = new Set<string>();
+    for (const entry of selection.selectedFlavors) {
+      const group = groups.get(entry.groupId);
+      if (!group || !group.options.some((option) => option.id === entry.optionId)) {
+        return false;
+      }
+      chosenGroups.add(group.id);
+    }
+    for (const group of dish.flavorGroups) {
+      if (group.required && !chosenGroups.has(group.id)) {
+        return false;
+      }
+    }
+    const sideIds = new Set(dish.sides.map((side) => side.id));
+    if (selection.selectedSides.some((id) => !sideIds.has(id))) {
+      return false;
+    }
+    const addOnIds = new Set(dish.addOns.map((addOn) => addOn.id));
+    return selection.selectedAddOns.every((id) => addOnIds.has(id));
   }
 
   function dropForeignItems(): boolean {
@@ -362,8 +544,25 @@ export function createOrderDraft({
     quantities.clear();
     prices.clear();
     limits.clear();
+    selections.clear();
     for (const item of items) {
       quantities.set(item.dishId, item.quantity);
+      const selectedFlavors = (item.selectedFlavors ?? []).filter(
+        (entry) =>
+          typeof entry?.groupId === 'string' &&
+          entry.groupId !== '' &&
+          typeof entry.optionId === 'string' &&
+          entry.optionId !== '',
+      );
+      const selectedSides = (item.selectedSides ?? []).filter(
+        (id): id is string => typeof id === 'string' && id !== '',
+      );
+      const selectedAddOns = (item.selectedAddOns ?? []).filter(
+        (id): id is string => typeof id === 'string' && id !== '',
+      );
+      if (selectedFlavors.length > 0 || selectedSides.length > 0 || selectedAddOns.length > 0) {
+        selections.set(item.dishId, { selectedFlavors, selectedSides, selectedAddOns });
+      }
     }
     state.slotId =
       typeof selection.slotId === 'string' && selection.slotId !== '' ? selection.slotId : null;
@@ -371,6 +570,7 @@ export function createOrderDraft({
       selection.diningMode !== null && MODES.has(selection.diningMode)
         ? selection.diningMode
         : null;
+    state.remark = '';
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -392,6 +592,7 @@ export function createOrderDraft({
       items: getItems(),
       slotId: state.slotId,
       diningMode: state.diningMode,
+      remark: state.remark === '' ? undefined : state.remark,
     };
   }
 
@@ -412,9 +613,10 @@ export function createOrderDraft({
     const input = buildInput();
     submission = {
       requestId: input.requestId,
-      items: input.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
+      items: input.items.map((item) => ({ ...item })),
       slotId: input.slotId,
       diningMode: input.diningMode,
+      remark: input.remark,
     };
 
     inFlight = (async () => {
@@ -451,9 +653,10 @@ export function createOrderDraft({
     const input = submission
       ? {
           requestId,
-          items: submission.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
+          items: submission.items.map((item) => ({ ...item })),
           slotId: submission.slotId,
           diningMode: submission.diningMode,
+          remark: submission.remark,
         }
       : { requestId };
     try {
@@ -484,8 +687,11 @@ export function createOrderDraft({
     quantities.clear();
     prices.clear();
     limits.clear();
+    selections.clear();
+    catalog.clear();
     state.slotId = null;
     state.diningMode = null;
+    state.remark = '';
     state.status = 'idle';
     state.order = null;
     state.error = null;
@@ -502,9 +708,12 @@ export function createOrderDraft({
     isMenuReadCurrent,
     setDate,
     setQuantity,
+    setCustomization,
+    getCustomization,
     getLimit,
     setSlot,
     setDiningMode,
+    setRemark,
     applyDishCatalog,
     restoreSelection,
     canProceedToSlot,

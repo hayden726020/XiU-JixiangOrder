@@ -1,10 +1,9 @@
 /* ==========================================================================
-   订单详情页（含取消申请中状态）高保真手绘质感样式
-   对齐设计图：photo/04-取消状态与我的页建议.png (左侧订单详情)
+   学生端订单详情页 · 暖白票据手绘质感样式
    ========================================================================== */
 
 .app-shell:has(.student-order-detail) {
-  background: #e9f2fb;
+  background: #f5ede0;
 }
 
 .app-shell:has(.student-order-detail) > .app-header,
@@ -18,938 +17,1119 @@
 }
 
 .student-order-detail {
-  --order-navy: #071638;
-  --order-yellow: #ffd525;
-  --order-blue: #0864e9;
-  --order-card-bg: #ffffff;
-  --order-paper-bg: #fffdf7;
+  --detail-bg: #f5ede0;
+  --detail-paper: #fdf9f2;
+  --detail-ink: #351c0d;
+  --detail-brown: #5d3b22;
+  --detail-muted: #826e5b;
+  --detail-edge: #e4d5c0;
+  --detail-dash: #dcd0bf;
+  --detail-gold: #f2c557;
+  --detail-tape: #f8dc88;
+  --receipt-px: 18px;
+
+  box-sizing: border-box;
   min-height: 100dvh;
-  background: linear-gradient(180deg, #d7e9fa 0%, #e9f2fb 28%, #e9f2fb 100%);
-  color: var(--order-navy);
-  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  max-width: 520px;
+  margin: 0 auto;
+  background: var(--detail-bg);
+  color: var(--detail-ink);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  padding: env(safe-area-inset-top) 0 calc(84px + env(safe-area-inset-bottom));
   position: relative;
+  overflow-x: hidden;
+}
+
+.student-order-detail *,
+.student-order-detail *::before,
+.student-order-detail *::after {
   box-sizing: border-box;
 }
 
-/* 顶部导航栏 */
-.order-nav {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(0.75rem + env(safe-area-inset-top)) 1rem 0.75rem;
-  background: rgba(233, 242, 251, 0.88);
-  backdrop-filter: blur(12px);
-}
-
-.order-nav__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.2rem;
-  height: 2.2rem;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--order-navy);
+.student-order-detail button {
+  font: inherit;
+  color: inherit;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(7, 22, 56, 0.08);
-  transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.order-nav__back:active {
-  transform: scale(0.92);
-}
-
-.order-nav__back svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.order-nav__title {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--order-navy);
-}
-
-.order-nav__placeholder {
-  width: 2.2rem;
-}
-
-/* 内容主区域 */
-.order-detail-content {
-  padding: 0.5rem 1.1rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.student-order-detail button:focus-visible,
+.student-order-detail summary:focus-visible,
+.student-order-detail textarea:focus-visible {
+  outline: 2.5px solid #c98212;
+  outline-offset: 2px;
 }
 
 /* --------------------------------------------------------------------------
-   1. 顶部状态卡片：制作中 + 取消申请待处理 + 步骤条
+   1. 顶部标题栏：返回按钮 + 订单详情（手绘双笔触+光芒） + 右侧餐盖插画
    -------------------------------------------------------------------------- */
-.order-status-card {
-  position: relative;
-  background: var(--order-paper-bg);
-  border-radius: 18px;
-  padding: 1.4rem 1.2rem 1.2rem;
-  box-shadow: 0 8px 24px rgba(7, 22, 56, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
-  text-align: center;
-  overflow: visible;
-}
-
-.order-status-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-  position: relative;
-}
-
-.order-status-card__title-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.order-status-card__title {
-  margin: 0;
-  font-size: 1.85rem;
-  font-weight: 950;
-  color: var(--order-navy);
-  letter-spacing: 0.04em;
-  position: relative;
-  z-index: 2;
-}
-
-/* 状态手绘星星高光 */
-.order-status-card__sparkles {
-  position: absolute;
-  top: -0.4rem;
-  right: -1.3rem;
-  display: inline-flex;
-  color: #f5b300;
-  font-size: 1.15rem;
-  font-weight: 900;
-  pointer-events: none;
-  transform: rotate(12deg);
-}
-
-/* 取消申请待处理黄色便签胶带 */
-.order-status-card__tape-tag {
-  display: inline-block;
-  padding: 0.35rem 0.8rem;
-  background: #ffe366;
-  color: #634300;
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  border-radius: 4px;
-  box-shadow: 1px 3px 8px rgba(99, 67, 0, 0.16);
-  transform: rotate(2.5deg);
-  position: relative;
-}
-
-.order-status-card__tape-tag::before {
-  content: "";
-  position: absolute;
-  left: -4px;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  background: inherit;
-  opacity: 0.9;
-}
-
-.order-status-card__lead {
-  margin: 0.2rem 0 0;
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.order-status-card__sublead {
-  margin: 0.25rem 0 0.85rem;
-  font-size: 0.78rem;
-  color: #64748b;
-}
-
-/* 步骤进度条 Step Bar */
-.order-steps-bar {
+.detail-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: relative;
-  margin-top: 1.4rem;
-  padding: 0 0.25rem;
+  padding: 10px 16px 9px;
+  gap: 10px;
 }
 
-.order-steps-bar__line-bg {
+.detail-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.detail-header__back {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 11px;
+  border: 1px solid #e7dac8;
+  background: #fdfaf4;
+  color: var(--detail-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(74, 44, 16, 0.08);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.detail-header__back:active {
+  transform: scale(0.94);
+  background: #f6efe3;
+}
+
+.detail-header__back svg {
+  width: 20px;
+  height: 20px;
+}
+
+.detail-header__title-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  padding-top: 2px;
+}
+
+.detail-header__title {
+  margin: 0;
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "Songti SC", "Noto Serif CJK SC", serif;
+  font-size: clamp(27px, 7.2vw, 31px);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: var(--detail-ink);
+  white-space: nowrap;
+}
+
+.detail-header__rays {
   position: absolute;
-  top: 0.7rem;
-  left: 1.8rem;
-  right: 1.8rem;
-  height: 3px;
-  background: #cbd5e1;
+  top: -10px;
+  right: -21px;
+  width: 24px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.detail-header__brush {
+  width: 108%;
+  height: 11px;
+  margin-top: 1px;
+  margin-left: -3px;
+  pointer-events: none;
+  display: block;
+}
+
+.detail-header__cloche {
+  flex: none;
+  width: 80px;
+  height: 52px;
+  margin-right: 2px;
+  transform: rotate(-3deg);
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   2. 主体内容容器与锯齿票据卡片
+   -------------------------------------------------------------------------- */
+.detail-main {
+  padding: 2px 14px 8px;
+}
+
+.detail-receipt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  filter:
+    drop-shadow(0 0 0.75px rgba(132, 94, 50, 0.28))
+    drop-shadow(0 8px 20px rgba(74, 44, 16, 0.07));
+}
+
+/* 真实透明遮罩齿孔：完全镂空露出真实底色与自然投影，无任何补色色差或半圆截断 */
+.detail-receipt__top-stub {
+  position: relative;
+  background: var(--detail-paper);
+  border-radius: 7px 7px 0 0;
+  padding: 19px var(--receipt-px) 0;
+  mask-image:
+    linear-gradient(#000, #000),
+    radial-gradient(circle 5.4px at 50% 0, #000 95%, transparent 100%),
+    radial-gradient(circle 6.8px at 0 calc(100% - 1px), #000 95%, transparent 100%),
+    radial-gradient(circle 6.8px at 100% calc(100% - 1px), #000 95%, transparent 100%);
+  mask-position: 0 0, 0 0, 0 100%, 100% 100%;
+  mask-size: 100% 100%, 21px 10px, 12px 12px, 12px 12px;
+  mask-repeat: no-repeat, space no-repeat, no-repeat, no-repeat;
+  mask-composite: exclude;
+}
+
+.detail-receipt__body {
+  position: relative;
+  background: var(--detail-paper);
+  border-radius: 0 0 7px 7px;
+  margin-top: -1px;
+  padding: 12px var(--receipt-px) 20px;
+  mask-image:
+    linear-gradient(#000, #000),
+    radial-gradient(circle 5.4px at 50% 100%, #000 95%, transparent 100%),
+    radial-gradient(circle 6.8px at 0 0, #000 95%, transparent 100%),
+    radial-gradient(circle 6.8px at 100% 0, #000 95%, transparent 100%);
+  mask-position: 0 0, 0 100%, 0 0, 100% 0;
+  mask-size: 100% 100%, 21px 10px, 12px 12px, 12px 12px;
+  mask-repeat: no-repeat, space no-repeat, no-repeat, no-repeat;
+  mask-composite: exclude;
+}
+
+/* 票据内虚线分割线 */
+.detail-divider {
+  position: relative;
+  margin: 11px 0;
+  border-top: 1.5px dashed var(--detail-dash);
+}
+
+.detail-divider--notched {
+  margin: 13px 2px 0;
+  height: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   2A. 店铺信息与右上角和纸胶带状态签
+   -------------------------------------------------------------------------- */
+.detail-shop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.detail-shop-row__info {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+
+.detail-shop-row__icon {
+  flex: none;
+  width: 31px;
+  height: 31px;
+  color: var(--detail-brown);
+}
+
+.detail-shop-row__text {
+  min-width: 0;
+  flex: 1;
+}
+
+.detail-shop-row__name {
+  margin: 0 0 4px;
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--detail-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-shop-row__no {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--detail-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.detail-shop-row__no-val {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-copy-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--detail-muted);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.detail-copy-btn:active {
+  transform: scale(0.9);
+  color: var(--detail-ink);
+}
+
+.detail-copy-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.detail-shop-row__sep {
+  flex: none;
+  width: 1px;
+  height: 30px;
+  background: #dfd1bf;
+}
+
+.detail-status-tape-wrap {
+  flex: none;
+  filter: drop-shadow(0 2px 4px rgba(120, 82, 18, 0.12));
+}
+
+.detail-status-tape {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 11px;
+  background: var(--detail-tape);
+  color: var(--detail-ink);
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", sans-serif;
+  font-size: 14.5px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  clip-path: polygon(
+    3px 1%, 97% 0%, 100% 17%, 97% 34%, 100% 52%, 97% 70%, 100% 87%, 97% 100%,
+    3% 99%, 0% 83%, 3% 66%, 0% 48%, 3% 30%, 0% 13%
+  );
+}
+
+.detail-status-tape--cancelled {
+  background: #ebe3d6;
+  color: #6b5b4c;
+}
+
+.detail-status-tape svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+
+/* --------------------------------------------------------------------------
+   2B. 手绘黄底小标题（取餐码 / 订单明细）与超大取餐码
+   -------------------------------------------------------------------------- */
+.detail-brush-tag {
+  position: relative;
+  display: inline-block;
+  padding: 4px 13px 4px 11px;
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", sans-serif;
+  font-size: 15.5px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--detail-ink);
   z-index: 1;
 }
 
-.order-steps-bar__line-active {
+.detail-brush-tag::before {
+  content: "";
   position: absolute;
-  top: 0.7rem;
-  left: 1.8rem;
-  height: 3px;
-  background: var(--order-blue);
-  z-index: 2;
-  transition: width 0.3s ease;
+  inset: 1px 0 0;
+  background: #f9df8e;
+  border-radius: 4px 7px 5px 4px;
+  z-index: -1;
+  transform: rotate(-0.8deg);
+  clip-path: polygon(
+    2% 4%, 97% 0%, 100% 28%, 98% 62%, 100% 94%,
+    95% 100%, 3% 97%, 0% 68%, 2% 35%
+  );
 }
 
-.order-step-node {
+.detail-code-section__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detail-code-section__hint {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--detail-muted);
+}
+
+.detail-code-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 7px 0 2px;
+}
+
+.detail-code-hero__rays {
+  width: 24px;
+  height: 28px;
+  flex: none;
+}
+
+.detail-code-hero__center {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.detail-code-hero__digits {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 2.2vw, 10px);
+  font-family: "Trebuchet MS", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(36px, 10.6vw, 46px);
+  font-weight: 900;
+  line-height: 1.05;
+  color: #381c0d;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.detail-code-hero__placeholder {
+  font-family: "STKaiti", "KaiTi", "PingFang SC", sans-serif;
+  font-size: clamp(22px, 6.2vw, 27px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--detail-brown);
+  padding: 6px 4px 2px;
+}
+
+.detail-code-hero__underline {
+  width: 104%;
+  max-width: 245px;
+  height: 9px;
+  margin-top: 3px;
+  display: block;
+}
+
+.detail-cancel-banner {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff4d6;
+  border: 1px dashed #e2b24a;
+  color: #6b4308;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   2C. 五步横向进度条
+   -------------------------------------------------------------------------- */
+.detail-steps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 3px 0 4px;
+}
+
+.detail-steps__track-bg,
+.detail-steps__track-fill {
+  position: absolute;
+  top: 14px;
+  left: 10%;
+  pointer-events: none;
+}
+
+.detail-steps__track-bg {
+  width: 80%;
+  height: 1.5px;
+  background: #cbbba7;
+  z-index: 1;
+}
+
+.detail-steps__track-fill {
+  height: 2px;
+  background: var(--detail-brown);
+  z-index: 2;
+  transition: width 0.25s ease;
+}
+
+.detail-step {
   position: relative;
   z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  flex: 1;
+  gap: 7px;
 }
 
-.order-step-node__circle {
-  width: 1.45rem;
-  height: 1.45rem;
+.detail-step__dot {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: #fff;
-  border: 2px solid #cbd5e1;
-  display: flex;
+  background: var(--detail-paper);
+  border: 1.5px solid #96816d;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  transition: all 0.2s ease;
+  color: transparent;
+  transition: transform 0.2s ease;
 }
 
-.order-step-node.is-reached .order-step-node__circle {
-  background: var(--order-blue);
-  border-color: var(--order-blue);
+.detail-step__dot svg {
+  width: 12px;
+  height: 12px;
 }
 
-.order-step-node.is-reached .order-step-node__circle svg {
-  width: 0.85rem;
-  height: 0.85rem;
-  stroke: #ffffff;
-  stroke-width: 3;
+.detail-step.is-reached .detail-step__dot {
+  background: var(--detail-brown);
+  border-color: var(--detail-brown);
+  color: #fffaf2;
 }
 
-.order-step-node.is-current .order-step-node__circle {
-  background: var(--order-blue);
-  border-color: var(--order-blue);
-  box-shadow: 0 0 0 3px rgba(8, 100, 233, 0.22);
+.detail-step.is-current .detail-step__dot {
+  width: 24px;
+  height: 24px;
+  margin-top: -1px;
+  background: #f6ce63;
+  border: 1.8px solid #4d2e17;
+  color: var(--detail-ink);
+  box-shadow: 0 0 0 4px rgba(246, 206, 99, 0.3);
 }
 
-.order-step-node__name {
-  font-size: 0.76rem;
-  color: #64748b;
+.detail-step__label {
+  position: relative;
+  font-size: 12.5px;
   font-weight: 600;
+  color: #7d6956;
   white-space: nowrap;
 }
 
-.order-step-node.is-reached .order-step-node__name {
-  color: var(--order-navy);
+.detail-step.is-reached .detail-step__label {
+  color: #5a4534;
 }
 
-.order-step-node.is-current .order-step-node__name {
-  color: var(--order-blue);
-  font-weight: 800;
-}
-
-/* --------------------------------------------------------------------------
-   2. 菜品信息拍立得回形针卡片
-   -------------------------------------------------------------------------- */
-.order-dish-polaroid {
-  position: relative;
-  background: var(--order-card-bg);
-  border-radius: 18px;
-  padding: 1rem 1.1rem;
-  box-shadow: 0 8px 24px rgba(7, 22, 56, 0.07);
-  display: flex;
-  align-items: center;
-  gap: 1.1rem;
-  overflow: visible;
-}
-
-/* 左上角金属回形针 */
-.order-dish-polaroid__clip {
-  position: absolute;
-  top: -14px;
-  left: 20px;
-  width: 22px;
-  height: 48px;
-  z-index: 10;
-  pointer-events: none;
-  filter: drop-shadow(1px 3px 4px rgba(0, 0, 0, 0.25));
-}
-
-.order-dish-polaroid__photo-frame {
-  flex: none;
-  width: 6.8rem;
-  height: 5.5rem;
-  padding: 4px;
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 4px 14px rgba(7, 22, 56, 0.14);
-  transform: rotate(-1.5deg);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.order-dish-polaroid__photo-frame img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 4px;
-  display: block;
-}
-
-.order-dish-polaroid__info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.order-dish-polaroid__title {
-  margin: 0;
-  font-size: 1.12rem;
-  font-weight: 850;
-  color: var(--order-navy);
-  letter-spacing: 0.02em;
-}
-
-.order-dish-polaroid__tag {
-  align-self: flex-start;
-  padding: 0.16rem 0.55rem;
-  border-radius: 999px;
-  background: #eef2f7;
-  color: #475569;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.order-dish-polaroid__price-row {
-  margin-top: 0.2rem;
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-}
-
-.order-dish-polaroid__price {
-  position: relative;
-  display: inline-block;
-  font-size: 1.35rem;
+.detail-step.is-current .detail-step__label {
+  color: var(--detail-ink);
   font-weight: 900;
-  color: var(--order-navy);
-  line-height: 1;
 }
 
-/* 价格下方的黄色荧光高光底标 */
-.order-dish-polaroid__price::after {
-  content: "";
-  position: absolute;
-  left: -2px;
-  right: -4px;
-  bottom: 0px;
-  height: 8px;
-  background: rgba(255, 213, 37, 0.72);
-  border-radius: 3px;
-  z-index: -1;
-  transform: rotate(-1deg);
-}
-
-.order-dish-polaroid__slot {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: #475569;
-  font-weight: 500;
-}
-
-/* --------------------------------------------------------------------------
-   3. 取消申请便签卡片
-   -------------------------------------------------------------------------- */
-.order-cancel-note {
-  position: relative;
-  background: var(--order-paper-bg);
-  border-radius: 18px;
-  padding: 1.1rem 1.2rem;
-  box-shadow: 0 8px 24px rgba(7, 22, 56, 0.07);
-}
-
-.order-cancel-note__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.85rem;
-}
-
-.order-cancel-note__title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 850;
-  color: var(--order-navy);
-  position: relative;
-  display: inline-block;
-}
-
-/* 取消申请手绘下划线 */
-.order-cancel-note__title::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -4px;
-  height: 3px;
-  background: #f5b300;
-  border-radius: 999px;
-  transform: rotate(-1deg);
-}
-
-.order-cancel-note__time {
-  font-size: 0.76rem;
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.order-cancel-note__body {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.2rem 0;
-}
-
-.order-cancel-note__icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  color: #f59e0b;
-  flex: none;
-}
-
-.order-cancel-note__reason {
-  margin: 0;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #334155;
-}
-
-/* --------------------------------------------------------------------------
-   4. 付款状态卡片
-   -------------------------------------------------------------------------- */
-.order-payment-card {
-  position: relative;
-  background: var(--order-card-bg);
-  border-radius: 18px;
-  padding: 1.1rem 1.2rem;
-  box-shadow: 0 8px 24px rgba(7, 22, 56, 0.07);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.order-payment-card__left {
-  flex: none;
-}
-
-.order-payment-card__title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 850;
-  color: var(--order-navy);
-  position: relative;
-  display: inline-block;
-}
-
-.order-payment-card__title::after {
+.detail-step.is-current .detail-step__label::after {
   content: "";
   position: absolute;
   left: -2px;
   right: -2px;
-  bottom: -4px;
-  height: 5px;
-  background: rgba(255, 213, 37, 0.8);
-  border-radius: 3px;
-  z-index: 1;
-}
-
-.order-payment-card__right {
-  flex: 1;
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
-
-.order-payment-card__status {
-  font-size: 0.98rem;
-  font-weight: 800;
-  color: var(--order-navy);
-}
-
-.order-payment-card__note {
-  margin: 0;
-  font-size: 0.74rem;
-  color: #64748b;
-  line-height: 1.35;
+  bottom: -5px;
+  height: 4px;
+  background: #f2c249;
+  border-radius: 999px;
+  transform: rotate(-2deg);
 }
 
 /* --------------------------------------------------------------------------
-   5. 取餐码提示条
+   2D. 取餐时段与堂食/外带胶囊
    -------------------------------------------------------------------------- */
-.order-pickup-hint-bar {
+.detail-slot-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: #e2effd;
-  color: #0d5bbd;
-  padding: 0.65rem 1rem;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(13, 91, 189, 0.08);
-}
-
-.order-pickup-hint-bar svg {
-  width: 1.05rem;
-  height: 1.05rem;
-  flex: none;
-}
-
-/* --------------------------------------------------------------------------
-   6. 底部吸底主操作栏
-   -------------------------------------------------------------------------- */
-.order-bottom-actions {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 40;
-  padding: 0.8rem 1.25rem calc(0.9rem + env(safe-area-inset-bottom));
-  background: rgba(233, 242, 251, 0.92);
-  backdrop-filter: blur(14px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.65rem;
-  box-shadow: 0 -4px 16px rgba(7, 22, 56, 0.06);
-}
-
-.order-bottom-actions__btn {
-  width: 100%;
-  max-width: 440px;
-  height: 3.1rem;
-  border: 0;
-  border-radius: 999px;
-  background: var(--order-blue);
-  color: #ffffff;
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(8, 100, 233, 0.28);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
-}
-
-.order-bottom-actions__btn:active {
-  transform: scale(0.98);
-}
-
-.order-bottom-actions__btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-.order-bottom-actions__link {
-  border: 0;
-  background: transparent;
-  color: #0864e9;
-  font-size: 0.84rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: opacity 0.15s ease;
-}
-
-.order-bottom-actions__link:active {
-  opacity: 0.7;
-}
-
-/* 辅助说明与折叠详情 */
-.order-extra-details {
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 14px;
-  padding: 0.75rem 1rem;
-  margin-top: 0.25rem;
-}
-
-.order-extra-details summary {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #475569;
-  cursor: pointer;
-  outline: none;
-}
-
-.order-extra-details__body {
-  margin-top: 0.6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  color: #64748b;
-}
-
-.order-extra-row {
-  display: flex;
   justify-content: space-between;
+  gap: 10px;
+  padding: 1px 2px;
 }
 
-
-/* ==========================================================================
-   可取餐状态与票券式取餐码卡片样式
-   对齐设计稿：photo/03-订单列表与取餐码.png (右侧页面：订单详情·可取餐)
-   ========================================================================== */
-
-/* 顶部撕纸横幅：做好啦，来取餐吧！ */
-.order-ready-banner {
-  position: relative;
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 1.15rem 1rem 1rem;
-  box-shadow: 0 6px 18px rgba(7, 22, 56, 0.06);
-  text-align: center;
-  margin-bottom: 0.15rem;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+.detail-slot-row__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.order-ready-banner__title-wrap {
-  position: relative;
-  display: inline-block;
-}
-
-.order-ready-banner__title {
-  margin: 0;
-  font-size: 1.45rem;
-  font-weight: 900;
-  color: #071638;
-  letter-spacing: 0.02em;
-}
-
-.order-ready-banner__sparkle {
-  position: absolute;
-  top: -8px;
-  right: -18px;
-  color: #facc15;
-  font-size: 1.15rem;
-  font-weight: 900;
-}
-
-.order-ready-banner__sub {
-  margin: 0.35rem 0 0;
-  font-size: 0.82rem;
-  color: #64748b;
-  font-weight: 600;
-}
-
-/* 核心：电影票/小票风格取餐码卡片 */
-.pickup-ticket-card {
-  position: relative;
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 1.6rem 1.4rem 1.25rem;
-  box-shadow: 0 8px 26px rgba(7, 22, 56, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
-  text-align: center;
-  overflow: visible;
-}
-
-/* 顶部明黄色手绘纸胶带 */
-.pickup-ticket-card__tape {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%) rotate(-0.5deg);
-  width: 82px;
-  height: 22px;
-  background: rgba(254, 215, 75, 0.92);
-  border-radius: 2px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
-.pickup-ticket-card__tape::before,
-.pickup-ticket-card__tape::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0, 0, 0, 0.06) 2px, rgba(0, 0, 0, 0.06) 4px);
-}
-.pickup-ticket-card__tape::before { left: 0; }
-.pickup-ticket-card__tape::after { right: 0; }
-
-/* 左右对称的半圆票根撕票凹孔 (Ticket Notch) */
-.pickup-ticket-card__notch-left,
-.pickup-ticket-card__notch-right {
-  position: absolute;
-  top: 67%;
+.detail-slot-row__left svg {
+  flex: none;
   width: 20px;
   height: 20px;
-  background: #edf5fd; /* 与背景色完全一致 */
-  border-radius: 50%;
-  z-index: 5;
-  box-shadow: inset 0 1px 3px rgba(7, 22, 56, 0.09);
+  color: var(--detail-brown);
 }
 
-.pickup-ticket-card__notch-left {
-  left: -10px;
-}
-
-.pickup-ticket-card__notch-right {
-  right: -10px;
-}
-
-/* 水平虚线撕拉线 (Ticket Perforated Line) */
-.pickup-ticket-card__divider {
-  position: relative;
-  margin: 1.2rem -1.4rem 1rem;
-  border-top: 2px dashed #cbd5e1;
-}
-
-/* 取餐码标题与两侧手绘射线 */
-.pickup-ticket-card__title-box {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  margin-bottom: 0.35rem;
-}
-
-.pickup-ticket-card__ray {
-  color: #facc15;
-  font-size: 1.1rem;
-  font-weight: 900;
-  letter-spacing: -1px;
-}
-
-.pickup-ticket-card__title {
-  margin: 0;
-  font-size: 1.18rem;
-  font-weight: 900;
-  color: #071638;
-}
-
-/* 超大取餐码：A 2 6 8 */
-.pickup-ticket-card__code {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.95rem;
-  font-size: 3rem;
-  font-weight: 950;
-  color: #0b2553;
-  margin: 0.25rem 0 0.15rem;
-  line-height: 1;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+.detail-slot-row__label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #6d5946;
   white-space: nowrap;
 }
 
-.pickup-ticket-card__code span {
-  display: inline-block;
-  min-width: 1.6rem;
-  text-align: center;
+.detail-slot-row__time {
+  margin-left: 4px;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: var(--detail-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-/* 提示文案 */
-.pickup-ticket-card__hint {
-  margin: 0.2rem 0 0.15rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #334155;
-}
-
-.pickup-ticket-card__subhint {
-  margin: 0;
-  font-size: 0.72rem;
-  color: #94a3b8;
-}
-
-/* 票券底部信息栏：刀叉 12:00-12:30 | 堂食 */
-.pickup-ticket-card__footer {
+.detail-slot-row__right {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.85rem;
-  font-size: 0.98rem;
-  font-weight: 800;
-  color: #071638;
-}
-
-.pickup-ticket-card__footer svg {
-  width: 18px;
-  height: 18px;
-  color: #071638;
-}
-
-.pickup-ticket-card__dining-tag {
-  background: #fde047;
-  color: #071638;
-  padding: 0.2rem 0.85rem;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-/* 菜品信息小卡片与黄色手绘波浪下划线 */
-.order-dish-mini-card {
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 0.95rem 1.05rem;
-  display: flex;
-  align-items: center;
-  gap: 0.95rem;
-  box-shadow: 0 4px 16px rgba(7, 22, 56, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-}
-
-.order-dish-mini-card__thumb {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  object-fit: cover;
+  gap: 14px;
   flex: none;
 }
 
-.order-dish-mini-card__info {
+.detail-slot-row__sep {
+  width: 1px;
+  height: 20px;
+  background: #dfd1bf;
+}
+
+.detail-dining-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  padding: 5px 18px;
+  border-radius: 999px;
+  background: #f3c859;
+  color: var(--detail-ink);
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+/* --------------------------------------------------------------------------
+   2E. 订单明细列表（含左上角斜贴胶带菜品图）
+   -------------------------------------------------------------------------- */
+.detail-items-section {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.detail-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.detail-item__photo-wrap {
+  position: relative;
+  flex: none;
+  width: 78px;
+  height: 70px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #ebe0d0;
+  box-shadow: 0 3px 8px rgba(68, 40, 16, 0.09);
+}
+
+.detail-item__tape {
+  position: absolute;
+  top: -5px;
+  left: -4px;
+  width: 34px;
+  height: 11px;
+  background: rgba(244, 196, 68, 0.88);
+  transform: rotate(-22deg);
+  z-index: 2;
+  pointer-events: none;
+  clip-path: polygon(0 8%, 98% 0, 100% 92%, 3% 100%);
+}
+
+.detail-item__photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 7px;
+}
+
+.detail-item__info {
   flex: 1;
   min-width: 0;
 }
 
-.order-dish-mini-card__row {
+.detail-item__name {
+  margin: 0 0 5px;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.25;
+  color: var(--detail-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-item__custom {
+  margin: 0 0 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6f5a47;
+  line-height: 1.35;
+}
+
+.detail-item__unit {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--detail-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-item__subtotal {
+  flex: none;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--detail-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.detail-receipt-meta {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--detail-muted);
+  line-height: 1.5;
+}
+
+.detail-receipt-meta--warn {
+  color: #a1520a;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   2F. 订单合计与手绘双笔触高光
+   -------------------------------------------------------------------------- */
+.detail-total-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.25rem;
+  gap: 12px;
+  padding: 2px 2px 0;
 }
 
-.order-dish-mini-card__name {
-  margin: 0;
-  font-size: 0.98rem;
-  font-weight: 800;
-  color: #071638;
-}
-
-.order-dish-mini-card__price {
-  font-size: 1.05rem;
+.detail-total-row__label {
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", sans-serif;
+  font-size: 15.5px;
   font-weight: 900;
-  color: #071638;
+  color: var(--detail-ink);
 }
 
-.order-dish-mini-card__sim-note {
-  position: relative;
-  display: inline-block;
-  font-size: 0.74rem;
-  color: #94a3b8;
-  margin: 0;
-  line-height: 1.4;
+.detail-total-row__amount-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
-.order-dish-mini-card__sim-note::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  height: 4px;
-  background-image: radial-gradient(circle, #ffd525 38%, transparent 40%);
-  background-size: 6px 4px;
-  background-repeat: repeat-x;
+.detail-total-row__amount {
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--detail-ink);
+  font-variant-numeric: tabular-nums;
 }
 
-/* 提示语：“如需更改堂食或外带，请联系档口” */
-.order-change-dining-hint {
-  text-align: center;
-  font-size: 0.76rem;
-  color: #64748b;
-  margin: 0.2rem 0 0.4rem;
+.detail-total-row__brush {
+  width: 104%;
+  height: 10px;
+  margin-top: 2px;
+  display: block;
 }
 
-/* 底部操作按钮行（两按钮横向并列） */
-.order-actions-dual-row {
+/* --------------------------------------------------------------------------
+   3. 票据下方双主按钮：刷新状态 + 联系档口
+   -------------------------------------------------------------------------- */
+.detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 13px;
+}
+
+.detail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "PingFang SC", sans-serif;
+  font-size: 16.5px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: var(--detail-ink);
+  transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+
+.detail-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.detail-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.detail-btn svg {
+  width: 21px;
+  height: 21px;
+  flex: none;
+}
+
+.detail-btn--refresh {
+  background: var(--detail-gold);
+  border: 1px solid #deb041;
+  box-shadow: 0 4px 10px rgba(140, 92, 18, 0.12);
+}
+
+.detail-btn--contact {
+  background: #fbf6ee;
+  border: 1px solid #dfd1be;
+  box-shadow: 0 3px 8px rgba(74, 44, 16, 0.05);
+}
+
+/* 辅助提示与非可取餐态快捷取消入口 */
+.detail-subbar {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  margin-top: 0.2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--detail-muted);
+  text-align: center;
 }
 
-.order-btn-refresh-main {
-  flex: 1;
-  display: inline-flex;
+.detail-subbar__link {
+  padding: 2px 8px;
+  border: 1px solid #dccab3;
+  border-radius: 999px;
+  background: #fbf5ea;
+  color: var(--detail-brown);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-feedback-banner {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #fff7e6;
+  border: 1px dashed #dfae44;
+  color: #7c4a08;
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.detail-state-card {
+  margin: 18px 0;
+  padding: 26px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--detail-edge);
+  background: var(--detail-paper);
+  text-align: center;
+  color: var(--detail-muted);
+  font-size: 14px;
+}
+
+.detail-state-card--error {
+  color: #9e2f1b;
+}
+
+.detail-state-card button {
+  margin-top: 12px;
+  padding: 9px 20px;
+  border: 1px solid #deb041;
+  border-radius: 999px;
+  background: var(--detail-gold);
+  color: var(--detail-ink);
+  font-weight: 800;
+}
+
+/* 轻提示 Toast */
+.detail-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 70;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgba(53, 28, 13, 0.92);
+  color: #fffaf2;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(53, 28, 13, 0.22);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   4. 底部导航栏 TabBar（与全站学生端对齐）
+   -------------------------------------------------------------------------- */
+.detail-tabbar {
+  position: fixed;
+  z-index: 30;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 520px);
+  height: calc(64px + env(safe-area-inset-bottom));
+  padding: 6px 10px calc(4px + env(safe-area-inset-bottom));
+  background: rgba(253, 250, 244, 0.97);
+  border-top: 1px solid #ece0ce;
+  box-shadow: 0 -4px 20px rgba(74, 44, 16, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.detail-tabbar__item {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  padding: 0.75rem 1rem;
-  background: #1971e2;
-  color: #ffffff;
+  gap: 2px;
+  min-width: 72px;
+  height: 48px;
+  padding: 4px 16px;
   border: 0;
   border-radius: 999px;
-  font-size: 0.92rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(25, 113, 226, 0.28);
-  transition: all 0.15s ease;
+  background: transparent;
+  color: #5c4938;
+  font-size: 11.5px;
+  font-weight: 700;
 }
 
-.order-btn-refresh-main:active {
-  transform: scale(0.97);
-  background: #155bb5;
+.detail-tabbar__item svg {
+  width: 22px;
+  height: 22px;
 }
 
-.order-btn-refresh-main svg {
-  width: 17px;
-  height: 17px;
+.detail-tabbar__item.is-active {
+  min-width: 92px;
+  padding: 4px 24px;
+  background: #f5de9b;
+  color: var(--detail-ink);
 }
 
-.order-btn-cancel-sub {
-  flex: 1;
-  display: inline-flex;
+.detail-tabbar__item.is-active span {
+  font-weight: 900;
+}
+
+/* --------------------------------------------------------------------------
+   5. 联系档口弹窗 & 取消订单确认弹窗
+   -------------------------------------------------------------------------- */
+.detail-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.72rem 1rem;
-  background: #ffffff;
-  color: #334155;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 999px;
-  font-size: 0.92rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  padding: 18px;
+  background: rgba(42, 24, 11, 0.46);
 }
 
-.order-btn-cancel-sub:active {
-  background: #f8fafc;
-  transform: scale(0.97);
+.detail-modal {
+  width: min(100%, 380px);
+  max-height: 85dvh;
+  overflow-y: auto;
+  padding: 20px 18px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--detail-edge);
+  background: var(--detail-paper);
+  color: var(--detail-ink);
+  box-shadow: 0 20px 48px rgba(42, 24, 11, 0.28);
+}
+
+.detail-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.detail-modal__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.detail-modal__close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: #f1e7d8;
+  color: var(--detail-brown);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.detail-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #5f4b39;
+}
+
+.detail-modal__kv {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #f7efe2;
+  font-size: 12.5px;
+}
+
+.detail-modal__kv strong {
+  color: var(--detail-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-modal__rules {
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--detail-dash);
+  font-size: 12px;
+  color: var(--detail-muted);
+}
+
+.detail-modal__rules p {
+  margin: 3px 0;
+}
+
+.detail-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--detail-ink);
+}
+
+.detail-modal__field textarea {
+  width: 100%;
+  resize: none;
+  padding: 10px 11px;
+  border: 1px solid #d9c8b2;
+  border-radius: 11px;
+  background: #ffffff;
+  color: var(--detail-ink);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.detail-modal__error {
+  margin: 6px 0 0;
+  color: #b42318;
+  font-size: 12.5px;
+}
+
+.detail-modal__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.detail-modal__actions button {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.detail-modal__btn-secondary {
+  border: 1px solid #dccbb5;
+  background: #fbf6ee;
+  color: var(--detail-ink);
+}
+
+.detail-modal__btn-primary {
+  border: 1px solid #deb041;
+  background: var(--detail-gold);
+  color: var(--detail-ink);
+}
+
+@media (max-width: 370px) {
+  .student-order-detail {
+    --receipt-px: 13px;
+  }
+  .detail-shop-row__name {
+    font-size: 17px;
+  }
+  .detail-status-tape {
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+  .detail-slot-row__time {
+    font-size: 14.5px;
+  }
+  .detail-dining-pill {
+    min-width: 58px;
+    padding: 4px 13px;
+    font-size: 13px;
+  }
+  .detail-item__photo-wrap {
+    width: 66px;
+    height: 60px;
+  }
+  .detail-item__name {
+    font-size: 15px;
+  }
+  .detail-item__subtotal {
+    font-size: 16px;
+  }
+  .detail-step__label {
+    font-size: 11px;
+  }
+  .detail-btn {
+    font-size: 15px;
+    padding: 9px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-order-detail *,
+  .student-order-detail *::before,
+  .student-order-detail *::after {
+    transition: none !important;
+  }
 }

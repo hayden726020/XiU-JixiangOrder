@@ -489,3 +489,5 @@
     animation: none;
   }
 }
+
+.student-login-sample-switch { display: block; width: 100%; margin-top: 0.65rem; padding: 0.55rem 0.8rem; border: 1px dashed #c8b89e; border-radius: 10px; background: rgba(255, 250, 240, 0.85); color: #5b462c; font-size: 0.82rem; font-weight: 700; cursor: pointer; }

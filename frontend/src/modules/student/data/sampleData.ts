@@ -4,24 +4,24 @@ export const DATES = ['2026-11-13', '2026-11-14'];
 
 export const DEMO_SHOPS: ShopSummary[] = [
   {
-    merchantId: 'demo-merchant-01',
-    name: '一食堂·家常档',
+    merchantId: 'demo-merchant-02',
+    name: '一食堂 · 面食档',
     canteenId: 'demo-canteen-01',
     orderable: true,
     demo: true,
     sortOrder: 1,
   },
   {
-    merchantId: 'demo-merchant-03',
-    name: '一食堂·风味小炒',
+    merchantId: 'demo-merchant-01',
+    name: '一食堂 · 家常菜档',
     canteenId: 'demo-canteen-01',
     orderable: true,
     demo: true,
     sortOrder: 2,
   },
   {
-    merchantId: 'demo-merchant-02',
-    name: '一食堂·面档',
+    merchantId: 'demo-merchant-03',
+    name: '一食堂 · 风味小炒',
     canteenId: 'demo-canteen-01',
     orderable: true,
     demo: true,
@@ -30,14 +30,16 @@ export const DEMO_SHOPS: ShopSummary[] = [
 ];
 
 export const DISH_SHOP: Record<string, string> = {
+  'demo-dish-beef-noodle': 'demo-merchant-02',
+  'demo-dish-zhajiang': 'demo-merchant-02',
+  'demo-dish-cold-noodle': 'demo-merchant-02',
+  'demo-dish-tomato-egg': 'demo-merchant-01',
   'demo-dish-01': 'demo-merchant-01',
-  'demo-dish-02': 'demo-merchant-02',
+  'demo-dish-02': 'demo-merchant-01',
   'demo-dish-03': 'demo-merchant-03',
   'demo-dish-04': 'demo-merchant-01',
   'demo-dish-05': 'demo-merchant-01',
   'demo-dish-chicken': 'demo-merchant-03',
-  'demo-dish-beef-noodle': 'demo-merchant-02',
-  'demo-dish-tomato-egg': 'demo-merchant-01',
 };
 
 export const SAMPLE_ONLY_DISH_IDS = ['demo-dish-04', 'demo-dish-05'];
@@ -106,8 +108,22 @@ export const DISHES: SampleDish[] = [
   {
     dishId: 'demo-dish-beef-noodle',
     name: '红烧牛肉面',
-    unitPriceFen: 1600,
+    unitPriceFen: 1200,
     availability: { '2026-11-13': 30, '2026-11-14': 30 },
+    onSale: { '2026-11-13': true, '2026-11-14': true },
+  },
+  {
+    dishId: 'demo-dish-zhajiang',
+    name: '炸酱拌面',
+    unitPriceFen: 1100,
+    availability: { '2026-11-13': 36, '2026-11-14': 36 },
+    onSale: { '2026-11-13': true, '2026-11-14': true },
+  },
+  {
+    dishId: 'demo-dish-cold-noodle',
+    name: '鸡丝凉面',
+    unitPriceFen: 1000,
+    availability: { '2026-11-13': 28, '2026-11-14': 28 },
     onSale: { '2026-11-13': true, '2026-11-14': true },
   },
   {
@@ -211,6 +227,7 @@ export const CROWD_REFERENCE: Record<string, CrowdReference> = {
 
 export const DEMO_ORDER_001: StudentOrder = {
   id: 'demo-order-001',
+  orderNo: 1,
   merchantId: 'demo-merchant-01',
   merchantName: '一食堂·家常档',
   items: [{ dishId: 'demo-dish-01', name: '演示鸡肉饭', quantity: 1, unitPriceFen: 1800 }],
@@ -234,6 +251,7 @@ export const DEMO_ORDER_001: StudentOrder = {
 
 export const DEMO_ORDER_CANCEL_PENDING: StudentOrder = {
   id: 'demo-order-cancel-001',
+  orderNo: 1,
   merchantId: 'demo-merchant-03',
   merchantName: '风味小炒',
   items: [{ dishId: 'demo-dish-chicken', name: '黑椒鸡腿饭', quantity: 1, unitPriceFen: 1400 }],
@@ -257,6 +275,7 @@ export const DEMO_ORDER_CANCEL_PENDING: StudentOrder = {
 
 export const DEMO_ORDER_READY_001: StudentOrder = {
   id: 'demo-order-ready-001',
+  orderNo: 2,
   merchantId: 'demo-merchant-03',
   merchantName: '风味小炒',
   items: [{ dishId: 'demo-dish-chicken', name: '黑椒鸡腿饭', quantity: 1, unitPriceFen: 1400 }],
@@ -280,6 +299,7 @@ export const DEMO_ORDER_READY_001: StudentOrder = {
 
 export const DEMO_ORDER_PREPARING_002: StudentOrder = {
   id: 'demo-order-prep-002',
+  orderNo: 1,
   merchantId: 'demo-merchant-02',
   merchantName: '面食档',
   items: [{ dishId: 'demo-dish-beef-noodle', name: '红烧牛肉面', quantity: 1, unitPriceFen: 1600 }],
@@ -303,6 +323,7 @@ export const DEMO_ORDER_PREPARING_002: StudentOrder = {
 
 export const DEMO_ORDER_COMPLETED_003: StudentOrder = {
   id: 'demo-order-done-003',
+  orderNo: 1,
   merchantId: 'demo-merchant-01',
   merchantName: '大众窗口',
   items: [{ dishId: 'demo-dish-tomato-egg', name: '番茄炒蛋饭', quantity: 1, unitPriceFen: 1200 }],
@@ -344,6 +365,9 @@ export function toDishDto(dish: SampleDish, date: string): DishDto {
     unitPriceFen: dish.unitPriceFen,
     availableQuantity: dish.availability[date] ?? 0,
     onSale: dish.onSale[date] === true,
+    flavorGroups: [],
+    sides: [],
+    addOns: [],
   };
 }
 

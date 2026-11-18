@@ -1,4 +1,5 @@
 import type {
+  CancelOrderInput,
   CreateOrderInput,
   CrowdReference,
   DemoScenario,
@@ -15,6 +16,7 @@ import { apiError, apiErrorWithDishNames } from '../types';
 import { createRealStudentSource, type RealRequest } from './realSource';
 import { resolveStudentMode } from './mode';
 import { sumFen } from '../utils/money';
+import { ORDER_REMARK_MAX_LENGTH, sanitizeOrderRemark } from '../utils/remark';
 import { DISH_SHORTAGE_SUBMIT, SLOT_UNAVAILABLE_MESSAGE } from '../utils/submitTexts';
 import {
   CROWD_REFERENCE,
@@ -52,7 +54,19 @@ function normalizeItems(items: DraftItemInput[]): DraftItemInput[] {
   return items
     .slice()
     .sort((a, b) => String(a.dishId).localeCompare(String(b.dishId)))
-    .map((item) => ({ dishId: item.dishId, quantity: item.quantity }));
+    .map((item) => ({
+      dishId: item.dishId,
+      quantity: item.quantity,
+      ...(item.selectedFlavors && item.selectedFlavors.length > 0
+        ? { selectedFlavors: item.selectedFlavors.map((entry) => ({ ...entry })) }
+        : {}),
+      ...(item.selectedSides && item.selectedSides.length > 0
+        ? { selectedSides: item.selectedSides.slice() }
+        : {}),
+      ...(item.selectedAddOns && item.selectedAddOns.length > 0
+        ? { selectedAddOns: item.selectedAddOns.slice() }
+        : {}),
+    }));
 }
 
 function pad(value: number): string {
@@ -124,6 +138,12 @@ export function createStudentSource({
     if (!findSlot(input.slotId)) {
       throw apiError('VALIDATION_ERROR', '时段不存在。', false);
     }
+    if (
+      input.remark !== undefined
+      && (typeof input.remark !== 'string' || input.remark.length > ORDER_REMARK_MAX_LENGTH)
+    ) {
+      throw apiError('VALIDATION_ERROR', `备注不能超过 ${ORDER_REMARK_MAX_LENGTH} 个字。`, false);
+    }
   }
 
   function assertBusiness(input: CreateOrderInput): void {
@@ -172,7 +192,8 @@ export function createStudentSource({
     const isSameOrder =
       JSON.stringify(normalizeItems(input.items)) === SAME_ORDER_ITEMS &&
       input.slotId === SAME_ORDER_SLOT &&
-      input.diningMode === 'DINE_IN';
+      input.diningMode === 'DINE_IN' &&
+      !input.remark;
 
     if (isSameOrder) {
       return clone(DEMO_ORDER_001);
@@ -203,6 +224,7 @@ export function createStudentSource({
       pickupCode: null,
       demo: true,
       local: true,
+      remark: input.remark ? sanitizeOrderRemark(input.remark) : null,
     };
   }
 
@@ -211,6 +233,7 @@ export function createStudentSource({
       items: normalizeItems([...order.items].map(({ dishId, quantity }) => ({ dishId, quantity }))),
       slotId: order.slotId,
       diningMode: order.diningMode,
+      remark: order.remark ?? '',
     });
     createdByRequest.set(requestId, { fingerprint, order });
     pendingByRequest.set(requestId, order);
@@ -250,6 +273,7 @@ export function createStudentSource({
         items: normalizeItems(input.items),
         slotId: input.slotId,
         diningMode: input.diningMode,
+        remark: input.remark ?? '',
       });
 
       const prior = createdByRequest.get(input.requestId);
@@ -302,6 +326,43 @@ export function createStudentSource({
         .slice()
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map(clone);
+    },
+
+    async cancelOrder(id: string, input: CancelOrderInput): Promise<StudentOrder> {
+      const order = ordersById.get(id);
+      if (!order) {
+        throw apiError('ORDER_NOT_FOUND', '订单不存在或对当前身份不可见。', false);
+      }
+      if (typeof input?.requestId !== 'string' || input.requestId.trim() === '') {
+        throw apiError('VALIDATION_ERROR', '取消请求缺少请求号。', false);
+      }
+      if (order.status === 'CANCELLED') {
+        throw apiError('ALREADY_CANCELLED', '订单已取消，无需重复操作。', false);
+      }
+      if (order.status === 'COMPLETED') {
+        throw apiError('INVALID_ORDER_STATE', '已完成订单不能取消。', false);
+      }
+      if (order.cancelRequest.status === 'PENDING') {
+        throw apiError('INVALID_ORDER_STATE', '取消申请正在处理中。', false);
+      }
+      if (order.version !== input.expectedVersion) {
+        throw apiError('ORDER_VERSION_CONFLICT', '订单状态已变化，请重新读取后再操作。', false);
+      }
+      const reason = typeof input.reason === 'string' && input.reason.trim() !== ''
+        ? input.reason.trim()
+        : null;
+      const timestamp = isoShanghai(clock());
+      if (order.status === 'NEW') {
+        order.status = 'CANCELLED';
+        order.paymentStatus = 'SIMULATED_REFUNDED';
+        order.cancellationReason = reason;
+        order.pickupCode = null;
+      } else {
+        order.cancelRequest = { status: 'PENDING', reason };
+      }
+      order.version += 1;
+      order.updatedAt = timestamp;
+      return clone(order);
     },
 
     setScenario(next: DemoScenario): DemoScenario {

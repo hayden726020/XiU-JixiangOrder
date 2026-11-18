@@ -1,326 +1,115 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { SourceError, StudentOrder, StudentSource } from '../types';
 import { toSourceError } from '../types';
-import { deriveOrderListView, toOrderListErrorView } from '../utils/orderListView';
+import { toOrderListErrorView } from '../utils/orderListView';
+import { orderNoText } from '../utils/orderStatusView';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import LoginGuide from '../components/LoginGuide';
-import RealModeNotice from '../components/RealModeNotice';
-import SampleBanner from '../components/SampleBanner';
-
-import orderHeaderBanner from '../assets/order-header-banner.png';
-import cardPolaroidFengwei from '../assets/card-polaroid-fengwei.png';
-import cardPolaroidMianshi from '../assets/card-polaroid-mianshi.png';
-import cardPolaroidDazhong from '../assets/card-polaroid-dazhong.png';
-import '../order-list.css';
+import OrderMenuIcon from '../components/OrderMenuIcons';
+import OrderListIcon from '../components/OrderListIcons';
+import OrderTicketCard from '../components/OrderTicketCard';
+import '../order-list-new.css';
 
 type ListStatus = 'loading' | 'empty' | 'ready' | 'error';
+export type OrderFilter = 'all' | 'progress' | 'completed' | 'after' | 'new' | 'preparing' | 'ready';
 
 export interface OrderListPageProps {
   source: StudentSource;
   onBack: () => void;
   backLabel?: string;
   onOpenOrder: (id: string) => void;
+  initialFilter?: OrderFilter;
   onGoToHome?: () => void;
   onGoToShop?: () => void;
   onGoToProfile?: () => void;
 }
 
-/* 刀叉图标 */
-function ForkKnifeIcon() {
-  return (
-    <svg className="order-card__meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2" />
-      <path d="M15 11v11" />
-      <path d="M5 2v8a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V2" />
-      <path d="M8 13v9" />
-    </svg>
-  );
+function inFilter(order: StudentOrder, filter: OrderFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'progress') return order.status === 'NEW' || order.status === 'ACCEPTED' || order.status === 'PREPARING' || order.status === 'READY';
+  if (filter === 'completed') return order.status === 'COMPLETED';
+  if (filter === 'new') return order.status === 'NEW';
+  if (filter === 'preparing') return order.status === 'ACCEPTED' || order.status === 'PREPARING';
+  if (filter === 'ready') return order.status === 'READY';
+  return order.status === 'CANCELLED' || order.paymentStatus === 'SIMULATED_REFUNDED' || order.cancelRequest.status === 'PENDING';
 }
 
-/* 打包袋图标 */
-function ShoppingBagIcon() {
-  return (
-    <svg className="order-card__meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <path d="M16 10a4 4 0 0 1-8 0" />
-    </svg>
-  );
-}
-
-export default function OrderListPage({
-  source,
-  onBack,
-  backLabel = '← 返回',
-  onOpenOrder,
-  onGoToHome,
-  onGoToShop,
-  onGoToProfile,
-}: OrderListPageProps) {
+export default function OrderListPage({ source, onBack, onOpenOrder, initialFilter, onGoToHome, onGoToShop, onGoToProfile }: OrderListPageProps) {
   const { gate, refresh } = useStudentSessionGate();
   const [orders, setOrders] = useState<StudentOrder[]>([]);
   const [status, setStatus] = useState<ListStatus>('loading');
   const [error, setError] = useState<SourceError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-
+  const [filter, setFilter] = useState<OrderFilter>(initialFilter ?? 'all');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [notice, setNotice] = useState('');
   const realLoggedOut = source.mode === 'real' && !gate.usable;
 
   useEffect(() => {
-    if (realLoggedOut) {
-      return;
-    }
+    if (realLoggedOut) return;
     let cancelled = false;
     setStatus('loading');
     setError(null);
     source.listOrders().then(
       (data) => {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
         setOrders(data);
-        setStatus(data.length === 0 ? 'empty' : 'ready');
+        setStatus(data.length ? 'ready' : 'empty');
       },
       (failure: unknown) => {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
         setOrders([]);
         setError(toSourceError(failure));
         setStatus('error');
       },
     );
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [source, realLoggedOut, reloadToken]);
 
-  const listView = deriveOrderListView(orders, source.mode);
+  const visibleOrders = useMemo(() => orders
+    .filter((order) => inFilter(order, filter))
+    .filter((order) => {
+      const q = query.trim().toLocaleLowerCase();
+      return !q || [order.id, String(order.orderNo ?? ''), order.merchantName ?? '', ...order.items.map((item) => item.name)]
+        .some((value) => value.toLocaleLowerCase().includes(q));
+    }), [orders, filter, query]);
+  const progressCount = orders.filter((order) => inFilter(order, 'progress')).length;
   const errorView = toOrderListErrorView(error);
+  const isProgressFilter = filter === 'progress' || filter === 'new' || filter === 'preparing' || filter === 'ready';
+  const filters: { id: OrderFilter; label: string; icon: 'clipboard' | 'clock' | 'checkSquare' | 'refund' }[] = [
+    { id: 'all', label: '全部订单', icon: 'clipboard' },
+    { id: 'progress', label: `进行中 (${progressCount})`, icon: 'clock' },
+    { id: 'completed', label: '已完成', icon: 'checkSquare' },
+    { id: 'after', label: '退款/售后', icon: 'refund' },
+  ];
 
-  function getCardPolaroidImg(key: string) {
-    if (key === 'fengwei') return cardPolaroidFengwei;
-    if (key === 'mianshi') return cardPolaroidMianshi;
-    return cardPolaroidDazhong;
-  }
-
-  if (realLoggedOut) {
-    return (
-      <section className="student-order-list-page" aria-labelledby="student-order-list-title">
-        {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
-        <header className="order-list-header-banner-wrap">
-          <img
-            className="order-list-header-banner"
-            src={orderHeaderBanner}
-            alt="我的订单"
-          />
-        </header>
-        <div style={{ padding: '1rem', position: 'relative', zIndex: 10 }}>
-          <button type="button" className="student-secondary student-back" onClick={onBack}>
-            {backLabel}
-          </button>
-          <header style={{ margin: '1rem 0' }}>
-            <h2 id="student-order-list-title" className="order-card__shop-name">我的订单</h2>
-          </header>
-          <LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} />
+  return <section className="meal-orders" aria-labelledby="meal-orders-title">
+    <div className="meal-orders__main">
+      <header className="meal-orders__header">
+        <div className="meal-orders__title-wrap"><h1 id="meal-orders-title">我的订单</h1><span className="meal-orders__spark" aria-hidden="true">✳</span></div>
+        <div className="meal-orders__header-actions">
+          <button type="button" aria-label="搜索订单" aria-expanded={searchOpen} onClick={() => setSearchOpen((value) => !value)}><OrderListIcon name="search" size={27} /></button>
+          <button type="button" aria-label="订单帮助" onClick={() => setNotice('订单问题可打开订单详情查看状态；如需联系档口，请凭订单号到对应档口咨询。')}><OrderListIcon name="headset" size={29} /></button>
         </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="student-order-list-page" aria-labelledby="student-order-list-title">
-      {/* 顶部指示条 */}
-      {source.mode === 'sample' ? <SampleBanner /> : <RealModeNotice />}
-
-      {/* 顶部完整艺术手绘横幅：我的订单 · 每一餐都安排好了 · 记得准时取餐 */}
-      <header className="order-list-header-banner-wrap">
-        <img
-          className="order-list-header-banner"
-          src={orderHeaderBanner}
-          alt="我的订单：每一餐，都安排好了。记得准时取餐"
-        />
-        <h1 id="student-order-list-title" className="sr-only">我的订单</h1>
       </header>
-
-      {/* 加载与错误提示 */}
-      <div style={{ padding: '0 1rem' }}>
-        {status === 'loading' ? (
-          <p className="student-loading" style={{ textAlign: 'center', margin: '2rem 0' }}>
-            正在读取订单…
-          </p>
-        ) : null}
-
-        {status === 'error' && errorView ? (
-          <div className="student-error" role="alert" style={{ margin: '1rem 0' }}>
-            <p>{errorView.message}</p>
-            <div className="student-error__actions">
-              {errorView.action === 'login' ? (
-                <>
-                  <button
-                    type="button"
-                    className="student-primary"
-                    onClick={() => {
-                      window.location.hash = '/system-check';
-                    }}
-                  >
-                    去公共入口登录
-                  </button>
-                  <button type="button" className="student-secondary" onClick={onBack}>
-                    返回
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="student-secondary"
-                  onClick={() => setReloadToken((value) => value + 1)}
-                >
-                  重新读取
-                </button>
-              )}
-            </div>
-          </div>
-        ) : null}
-
-        {status === 'empty' ? (
-          <div className="order-list-empty" role="status">
-            <p>{listView.emptyText}</p>
-            <button type="button" className="order-card__btn-primary" style={{ maxWidth: '200px', margin: '0 auto' }} onClick={onGoToShop || onBack}>
-              去选店点餐
-            </button>
-          </div>
-        ) : null}
+      <p className="meal-orders__sample">{source.mode === 'sample' ? '示例订单 · 餐品图片仅供参考' : '餐品图片仅供参考'}</p>
+      {searchOpen ? <div className="meal-orders__search"><OrderListIcon name="search" size={20} /><input autoFocus type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索订单号、档口或餐品" aria-label="搜索订单号、档口或餐品" /><button type="button" aria-label="关闭搜索" onClick={() => { setSearchOpen(false); setQuery(''); }}><OrderListIcon name="close" size={18} /></button></div> : null}
+      <div className="meal-orders__filters" role="group" aria-label="筛选订单">
+        {filters.map((item) => <button key={item.id} type="button" className={filter === item.id || (item.id === 'progress' && isProgressFilter) ? 'is-active' : ''} aria-pressed={filter === item.id || (item.id === 'progress' && isProgressFilter)} onClick={() => setFilter(item.id)}><OrderListIcon name={item.icon} size={21} /><span>{item.label}</span></button>)}
       </div>
-
-      {/* 订单卡片列表区 */}
-      {status === 'ready' ? (
-        <main className="order-list-cards" aria-label="订单列表">
-          {listView.cards.map((card) => {
-            const isReady = card.statusType === 'ready';
-            const isPreparing = card.statusType === 'preparing';
-            const isCompleted = card.statusType === 'completed';
-
-            return (
-              <article key={card.id} className="order-card">
-                {/* 左侧：拍立得照片卡片 */}
-                <div className="order-card__photo-frame">
-                  <img
-                    className="order-card__photo-img"
-                    src={getCardPolaroidImg(card.polaroidKey)}
-                    alt={card.shopName}
-                  />
-                </div>
-
-                {/* 右侧：订单信息 */}
-                <div className="order-card__info">
-                  {/* 第一行：档口名与状态徽章 */}
-                  <div className="order-card__row-head">
-                    <h2 className="order-card__shop-name">{card.shopName}</h2>
-                    <span
-                      className={`order-status-capsule ${
-                        isReady
-                          ? 'is-ready'
-                          : isPreparing
-                          ? 'is-preparing'
-                          : isCompleted
-                          ? 'is-completed'
-                          : ''
-                      }`}
-                    >
-                      {card.statusLabel}
-                    </span>
-                  </div>
-
-                  {/* 第二行：菜品与价格 */}
-                  <div className="order-card__row-dish">
-                    <span className="order-card__dish-title">
-                      {card.primaryDishName} × {card.primaryQuantity}
-                    </span>
-                    <span className="order-card__dish-price">{card.totalText}</span>
-                  </div>
-
-                  {/* 第三行：就餐方式与时段 */}
-                  <div className="order-card__row-meta">
-                    {card.diningMode === 'TAKEAWAY' ? <ShoppingBagIcon /> : <ForkKnifeIcon />}
-                    <span>{card.timeDiningText.split('·')[0]}·</span>
-                    <span className="order-card__dining-mode">
-                      {card.diningModeText}
-                    </span>
-                  </div>
-
-                  {/* 第四行：操作按钮 */}
-                  <div className="order-card__row-action">
-                    <button
-                      type="button"
-                      className={card.actionType === 'primary' ? 'order-card__btn-primary' : 'order-card__btn-outline'}
-                      onClick={() => onOpenOrder(card.id)}
-                    >
-                      {card.actionText}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </main>
-      ) : null}
-
-      {/* 底部 TabBar（全局导航条） */}
-      <nav className="student-tabbar" aria-label="底部导航">
-        <button
-          type="button"
-          className="student-tab-item"
-          onClick={onGoToHome || onGoToShop}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
-          <span>首页</span>
-        </button>
-
-        <button
-          type="button"
-          className="student-tab-item"
-          onClick={onGoToShop}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
-            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
-            <line x1="6" y1="1" x2="6" y2="4" />
-            <line x1="10" y1="1" x2="10" y2="4" />
-            <line x1="14" y1="1" x2="14" y2="4" />
-          </svg>
-          <span>点餐</span>
-        </button>
-
-        <button
-          type="button"
-          className="student-tab-item is-active"
-          aria-current="page"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <polyline points="10 9 9 9 8 9" />
-          </svg>
-          <span>订单</span>
-        </button>
-
-        <button
-          type="button"
-          className="student-tab-item"
-          onClick={onGoToProfile}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          <span>我的</span>
-        </button>
-      </nav>
-    </section>
-  );
+      {realLoggedOut ? <div className="meal-orders__state"><LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} /></div> : null}
+      {!realLoggedOut && status === 'loading' ? <p className="meal-orders__state" role="status">正在读取订单…</p> : null}
+      {!realLoggedOut && status === 'error' && errorView ? <div className="meal-orders__state meal-orders__state--error" role="alert"><p>{errorView.message}</p>{errorView.action === 'login' ? <button type="button" onClick={() => { window.location.hash = '/system-check'; }}>去公共入口登录</button> : <button type="button" onClick={() => setReloadToken((value) => value + 1)}>重新读取</button>}</div> : null}
+      {!realLoggedOut && status === 'empty' ? <div className="meal-orders__state"><p>还没有订单，去挑一份喜欢的餐吧。</p><button type="button" onClick={onGoToShop || onBack}>去点餐</button></div> : null}
+      {!realLoggedOut && status === 'ready' ? <main className="meal-orders__cards" aria-label="订单列表">{visibleOrders.length ? visibleOrders.map((order) => <OrderTicketCard key={order.id} order={order} mode={source.mode} onOpenOrder={onOpenOrder} onAskMerchant={(kind, selected) => setNotice(kind === 'remind' ? `暂无在线催单服务。请凭订单号 ${orderNoText(selected)} 到 ${selected.merchantName || '档口'} 咨询。` : `请凭订单号 ${orderNoText(selected)} 到 ${selected.merchantName || '档口'} 联系商家。`)} />) : <div className="meal-orders__state">没有符合条件的订单</div>}</main> : null}
+    </div>
+    <nav className="meal-orders__nav" aria-label="学生端导航">
+      <button type="button" onClick={onGoToHome || onGoToShop || onBack}><OrderMenuIcon name="home" size={27} /><span>首页</span></button>
+      <button type="button" onClick={onGoToShop || onBack}><OrderMenuIcon name="bowl" size={27} /><span>点餐</span></button>
+      <button type="button" className="is-active" aria-current="page"><OrderMenuIcon name="receipt" size={27} /><span>订单</span></button>
+      <button type="button" onClick={onGoToProfile || onBack}><OrderMenuIcon name="user" size={27} /><span>我的</span></button>
+    </nav>
+    {notice ? <div className="meal-orders__notice-backdrop" onClick={() => setNotice('')}><div className="meal-orders__notice" role="dialog" aria-modal="true" aria-label="订单提示" onClick={(event) => event.stopPropagation()}><p>{notice}</p><button type="button" onClick={() => setNotice('')}>我知道了</button></div></div> : null}
+  </section>;
 }

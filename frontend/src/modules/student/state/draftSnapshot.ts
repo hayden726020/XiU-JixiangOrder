@@ -35,14 +35,58 @@ function isDiningMode(value: unknown): value is DiningMode {
 }
 
 function isItem(value: unknown): value is DraftItemInput {
-  return (
-    isRecord(value) &&
-    typeof value.dishId === 'string' &&
-    value.dishId.trim() !== '' &&
-    Number.isInteger(value.quantity) &&
-    (value.quantity as number) >= 1 &&
-    (value.quantity as number) <= 99
-  );
+  if (
+    !isRecord(value) ||
+    typeof value.dishId !== 'string' ||
+    value.dishId.trim() === '' ||
+    !Number.isInteger(value.quantity) ||
+    (value.quantity as number) < 1 ||
+    (value.quantity as number) > 99
+  ) {
+    return false;
+  }
+  if (value.selectedFlavors !== undefined) {
+    if (!Array.isArray(value.selectedFlavors)) return false;
+    const groups = new Set<string>();
+    for (const entry of value.selectedFlavors) {
+      if (
+        !isRecord(entry) ||
+        typeof entry.groupId !== 'string' ||
+        entry.groupId === '' ||
+        typeof entry.optionId !== 'string' ||
+        entry.optionId === '' ||
+        groups.has(entry.groupId)
+      ) {
+        return false;
+      }
+      groups.add(entry.groupId);
+    }
+  }
+  for (const field of ['selectedSides', 'selectedAddOns'] as const) {
+    const list = value[field];
+    if (list === undefined) continue;
+    if (!Array.isArray(list) || list.some((id) => typeof id !== 'string' || id === '')) {
+      return false;
+    }
+    if (new Set(list).size !== list.length) return false;
+  }
+  return true;
+}
+
+function persistedItem(item: DraftItemInput): DraftItemInput {
+  return {
+    dishId: item.dishId,
+    quantity: item.quantity,
+    ...(item.selectedFlavors && item.selectedFlavors.length > 0
+      ? { selectedFlavors: item.selectedFlavors.map((entry) => ({ ...entry })) }
+      : {}),
+    ...(item.selectedSides && item.selectedSides.length > 0
+      ? { selectedSides: item.selectedSides.slice() }
+      : {}),
+    ...(item.selectedAddOns && item.selectedAddOns.length > 0
+      ? { selectedAddOns: item.selectedAddOns.slice() }
+      : {}),
+  };
 }
 
 export function clearDraftSnapshot(): void {
@@ -66,7 +110,7 @@ export function saveDraftSnapshot(selection: DraftSelection, now: number = Date.
     version: VERSION,
     merchantId: selection.merchantId,
     date: selection.date,
-    items: selection.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
+    items: selection.items.map((item) => persistedItem(item)),
     slotId: selection.slotId,
     diningMode: selection.diningMode,
     savedAt: now,
@@ -127,7 +171,7 @@ export function readDraftSnapshot({
   return {
     merchantId: parsed.merchantId,
     date: parsed.date,
-    items: parsed.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
+    items: parsed.items.map((item) => persistedItem(item)),
     slotId: parsed.slotId,
     diningMode: parsed.diningMode,
   };
