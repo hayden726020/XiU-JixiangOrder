@@ -1,10 +1,12 @@
 # 三端接口草案
 
-DRAFT v0.5（联调冻结候选），仍待三人确认，不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径；三人确认前按“联调候选”使用，不宣称正式上线。
+DRAFT v0.6（联调冻结候选），仍待三人确认，不能作为正式发布或真机联调证据。统一前缀 /api/v1；演示服务已在 `services/api/` 实现并通过自动测试，但自动测试不等于真机或现场验收。v0.3 补齐档口菜单、订单列表、分页、取餐码过滤、延迟、取消审批、用餐方式理由和失败重试口径；三人确认前按“联调候选”使用，不宣称正式上线。
 
 **v0.4 增补（2026-11-14）**：在 v0.3 之上新增商家注册、创建店铺、新增菜品、`GET /merchant/profile`、`GET /merchants`（学生店铺列表）与订单 `merchantId/merchantName`，并给 `GET /menu` 的 `dishes[]` 增加 `type`。v0.4 增补已由 `services/api` 实现并通过自动测试，仍待三人确认；v0.3 既有端点口径不变。
 
 **v0.5 增补（2026-11-16）**：`GET /merchants` 增加 `active` 区分档口启用状态和营业时间提示；未发布阶段不按营业时间或时段结束时间拦截预约下单，但停用档口、手动停用/满额时段、库存和仅今天/明天日期限制仍有效。停用档口下单返回 `MERCHANT_CLOSED`（409）。
+
+**v0.6 调整（2026-11-18）**：时段开始时（`startAt <= 服务端当前时间`）即不可新预约；`GET /menu` 将其标记为 `enabled=false`，`POST /orders` 返回 `SLOT_CLOSED`（409）。已成功创建订单的同一 `requestId` 重试仍返回原订单。营业时间仍仅作提示，不拦截下单。此规则取代 v0.5 的时段时间放宽规则，其他 v0.5 规则继续适用。
 
 ## 基础格式
 
@@ -120,7 +122,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 
 `GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
 
-- `slots[]` 字段为 `id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled,version`；已满或服务端停用的时段 `enabled=false`。在当前未发布阶段，时段结束时间不限制下单；仍须属于今天或明天、服务端启用且有剩余名额。
+- `slots[]` 字段为 `id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled,version`；已开始、已满或服务端停用的时段 `enabled=false`。时段开始时不可新下单；仍须属于今天或明天、服务端启用且有剩余名额。
 - `dishes[]` 字段为 `id,merchantId,type,name,priceFen,availableQuantity,onSale,version`。`type` 取值 `STAPLE`（主食）/`SNACK`（小吃）/`DRINK`（饮品）/`SET`（套餐），由新增菜品时写入。`GET /menu` 返回全部菜品；档口端必须按登录身份 `merchantId` 过滤展示，未登录不展示档口菜单；服务端写操作按归属校验，不依赖客户端过滤作为安全边界。
 - `version` 与 `PUT /merchant/menu/{dishId}`、`PUT /merchant/slots/{slotId}` 的 `expectedVersion` 同源；保存成功后 `version` + 1 并在响应中返回新版本；旧版本返回 `MENU_VERSION_CONFLICT`（409）。
 

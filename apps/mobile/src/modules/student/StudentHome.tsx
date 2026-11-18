@@ -73,7 +73,7 @@ function StudentHomeApp() {
         },
       });
     }
-    return createOrderDraft({ source });
+    return createOrderDraft({ source, allowedDates: todayAndTomorrow(new Date()) });
   });
   const [view, setView] = useState<StudentView>('shop');
   const [shopLandingTab, setShopLandingTab] = useState<'home' | 'order'>('home');

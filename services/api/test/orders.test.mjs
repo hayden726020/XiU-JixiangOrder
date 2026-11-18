@@ -102,15 +102,29 @@ test('只剩一个名额时并发下单最多成功一笔', async () => {
   assert.equal(slot.booked_count, 1);
 });
 
-test('已结束但仍启用且有名额的时段仍可下单', async () => {
+test('已开始但仍启用且有名额的时段不可下单', async () => {
   const token = await ctx.login('student');
-  ctx.setNow(Date.parse('2026-11-13T12:05:00+08:00'));
+  ctx.setNow(Date.parse('2026-11-13T11:30:00+08:00'));
   const menu = await ctx.api('GET', '/menu?date=2026-11-13', { token });
   const slot = menu.body.data.slots.find((item) => item.id === SLOT_TODAY);
-  assert.equal(slot.enabled, true);
+  assert.equal(slot.enabled, false);
 
   const response = await placeOrder(token, 'ended-slot-1');
-  assert.equal(response.status, 201);
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error.code, 'SLOT_CLOSED');
+  assert.equal(ctx.db.prepare('SELECT COUNT(*) AS count FROM orders').get().count, 0);
+});
+
+test('时段开始前可下单，开始后同一 requestId 可安全重试', async () => {
+  const token = await ctx.login('student');
+  ctx.setNow(Date.parse('2026-11-13T11:29:59+08:00'));
+  const first = await placeOrder(token, 'slot-boundary-1');
+  assert.equal(first.status, 201);
+
+  ctx.setNow(Date.parse('2026-11-13T11:30:00+08:00'));
+  const retry = await placeOrder(token, 'slot-boundary-1');
+  assert.equal(retry.status, 201);
+  assert.equal(retry.body.data.id, first.body.data.id);
   assert.equal(ctx.db.prepare('SELECT COUNT(*) AS count FROM orders').get().count, 1);
 });
 

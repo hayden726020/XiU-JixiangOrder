@@ -217,8 +217,8 @@ export function createOrder({ db, clock, user, body }) {
       if (!slot) {
         throw notFound('SLOT_NOT_FOUND', '所选时段不存在。');
       }
-      if (!slot.enabled || (slot.date !== today && slot.date !== tomorrow)) {
-        throw conflict('SLOT_CLOSED', '该时段已停用或日期不可预约，请选择其他时段。');
+      if (!slot.enabled || (slot.date !== today && slot.date !== tomorrow) || slot.start_at <= now) {
+        throw conflict('SLOT_CLOSED', '该时段已开始、停用或日期不可预约，请选择其他时段。');
       }
 
       const dishes = [];
@@ -686,7 +686,7 @@ export function listMenu({ db, clock, query }) {
       capacity: slot.capacity,
       booked: slot.booked_count,
       remainingCapacity: Math.max(0, slot.capacity - slot.booked_count),
-      enabled: slot.enabled === 1 && slot.booked_count < slot.capacity,
+      enabled: slot.enabled === 1 && slot.booked_count < slot.capacity && slot.start_at > now,
       version: slot.version,
     }));
   const dishes = db

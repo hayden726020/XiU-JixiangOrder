@@ -7,6 +7,7 @@ import { filterDishesByShop } from '../utils/dishShopFilter';
 import { CURRENT_SHOP_PREFIX, DEMO_DATA_LABEL } from '../utils/shopTexts';
 import { formatYuan } from '../utils/money';
 import { toSubmitErrorView } from '../utils/orderSubmitView';
+import { toSlotView } from '../utils/slotView';
 import DemoModeNotice from '../components/DemoModeNotice';
 import LoginGuide from '../components/LoginGuide';
 import SampleBanner from '../components/SampleBanner';
@@ -99,6 +100,12 @@ export default function ConfirmPage({
   const [scenario, setScenario] = useState<DemoScenario>(() => source.getScenario());
   const [busy, setBusy] = useState(false);
   const [queryError, setQueryError] = useState('');
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (draft.getState().status === 'success') {
@@ -139,6 +146,11 @@ export default function ConfirmPage({
     }
     if (source.mode === 'real' && !gate.usable) {
       refresh();
+      return;
+    }
+    const currentSlot = menu?.slots.find((slot) => slot.slotId === draft.getState().slotId);
+    if (draft.getState().status !== 'timeout' && (!currentSlot || !toSlotView(currentSlot, Date.now()).selectable)) {
+      setNow(Date.now());
       return;
     }
     setBusy(true);
@@ -220,7 +232,7 @@ export default function ConfirmPage({
         (dish.availableQuantity ?? 0) >= item.quantity
       );
     });
-  const slotReady = menuReady && selectedSlot !== null;
+  const slotReady = menuReady && selectedSlot !== null && toSlotView(selectedSlot, now).selectable;
   const canSubmit =
     menuReady &&
     itemsReady &&

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test } from 'node:test';
 import { DISH, SLOT_TODAY, SLOT_TOMORROW, orderBody, startTestServer } from './helpers.mjs';
 
 const NOW = Date.parse('2026-11-13T11:45:00+08:00');
+const BEFORE_SLOT_START = Date.parse('2026-11-13T11:29:00+08:00');
 const LOCATION_TTL_MS = 10 * 60 * 1000;
 
 let ctx;
@@ -73,8 +74,10 @@ test('同一 requestId 不同位置内容返回 REQUEST_CONFLICT', async () => {
 
 test('当前时段堂食预约 + 有效 INSIDE 计算当前参考', async () => {
   const student = await ctx.login('student');
+  ctx.setNow(BEFORE_SLOT_START);
   const created = await ctx.api('POST', '/orders', { token: student, body: orderBody('crowd-create-1') });
   assert.equal(created.status, 201);
+  ctx.setNow(NOW);
   await report(student, 'crowd-loc-1');
 
   const crowd = await ctx.api('GET', `/crowd?slotId=${SLOT_TODAY}`);
@@ -88,6 +91,7 @@ test('当前时段堂食预约 + 有效 INSIDE 计算当前参考', async () => 
 
 test('同用户多笔堂食只计一人，外带与取消不计入预约', async () => {
   const student = await ctx.login('student');
+  ctx.setNow(BEFORE_SLOT_START);
   await ctx.api('POST', '/orders', { token: student, body: orderBody('dedupe-1') });
   await ctx.api('POST', '/orders', { token: student, body: orderBody('dedupe-2') });
   await ctx.api('POST', '/orders', {
@@ -100,6 +104,7 @@ test('同用户多笔堂食只计一人，外带与取消不计入预约', async
     body: { requestId: 'dedupe-cancel-op', expectedVersion: cancelled.body.data.version },
   });
 
+  ctx.setNow(NOW);
   const crowd = await ctx.api('GET', `/crowd?slotId=${SLOT_TODAY}`);
   assert.equal(crowd.body.data.reservedDineInUsers, 1);
   assert.equal(crowd.body.data.currentReferenceUsers, null);
@@ -123,7 +128,9 @@ test('未来时段不返回当前参考，未来订单不混入今天', async ()
 
 test('最近的 OUTSIDE 排除当前参考，位置过期后不再作为依据', async () => {
   const student = await ctx.login('student');
+  ctx.setNow(BEFORE_SLOT_START);
   await ctx.api('POST', '/orders', { token: student, body: orderBody('outside-create-1') });
+  ctx.setNow(NOW);
   await report(student, 'outside-loc-1', 'INSIDE');
   let crowd = await ctx.api('GET', `/crowd?slotId=${SLOT_TODAY}`);
   assert.equal(crowd.body.data.currentReferenceUsers, 1);
@@ -141,9 +148,11 @@ test('最近的 OUTSIDE 排除当前参考，位置过期后不再作为依据',
 test('取餐记录在 30 分钟内作为当前参考，即使位置已删除', async () => {
   const student = await ctx.login('student');
   const merchant = await ctx.login('merchant');
+  ctx.setNow(BEFORE_SLOT_START);
   let order = (
     await ctx.api('POST', '/orders', { token: student, body: orderBody('pickup-create-1') })
   ).body.data;
+  ctx.setNow(NOW);
   for (const [action, requestId] of [
     ['ACCEPT', 'pickup-accept'],
     ['START_PREPARING', 'pickup-start'],

@@ -15,6 +15,8 @@ import { apiError, apiErrorWithDishNames } from '../types';
 import { createRealStudentSource, type RealRequest } from './realSource';
 import { resolveStudentMode } from './mode';
 import { sumFen } from '../utils/money';
+import { todayAndTomorrow } from '../utils/dates';
+import { isFutureSlotStart } from '../utils/slotAvailability';
 import { DISH_SHORTAGE_SUBMIT, SLOT_UNAVAILABLE_MESSAGE } from '../utils/submitTexts';
 import {
   CROWD_REFERENCE,
@@ -86,7 +88,9 @@ export function createStudentSource({
   if (mode === 'real') {
     return createRealStudentSource({ request, now });
   }
-  const clock = now ?? (() => new Date('2026-11-13T11:45:00+08:00'));
+  const clock = now ?? (() => new Date());
+  const sampleDates = todayAndTomorrow(clock());
+  const displayDate = (templateDate: string): string => sampleDates[DATES.indexOf(templateDate)] ?? templateDate;
   if (!SCENARIOS.has(scenario)) {
     throw apiError('VALIDATION_ERROR', '未知的样例场景切换值。', false);
   }
@@ -130,6 +134,12 @@ export function createStudentSource({
     const slot = findSlot(input.slotId);
     if (!slot) {
       throw apiError('VALIDATION_ERROR', '时段不存在。', false);
+    }
+    if (!slot.enabled || !isFutureSlotStart(`${displayDate(slot.date)}T${slot.start}:00+08:00`, clock().getTime())) {
+      throw apiError('SLOT_CLOSED', '该时段已开始或关闭，请选择其他时段。', false);
+    }
+    if (slot.occupied >= slot.capacity) {
+      throw apiError('SLOT_FULL', SLOT_UNAVAILABLE_MESSAGE, false);
     }
     const shortage: string[] = [];
     for (const item of input.items) {
@@ -175,7 +185,15 @@ export function createStudentSource({
       input.diningMode === 'DINE_IN';
 
     if (isSameOrder) {
-      return clone(DEMO_ORDER_001);
+      const order = clone(DEMO_ORDER_001);
+      const timestamp = isoShanghai(clock());
+      return {
+        ...order,
+        slotStart: `${displayDate(slot.date)}T${slot.start}:00+08:00`,
+        slotEnd: `${displayDate(slot.date)}T${slot.end}:00+08:00`,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
     }
 
     const timestamp = isoShanghai(clock());
@@ -187,8 +205,8 @@ export function createStudentSource({
       merchantName,
       items,
       slotId: slot.slotId,
-      slotStart: `${slot.date}T${slot.start}:00+08:00`,
-      slotEnd: `${slot.date}T${slot.end}:00+08:00`,
+      slotStart: `${displayDate(slot.date)}T${slot.start}:00+08:00`,
+      slotEnd: `${displayDate(slot.date)}T${slot.end}:00+08:00`,
       diningMode: input.diningMode,
       totalFen,
       status: 'NEW',
@@ -225,14 +243,25 @@ export function createStudentSource({
     },
 
     async getMenu(date: string): Promise<MenuResponse> {
-      if (!DATES.includes(date)) {
+      const dateIndex = sampleDates.indexOf(date);
+      if (dateIndex < 0) {
         throw apiError('VALIDATION_ERROR', '日期只能是今天或明天。', false);
       }
+      const templateDate = DATES[dateIndex];
       return clone({
         date,
         demo: true,
-        dishes: DISHES.map((dish) => toDishDto(dish, date)),
-        slots: SLOTS.filter((slot) => slot.date === date).map(toSlotDto),
+        dishes: DISHES.map((dish) => toDishDto(dish, templateDate)),
+        slots: SLOTS.filter((slot) => slot.date === templateDate).map((slot) => {
+          const dto = toSlotDto(slot);
+          const slotStart = `${date}T${slot.start}:00+08:00`;
+          return {
+            ...dto,
+            slotStart,
+            slotEnd: `${date}T${slot.end}:00+08:00`,
+            enabled: dto.enabled && dto.remainingCapacity > 0 && isFutureSlotStart(slotStart, clock().getTime()),
+          };
+        }),
       });
     },
 

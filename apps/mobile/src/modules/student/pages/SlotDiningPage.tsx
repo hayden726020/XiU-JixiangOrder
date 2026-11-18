@@ -247,6 +247,7 @@ export default function SlotDiningPage({
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [errorText, setErrorText] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
+  const [now, setNow] = useState(Date.now);
   const [guard] = useState(() =>
     createSlotRequestGuard({ fetchCrowd: (slotId) => source.getCrowd(slotId) }),
   );
@@ -274,6 +275,11 @@ export default function SlotDiningPage({
   }, []);
 
   useEffect(() => presenceRuntime.subscribe(setPresence), [presenceRuntime]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     void presenceRuntime.enter();
@@ -309,7 +315,8 @@ export default function SlotDiningPage({
   }, [source, draft, shop.merchantId, date, reloadToken]);
 
   function selectSlot(slot: SlotDto): void {
-    if (!toSlotView(slot).selectable) {
+    if (!toSlotView(slot, Date.now()).selectable) {
+      setNow(Date.now());
       return;
     }
     draft.setSlot(slot.slotId);
@@ -352,37 +359,16 @@ export default function SlotDiningPage({
       ? `${shop.name} · 请返回菜单选择菜品`
       : `${shop.name} · 已选 ${snapshot.totalQuantity} 份`;
 
-  const fallbackSlots: SlotDto[] = [
-    {
-      slotId: `slot-${date}-1130`,
-      slotStart: `${date}T11:30:00+08:00`,
-      slotEnd: `${date}T12:00:00+08:00`,
-      remainingCapacity: 18,
-      enabled: true,
-    },
-    {
-      slotId: `slot-${date}-1200`,
-      slotStart: `${date}T12:00:00+08:00`,
-      slotEnd: `${date}T12:30:00+08:00`,
-      remainingCapacity: 12,
-      enabled: true,
-    },
-    {
-      slotId: `slot-${date}-1230`,
-      slotStart: `${date}T12:30:00+08:00`,
-      slotEnd: `${date}T13:00:00+08:00`,
-      remainingCapacity: 0,
-      enabled: true,
-    },
-  ];
-
-  const slotsToDisplay = menu && menu.slots.length > 0 ? menu.slots : fallbackSlots;
+  const slotsToDisplay = menu?.slots ?? [];
   const selectedSlot = slotsToDisplay.find((slot) => slot.slotId === snapshot.slotId) ?? null;
+  const selectedSlotSelectable = selectedSlot !== null && toSlotView(selectedSlot, now).selectable;
   const allSlotsClosed =
-    menu !== null && menu.slots.length > 0 && menu.slots.every((slot) => slot.enabled !== true);
+    menu !== null && menu.slots.length > 0 && menu.slots.every((slot) => !toSlotView(slot, now).selectable);
   const hint =
     snapshot.slotId === null
       ? '请选择时段'
+      : !selectedSlotSelectable
+        ? '所选时段已开始或不可用，请重新选择'
       : snapshot.diningMode === null
         ? '请选择堂食或外带'
         : '进入确认页核对后再提交。';
@@ -462,8 +448,8 @@ export default function SlotDiningPage({
 
           <ul className="booking-slot-list">
             {slotsToDisplay.map((slot) => {
-              const view = toSlotView(slot);
-              const selected = snapshot.slotId === slot.slotId;
+              const view = toSlotView(slot, now);
+              const selected = view.selectable && snapshot.slotId === slot.slotId;
               return (
                 <li key={slot.slotId}>
                   <button
@@ -504,8 +490,14 @@ export default function SlotDiningPage({
           <button
             type="button"
             className="booking-submit"
-            disabled={!snapshot.canConfirm}
-            onClick={onConfirm}
+            disabled={!snapshot.canConfirm || !selectedSlotSelectable}
+            onClick={() => {
+              if (selectedSlot && toSlotView(selectedSlot, Date.now()).selectable) {
+                onConfirm();
+              } else {
+                setNow(Date.now());
+              }
+            }}
           >
             去确认订单
           </button>
