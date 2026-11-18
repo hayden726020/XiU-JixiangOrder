@@ -40,8 +40,8 @@
 .order-ticket__top { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 5px; border-bottom: 1px solid #e6e1da; color: var(--order-muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .order-ticket__number { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
 .order-ticket__number strong { overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
-.order-ticket__body { display: grid; grid-template-columns: 88px minmax(0,1fr) 107px; gap: 10px; align-items: center; min-height: 104px; padding: 10px 0; }
-.order-ticket__photo { width: 88px; height: 84px; object-fit: cover; border-radius: 9px; box-shadow: 0 3px 7px #3f250c29; }
+.order-ticket__body { display: grid; grid-template-columns: 82px minmax(0,1fr) 98px; gap: 8px; align-items: center; min-height: 100px; padding: 10px 0; }
+.order-ticket__photo { width: 82px; height: 80px; object-fit: cover; border-radius: 9px; box-shadow: 0 3px 7px #3f250c29; }
 .order-ticket__details { min-width: 0; align-self: center; }
 .order-ticket__details h2 { display: table; position: relative; max-width: 100%; margin: 0 0 9px; color: var(--order-ink); font-size: 17px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .order-ticket__details h2::after { content: ''; position: absolute; height: 4px; left: 0; right: 0; bottom: -2px; background: var(--order-gold); border-radius: 50%; transform: rotate(-2deg); }

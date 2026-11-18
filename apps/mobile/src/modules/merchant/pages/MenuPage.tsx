@@ -367,7 +367,11 @@ export default function MenuPage({
       return;
     }
     setNewDishError(menuWriteErrorText(result.error.code, result.error.message));
-    setNewDishNeedsShop(result.error.code === 'SHOP_REQUIRED' || result.error.code === 'MERCHANT_REQUIRED');
+    setNewDishNeedsShop(
+      result.error.code === 'SHOP_REQUIRED'
+      || result.error.code === 'MERCHANT_REQUIRED'
+      || result.error.code === 'MERCHANT_NOT_REGISTERED',
+    );
   }
 
   function askDeleteDish(dish: Dish) {

@@ -235,7 +235,7 @@ function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> 
 
 function toOnboardingFailure<T>(error: unknown, label: string): SourceResult<T> {
   if (error instanceof ApiError) {
-    if (error.status === 404 || error.code === 'NOT_FOUND') {
+    if (error.code === 'NOT_FOUND') {
       return fail(
         'ONBOARDING_API_MISSING',
         `共同服务尚未提供${label}接口；本次未保存，页面不显示成功。`,
