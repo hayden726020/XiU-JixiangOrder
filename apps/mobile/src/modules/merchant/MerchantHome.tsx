@@ -351,7 +351,7 @@ export default function MerchantHome() {
     return () => {
       alive = false;
     };
-  }, [source, menuDate, orderPage, session?.user.id, mode, merchantLoggedIn, dataVersion]);
+  }, [source, menuDate, orderPage, session?.user.id, session?.user.merchantId, mode, merchantLoggedIn, dataVersion]);
 
   useEffect(() => {
     if (view.name !== 'home') return;
@@ -367,7 +367,7 @@ export default function MerchantHome() {
     return () => {
       alive = false;
     };
-  }, [view.name, source, mode, merchantLoggedIn, dataVersion, session?.user.id]);
+  }, [view.name, source, mode, merchantLoggedIn, dataVersion, session?.user.id, session?.user.merchantId]);
 
   useEffect(() => {
     if (view.name !== 'my') return;
@@ -778,7 +778,10 @@ export default function MerchantHome() {
   }
 
   async function createDish(input: CreateDishInput) {
-    const result = await source.createDish({ ...input, date: menuDate } as CreateDishInput & { date?: string });
+    if (mode === 'real' && !profile?.activeShopId) {
+      return { ok: false as const, error: { code: 'SHOP_NOT_SELECTED', message: '请先选择店铺，再新增菜品。', retryable: false } };
+    }
+    const result = await source.createDish({ ...input, shopId: mode === 'real' ? profile?.activeShopId ?? undefined : undefined, date: menuDate } as CreateDishInput & { date?: string });
     if (result.ok) {
       setMenu((current) => (current
         ? { ...current, dishes: [...current.dishes, result.data] }
@@ -1026,6 +1029,7 @@ export default function MerchantHome() {
           profileLoading={profileLoading}
           profileError={profileError}
           onProfileChange={setProfile}
+          onOpenMenu={openMenu}
 
 
           onBack={backToList}

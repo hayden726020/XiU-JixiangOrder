@@ -1,5 +1,5 @@
 import { ApiError, apiRequest } from '../../../shared/apiClient';
-import { getSession } from '../../../shared/session';
+import { getSession, saveSession } from '../../../shared/session';
 import {
   DEFAULT_SAMPLE_MERCHANT_NAME,
   resolveAccountMerchantName,
@@ -113,11 +113,15 @@ interface ApiMerchantProfile {
   } | null;
   shop?: {
     id?: string;
+    merchantId?: string;
     name?: string;
     location?: string | null;
     description?: string | null;
     version?: number;
   } | null;
+  shops?: ApiMerchantProfile['shop'][];
+  activeShopId?: string | null;
+  activeMerchantId?: string | null;
 
   onboardingStep?: string;
 }
@@ -254,6 +258,7 @@ function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> 
   }
   const merchant = payload.merchant ?? null;
   const shop = payload.shop ?? null;
+  const shops = payload.shops ?? (shop ? [shop] : []);
 
   if (
     merchant !== null
@@ -266,6 +271,9 @@ function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> 
     && (typeof shop.id !== 'string' || typeof shop.name !== 'string')
   ) {
     return fail('INVALID_RESPONSE', '商家资料响应缺少店铺 id 或名称。');
+  }
+  if (!Array.isArray(shops) || shops.some((item) => !item || typeof item.id !== 'string' || typeof item.name !== 'string')) {
+    return fail('INVALID_RESPONSE', '商家资料响应中的店铺列表无效。');
   }
   return {
     ok: true,
@@ -288,6 +296,16 @@ function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> 
           version: Number.isFinite(shop.version) ? (shop.version as number) : 1,
         }
         : null,
+      shops: shops.map((item) => ({
+        id: item!.id as string,
+        name: item!.name as string,
+        location: item!.location ?? null,
+        description: item!.description ?? null,
+        version: Number.isFinite(item!.version) ? item!.version as number : 1,
+        merchantId: item!.merchantId ?? payload.activeMerchantId ?? merchant?.id ?? '',
+      })),
+      activeShopId: payload.activeShopId ?? shop?.id ?? null,
+      activeMerchantId: payload.activeMerchantId ?? merchant?.id ?? null,
       onboardingStep: resolveOnboardingStep(payload.onboardingStep, merchant, shop),
     },
   };
@@ -580,6 +598,28 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return toOnboardingFailure(error, '店铺创建');
       }
     },
+    selectShop: async (shopId: string) => {
+      const session = getSession();
+      if (!session || session.user.role !== 'MERCHANT') {
+        return fail('UNAUTHENTICATED', '请先登录档口账号。');
+      }
+      try {
+        const data = await apiRequest<ApiMerchantProfile>(`/merchant/shops/${encodeURIComponent(shopId)}/select`, { method: 'POST' });
+        const mapped = mapProfile(data);
+        if (!mapped.ok) return mapped;
+        if (mapped.data.activeShopId !== shopId || !mapped.data.activeMerchantId) {
+          return fail('INVALID_RESPONSE', '切换店铺响应与所选店铺不一致。');
+        }
+        const latestSession = getSession();
+        if (!latestSession || latestSession.token !== session.token || latestSession.user.id !== session.user.id) {
+          return fail('SESSION_CHANGED', '登录账号已变化，请重新进入店铺管理。');
+        }
+        saveSession({ ...latestSession, user: { ...latestSession.user, merchantId: mapped.data.activeMerchantId } });
+        return mapped;
+      } catch (error) {
+        return toOnboardingFailure(error, '切换店铺');
+      }
+    },
 
     getAccount: async () => {
       if (!currentMerchantId()) {
@@ -621,6 +661,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
           method: 'POST',
           body: {
             requestId: input.requestId,
+            shopId: input.shopId,
             type: input.type,
             name: input.name,
             priceFen: input.priceFen,
@@ -781,7 +822,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
 const SAMPLE_PROFILE_STORAGE_KEY = 'merchant-sample-profile-v1';
 
 function emptyProfile(): MerchantProfile {
-  return { merchant: null, shop: null, onboardingStep: 'NONE' };
+  return { merchant: null, shop: null, shops: [], activeShopId: null, activeMerchantId: null, onboardingStep: 'NONE' };
 }
 
 function readSampleProfile(): MerchantProfile {
@@ -802,7 +843,9 @@ function readSampleProfile(): MerchantProfile {
     return {
       merchant,
       shop,
-
+      shops: parsed.shops ?? (shop ? [{ ...shop, merchantId: merchant?.id ?? '' }] : []),
+      activeShopId: parsed.activeShopId ?? shop?.id ?? null,
+      activeMerchantId: parsed.activeMerchantId ?? merchant?.id ?? null,
       onboardingStep: parsed.onboardingStep
         ?? (shop ? 'SHOP_CREATED' : merchant ? 'REGISTERED' : 'NONE'),
     };
@@ -1031,6 +1074,9 @@ export function createMerchantSource(options: {
           contactPhone,
         },
         shop: nextShop,
+        shops: nextShop
+          ? sampleProfile.shops.map((item) => item.id === nextShop.id ? { ...nextShop, merchantId: item.merchantId } : item)
+          : sampleProfile.shops,
       };
       persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };
@@ -1049,6 +1095,9 @@ export function createMerchantSource(options: {
           status: 'ACTIVE',
         },
         shop: null,
+        shops: [],
+        activeShopId: null,
+        activeMerchantId: 'demo-merchant-01',
         onboardingStep: 'REGISTERED',
       };
       persistSampleProfile(sampleProfile);
@@ -1059,17 +1108,29 @@ export function createMerchantSource(options: {
         return fail('MERCHANT_REQUIRED', '请先完成商家注册。');
       }
 
+      const shopId = `demo-shop-${sampleProfile.shops.length + 1}`;
+      const newShop = {
+        id: shopId,
+        merchantId: sampleProfile.merchant.id,
+        name: input.shopName,
+        location: input.location,
+        description: input.description.trim().length > 0 ? input.description : null,
+        version: 1,
+      };
       sampleProfile = {
         ...sampleProfile,
-        shop: {
-          id: 'demo-shop-01',
-          name: input.shopName,
-          location: input.location,
-          description: input.description.trim().length > 0 ? input.description : null,
-          version: 1,
-        },
+        shop: newShop,
+        shops: [...sampleProfile.shops, newShop],
+        activeShopId: shopId,
         onboardingStep: 'SHOP_CREATED',
       };
+      persistSampleProfile(sampleProfile);
+      return { ok: true, data: structuredClone(sampleProfile) };
+    },
+    selectShop: async (shopId: string): Promise<SourceResult<MerchantProfile>> => {
+      const shop = sampleProfile.shops.find((item) => item.id === shopId);
+      if (!shop) return fail('SHOP_NOT_FOUND', '店铺不存在。');
+      sampleProfile = { ...sampleProfile, shop, activeShopId: shopId, activeMerchantId: shop.merchantId };
       persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };
     },

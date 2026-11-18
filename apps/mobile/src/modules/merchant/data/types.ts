@@ -248,7 +248,9 @@ export interface MerchantProfile {
     description: string | null;
     version: number;
   } | null;
-
+  shops: Array<{ id: string; name: string; location: string | null; description: string | null; version: number; merchantId: string }>;
+  activeShopId: string | null;
+  activeMerchantId: string | null;
   onboardingStep: OnboardingStep;
 }
 
@@ -279,6 +281,7 @@ export interface CreateShopInput {
 
 export interface CreateDishInput {
   requestId: string;
+  shopId?: string;
   type: DishType;
   name: string;
   priceFen: number;
@@ -299,6 +302,7 @@ export interface MerchantSource {
   updateProfile: (input: MerchantProfileUpdateInput) => Promise<SourceResult<MerchantProfile>>;
   registerMerchant: (input: MerchantRegistrationInput) => Promise<SourceResult<MerchantProfile>>;
   createShop: (input: CreateShopInput) => Promise<SourceResult<MerchantProfile>>;
+  selectShop: (shopId: string) => Promise<SourceResult<MerchantProfile>>;
 
   getAccount: () => Promise<SourceResult<MerchantAccount>>;
   updateAccount: (input: UpdateMerchantAccountInput) => Promise<SourceResult<MerchantAccount>>;

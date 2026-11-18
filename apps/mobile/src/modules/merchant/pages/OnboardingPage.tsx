@@ -35,6 +35,7 @@ interface OnboardingPageProps {
   onBack: () => void;
   onCancel: () => void;
   onComplete: () => void;
+  onOpenMenu: () => void;
 }
 
 const EMPTY_MERCHANT: MerchantRegistrationDraft = {
@@ -115,6 +116,7 @@ export default function OnboardingPage({
   onBack,
   onCancel,
   onComplete,
+  onOpenMenu,
 }: OnboardingPageProps) {
   const [step, setStep] = useState<Step>(1);
   const [merchant, setMerchant] = useState<MerchantRegistrationDraft>(EMPTY_MERCHANT);
@@ -124,6 +126,7 @@ export default function OnboardingPage({
   const [feedbackError, setFeedbackError] = useState(false);
   const [saving, setSaving] = useState<'merchant' | 'shop' | null>(null);
   const [completed, setCompleted] = useState({ merchant: false, shop: false });
+  const [addingShop, setAddingShop] = useState(false);
 
   const allowed = mode === 'sample'
     || canUseOnboarding(
@@ -292,14 +295,49 @@ export default function OnboardingPage({
         error(onboardingErrorText(saved.error, '店铺创建'));
         return;
       }
-      onProfileChange(saved.data);
+      if (mode === 'real' && saved.data.activeShopId) {
+        const selected = await source.selectShop(saved.data.activeShopId);
+        if (!selected.ok) {
+          const refreshed = await source.getProfile();
+          onProfileChange(refreshed.ok
+            ? { ...refreshed.data, activeShopId: null }
+            : profile?.shop
+              ? { ...profile, shops: saved.data.shops, activeShopId: null }
+              : { ...saved.data, activeShopId: null });
+          setAddingShop(false);
+          error(`店铺已创建，但切换失败：${selected.error.message}。请从店铺列表重新选择。`);
+          return;
+        }
+        onProfileChange(selected.data);
+      } else {
+        onProfileChange(saved.data);
+      }
       setShop(result.value);
+      setAddingShop(false);
       setErrors({});
       info(mode === 'sample'
         ? '样例模式已保存店铺到本机样例内存（未连接服务端；学生端不可见）。开店流程已完成。'
         : '服务端已保存店铺；开店流程已完成。');
       setCompleted((current) => ({ ...current, shop: true }));
-      onComplete();
+      if (addingShop) onOpenMenu();
+      else onComplete();
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function selectShop(shopId: string) {
+    if (saving) return;
+    setSaving('shop');
+    clearFeedback();
+    try {
+      const selected = await source.selectShop(shopId);
+      if (!selected.ok) {
+        error(onboardingErrorText(selected.error, '切换店铺'));
+        return;
+      }
+      onProfileChange(selected.data);
+      onOpenMenu();
     } finally {
       setSaving(null);
     }
@@ -347,7 +385,7 @@ export default function OnboardingPage({
     );
   }
 
-  if (serverCompleted && profile?.merchant && profile.shop) {
+  if (serverCompleted && profile?.merchant && profile.shop && !addingShop) {
     return (
       <div className="merchant-view onboarding-page">
         <OnboardingHero />
@@ -388,17 +426,34 @@ export default function OnboardingPage({
           </dl>
 
           <p className="hint" data-onboarding-completed-hint>
-            以上资料直接读取服务端 /merchant/profile；本页不再提交注册与开店请求。
+            请选择要管理的店铺；新增菜品会保存到当前店铺。
           </p>
 
+          {mode === 'real' && (
+            <div className="onboarding-actions" aria-label="我的店铺">
+              {(profile.shops.length ? profile.shops : [{ ...profile.shop, merchantId: profile.merchant.id }]).map((item) => (
+                <button type="button" className="action-button" key={item.id}
+                  disabled={saving !== null || item.id === profile.activeShopId}
+                  onClick={() => void selectShop(item.id)}>
+                  {item.name}{item.id === profile.activeShopId ? ' · 当前店铺' : ' · 切换到这家店'}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="onboarding-actions">
+            {mode === 'real' && (
+              <button type="button" className="action-button" onClick={() => { setShop(EMPTY_SHOP); setCompleted((current) => ({ ...current, shop: false })); setAddingShop(true); setStep(2); }}>
+                新增店铺
+              </button>
+            )}
             <button
               type="button"
               className="action-button action-button--primary"
-              onClick={onComplete}
+              onClick={onOpenMenu}
               data-action="leave-onboarding"
             >
-              下一步：选择数据模式
+              管理当前店铺菜品
             </button>
           </div>
         </section>
