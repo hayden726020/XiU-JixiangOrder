@@ -272,3 +272,13 @@ $node = "C:\Program Files\Adobe\Adobe Creative Cloud Experience\libs\node.exe"
 - 验证：`frontend` 下 `tsc --noEmit` 0 错误；`vite build` 成功；无头 Edge 以构建产物验证两条取消路径——NEW 提交后提示“订单已取消，模拟退款结果以服务端返回为准”，READY 提交后提示“取消申请已提交，等待档口处理；申请中不代表订单已取消”，弹窗自动关闭、原按钮消失。
 - 未做：真实学生账号对线上 `POST /orders/{id}/cancel` 的联调；未重打 APK、未真机验收。
 - 说明：本轮验证期间开发服务器曾因并行会话改动的 `merchant/components/OrderRow.tsx` 语法错误白屏，该文件已恢复并通过类型检查；同一工作区仍可能被其他会话写入，推送前已重新比对。
+
+
+## 12 2026-11-18 第四轮基线（`frontend/handoff-2026-11-18-r4`）
+
+- 分支：基于远端 `frontend/handoff-2026-11-18-r3`（`2417967`）继续，提交并推送至 `frontend/handoff-2026-11-18-r4`（同时合并 `origin/frontend/baseline-2026-11-18` 作为第二父提交以便无强推快进更新 `frontend/baseline-2026-11-18`）。
+- 核心更新：
+  - 学生端订单详情页（`src/modules/student/pages/OrderDetailPage.tsx`、`src/modules/student/order-detail.css`）：升级为暖白齿孔小票式高保真布局，采用 CSS `mask-composite: exclude` 真实透明裁切上下邮票齿孔与首条虚线双侧撕票半圆凹孔，搭配外层 `drop-shadow` 自然轮廓投影消除边缘色差；支持单号一键复制、和纸胶带状态签、手绘高光超大取餐码、五步进度条、斜贴胶带餐品图（兼容规格/加料 `customizationText`）、双主操作按钮（「刷新状态 / 联系档口」）以及完整取消订单与真实/样例轮询逻辑。
+  - 同步纳入学生端确认订单改版与菜品规格/小料定制（`ConfirmPage.tsx`、`confirm-order.css`、`types.ts`、`orderDraft.ts` 等）、个人中心与登录细节调整，以及档口端与管理端最新前端同步改动（`OrderCard.tsx`、堂食/外带变更展示等）。
+- 同步边界：仅同步 `apps/mobile/src` 与 `apps/mobile/HANDOFF.md`；根配置、`android/`、`capacitor.config.ts`、`package.json` 保持远端版本，过滤全部 `*.sync-conflict-*` 与 `~syncthing~*` 临时文件。
+- 验证结果：`frontend/` 下 `npm run typecheck`（`tsc --noEmit`）0 错误、`npx tsc -p student/tsconfig.preview.json --noEmit` 0 错误、`vite build` 构建通过；移动端 `390×844` 浏览器实测首屏布局、齿孔边缘与弹窗交互无报错。

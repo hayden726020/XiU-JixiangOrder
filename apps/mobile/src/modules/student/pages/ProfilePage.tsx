@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { StudentOrder, StudentSource } from '../types';
+import type { StudentMode, StudentOrder, StudentSource } from '../types';
+import { writeStudentModeOverride } from '../data/mode';
 import { useStudentSessionGate } from '../state/useStudentSessionGate';
 import { clearSession } from '../../../shared/session';
 import { clearPresence } from '../../../shared/location';
@@ -10,6 +11,7 @@ import '../profile.css';
 
 export interface ProfilePageProps {
   source: StudentSource;
+  onSwitchMode?: (next: StudentMode) => void;
   onOpenOrders: () => void;
   onOpenOrder?: (id: string) => void;
   onGoToShop: () => void;
@@ -85,10 +87,57 @@ function CheckCircleIcon() {
 
 function BowlBadgeIcon() {
   return (
-    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <path d="M6 17h20a10 10 0 0 1-20 0Z" fill="#f5b335" stroke="#b96d08" strokeWidth="1.6" />
-      <path d="M11 27h10" stroke="#b96d08" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M11 13c0-2 1.5-2.5 1.5-4.5M16 13c0-2 1.5-2.5 1.5-4.5M21 13c0-2 1.5-2.5 1.5-4.5" stroke="#c87b12" strokeWidth="1.7" strokeLinecap="round" />
+    <svg viewBox="0 0 36 36" fill="none" aria-hidden="true">
+      <path d="M13 10c0 2-1.4 2.6-1.4 4.5M18 9.5c0 2-1.4 2.6-1.4 4.5M23 10c0 2-1.4 2.6-1.4 4.5" stroke="#a66308" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M7.5 18h21c-.4 5.6-4.5 9.2-10.5 9.2S7.9 23.6 7.5 18Z" fill="#f6be4f" fillOpacity="0.45" stroke="#9e5c05" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M14 27.5h8" stroke="#9e5c05" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PostmarkStampSvg() {
+  return (
+    <svg className="profile-ticket__stamp" viewBox="0 0 128 68" fill="none" aria-hidden="true">
+      <g transform="rotate(-14 34 34)" stroke="#c59b61" strokeOpacity="0.68">
+        <circle cx="34" cy="34" r="24.5" strokeWidth="1.7" />
+        <circle cx="34" cy="34" r="20.5" strokeWidth="1" strokeDasharray="4 2" />
+        <line x1="14" y1="26.5" x2="54" y2="26.5" strokeWidth="1" />
+        <line x1="14" y1="41.5" x2="54" y2="41.5" strokeWidth="1" />
+        <text
+          x="34"
+          y="38"
+          textAnchor="middle"
+          fill="#b48342"
+          fillOpacity="0.78"
+          stroke="none"
+          fontSize="11.5"
+          fontWeight="800"
+          letterSpacing="1.2"
+        >
+          食麦呼
+        </text>
+      </g>
+      <path
+        d="M57 22c7-4.5 14 4.5 21 0s14 4.5 21 0 14 4.5 21 0M59 31c7-4.5 14 4.5 21 0s14 4.5 21 0 14 4.5 21 0M57 40c7-4.5 14 4.5 21 0s14 4.5 21 0 14 4.5 21 0"
+        stroke="#c59b61"
+        strokeOpacity="0.62"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function TicketScribbleSvg() {
+  return (
+    <svg className="profile-ticket__scribble" viewBox="0 0 104 14" fill="none" aria-hidden="true">
+      <path
+        d="M2 9.5C30 5 58 2.8 84 2.2L38 11.5C60 9 80 8 102 7.8"
+        stroke="#f0ab18"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -245,6 +294,7 @@ function pickCurrentOrder(orders: StudentOrder[]): StudentOrder | null {
 
 export default function ProfilePage({
   source,
+  onSwitchMode,
   onOpenOrders,
   onOpenOrder,
   onGoToShop,
@@ -298,6 +348,17 @@ export default function ProfilePage({
     }
   }
 
+  function handleModeChange(next: StudentMode) {
+    if (next === source.mode) return;
+    writeStudentModeOverride(next);
+    setModal(null);
+    if (onSwitchMode) {
+      onSwitchMode(next);
+    } else {
+      window.location.reload();
+    }
+  }
+
   function handleLogout() {
     clearSession();
     refresh();
@@ -329,6 +390,32 @@ export default function ProfilePage({
   const readyCount = orders.filter((o) => o.status === 'READY').length;
   const completedCount = orders.filter((o) => o.status === 'COMPLETED').length;
   const currentOrder = pickCurrentOrder(orders);
+  const ticketBadgeText =
+    source.mode === 'sample'
+      ? '制作中'
+      : currentOrder
+        ? activeStatusText(currentOrder)
+        : '去点餐';
+  const ticketShopName =
+    source.mode === 'sample'
+      ? '旭日食堂 · 江西小炒'
+      : currentOrder?.merchantName?.trim() || '校园食堂档口';
+  const ticketSubtitle =
+    source.mode === 'sample'
+      ? '餐品制作中，预计 10:40 前可取餐'
+      : currentOrder
+        ? activeSubtitle(currentOrder)
+        : '';
+  const ticketCode =
+    source.mode === 'sample'
+      ? '0836'
+      : currentOrder?.pickupCode || '待出码';
+  const ticketTime =
+    source.mode === 'sample'
+      ? '10:40 前'
+      : currentOrder
+        ? formatSlotBefore(currentOrder.slotEnd)
+        : '--:--';
 
   return (
     <div className="student-profile" aria-labelledby="profile-title">
@@ -432,68 +519,72 @@ export default function ProfilePage({
 
         {/* 3. 当前订单票券卡 */}
         <section className="profile-ticket" aria-label="当前订单">
-          <div className="profile-ticket__head">
-            <div className="profile-ticket__title-wrap">
-              <h2>当前订单</h2>
-              <span className="profile-ticket__underline" aria-hidden="true" />
+          <div className="profile-ticket__paper">
+            <div className="profile-ticket__head">
+              <div className="profile-ticket__title-wrap">
+                <h2>当前订单</h2>
+                <TicketScribbleSvg />
+              </div>
+              {currentOrder || source.mode === 'sample' ? (
+                <span className="profile-ticket__tape-badge">{ticketBadgeText}</span>
+              ) : (
+                <span className="profile-ticket__tape-badge is-idle">去点餐</span>
+              )}
             </div>
-            {currentOrder ? (
-              <span className="profile-ticket__tape-badge">{activeStatusText(currentOrder)}</span>
-            ) : (
-              <span className="profile-ticket__tape-badge is-idle">去点餐</span>
-            )}
-          </div>
 
-          {currentOrder ? (
-            <button
-              type="button"
-              className="profile-ticket__body"
-              onClick={() => (onOpenOrder ? onOpenOrder(currentOrder.id) : onOpenOrders())}
-            >
-              <div className="profile-ticket__shop-row">
+            <div className="profile-ticket__divider is-top" aria-hidden="true" />
+
+            {currentOrder || source.mode === 'sample' ? (
+              <button
+                type="button"
+                className="profile-ticket__body"
+                onClick={() =>
+                  currentOrder && onOpenOrder
+                    ? onOpenOrder(currentOrder.id)
+                    : onOpenOrders()
+                }
+              >
+                <div className="profile-ticket__shop-row">
+                  <span className="profile-ticket__bowl">
+                    <BowlBadgeIcon />
+                  </span>
+                  <div className="profile-ticket__shop-info">
+                    <strong>{ticketShopName}</strong>
+                    <p>{ticketSubtitle}</p>
+                  </div>
+                  <PostmarkStampSvg />
+                </div>
+
+                <div className="profile-ticket__divider is-bottom" aria-hidden="true" />
+
+                <div className="profile-ticket__code-row">
+                  <div className="profile-ticket__code-col">
+                    <span className="profile-ticket__label">取餐码</span>
+                    <strong className="profile-ticket__code">{ticketCode}</strong>
+                  </div>
+                  <div className="profile-ticket__sep" aria-hidden="true" />
+                  <div className="profile-ticket__time-col">
+                    <span className="profile-ticket__label is-time">
+                      <ClockIcon />
+                      预计取餐时间
+                    </span>
+                    <strong className="profile-ticket__time">{ticketTime}</strong>
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <button type="button" className="profile-ticket__empty" onClick={onGoToMenu}>
                 <span className="profile-ticket__bowl">
                   <BowlBadgeIcon />
                 </span>
                 <div className="profile-ticket__shop-info">
-                  <strong>{currentOrder.merchantName?.trim() || '校园食堂档口'}</strong>
-                  <p>{activeSubtitle(currentOrder)}</p>
+                  <strong>当前暂无进行中订单</strong>
+                  <p>去挑选一份喜欢的校园餐食，预约时段免排队</p>
                 </div>
-                <span className="profile-ticket__stamp" aria-hidden="true">食麦呼</span>
-              </div>
-
-              <div className="profile-ticket__divider" aria-hidden="true" />
-
-              <div className="profile-ticket__code-row">
-                <div className="profile-ticket__code-col">
-                  <span className="profile-ticket__label">取餐码</span>
-                  <strong className="profile-ticket__code">
-                    {currentOrder.pickupCode || '待出码'}
-                  </strong>
-                </div>
-                <div className="profile-ticket__sep" aria-hidden="true" />
-                <div className="profile-ticket__time-col">
-                  <span className="profile-ticket__label">
-                    <ClockIcon />
-                    预计取餐时间
-                  </span>
-                  <strong className="profile-ticket__time">
-                    {formatSlotBefore(currentOrder.slotEnd)}
-                  </strong>
-                </div>
-              </div>
-            </button>
-          ) : (
-            <button type="button" className="profile-ticket__empty" onClick={onGoToMenu}>
-              <span className="profile-ticket__bowl">
-                <BowlBadgeIcon />
-              </span>
-              <div className="profile-ticket__shop-info">
-                <strong>当前暂无进行中订单</strong>
-                <p>去挑选一份喜欢的校园餐食，预约时段免排队</p>
-              </div>
-              <ChevronRightIcon />
-            </button>
-          )}
+                <ChevronRightIcon />
+              </button>
+            )}
+          </div>
         </section>
 
         {/* 4. 常用服务卡片 */}
@@ -657,8 +748,40 @@ export default function ProfilePage({
             </div>
             <div className="profile-modal__body">
               <p><strong>当前账号</strong>：{displayName}</p>
-              <p><strong>数据模式</strong>：{source.mode === 'sample' ? '演示模式（样例数据）' : '真实模式（公共服务）'}</p>
+              <div className="profile-mode-section">
+                <span className="profile-mode-section__label">数据模式切换</span>
+                <div className="profile-mode-switch" role="group" aria-label="切换演示模式与真实模式">
+                  <button
+                    type="button"
+                    className={`profile-mode-switch__btn${source.mode === 'sample' ? ' is-active' : ''}`}
+                    aria-pressed={source.mode === 'sample'}
+                    onClick={() => handleModeChange('sample')}
+                  >
+                    演示模式
+                  </button>
+                  <button
+                    type="button"
+                    className={`profile-mode-switch__btn${source.mode === 'real' ? ' is-active' : ''}`}
+                    aria-pressed={source.mode === 'real'}
+                    onClick={() => handleModeChange('real')}
+                  >
+                    真实模式
+                  </button>
+                </div>
+                <p className="profile-mode-section__hint">
+                  {source.mode === 'sample'
+                    ? '当前为演示模式（本地样例数据，免登录体验）'
+                    : '当前为真实模式（连接公共服务，需学生账号登录）'}
+                </p>
+              </div>
               <div className="profile-modal__actions">
+                <button
+                  type="button"
+                  className="profile-modal__btn-primary"
+                  onClick={() => handleModeChange(source.mode === 'sample' ? 'real' : 'sample')}
+                >
+                  {source.mode === 'sample' ? '切换到真实模式' : '切换到演示模式'}
+                </button>
                 <button
                   type="button"
                   className="profile-modal__btn-secondary"

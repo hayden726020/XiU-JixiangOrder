@@ -8,6 +8,8 @@ import {
 } from '../state/actionMatrix';
 import {
   cancelRequestLabel,
+  diningModeChangeLabel,
+  diningModeChangeRoute,
   diningModeView,
   formatDateTime,
   formatSlot,
@@ -108,6 +110,11 @@ order,
           <span className={`merchant-tag merchant-tag--${status.tone}`}>{status.label}</span>
           <span className={`merchant-tag merchant-tag--${dining.tone}`}>{dining.label}</span>
         </div>
+        {order.diningModeChange.status === 'PENDING' && (
+          <p className="detail-alert" data-dining-mode-change="PENDING">
+            学生申请更改用餐方式：{diningModeChangeRoute(order.diningModeChange)}，取餐前请先确认。
+          </p>
+        )}
         <p className="detail-next">下一步：{primary ? primary.label : '当前没有可用的主操作'}</p>
       </header>
 
@@ -258,6 +265,27 @@ order,
             )}
           </div>
         </div>
+
+        {order.diningModeChange.status !== 'NONE' && (
+          <div className="detail-info-row" data-dining-mode-change={order.diningModeChange.status}>
+            <h3>用餐方式申请</h3>
+            <div className="detail-info-row__content">
+              <p className="merchant-muted detail-emphasis">
+                {diningModeChangeRoute(order.diningModeChange)}
+              </p>
+              <p className="merchant-muted">{diningModeChangeLabel(order.diningModeChange)}</p>
+              {order.diningModeChange.reason && (
+                <p className="merchant-muted">申请理由：{order.diningModeChange.reason}</p>
+              )}
+              {order.diningModeChange.decisionReason && (
+                <p className="merchant-muted">处理理由：{order.diningModeChange.decisionReason}</p>
+              )}
+              {order.diningModeChange.status === 'PENDING' && (
+                <p className="hint">请先确认打包或餐具安排；当前订单仍按原用餐方式记录。</p>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {verifyAction && (
@@ -357,7 +385,7 @@ order,
         <h3>用餐方式</h3>
         <p className="detail-emphasis">{dining.label} · {dining.description}</p>
         {order.diningModeReason && <p className="merchant-muted">变更理由：{order.diningModeReason}</p>}
-        <p className="hint">用餐方式由学生下单时选择，档口不可修改。</p>
+        <p className="hint">用餐方式由学生选择；学生可申请变更，档口按确认后的方式备餐。</p>
       </section>
 
       <section className="detail-block detail-block--operations">

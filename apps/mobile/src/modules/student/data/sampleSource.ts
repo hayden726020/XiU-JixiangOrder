@@ -54,7 +54,19 @@ function normalizeItems(items: DraftItemInput[]): DraftItemInput[] {
   return items
     .slice()
     .sort((a, b) => String(a.dishId).localeCompare(String(b.dishId)))
-    .map((item) => ({ dishId: item.dishId, quantity: item.quantity }));
+    .map((item) => ({
+      dishId: item.dishId,
+      quantity: item.quantity,
+      ...(item.selectedFlavors && item.selectedFlavors.length > 0
+        ? { selectedFlavors: item.selectedFlavors.map((entry) => ({ ...entry })) }
+        : {}),
+      ...(item.selectedSides && item.selectedSides.length > 0
+        ? { selectedSides: item.selectedSides.slice() }
+        : {}),
+      ...(item.selectedAddOns && item.selectedAddOns.length > 0
+        ? { selectedAddOns: item.selectedAddOns.slice() }
+        : {}),
+    }));
 }
 
 function pad(value: number): string {

@@ -61,6 +61,7 @@ export default function MerchantMyInfoPage({
   const storedPhone = merchant?.contactPhone ?? '';
   const phoneMasked = isMaskedPhone(storedPhone);
 
+  const [merchantNameInput, setMerchantNameInput] = useState(merchantName);
   const [contactName, setContactName] = useState(merchant?.contactName ?? '');
   const [phoneInput, setPhoneInput] = useState(phoneMasked ? '' : storedPhone);
   const [shopName, setShopName] = useState(shop?.name ?? '');
@@ -168,13 +169,21 @@ export default function MerchantMyInfoPage({
   useEffect(() => {
     const nextMerchant = profile?.merchant ?? null;
     const nextShop = profile?.shop ?? null;
+    setMerchantNameInput(
+      resolveEffectiveMerchantName({
+        mode,
+        session,
+        serverMerchantName: nextMerchant?.name ?? null,
+        fallback: '未注册商家',
+      }),
+    );
     setContactName(nextMerchant?.contactName ?? '');
     const phone = nextMerchant?.contactPhone ?? '';
     setPhoneInput(isMaskedPhone(phone) ? '' : phone);
     setShopName(nextShop?.name ?? '');
     setLocation(nextShop?.location ?? '');
     setDescription(nextShop?.description ?? '');
-  }, [profile]);
+  }, [profile, mode, session]);
 
   function info(text: string) {
     setFeedback(text);
@@ -204,6 +213,7 @@ export default function MerchantMyInfoPage({
     }
     const phoneChanged = phoneInput.trim().length > 0;
     const contactCheck = validateMerchantContact({
+      merchantName: merchantNameInput,
       contactName,
       contactPhone: phoneChanged ? phoneInput : null,
     });
@@ -222,6 +232,7 @@ export default function MerchantMyInfoPage({
     try {
       const saved = await source.updateProfile({
         requestId: createRequestId('merchant-profile'),
+        merchantName: contactCheck.value.merchantName,
         contactName: contactCheck.value.contactName,
         ...(contactCheck.value.contactPhone === null ? {} : { contactPhone: contactCheck.value.contactPhone }),
         ...(shop && shopCheck?.ok
@@ -376,13 +387,30 @@ export default function MerchantMyInfoPage({
       {accountSection}
 
       <form className="merchant-my-info__form" onSubmit={submit} noValidate>
-        <div className="merchant-my-info__readonly">
-          <span>商家名称</span>
-          <strong data-my-info-merchant-name>{merchantName}</strong>
-          <p>商家名称跟随当前档口登录账号，不能单独修改。</p>
-        </div>
-
         <h3 className="merchant-my-info__section">个人信息</h3>
+
+        <div className="merchant-my-info__field">
+          <label htmlFor="merchant-my-info-merchant-name">商家名称</label>
+          <input
+            id="merchant-my-info-merchant-name"
+            value={merchantNameInput}
+            onChange={(event) => {
+              setMerchantNameInput(event.target.value);
+              clearError('merchantName');
+              setFeedback(null);
+            }}
+            maxLength={30}
+            placeholder="商家名称，2—30 个字符"
+            autoComplete="organization"
+            data-my-info-field="merchantName"
+            data-my-info-merchant-name
+          />
+          {errors.merchantName && (
+            <p className="merchant-my-info__error" role="alert" data-my-info-error="merchantName">
+              {errors.merchantName}
+            </p>
+          )}
+        </div>
 
         <div className="merchant-my-info__field">
           <label htmlFor="merchant-my-info-name">店铺负责人</label>

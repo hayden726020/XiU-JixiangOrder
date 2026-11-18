@@ -7,6 +7,8 @@ import type {
   DishCustomizationDraft,
   DishType,
   MenuDay,
+  Slot,
+  SlotDay,
   SourceResult,
   UploadedDishImage,
 } from '../data/types';
@@ -31,6 +33,7 @@ import {
   type DishPatch,
 } from '../state/menuEdit';
 import { DISH_TYPE_OPTIONS, dishTypeLabel, validateNewDish } from '../state/onboarding';
+import { formatClock } from '../state/orderView';
 import { formatYuan } from '../utils/money';
 
 interface MenuPageProps {
@@ -52,6 +55,8 @@ interface MenuPageProps {
   dishLibraryError: string | null;
   onLoadDishLibrary: () => void;
   onSaveDailyMenu: (items: DailyMenuSelection[], requestId: string) => Promise<SourceResult<MenuDay>>;
+  slots: SlotDay | null;
+  onSaveSlot: (slot: Slot, patch: { capacity: number; enabled: boolean }, requestId: string) => Promise<SourceResult<Slot>>;
 }
 
 function shortDate(date: string): string {
@@ -78,6 +83,8 @@ export default function MenuPage({
   dishLibraryError,
   onLoadDishLibrary,
   onSaveDailyMenu,
+  slots,
+  onSaveSlot,
   onGoSetup,
 }: MenuPageProps) {
   const dateOptions = isSample
@@ -111,6 +118,14 @@ export default function MenuPage({
   const [dishRequestId, setDishRequestId] = useState('');
   const [dishError, setDishError] = useState<string | null>(null);
   const [dishSaving, setDishSaving] = useState(false);
+  const [dishTogglingId, setDishTogglingId] = useState<string | null>(null);
+  const [dishToggleFeedback, setDishToggleFeedback] = useState<{ dishId: string; message: string } | null>(null);
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [slotCapacityText, setSlotCapacityText] = useState('');
+  const [slotEnabled, setSlotEnabled] = useState(true);
+  const [slotRequestId, setSlotRequestId] = useState('');
+  const [slotSaving, setSlotSaving] = useState(false);
+  const [slotError, setSlotError] = useState<string | null>(null);
   const [deleteDishId, setDeleteDishId] = useState<string | null>(null);
   const [deleteRequestId, setDeleteRequestId] = useState('');
   const [dishDeleteError, setDishDeleteError] = useState<string | null>(null);
@@ -380,8 +395,10 @@ export default function MenuPage({
     setDishSaving(true);
     setDishError(null);
     let imageUrlForSave: string | null | undefined;
-    if (customizations[dish.dishId] !== undefined) {
-      const image = await uploadImageForSave(custom.value.imageUrl);
+    const draftImage = custom.value.imageUrl;
+    const currentImage = customizations[dish.dishId]?.imageUrl ?? dish.imageUrl;
+    if (draftImage !== currentImage || draftImage?.startsWith('data:')) {
+      const image = await uploadImageForSave(draftImage);
       if (!image.ok) {
         setDishSaving(false);
         setDishCustomError(image.error);
@@ -405,6 +422,68 @@ export default function MenuPage({
       return;
     }
     setDishError(menuWriteErrorText(result.error.code, result.error.message));
+  }
+
+  async function toggleDishSale(dish: Dish) {
+    if (dishTogglingId !== null) return;
+    setDishTogglingId(dish.dishId);
+    setDishToggleFeedback(null);
+    const patch: DishPatch = {
+      name: dish.name,
+      type: dish.type ?? 'STAPLE',
+      priceFen: dish.unitPriceFen,
+      availableQuantity: dish.availableQuantity,
+      onSale: !dish.onSale,
+      imageUrl: dish.imageUrl,
+    };
+    const result = await onSaveDish(dish, patch, createRequestId('merchant-dish-sale'));
+    setDishTogglingId(null);
+    if (!result.ok) {
+      setDishToggleFeedback({
+        dishId: dish.dishId,
+        message: menuWriteErrorText(result.error.code, result.error.message),
+      });
+    }
+  }
+
+  function startSlotEdit(slot: Slot) {
+    setEditingSlotId(slot.slotId);
+    setSlotCapacityText(String(slot.capacity));
+    setSlotEnabled(slot.enabled);
+    setSlotRequestId(createRequestId('merchant-slot'));
+    setSlotError(null);
+  }
+
+  function cancelSlotEdit() {
+    if (slotSaving) return;
+    setEditingSlotId(null);
+    setSlotRequestId('');
+    setSlotError(null);
+  }
+
+  async function submitSlot(slot: Slot) {
+    const text = slotCapacityText.trim();
+    const capacity = Number(text);
+    if (!/^\d+$/.test(text) || !Number.isSafeInteger(capacity) || capacity < 1 || capacity > 1000) {
+      setSlotError('名额必须是 1—1000 的整数。');
+      return;
+    }
+    if (capacity < slot.occupied) {
+      setSlotError(`名额不能低于已预约的 ${slot.occupied} 个。`);
+      return;
+    }
+    const requestId = slotRequestId || createRequestId('merchant-slot');
+    setSlotRequestId(requestId);
+    setSlotSaving(true);
+    setSlotError(null);
+    const result = await onSaveSlot(slot, { capacity, enabled: slotEnabled }, requestId);
+    setSlotSaving(false);
+    if (result.ok) {
+      setEditingSlotId(null);
+      setSlotRequestId('');
+      return;
+    }
+    setSlotError(menuWriteErrorText(result.error.code, result.error.message));
   }
 
   function startCreateDish() {
@@ -800,7 +879,11 @@ export default function MenuPage({
                   return (
                     <li
                       key={dish.dishId}
-                      className={dish.onSale ? 'menu-item' : 'menu-item menu-item--off'}
+                      className={[
+                        'menu-item',
+                        !dish.onSale ? 'menu-item--off' : '',
+                        dish.onSale && dish.availableQuantity === 0 ? 'menu-item--soldout' : '',
+                      ].filter(Boolean).join(' ')}
                       data-dish-id={dish.dishId}
                       data-dish-version={dish.version ?? 'missing'}
                     >
@@ -827,13 +910,33 @@ export default function MenuPage({
                           ) : (
                             <span className="menu-badge menu-badge--on">在售</span>
                           )}
-                          <span className="menu-item__qty">库存 {dish.availableQuantity}</span>
+                          <span className={`menu-item__qty${dish.availableQuantity === 0 ? ' is-soldout' : dish.onSale && dish.availableQuantity <= 5 ? ' is-low' : ''}`}>
+                            库存 {dish.availableQuantity}
+                            {dish.onSale && dish.availableQuantity > 0 && dish.availableQuantity <= 5 && (
+                              <span className="menu-item__stock-warning">偏低</span>
+                            )}
+                          </span>
                           <span className="menu-item__version">
                             {canEditVersion(dish.version) ? `v${dish.version}` : 'version 未返回'}
                           </span>
                         </span>
                       </span>
                       <span className="menu-item__actions">
+                        <button
+                          type="button"
+                          className="menu-item__sale-toggle"
+                          onClick={() => void toggleDishSale(dish)}
+                          disabled={
+                            !canEditVersion(dish.version)
+                            || dishSaving
+                            || dishDeletingId !== null
+                            || dishTogglingId !== null
+                            || editingDishId === dish.dishId
+                          }
+                          aria-busy={dishTogglingId === dish.dishId || undefined}
+                        >
+                          {dishTogglingId === dish.dishId ? '保存中…' : dish.onSale ? '下架' : '上架'}
+                        </button>
                         <button
                           type="button"
                           className="menu-item__edit"
@@ -863,6 +966,11 @@ export default function MenuPage({
                           删除
                         </button>
                       </span>
+                      {dishToggleFeedback?.dishId === dish.dishId && (
+                        <p className="action-feedback action-feedback--error menu-item__feedback" role="alert">
+                          {dishToggleFeedback.message}
+                        </p>
+                      )}
                     </li>
                   );
                 })}
@@ -1110,6 +1218,100 @@ export default function MenuPage({
                   先去商家注册与开店
                 </button>
               )}
+            </section>
+          )}
+
+          {slots && (
+            <section className="menu-card menu-card--slots" aria-label="接单时段">
+              <header className="menu-card__head">
+                <div>
+                  <h3>接单时段</h3>
+                  <p>总名额 / 已预约 / 剩余；名额不能低于已预约数量。</p>
+                </div>
+                <span className="menu-card__hint">{slots.slots.length} 个时段</span>
+              </header>
+              <ul className="slot-list">
+                {slots.slots.map((slot) => {
+                  const closed = !slot.enabled;
+                  return (
+                    <li
+                      key={slot.slotId}
+                      className={slot.full || closed ? 'slot-item slot-item--full' : 'slot-item'}
+                      data-slot-id={slot.slotId}
+                      data-slot-version={slot.version ?? 'missing'}
+                    >
+                      <span className="slot-item__time">
+                        {formatClock(slot.slotStart)}—{formatClock(slot.slotEnd)}
+                        {slot.full ? '（已满）' : closed ? '（已关闭）' : ''}
+                      </span>
+                      <span>名额 {slot.capacity}</span>
+                      <span>已占 {slot.occupied}</span>
+                      <span>剩余 {slot.remaining}</span>
+                      <button
+                        type="button"
+                        className="menu-item__edit"
+                        onClick={() => startSlotEdit(slot)}
+                        disabled={!canEditVersion(slot.version) || slotSaving || editingSlotId === slot.slotId}
+                      >
+                        {editingSlotId === slot.slotId ? '设置中' : '设置'}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {editingSlotId && (() => {
+                const slot = slots.slots.find((item) => item.slotId === editingSlotId);
+                if (!slot) return null;
+                return (
+                  <div className="menu-slot-edit" data-slot-edit={slot.slotId}>
+                    <span className="menu-slot-edit__title">
+                      {formatClock(slot.slotStart)}—{formatClock(slot.slotEnd)}
+                    </span>
+                    <label className="menu-field">
+                      名额
+                      <input
+                        value={slotCapacityText}
+                        inputMode="numeric"
+                        onChange={(event) => setSlotCapacityText(event.target.value)}
+                        aria-label="时段名额"
+                      />
+                    </label>
+                    <label className="menu-field menu-field--switch">
+                      <input
+                        type="checkbox"
+                        checked={slotEnabled}
+                        onChange={(event) => setSlotEnabled(event.target.checked)}
+                        aria-label="时段开放接单"
+                      />
+                      <span>开放接单</span>
+                    </label>
+                    <div className="action-bar">
+                      <button
+                        type="button"
+                        className="action-button action-button--primary"
+                        onClick={() => void submitSlot(slot)}
+                        disabled={slotSaving}
+                        aria-busy={slotSaving || undefined}
+                      >
+                        {slotSaving ? '保存中…' : '保存时段'}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-button"
+                        onClick={cancelSlotEdit}
+                        disabled={slotSaving}
+                      >
+                        取消
+                      </button>
+                    </div>
+                    {slotError && (
+                      <p className="action-feedback action-feedback--error" role="alert">
+                        {slotError}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </section>
           )}
 

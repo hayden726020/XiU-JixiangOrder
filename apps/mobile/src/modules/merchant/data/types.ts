@@ -23,6 +23,15 @@ export interface CancelRequest {
   decisionReason: string | null;
 }
 
+export interface DiningModeChangeRequest {
+  status: CancelRequestStatus;
+  reason: string | null;
+  decisionReason: string | null;
+  fromDiningMode: DiningMode | null;
+  toDiningMode: DiningMode | null;
+  requestedAt: string | null;
+}
+
 export interface OrderDelay {
   reason: string;
   expectedReadyAt: string;
@@ -42,6 +51,7 @@ export interface MerchantOrder {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   cancelRequest: CancelRequest;
+  diningModeChange: DiningModeChangeRequest;
   cancellationReason: string | null;
   version: number;
   createdAt: string;
@@ -62,6 +72,9 @@ export interface Dish {
   onSale: boolean;
   version: number | null;
   imageUrl: string | null;
+  flavorGroups: DishFlavorGroup[];
+  sides: DishOption[];
+  addOns: DishOption[];
 }
 
 export interface DishOption {
@@ -188,6 +201,9 @@ export interface UpdateDishInput {
   availableQuantity: number;
   onSale: boolean;
   imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 export interface DeleteDishInput {
@@ -229,6 +245,7 @@ export interface MerchantAccount {
   active: boolean;
   merchantId: string | null;
   merchantName: string | null;
+  shopName?: string | null;
   contactName: string | null;
   contactPhone: string | null;
   createdAt: string | null;
@@ -238,6 +255,7 @@ export interface UpdateMerchantAccountInput {
   requestId: string;
   account?: string;
   password?: string;
+  merchantName?: string;
   contactName?: string;
   contactPhone?: string;
 }
@@ -270,6 +288,7 @@ export interface MerchantRegistrationInput {
 
 export interface MerchantProfileUpdateInput {
   requestId: string;
+  merchantName?: string;
   contactName?: string;
   contactPhone?: string;
   shopId?: string;
@@ -294,6 +313,9 @@ export interface CreateDishInput {
   availableQuantity: number;
   onSale: boolean;
   imageUrl?: string | null;
+  flavorGroups?: DishFlavorGroup[];
+  sides?: DishOption[];
+  addOns?: DishOption[];
 }
 
 export interface UploadedDishImage {

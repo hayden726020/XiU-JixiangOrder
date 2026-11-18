@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createStudentSource } from './data/sampleSource';
-import { resolveStudentMode } from './data/mode';
+import { resolveStudentMode, writeStudentModeOverride } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
 import {
   clearDraftSnapshot,
@@ -17,7 +17,7 @@ import ShopSelectPage from './pages/ShopSelectPage';
 import SlotDiningPage from './pages/SlotDiningPage';
 import ProfilePage from './pages/ProfilePage';
 import { useStudentSessionGate } from './state/useStudentSessionGate';
-import type { ShopSummary, StudentSource } from './types';
+import type { ShopSummary, StudentMode, StudentSource } from './types';
 import { SHOP_SWITCH_BUSY } from './utils/shopTexts';
 import { todayAndTomorrow } from './utils/dates';
 import { filterDishesByShop } from './utils/dishShopFilter';
@@ -38,19 +38,45 @@ function previewSlotRequested(): boolean {
 }
 
 export default function StudentHome() {
+  const [mode, setMode] = useState<StudentMode>(() => resolveStudentMode());
   const { gate } = useStudentSessionGate();
-  const sampleMode = resolveStudentMode() === 'sample';
+  const sampleMode = mode === 'sample';
   const previewSlot = sampleMode && previewSlotRequested();
 
-  if (!gate.usable && !sampleMode) {
-    return <LoginPage gate={gate} />;
+  function handleSwitchMode(next: StudentMode): void {
+    writeStudentModeOverride(next);
+    setMode(next);
   }
 
-  return <StudentHomeApp previewSlot={previewSlot} />;
+  if (!gate.usable && !sampleMode) {
+    return (
+      <LoginPage
+        gate={gate}
+        onSwitchToSample={() => handleSwitchMode('sample')}
+      />
+    );
+  }
+
+  return (
+    <StudentHomeApp
+      key={mode}
+      mode={mode}
+      previewSlot={previewSlot}
+      onSwitchMode={handleSwitchMode}
+    />
+  );
 }
 
-function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
-  const [source] = useState<StudentSource>(() => createStudentSource({ mode: resolveStudentMode() }));
+function StudentHomeApp({
+  mode,
+  previewSlot,
+  onSwitchMode,
+}: {
+  mode: StudentMode;
+  previewSlot: boolean;
+  onSwitchMode: (next: StudentMode) => void;
+}) {
+  const [source] = useState<StudentSource>(() => createStudentSource({ mode }));
   const [pendingSnapshot] = useState<DraftSelection | null>(() => {
     if (source.mode === 'real') {
       return readDraftSnapshot({ allowedDates: todayAndTomorrow(new Date()) });
@@ -93,6 +119,7 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
   const [ordersBackTo, setOrdersBackTo] = useState<OrdersBackTo>('shop');
   const [shopNotice, setShopNotice] = useState('');
   const previewStarted = useRef(false);
+  const pendingShopTabRef = useRef<'home' | 'order' | null>(null);
 
   useEffect(() => {
     if (!previewSlot || previewStarted.current) return;
@@ -120,27 +147,41 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
     return () => { cancelled = true; };
   }, [previewSlot, source, draft]);
 
-  function goTo(next: StudentView, nav: 'push' | 'back' = 'push'): void {
+  function goTo(
+    next: StudentView,
+    nav: 'push' | 'back' = 'push',
+    nextShopTab: 'home' | 'order' = shopTab,
+  ): void {
     if (nav === 'back') {
       window.history.back();
       return;
     }
-    window.history.pushState({ module: 'student', studentView: next }, '');
+    window.history.pushState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
     setView(next);
     window.scrollTo(0, 0);
   }
 
-  function replaceTo(next: StudentView): void {
-    window.history.replaceState({ module: 'student', studentView: next }, '');
+  function replaceTo(next: StudentView, nextShopTab: 'home' | 'order' = shopTab): void {
+    window.history.replaceState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
     setView(next);
     window.scrollTo(0, 0);
   }
 
   useEffect(() => {
-    window.history.replaceState({ module: 'student', studentView: 'shop' }, '');
+    window.history.replaceState({ module: 'student', studentView: 'shop', shopTab: 'home' }, '');
     const onPopState = (event: PopStateEvent) => {
-      const state = event.state as { module?: string; studentView?: StudentView } | null;
+      const state = event.state as {
+        module?: string;
+        studentView?: StudentView;
+        shopTab?: 'home' | 'order';
+      } | null;
       if (state && state.module === 'student') {
+        if (pendingShopTabRef.current !== null) {
+          setShopTab(pendingShopTabRef.current);
+          pendingShopTabRef.current = null;
+        } else if (state.shopTab === 'home' || state.shopTab === 'order') {
+          setShopTab(state.shopTab);
+        }
         setView(state.studentView ?? 'shop');
       } else {
         setView('shop');
@@ -191,15 +232,16 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
     return (
       <ProfilePage
         source={source}
+        onSwitchMode={onSwitchMode}
         onOpenOrders={() => openOrders('shop')}
         onOpenOrder={(id) => openOrderFrom('orders', id)}
         onGoToShop={() => {
           setShopTab('home');
-          goTo('shop');
+          goTo('shop', 'push', 'home');
         }}
         onGoToMenu={() => {
           setShopTab('order');
-          goTo('shop');
+          goTo('shop', 'push', 'order');
         }}
       />
     );
@@ -213,7 +255,10 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
         currentShop={currentShop}
         notice={shopNotice || draft.getState().notice || ''}
         activeTab={shopTab}
-        onTabChange={setShopTab}
+        onTabChange={(nextTab) => {
+          setShopTab(nextTab);
+          window.history.replaceState({ module: 'student', studentView: 'shop', shopTab: nextTab }, '');
+        }}
         onEnterShop={enterShop}
         onOpenOrders={() => openOrders('shop')}
         onOpenProfile={() => goTo('profile')}
@@ -256,11 +301,11 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
         onOpenOrder={(id) => openOrderFrom('orders', id)}
         onGoToHome={() => {
           setShopTab('home');
-          goTo('shop');
+          goTo('shop', 'push', 'home');
         }}
         onGoToShop={() => {
           setShopTab('order');
-          goTo('shop');
+          goTo('shop', 'push', 'order');
         }}
         onGoToProfile={() => goTo('profile')}
       />
@@ -277,11 +322,11 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
         backLabel={detailFrom === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
         onGoToHome={() => {
           setShopTab('home');
-          goTo('shop');
+          goTo('shop', 'push', 'home');
         }}
         onGoToShop={() => {
           setShopTab('order');
-          goTo('shop');
+          goTo('shop', 'push', 'order');
         }}
         onGoToOrders={() => goTo('orders')}
         onGoToProfile={() => goTo('profile')}
@@ -295,6 +340,7 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
       draft={draft}
       shop={currentShop}
       onBackToShops={() => {
+        pendingShopTabRef.current = 'order';
         setShopTab('order');
         goTo('shop', 'back');
       }}
@@ -304,7 +350,7 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
       onOpenOrders={() => openOrders('menu')}
       onGoHome={() => {
         setShopTab('home');
-        goTo('shop');
+        goTo('shop', 'push', 'home');
       }}
       onGoProfile={() => goTo('profile')}
     />

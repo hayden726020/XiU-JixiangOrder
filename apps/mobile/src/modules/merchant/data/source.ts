@@ -9,6 +9,8 @@ import type {
 
   DeletedDish,
   Dish,
+  DishFlavorGroup,
+  DishOption,
   DishType,
   MenuDay,
   MerchantAccount,
@@ -40,6 +42,9 @@ interface ApiDish {
   onSale: boolean;
   version?: number;
   imageUrl?: string | null;
+  flavorGroups?: unknown;
+  sides?: unknown;
+  addOns?: unknown;
 }
 
 interface ApiSlot {
@@ -87,6 +92,14 @@ interface ApiOrder {
   status: MerchantOrder['status'];
   paymentStatus: MerchantOrder['paymentStatus'];
   cancelRequest: ApiCancelRequest;
+  diningModeChange?: {
+    status?: MerchantOrder['diningModeChange']['status'];
+    reason?: string | null;
+    decisionReason?: string | null;
+    fromDiningMode?: MerchantOrder['diningMode'] | null;
+    toDiningMode?: MerchantOrder['diningMode'] | null;
+    requestedAt?: string | null;
+  } | null;
   cancellationReason: string | null;
   version: number;
   createdAt: string;
@@ -121,6 +134,19 @@ interface ApiMerchantProfile {
   } | null;
 
   onboardingStep?: string;
+}
+
+interface ApiMerchantWallet {
+  balanceFen?: number;
+  totalIncomeFen?: number;
+  totalWithdrawnFen?: number;
+  entries?: {
+    id?: string;
+    kind?: string;
+    label?: string;
+    amountFen?: number;
+    createdAt?: string;
+  }[];
 }
 
 interface ApiMerchantAccount {
@@ -187,6 +213,41 @@ function apiImageUrl(value: unknown): string | null {
   return buildApiUrl(trimmed) ?? trimmed;
 }
 
+function apiOptions(value: unknown): DishOption[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) return [];
+    const option = entry as Record<string, unknown>;
+    if (typeof option.id !== 'string' || typeof option.name !== 'string') return [];
+    return [{
+      id: option.id,
+      name: option.name,
+      priceFen: typeof option.priceFen === 'number' && Number.isFinite(option.priceFen)
+        ? Math.max(0, Math.round(option.priceFen))
+        : 0,
+    }];
+  });
+}
+
+function apiFlavorGroups(value: unknown): DishFlavorGroup[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) return [];
+    const group = entry as Record<string, unknown>;
+    if (typeof group.id !== 'string' || typeof group.name !== 'string') return [];
+    return [{
+      id: group.id,
+      name: group.name,
+      required: group.required !== false,
+      options: apiOptions(group.options),
+    }];
+  });
+}
+
 function mapDish(dish: ApiDish): Dish {
   return {
     dishId: dish.id,
@@ -197,6 +258,9 @@ function mapDish(dish: ApiDish): Dish {
     onSale: dish.onSale,
     version: apiVersion(dish.version),
     imageUrl: apiImageUrl(dish.imageUrl),
+    flavorGroups: apiFlavorGroups(dish.flavorGroups),
+    sides: apiOptions(dish.sides),
+    addOns: apiOptions(dish.addOns),
   };
 }
 
@@ -309,6 +373,39 @@ function mapProfile(payload: ApiMerchantProfile): SourceResult<MerchantProfile> 
   };
 }
 
+function mapWallet(payload: ApiMerchantWallet): SourceResult<WalletSummary> {
+  if (typeof payload !== 'object' || payload === null) {
+    return fail('INVALID_RESPONSE', '钱包响应格式不正确。');
+  }
+  const entries: WalletEntry[] = [];
+  for (const item of Array.isArray(payload.entries) ? payload.entries : []) {
+    if (typeof item !== 'object' || item === null) {
+      continue;
+    }
+    const kind = item.kind === 'income' || item.kind === 'withdraw' ? item.kind : null;
+    if (
+      typeof item.id !== 'string'
+      || kind === null
+      || typeof item.label !== 'string'
+      || typeof item.amountFen !== 'number'
+      || !Number.isFinite(item.amountFen)
+      || typeof item.createdAt !== 'string'
+    ) {
+      continue;
+    }
+    entries.push({ id: item.id, kind, label: item.label, amountFen: item.amountFen, createdAt: item.createdAt });
+  }
+  return {
+    ok: true,
+    data: {
+      balanceFen: Number.isFinite(payload.balanceFen) ? (payload.balanceFen as number) : 0,
+      totalIncomeFen: Number.isFinite(payload.totalIncomeFen) ? (payload.totalIncomeFen as number) : 0,
+      totalWithdrawnFen: Number.isFinite(payload.totalWithdrawnFen) ? (payload.totalWithdrawnFen as number) : 0,
+      entries,
+    },
+  };
+}
+
 function toOnboardingFailure<T>(error: unknown, label: string): SourceResult<T> {
   if (error instanceof ApiError) {
     if (error.code === 'NOT_FOUND') {
@@ -349,6 +446,14 @@ function mapOrder(order: ApiOrder): MerchantOrder {
       status: order.cancelRequest?.status ?? 'NONE',
       reason: order.cancelRequest?.reason ?? null,
       decisionReason: order.cancelRequest?.decisionReason ?? null,
+    },
+    diningModeChange: {
+      status: order.diningModeChange?.status ?? 'NONE',
+      reason: order.diningModeChange?.reason ?? null,
+      decisionReason: order.diningModeChange?.decisionReason ?? null,
+      fromDiningMode: order.diningModeChange?.fromDiningMode ?? null,
+      toDiningMode: order.diningModeChange?.toDiningMode ?? null,
+      requestedAt: order.diningModeChange?.requestedAt ?? null,
     },
     cancellationReason: order.cancellationReason ?? null,
     version: order.version,
@@ -499,7 +604,12 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不读取钱包。');
       }
-      return fail('NOT_IMPLEMENTED', '钱包暂未接入共同服务；余额与提现暂不可用。');
+      try {
+        const data = await apiRequest<ApiMerchantWallet>('/merchant/wallet');
+        return mapWallet(data);
+      } catch (error) {
+        return toFailure(error, '钱包查询失败，请稍后重试。');
+      }
     },
     withdrawWallet: async (): Promise<SourceResult<WalletSummary>> => {
       if (!currentMerchantId()) {
@@ -512,6 +622,7 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不保存资料。');
       }
       const merchantBody: Record<string, unknown> = {};
+      if (input.merchantName !== undefined) merchantBody.merchantName = input.merchantName;
       if (input.contactName !== undefined) merchantBody.contactName = input.contactName;
       if (input.contactPhone !== undefined) merchantBody.contactPhone = input.contactPhone;
       const shopBody: Record<string, unknown> = {};
@@ -535,25 +646,40 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
         }
         if (Object.keys(shopBody).length > 0) {
           if (!input.shopId) {
-            return fail('VALIDATION_ERROR', '缺少店铺标识，请刷新页面后重试。');
-          }
-          if (input.shopVersion === undefined) {
-            return fail('SHOP_VERSION_MISSING', '服务端未返回店铺版本，暂不能安全保存店铺资料。');
-          }
-          const data = await apiRequest<ApiMerchantProfile>(
-            `/merchant/shops/${encodeURIComponent(input.shopId)}`,
-            {
-              method: 'PATCH',
+            if (!input.shopName) {
+              return fail('VALIDATION_ERROR', '缺少店铺标识，请刷新页面后重试。');
+            }
+            const data = await apiRequest<ApiMerchantProfile>('/merchant/shops', {
+              method: 'POST',
               body: {
                 requestId: `${input.requestId}-shop`,
-                expectedVersion: input.shopVersion,
-                ...shopBody,
+                shopName: input.shopName,
+                location: input.location || '一食堂',
+                description: input.description ?? '',
               },
-            },
-          );
-          const mapped = mapProfile(data);
-          if (!mapped.ok) return mapped;
-          nextProfile = mapped.data;
+            });
+            const mapped = mapProfile(data);
+            if (!mapped.ok) return mapped;
+            nextProfile = mapped.data;
+          } else {
+            if (input.shopVersion === undefined) {
+              return fail('SHOP_VERSION_MISSING', '服务端未返回店铺版本，暂不能安全保存店铺资料。');
+            }
+            const data = await apiRequest<ApiMerchantProfile>(
+              `/merchant/shops/${encodeURIComponent(input.shopId)}`,
+              {
+                method: 'PATCH',
+                body: {
+                  requestId: `${input.requestId}-shop`,
+                  expectedVersion: input.shopVersion,
+                  ...shopBody,
+                },
+              },
+            );
+            const mapped = mapProfile(data);
+            if (!mapped.ok) return mapped;
+            nextProfile = mapped.data;
+          }
         }
         if (!nextProfile) {
           return fail('VALIDATION_ERROR', '没有需要保存的资料字段。');
@@ -571,9 +697,8 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
       const accountName = session?.user.role === 'MERCHANT'
         ? session.user.displayName.trim()
         : '';
-      const merchantName = accountName.length >= 2
-        ? accountName.slice(0, 30)
-        : (input.merchantName?.trim() || `${input.contactName.trim()}的档口`);
+      const merchantName = input.merchantName?.trim()
+        || (accountName.length >= 2 ? accountName.slice(0, 30) : `${input.contactName.trim()}的档口`);
       try {
         const data = await apiRequest<ApiMerchantProfile>('/merchant/registration', {
           method: 'POST',
@@ -655,6 +780,9 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
             ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+            ...(input.flavorGroups !== undefined ? { flavorGroups: input.flavorGroups } : {}),
+            ...(input.sides !== undefined ? { sides: input.sides } : {}),
+            ...(input.addOns !== undefined ? { addOns: input.addOns } : {}),
           },
         });
         if (typeof data.id !== 'string') {
@@ -758,6 +886,9 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
             availableQuantity: input.availableQuantity,
             onSale: input.onSale,
             ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+            ...(input.flavorGroups !== undefined ? { flavorGroups: input.flavorGroups } : {}),
+            ...(input.sides !== undefined ? { sides: input.sides } : {}),
+            ...(input.addOns !== undefined ? { addOns: input.addOns } : {}),
           },
         });
         if (typeof data.id !== 'string') {
@@ -1053,6 +1184,7 @@ export function createMerchantSource(options: {
       if (!sampleProfile.merchant) {
         return fail('MERCHANT_REQUIRED', '请先完成商家注册，再修改我的信息。');
       }
+      const merchantName = input.merchantName?.trim() || sampleProfile.merchant.name;
       const contactName = input.contactName?.trim() || sampleProfile.merchant.contactName || '';
       const contactPhone = input.contactPhone?.trim().replace(/[\s-]/g, '')
         || sampleProfile.merchant.contactPhone
@@ -1070,15 +1202,25 @@ export function createMerchantSource(options: {
               : null,
           version: shop.version + 1,
         }
-        : null;
+        : input.shopName?.trim()
+          ? {
+            id: 'demo-shop-01',
+            name: input.shopName.trim(),
+            location: input.location?.trim() || '一食堂',
+            description: input.description?.trim() || null,
+            version: 1,
+          }
+          : null;
       sampleProfile = {
         ...sampleProfile,
         merchant: {
           ...sampleProfile.merchant,
+          name: merchantName,
           contactName,
           contactPhone,
         },
         shop: nextShop,
+        onboardingStep: nextShop ? 'SHOP_CREATED' : sampleProfile.onboardingStep,
       };
       persistSampleProfile(sampleProfile);
       return { ok: true, data: structuredClone(sampleProfile) };
@@ -1176,6 +1318,9 @@ export function createMerchantSource(options: {
         onSale: input.onSale,
         version: 1,
         imageUrl: input.imageUrl ?? null,
+        flavorGroups: input.flavorGroups ?? [],
+        sides: input.sides ?? [],
+        addOns: input.addOns ?? [],
       };
       nextDishId += 1;
       addedDishes.set(dish.dishId, structuredClone(dish));

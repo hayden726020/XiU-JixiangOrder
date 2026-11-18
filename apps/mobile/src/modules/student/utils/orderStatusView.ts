@@ -54,6 +54,20 @@ export interface OrderItemView {
   quantity: number;
   unitPriceText: string;
   subtotalText: string;
+  customizationText: string;
+}
+
+function customizationTextOf(item: OrderItem): string {
+  const customization = item.customization;
+  if (!customization) {
+    return '';
+  }
+  const parts = [
+    ...customization.flavorSelections.map((entry) => `${entry.groupName}：${entry.optionName}`),
+    ...customization.sides.map((side) => side.name),
+    ...customization.addOns.map((addOn) => `${addOn.name} +${formatYuan(addOn.priceFen)}`),
+  ];
+  return parts.join('、');
 }
 
 export interface OrderStatusView {
@@ -184,6 +198,7 @@ export function toOrderStatusView(
       quantity: item.quantity,
       unitPriceText: formatYuan(item.unitPriceFen),
       subtotalText: formatYuan(item.unitPriceFen * item.quantity),
+      customizationText: customizationTextOf(item),
     })),
     totalText: formatYuan(order.totalFen),
     slotRangeText: slotRangeText(order),

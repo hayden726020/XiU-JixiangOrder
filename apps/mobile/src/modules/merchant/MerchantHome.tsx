@@ -57,6 +57,8 @@ import { getSession, subscribeSession, clearSession, type Session } from '../../
 import merchantAvatar from './assets/merchant-avatar-default.webp';
 import './merchant.css';
 import './merchant.v4.css';
+import './merchant.v2.css';
+import './merchant.v2-fix.css';
 
 type DataMode = 'sample' | 'real';
 
@@ -155,6 +157,8 @@ export default function MerchantHome() {
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [walletUnavailable, setWalletUnavailable] = useState(false);
+  const [walletUnavailableMessage, setWalletUnavailableMessage] = useState<string | null>(null);
   const [withdrawInFlight, setWithdrawInFlight] = useState(false);
   const [profile, setProfile] = useState<MerchantProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -227,13 +231,23 @@ export default function MerchantHome() {
     let cancelled = false;
     setWalletLoading(true);
     setWalletError(null);
+    setWalletUnavailable(false);
+    setWalletUnavailableMessage(null);
     void (async () => {
       const result = await source.getWallet();
       if (cancelled) return;
       setWalletLoading(false);
       if (result.ok) {
         setWallet(result.data);
+        setWalletUnavailable(false);
+        setWalletUnavailableMessage(null);
+      } else if (result.error.code === 'NOT_IMPLEMENTED') {
+        setWalletUnavailable(true);
+        setWalletUnavailableMessage(result.error.message);
+        setWalletError(null);
       } else {
+        setWalletUnavailable(false);
+        setWalletUnavailableMessage(null);
         setWalletError(result.error.message);
       }
     })();
@@ -882,6 +896,32 @@ export default function MerchantHome() {
     return result;
   }
 
+  async function saveSlot(
+    slot: SlotDay['slots'][number],
+    patch: { capacity: number; enabled: boolean },
+    requestId: string,
+  ) {
+    const result = await source.updateSlot(menuDate, slot.slotId, {
+      requestId,
+      expectedVersion: slot.version,
+      capacity: patch.capacity,
+      enabled: patch.enabled,
+    });
+    if (result.ok) {
+      setSlots((current) => (current
+        ? {
+          ...current,
+          slots: current.slots.map((item) => (item.slotId === result.data.slotId ? result.data : item)),
+        }
+        : current));
+      setNotice(
+        `时段已更新：${formatClock(result.data.slotStart)}—${formatClock(result.data.slotEnd)}，名额 ${result.data.capacity}，已占 ${result.data.occupied}。`,
+      );
+    }
+    return result;
+  }
+
+
   async function deleteDish(dish: Dish, requestId: string) {
     const result = await source.deleteDish(menuDate, dish.dishId, {
       requestId,
@@ -990,7 +1030,6 @@ export default function MerchantHome() {
           slots={slots}
           loading={homeOrdersLoading || loading}
           onOpenOrders={openOrders}
-          onOpenOrder={openOrder}
           onOpenMenu={openMenu}
         />
       )}
@@ -1000,7 +1039,7 @@ export default function MerchantHome() {
           orders={orders}
           scenario={scenario}
           isSample={mode === 'sample'}
-          onboardingCompleted={profile?.onboardingStep === 'SHOP_CREATED'}
+
           loading={loading}
           error={ordersError}
           page={orderPageInfo.page}
@@ -1016,7 +1055,7 @@ export default function MerchantHome() {
           pendingOrderId={pendingOrderId}
           actionError={actionError}
           onOpenMenu={openMenu}
-          onOpenSetup={openSetup}
+
           onRefresh={refreshOrders}
           refreshing={refreshing}
           lastRefreshedAt={lastRefreshedAt}
@@ -1062,6 +1101,8 @@ export default function MerchantHome() {
           onLoadDishLibrary={loadDishLibrary}
           onSaveDailyMenu={saveDailyMenu}
           onUploadDishImage={(dataUrl, requestId) => source.uploadDishImage(dataUrl, requestId)}
+          slots={slots}
+          onSaveSlot={saveSlot}
           onGoSetup={openSetup}
         />
       )}
@@ -1097,7 +1138,7 @@ export default function MerchantHome() {
         <section className='merchant-my' aria-label='我的'>
           <header className='merchant-view__header'>
             <h2>我的</h2>
-            <span className='merchant-my__mode'>{mode === 'sample' ? '样例演示' : '真实数据'}</span>
+
           </header>
           <div className='merchant-my__card'>
             <div className='merchant-my__avatar'>
@@ -1112,7 +1153,7 @@ export default function MerchantHome() {
                 </span>
               </div>
               <small>
-                {accountDisplayName ?? merchantName ?? (mode === 'sample' ? '档口演示账号' : '未登录')}
+                {merchantName ?? accountDisplayName ?? (mode === 'sample' ? '档口演示账号' : '未登录')}
                 {mode === 'sample' ? ` · 演示日 ${businessDateLabel}` : ' · 今日营业'}
               </small>
             </div>
@@ -1120,6 +1161,10 @@ export default function MerchantHome() {
 
           <div className='merchant-my__group' data-my-profile>
             <h3 className='merchant-my__group-title'>个人信息</h3>
+            <div className='merchant-my__row'>
+              <span>商家名称</span>
+              <span>{profileLoading ? '读取中…' : merchantName || '未填写'}</span>
+            </div>
             <div className='merchant-my__row'>
               <span>店铺负责人</span>
               <span>{profileLoading ? '读取中…' : profile?.merchant?.contactName || '未填写'}</span>
@@ -1317,7 +1362,10 @@ export default function MerchantHome() {
           session={session}
           source={source}
           profile={profile}
-          onProfileChange={setProfile}
+          onProfileChange={(nextProfile) => {
+            setProfile(nextProfile);
+            setDataVersion((current) => current + 1);
+          }}
           onBack={openMy}
         />
       )}
@@ -1327,6 +1375,8 @@ export default function MerchantHome() {
           wallet={wallet}
           loading={walletLoading}
           error={walletError}
+          walletUnavailable={walletUnavailable}
+          walletUnavailableMessage={walletUnavailableMessage}
           withdrawInFlight={withdrawInFlight}
           onWithdraw={(amountFen) => void handleWithdrawDemo(amountFen)}
           onBack={openMy}

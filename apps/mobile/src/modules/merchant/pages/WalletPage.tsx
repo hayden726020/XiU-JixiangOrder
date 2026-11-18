@@ -7,6 +7,8 @@ export interface WalletPageProps {
   wallet: WalletSummary | null;
   loading: boolean;
   error: string | null;
+  walletUnavailable: boolean;
+  walletUnavailableMessage: string | null;
   withdrawInFlight: boolean;
   onWithdraw: (amountFen: number) => void;
   onBack: () => void;
@@ -17,13 +19,14 @@ export default function WalletPage({
   wallet,
   loading,
   error,
+  walletUnavailable,
+  walletUnavailableMessage,
   withdrawInFlight,
   onWithdraw,
   onBack,
 }: WalletPageProps) {
   const [amountText, setAmountText] = useState('50');
   const [localError, setLocalError] = useState<string | null>(null);
-  const walletUnavailable = mode === 'real';
 
   function submitWithdraw() {
     if (withdrawInFlight) return;
@@ -48,9 +51,9 @@ export default function WalletPage({
       </button>
       <h2 className="merchant-wallet__title">钱包</h2>
 
-      {walletUnavailable ? (
+      {walletUnavailable && walletUnavailableMessage ? (
         <div className="merchant-wallet__notice" role="status">
-          钱包暂未接入共同服务；余额与提现以档口实际结算为准，此页仅展示说明，不使用样例数据冒充。
+          {walletUnavailableMessage}
         </div>
       ) : null}
 
@@ -58,7 +61,7 @@ export default function WalletPage({
 
       <div className="merchant-wallet__balance-card">
         <span className="merchant-wallet__balance-label">
-          {walletUnavailable ? '余额（暂未接通）' : '样例余额'}
+          {mode === 'sample' ? '样例余额' : (wallet ? '余额' : '余额（暂未接通）')}
         </span>
         <strong className="merchant-wallet__balance">
           {loading ? '读取中…' : wallet ? formatYuan(wallet.balanceFen) : '—'}
@@ -69,7 +72,7 @@ export default function WalletPage({
         </div>
       </div>
 
-      {!walletUnavailable && (
+      {mode === 'sample' && (
         <form
           className="merchant-wallet__withdraw"
           onSubmit={(event) => {

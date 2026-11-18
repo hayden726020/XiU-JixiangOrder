@@ -93,6 +93,7 @@ export interface AdminMerchantAccount {
   active: boolean;
   merchantId: string | null;
   merchantName: string | null;
+  shopName?: string | null;
   contactName: string | null;
   contactPhone: string | null;
   createdAt: string | null;

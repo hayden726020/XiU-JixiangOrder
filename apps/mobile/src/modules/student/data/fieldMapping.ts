@@ -6,10 +6,15 @@ import type {
   CrowdLevel,
   CrowdReference,
   DiningMode,
+  DishAddOn,
   DishDto,
+  DishFlavorGroup,
+
+  DishSide,
   MenuResponse,
   OrderDelay,
   OrderItem,
+  OrderItemCustomization,
   OrderStatus,
   PaymentStatus,
   ShopSummary,
@@ -110,6 +115,122 @@ function optionalImageUrl(value: unknown): string | null {
   return buildApiUrl(trimmed) ?? trimmed;
 }
 
+function optionalArray(record: Record<string, unknown>, field: string, where: string): unknown[] {
+  const value = record[field];
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    invalidResponse(`${where} 字段 ${field} 必须是数组。`);
+  }
+  return value;
+}
+
+function optionalPriceFen(record: Record<string, unknown>, where: string): number {
+  const value = record.priceFen;
+  if (value === undefined || value === null) {
+    return 0;
+  }
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    invalidResponse(`${where} 字段 priceFen 必须是非负整数。`);
+  }
+  return value;
+}
+
+function parseFlavorGroups(value: unknown[], where: string): DishFlavorGroup[] {
+  return value.map((raw, index) => {
+    const groupWhere = `${where} flavorGroups[${index}]`;
+    if (!isRecord(raw)) {
+      invalidResponse(`${groupWhere} 不是对象。`);
+    }
+    const options = optionalArray(raw, 'options', groupWhere).map((rawOption, optionIndex) => {
+      const optionWhere = `${groupWhere} options[${optionIndex}]`;
+      if (!isRecord(rawOption)) {
+        invalidResponse(`${optionWhere} 不是对象。`);
+      }
+      return {
+        id: requireText(rawOption, 'id', optionWhere),
+        name: requireText(rawOption, 'name', optionWhere),
+        priceFen: optionalPriceFen(rawOption, optionWhere),
+      };
+    });
+    return {
+      id: requireText(raw, 'id', groupWhere),
+      name: requireText(raw, 'name', groupWhere),
+      required: raw.required === undefined ? true : requireBoolean(raw, 'required', groupWhere),
+      options,
+    };
+  });
+}
+
+function parseSides(value: unknown[], where: string): DishSide[] {
+  return value.map((raw, index) => {
+    const sideWhere = `${where} sides[${index}]`;
+    if (!isRecord(raw)) {
+      invalidResponse(`${sideWhere} 不是对象。`);
+    }
+    return {
+      id: requireText(raw, 'id', sideWhere),
+      name: requireText(raw, 'name', sideWhere),
+      priceFen: optionalPriceFen(raw, sideWhere),
+    };
+  });
+}
+
+function parseAddOns(value: unknown[], where: string): DishAddOn[] {
+  return value.map((raw, index) => {
+    const addOnWhere = `${where} addOns[${index}]`;
+    if (!isRecord(raw)) {
+      invalidResponse(`${addOnWhere} 不是对象。`);
+    }
+    return {
+      id: requireText(raw, 'id', addOnWhere),
+      name: requireText(raw, 'name', addOnWhere),
+      priceFen: optionalPriceFen(raw, addOnWhere),
+    };
+  });
+}
+
+function parseItemCustomization(value: unknown, where: string): OrderItemCustomization | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (!isRecord(value)) {
+    invalidResponse(`${where} 字段 customization 必须是对象或 null。`);
+  }
+  const flavorSelections = optionalArray(value, 'flavorSelections', where).map((raw, index) => {
+    const entryWhere = `${where} flavorSelections[${index}]`;
+    if (!isRecord(raw)) {
+      invalidResponse(`${entryWhere} 不是对象。`);
+    }
+    return {
+      groupId: requireText(raw, 'groupId', entryWhere),
+      groupName: requireText(raw, 'groupName', entryWhere),
+      optionId: requireText(raw, 'optionId', entryWhere),
+      optionName: requireText(raw, 'optionName', entryWhere),
+    };
+  });
+  const sides = optionalArray(value, 'sides', where).map((raw, index) => {
+    const entryWhere = `${where} sides[${index}]`;
+    if (!isRecord(raw)) {
+      invalidResponse(`${entryWhere} 不是对象。`);
+    }
+    return { id: requireText(raw, 'id', entryWhere), name: requireText(raw, 'name', entryWhere) };
+  });
+  const addOns = optionalArray(value, 'addOns', where).map((raw, index) => {
+    const entryWhere = `${where} addOns[${index}]`;
+    if (!isRecord(raw)) {
+      invalidResponse(`${entryWhere} 不是对象。`);
+    }
+    return {
+      id: requireText(raw, 'id', entryWhere),
+      name: requireText(raw, 'name', entryWhere),
+      priceFen: requireCount(raw, 'priceFen', entryWhere),
+    };
+  });
+  return { flavorSelections, sides, addOns };
+}
+
 function invalidResponse(message: string): never {
   throw new ApiError({ code: 'INVALID_RESPONSE', message, status: 0, retryable: false });
 }
@@ -173,6 +294,9 @@ export function mapMenuResponse(payload: unknown): MenuResponse {
       availableQuantity: requireCount(entry, 'availableQuantity', where),
       onSale: requireBoolean(entry, 'onSale', where),
       imageUrl: optionalImageUrl(entry.imageUrl),
+      flavorGroups: parseFlavorGroups(optionalArray(entry, 'flavorGroups', where), where),
+      sides: parseSides(optionalArray(entry, 'sides', where), where),
+      addOns: parseAddOns(optionalArray(entry, 'addOns', where), where),
     };
   });
 
@@ -425,6 +549,7 @@ function requireOrderItems(record: Record<string, unknown>, where: string): Orde
       name: requireText(entry, 'name', itemWhere),
       quantity,
       unitPriceFen: requireCount(entry, 'unitPriceFen', itemWhere),
+      customization: parseItemCustomization(entry.customization, itemWhere),
     };
   });
 }

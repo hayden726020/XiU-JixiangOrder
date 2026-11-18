@@ -9,6 +9,8 @@ import {
 } from '../state/actionMatrix';
 import {
   cancelRequestLabel,
+  diningModeChangeLabel,
+  diningModeChangeRoute,
   diningModeView,
   formatDateTime,
   formatSlot,
@@ -17,7 +19,6 @@ import {
   STATUS_TRACK,
   statusView,
 } from '../state/orderView';
-import { orderPackagingFeeFen } from '../state/packagingFee';
 import { fenToYuan, formatYuan, totalQuantity } from '../utils/money';
 
 interface NewOrderDetailPageProps {
@@ -46,7 +47,6 @@ order,
   const [showStockCancelForm, setShowStockCancelForm] = useState(false);
 
 
-  const packagingFeeFen = orderPackagingFeeFen(order);
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
   const approveAction = actions.find((action) => action.code === 'APPROVE_CANCEL');
@@ -107,23 +107,12 @@ order,
         {order.cancelRequest.status === 'PENDING' && (
           <p className="detail-alert">学生申请取消，请优先处理；申请不等于已取消。</p>
         )}
-        <p className="detail-next">下一步：{primary ? primary.label : '当前没有可用的主操作'}</p>
-        {primary && primary.code !== 'VERIFY' && (
-          <div className="detail-primary-action">
-            <button
-              type="button"
-              className="action-button action-button--primary detail-primary-action__button"
-              onClick={() => onAction(primary)}
-              disabled={busy(primary)}
-              aria-busy={busy(primary) || undefined}
-            >
-              {busyLabel(primary)}
-            </button>
-            <span className="detail-primary-action__note">
-              成功后状态以服务端返回为准，失败会保留当前状态。
-            </span>
-          </div>
+        {order.diningModeChange.status === 'PENDING' && (
+          <p className="detail-alert" data-dining-mode-change="PENDING">
+            学生申请更改用餐方式：{diningModeChangeRoute(order.diningModeChange)}，接单前请先确认。
+          </p>
         )}
+        <p className="detail-next">下一步：{primary ? primary.label : '当前没有可用的主操作'}</p>
       </header>
 
       <section className="detail-block detail-block--appointment">
@@ -150,22 +139,11 @@ order,
               <span>{fenToYuan(item.unitPriceFen)} 元/份</span>
             </li>
           ))}
-          {packagingFeeFen !== null && (
-            <li className="detail-items__fee" data-order-packaging-fee={packagingFeeFen}>
-              <span>打包盒 ×1（外带）</span>
-              <span>{formatYuan(packagingFeeFen)}</span>
-            </li>
-          )}
         </ul>
         <p className="detail-total">
-          <span>总份数 <strong>{totalQuantity(order.items)}</strong> 份</span>
+          <span>总份数 <strong>{totalQuantity(order.items)}</strong> 份 · 合计</span>
           <strong className="detail-total__amount">合计 {formatYuan(order.totalFen)}</strong>
         </p>
-        {packagingFeeFen !== null && (
-          <p className="hint detail-packaging-note" data-order-packaging-note>
-            合计已含打包盒费 {formatYuan(packagingFeeFen)}；每笔外带订单只收一次。
-          </p>
-        )}
       </section>
 
       <section className="detail-block detail-block--status">
@@ -252,6 +230,27 @@ order,
           </div>
         </div>
 
+        {order.diningModeChange.status !== 'NONE' && (
+          <div className="detail-info-row" data-dining-mode-change={order.diningModeChange.status}>
+            <h3>用餐方式申请</h3>
+            <div className="detail-info-row__content">
+              <p className="merchant-muted detail-emphasis">
+                {diningModeChangeRoute(order.diningModeChange)}
+              </p>
+              <p className="merchant-muted">{diningModeChangeLabel(order.diningModeChange)}</p>
+              {order.diningModeChange.reason && (
+                <p className="merchant-muted">申请理由：{order.diningModeChange.reason}</p>
+              )}
+              {order.diningModeChange.decisionReason && (
+                <p className="merchant-muted">处理理由：{order.diningModeChange.decisionReason}</p>
+              )}
+              {order.diningModeChange.status === 'PENDING' && (
+                <p className="hint">请先确认打包或餐具安排；当前订单仍按原用餐方式记录。</p>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="detail-info-row">
           <h3>延迟</h3>
           <div className="detail-info-row__content">
@@ -268,7 +267,8 @@ order,
         <h3>用餐方式</h3>
         <p className="detail-emphasis">{dining.label} · {dining.description}</p>
         {order.diningModeReason && <p className="merchant-muted">变更理由：{order.diningModeReason}</p>}
-        <p className="hint">用餐方式由学生下单时选择，档口不可修改。</p>
+        <p className="hint">用餐方式由学生选择；学生可申请变更，档口按确认后的方式备餐。</p>
+
       </section>
 
       <section className="detail-block detail-block--operations">

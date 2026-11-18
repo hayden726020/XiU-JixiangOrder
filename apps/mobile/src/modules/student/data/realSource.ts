@@ -40,7 +40,7 @@ function defaultRequest<T>(path: string, options?: ApiRequestOptions): Promise<T
 function orderBody(input: CreateOrderInput): Record<string, unknown> {
   return {
     requestId: input.requestId,
-    items: input.items.map((item) => ({ dishId: item.dishId, quantity: item.quantity })),
+    items: input.items.map((item) => ({ ...item })),
     slotId: input.slotId,
     diningMode: input.diningMode,
     ...(input.remark ? { remark: input.remark } : {}),

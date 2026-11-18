@@ -182,12 +182,20 @@ export default function MerchantAccountsPage({ source }: MerchantAccountsPagePro
         {accounts.map((item) => (
           <li key={item.userId} className="admin-settings__card admin-accounts__card">
             <div className="admin-review__head">
-              <strong>{item.merchantName ?? '未绑定商家'}</strong>
+              <strong>{item.shopName ?? item.merchantName ?? '未绑定商家'}</strong>
               <span className={`admin-tag admin-tag--${item.active ? 'ready' : 'cancelled'}`}>
                 {item.active ? '启用' : '停用'}
               </span>
             </div>
             <dl className="admin-settings__kv">
+              <div>
+                <dt>商家名称</dt>
+                <dd>{item.merchantName ?? '未绑定商家'}</dd>
+              </div>
+              <div>
+                <dt>店铺名称</dt>
+                <dd>{item.shopName ?? '未创建店铺'}</dd>
+              </div>
               <div>
                 <dt>登录账号</dt>
                 <dd>{item.account}</dd>

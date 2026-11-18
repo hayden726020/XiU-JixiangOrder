@@ -365,6 +365,9 @@ export function toDishDto(dish: SampleDish, date: string): DishDto {
     unitPriceFen: dish.unitPriceFen,
     availableQuantity: dish.availability[date] ?? 0,
     onSale: dish.onSale[date] === true,
+    flavorGroups: [],
+    sides: [],
+    addOns: [],
   };
 }
 

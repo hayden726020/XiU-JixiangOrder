@@ -10,6 +10,8 @@ import {
 import {
   cancelRequestLabel,
   cancellationNote,
+  diningModeChangeLabel,
+  diningModeChangeRoute,
   diningModeView,
   formatDateTime,
   formatSlot,
@@ -18,7 +20,6 @@ import {
   STATUS_TRACK,
   statusView,
 } from '../state/orderView';
-import { orderPackagingFeeFen } from '../state/packagingFee';
 import { formatYuan, totalQuantity } from '../utils/money';
 import NewOrderDetailPage from './NewOrderDetailPage';
 import ReadyOrderDetailPage from './ReadyOrderDetailPage';
@@ -61,7 +62,6 @@ order,
   const [delayExpectedReadyAt, setDelayExpectedReadyAt] = useState('');
 
 
-  const packagingFeeFen = orderPackagingFeeFen(order);
   const actions = getOrderActions(order);
   const primary = getPrimaryAction(order);
   const verifyAction = actions.find((action) => action.code === 'VERIFY');
@@ -135,23 +135,12 @@ order,
         {order.cancelRequest.status === 'PENDING' && (
           <p className="detail-alert">学生申请取消，请优先处理；申请不等于已取消。</p>
         )}
-        <p className="detail-next">下一步：{primary ? primary.label : emptyText}</p>
-        {primary && primary.code !== 'VERIFY' && (
-          <div className="detail-primary-action">
-            <button
-              type="button"
-              className="action-button action-button--primary detail-primary-action__button"
-              onClick={() => onAction(primary)}
-              disabled={busy(primary)}
-              aria-busy={busy(primary) || undefined}
-            >
-              {busyLabel(primary)}
-            </button>
-            <span className="detail-primary-action__note">
-              成功后状态以服务端返回为准，失败会保留当前状态。
-            </span>
-          </div>
+        {order.diningModeChange.status === 'PENDING' && (
+          <p className="detail-alert" data-dining-mode-change="PENDING">
+            学生申请更改用餐方式：{diningModeChangeRoute(order.diningModeChange)}，请优先确认。
+          </p>
         )}
+        <p className="detail-next">下一步：{primary ? primary.label : emptyText}</p>
       </header>
 
       <section className="detail-block">
@@ -178,21 +167,10 @@ order,
               <span>{formatYuan(item.unitPriceFen)}/份</span>
             </li>
           ))}
-          {packagingFeeFen !== null && (
-            <li className="detail-items__fee" data-order-packaging-fee={packagingFeeFen}>
-              <span>打包盒 ×1（外带）</span>
-              <span>{formatYuan(packagingFeeFen)}</span>
-            </li>
-          )}
         </ul>
         <p className="detail-total">
           总份数 <strong>{totalQuantity(order.items)}</strong> 份 · 合计 <strong>{formatYuan(order.totalFen)}</strong>
         </p>
-        {packagingFeeFen !== null && (
-          <p className="hint detail-packaging-note" data-order-packaging-note>
-            合计已含打包盒费 {formatYuan(packagingFeeFen)}；每笔外带订单只收一次。
-          </p>
-        )}
       </section>
 
       <section className="detail-block">
@@ -320,6 +298,23 @@ order,
         )}
       </section>
 
+      {order.diningModeChange.status !== 'NONE' && (
+        <section className="detail-block" data-dining-mode-change={order.diningModeChange.status}>
+          <h3>用餐方式申请</h3>
+          <p className="detail-emphasis">{diningModeChangeRoute(order.diningModeChange)}</p>
+          <p className="merchant-muted">{diningModeChangeLabel(order.diningModeChange)}</p>
+          {order.diningModeChange.reason && (
+            <p className="merchant-muted">申请理由：{order.diningModeChange.reason}</p>
+          )}
+          {order.diningModeChange.decisionReason && (
+            <p className="merchant-muted">处理理由：{order.diningModeChange.decisionReason}</p>
+          )}
+          {order.diningModeChange.status === 'PENDING' && (
+            <p className="hint">请先确认打包或餐具安排；当前订单仍按原用餐方式记录。</p>
+          )}
+        </section>
+      )}
+
       {stockCancelAction && (
         <section className="detail-block">
           <h3>缺货取消</h3>
@@ -413,6 +408,7 @@ order,
           <p className="merchant-muted">变更理由：{order.diningModeReason}</p>
         )}
         <p className="hint">用餐方式由学生下单时选择，档口不可修改。</p>
+
       </section>
 
       <section className="detail-block">

@@ -94,6 +94,9 @@ export function resolveEffectiveMerchantName(options: {
   serverMerchantName?: string | null;
   fallback?: string;
 }): string {
+  if (options.serverMerchantName?.trim()) {
+    return options.serverMerchantName.trim();
+  }
   const accountName = options.session?.user.role === 'MERCHANT'
     ? (options.session.user.displayName?.trim() || '')
     : '';
@@ -102,9 +105,6 @@ export function resolveEffectiveMerchantName(options: {
   }
   if (options.mode === 'real' && accountName.length > 0) {
     return accountName;
-  }
-  if (options.serverMerchantName?.trim()) {
-    return options.serverMerchantName.trim();
   }
   return options.fallback ?? DEFAULT_SAMPLE_MERCHANT_NAME;
 }
@@ -223,11 +223,13 @@ export function validateNewDish(draft: NewDishDraft): OnboardingResult<NewDishVa
   };
 }
 export interface MerchantContactDraft {
+  merchantName?: string;
   contactName: string;
   contactPhone: string | null;
 }
 
 export interface MerchantContactValue {
+  merchantName?: string;
   contactName: string;
   contactPhone: string | null;
 }
@@ -236,9 +238,14 @@ export function validateMerchantContact(
   draft: MerchantContactDraft,
 ): OnboardingResult<MerchantContactValue> {
   const errors: OnboardingErrors = {};
+  const hasMerchantName = draft.merchantName !== undefined;
+  const merchantName = hasMerchantName ? trimText(draft.merchantName) : undefined;
   const contactName = trimText(draft.contactName);
   const contactPhone = draft.contactPhone === null ? null : normalizePhone(draft.contactPhone);
 
+  if (hasMerchantName && (merchantName!.length < 2 || merchantName!.length > 30)) {
+    errors.merchantName = '商家名称需为 2—30 个字符。';
+  }
   if (contactName.length < 2 || contactName.length > 20) {
     errors.contactName = '店铺负责人需为 2—20 个字符。';
   }
@@ -248,5 +255,12 @@ export function validateMerchantContact(
   if (Object.keys(errors).length > 0) {
     return { ok: false, errors };
   }
-  return { ok: true, value: { contactName, contactPhone } };
+  return {
+    ok: true,
+    value: {
+      ...(merchantName !== undefined ? { merchantName } : {}),
+      contactName,
+      contactPhone,
+    },
+  };
 }

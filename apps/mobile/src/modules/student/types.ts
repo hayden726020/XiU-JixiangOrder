@@ -27,6 +27,31 @@ export interface ShopSummary {
   sortOrder: number | null;
 }
 
+export interface DishFlavorOption {
+  id: string;
+  name: string;
+  priceFen: number;
+}
+
+export interface DishFlavorGroup {
+  id: string;
+  name: string;
+  required: boolean;
+  options: DishFlavorOption[];
+}
+
+export interface DishSide {
+  id: string;
+  name: string;
+  priceFen: number;
+}
+
+export interface DishAddOn {
+  id: string;
+  name: string;
+  priceFen: number;
+}
+
 export interface DishDto {
   dishId: string;
   merchantId: string;
@@ -34,6 +59,32 @@ export interface DishDto {
   unitPriceFen: number;
   availableQuantity: number;
   onSale: boolean;
+  imageUrl?: string | null;
+  flavorGroups: DishFlavorGroup[];
+  sides: DishSide[];
+  addOns: DishAddOn[];
+}
+
+export interface SelectedFlavor {
+  groupId: string;
+  optionId: string;
+}
+
+export interface ItemCustomizationSelection {
+  selectedFlavors: SelectedFlavor[];
+  selectedSides: string[];
+  selectedAddOns: string[];
+}
+
+export interface OrderItemCustomization {
+  flavorSelections: Array<{
+    groupId: string;
+    groupName: string;
+    optionId: string;
+    optionName: string;
+  }>;
+  sides: Array<{ id: string; name: string }>;
+  addOns: Array<{ id: string; name: string; priceFen: number }>;
 }
 
 export interface SlotDto {
@@ -73,6 +124,7 @@ export interface OrderItem {
   name: string;
   quantity: number;
   unitPriceFen: number;
+  customization?: OrderItemCustomization | null;
 }
 
 export interface CancelRequest {
@@ -115,6 +167,9 @@ export interface StudentOrder {
 export interface DraftItemInput {
   dishId: string;
   quantity: number;
+  selectedFlavors?: SelectedFlavor[];
+  selectedSides?: string[];
+  selectedAddOns?: string[];
 }
 
 export interface CreateOrderInput {
