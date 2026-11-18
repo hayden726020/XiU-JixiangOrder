@@ -1,6 +1,7 @@
 import type { StudentOrder } from '../types';
 import { formatYuan } from '../utils/money';
 import { orderNoText, toOrderStatusView } from '../utils/orderStatusView';
+import { cancelBadgeOf } from '../utils/cancelTexts';
 import type { StudentMode } from '../types';
 import ricePhoto from '../assets/fried-rice.png';
 import noodlePhoto from '../assets/login-food-noodle.jpg';
@@ -68,7 +69,7 @@ export default function OrderTicketCard({ order, mode, onOpenOrder, onAskMerchan
         <p className="order-ticket__dish">{firstDish ? `${firstDish.name} × ${firstDish.quantity}` : '餐品待确认'}{order.items.length > 1 ? ` 等 ${order.items.length} 项` : ''}</p>
         <p className="order-ticket__meta"><OrderListIcon name="utensils" size={15} />取餐：{slotRangeLabel(order.slotStart, order.slotEnd)}</p>
         <p className="order-ticket__meta"><OrderListIcon name="pin" size={15} />{shopName.includes('食堂') ? shopName.split('·')[0] : '食堂'} · {view.diningModeText}</p>
-        {order.cancelRequest.status === 'PENDING' ? <p className="order-ticket__cancel">取消申请处理中</p> : null}
+        {order.cancelRequest.status !== 'NONE' ? <p className="order-ticket__cancel">{cancelBadgeOf(order.cancelRequest.status)}</p> : null}
       </div>
       <div className="order-ticket__aside">
         <span className={`order-ticket__status order-ticket__status--${tone}`}><OrderListIcon name={statusIcon} size={19} />{ready ? '待取餐' : view.statusLabel}</span>

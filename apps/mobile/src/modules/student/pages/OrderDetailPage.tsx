@@ -24,8 +24,10 @@ import { deriveCancelAreaView } from '../utils/orderCancelView';
 import {
   CANCEL_APPLY_NOTE,
   CANCEL_CONFIRM_TEXT,
+  CANCEL_DECISION_MISSING,
   CANCEL_REASON_LABEL,
   CANCEL_REASON_PLACEHOLDER,
+  CANCEL_REJECTED_TEXT,
   cancelErrorText,
   isCancelAuthCode,
   isCancelConflictCode,
@@ -788,6 +790,16 @@ export default function OrderDetailPage({
                 {statusView.cancelRequestPending ? (
                   <div className="detail-cancel-banner" role="status">
                     取消申请待处理（{statusView.cancelRequestTimeText}）· 原因：{statusView.cancelRequestReason} · 申请中不代表订单已取消
+                  </div>
+                ) : null}
+                {cancelView?.kind === 'rejected' ? (
+                  <div className="detail-cancel-banner detail-cancel-banner--rejected" role="status">
+                    {CANCEL_REJECTED_TEXT} · 商家处理理由：{cancelView.decisionReason || CANCEL_DECISION_MISSING}
+                  </div>
+                ) : null}
+                {cancelView?.kind === 'approved' && cancelView.decisionReason ? (
+                  <div className="detail-cancel-banner" role="status">
+                    商家处理理由：{cancelView.decisionReason}
                   </div>
                 ) : null}
                 {statusView.status === 'CANCELLED' && statusView.cancelText ? (
