@@ -388,3 +388,85 @@ export function IconTimer(props: IconProps) {
     </IconBase>
   );
 }
+
+export function IconImage(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </IconBase>
+  );
+}
+
+export function IconUpload(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </IconBase>
+  );
+}
+
+export function IconSlidersHorizontal(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <line x1="21" y1="4" x2="14" y2="4" />
+      <line x1="10" y1="4" x2="3" y2="4" />
+      <line x1="21" y1="12" x2="12" y2="12" />
+      <line x1="8" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="20" x2="16" y2="20" />
+      <line x1="12" y1="20" x2="3" y2="20" />
+      <line x1="14" y1="2" x2="14" y2="6" />
+      <line x1="8" y1="10" x2="8" y2="14" />
+      <line x1="16" y1="18" x2="16" y2="22" />
+    </IconBase>
+  );
+}
+
+export function IconSalad(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M7 21h10" />
+      <path d="M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9Z" />
+      <path d="m12 12-2.5-2.5a3.5 3.5 0 0 1 5-5L17 7" />
+      <path d="M12 12 8 8" />
+    </IconBase>
+  );
+}
+
+export function IconShoppingBasket(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 11h14l-1.2 8a2 2 0 0 1-2 1.7H8.2a2 2 0 0 1-2-1.7L5 11Z" />
+      <path d="m9 11 3-6 3 6" />
+      <path d="M3 11h18" />
+    </IconBase>
+  );
+}
+
+export function IconSmartphone(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="7" y="2" width="10" height="20" rx="2" />
+      <path d="M12 18h.01" />
+    </IconBase>
+  );
+}
+
+export function IconChevronUp(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <polyline points="18 15 12 9 6 15" />
+    </IconBase>
+  );
+}
+
+export function IconChevronDown(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <polyline points="6 9 12 15 18 9" />
+    </IconBase>
+  );
+}

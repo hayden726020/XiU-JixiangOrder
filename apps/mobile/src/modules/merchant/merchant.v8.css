@@ -1,0 +1,965 @@
+.app-shell--merchant .merchant-menu-page .menu-editor {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid var(--m-line);
+  border-radius: 8px;
+  background: var(--m-card);
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__head {
+  align-items: flex-start;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 0.55rem;
+  border-left: 3px solid var(--m-brand);
+  color: var(--m-ink);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__date {
+  padding: 0.1rem 0.38rem;
+  border: 1px solid var(--m-brand-line);
+  border-radius: 4px;
+  background: var(--m-brand-soft);
+  color: var(--m-brand-ink);
+  font-size: 0.66rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__head p {
+  max-width: 52rem;
+  margin: 0.25rem 0 0 0.58rem;
+  color: var(--m-muted);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__close {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-card);
+  color: var(--m-muted);
+  font-size: 0.7rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__close:hover {
+  background: var(--m-surface-2);
+  color: var(--m-ink-2);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__save-top {
+  min-height: 2rem;
+  padding: 0 0.65rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+}
+
+.dish-editor-v8 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.dish-editor-v8__main {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.dish-editor-v8__preview {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .dish-editor-v8 {
+    grid-template-columns: minmax(0, 1.85fr) minmax(17.5rem, 1fr);
+    gap: 1.1rem;
+  }
+
+  .dish-editor-v8__preview {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 5.5rem);
+    overflow-y: auto;
+  }
+}
+
+.dish-base {
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--m-line-soft);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.55rem 0.7rem;
+  align-items: start;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+  color: var(--m-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field--name {
+  grid-column: auto;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field__label {
+  color: var(--m-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field input:not([type='checkbox']),
+.app-shell--merchant .merchant-menu-page .menu-field select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-card);
+  color: var(--m-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  box-shadow: none;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field input::placeholder {
+  color: var(--m-faint);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field input:focus,
+.app-shell--merchant .merchant-menu-page .menu-field select:focus {
+  outline: none;
+  border-color: var(--m-brand-line-strong);
+  box-shadow: 0 0 0 2px var(--m-brand-focus);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field.is-error input:not([type='checkbox']),
+.app-shell--merchant .merchant-menu-page .menu-field.is-error select {
+  border-color: var(--m-danger-line);
+  background: #fffbfa;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field__error {
+  color: var(--m-danger-ink);
+  font-size: 0.64rem;
+  line-height: 1.4;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field--switch {
+  flex-direction: row;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.3rem;
+  color: var(--m-ink-2);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-field--switch input {
+  margin: 0;
+}
+
+.merchant-menu-page .dish-cx {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.merchant-menu-page .dish-cx__section {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid var(--m-line);
+  border-radius: 8px;
+  background: var(--m-card);
+}
+
+.merchant-menu-page .dish-cx__section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.65rem;
+}
+
+.merchant-menu-page .dish-cx__section-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.merchant-menu-page .dish-cx__section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 6px;
+  background: var(--m-surface-2);
+  color: var(--m-brand-ink);
+}
+
+.merchant-menu-page .dish-cx__section-title h4 {
+  margin: 0;
+  color: var(--m-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.merchant-menu-page .dish-cx__section-title .hint {
+  max-width: 27rem;
+  margin: 0.12rem 0 0;
+  color: var(--m-muted);
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.merchant-menu-page .dish-cx__head-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.merchant-menu-page .dish-cx__add-button,
+.merchant-menu-page .dish-cx__file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 2.15rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--m-brand-line-strong);
+  border-radius: 6px;
+  background: var(--m-card);
+  color: var(--m-brand-ink);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.merchant-menu-page .dish-cx__add-button:hover:not(:disabled),
+.merchant-menu-page .dish-cx__file-button:hover {
+  background: var(--m-brand-soft);
+}
+
+.merchant-menu-page .dish-cx__add-button:disabled,
+.merchant-menu-page .dish-cx__file-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.merchant-menu-page .dish-cx__text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  min-height: 2rem;
+  padding: 0.15rem 0.2rem;
+  border: 0;
+  border-bottom: 1px dashed var(--m-line);
+  background: transparent;
+  color: var(--m-muted);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.merchant-menu-page .dish-cx__text-button:hover:not(:disabled) {
+  color: var(--m-brand-ink);
+  border-bottom-color: var(--m-brand-line-strong);
+}
+
+.merchant-menu-page .dish-cx__text-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.merchant-menu-page .dish-cx__rule {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--m-line);
+  border-radius: 4px;
+  background: var(--m-surface-2);
+  color: var(--m-muted);
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+
+.merchant-menu-page .dish-cx__empty-state {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 6px;
+  background: var(--m-surface-2);
+  color: var(--m-muted);
+  font-size: 0.67rem;
+  line-height: 1.4;
+}
+
+.merchant-menu-page .dish-cx__empty-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--m-brand-line-strong);
+}
+
+.merchant-menu-page .dish-cx__empty-state p {
+  margin: 0;
+}
+
+.merchant-menu-page .dish-cx__image-row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.merchant-menu-page .dish-cx__image-preview {
+  display: grid;
+  place-items: center;
+  width: 7.5rem;
+  height: 7.5rem;
+  overflow: hidden;
+  border: 1px dashed var(--m-brand-line-strong);
+  border-radius: 8px;
+  background: var(--m-surface-2);
+}
+
+.merchant-menu-page .dish-cx__image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.merchant-menu-page .dish-cx__image-empty {
+  display: grid;
+  place-items: center;
+  gap: 0.25rem;
+  color: var(--m-faint);
+  font-size: 0.62rem;
+}
+
+.merchant-menu-page .dish-cx__image-actions {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.merchant-menu-page .dish-cx__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.merchant-menu-page .dish-cx__media-meta {
+  max-width: 22rem;
+  margin: 0;
+  color: var(--m-faint);
+  font-size: 0.63rem;
+  line-height: 1.5;
+}
+
+.merchant-menu-page .dish-cx__local-note {
+  max-width: 22rem;
+  margin: 0;
+}
+
+.merchant-menu-page .dish-cx__groups,
+.merchant-menu-page .dish-cx__rows {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.merchant-menu-page .dish-cx__group {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 6px;
+  background: var(--m-surface-2);
+}
+
+.merchant-menu-page .dish-cx__group-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.45rem;
+}
+
+.merchant-menu-page .dish-cx__inline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.merchant-menu-page .dish-cx__inline-field--grow {
+  flex: 1 1 8rem;
+}
+
+.merchant-menu-page .dish-cx__inline-field > span {
+  color: var(--m-muted);
+  font-size: 0.6rem;
+}
+
+.merchant-menu-page .dish-cx__inline-field input,
+.merchant-menu-page .dish-cx__price-field input {
+  width: 100%;
+  min-width: 4rem;
+  min-height: 2.15rem;
+  padding: 0 0.45rem;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-card);
+  color: var(--m-ink);
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.merchant-menu-page .dish-cx__inline-field input:focus,
+.merchant-menu-page .dish-cx__price-field input:focus {
+  outline: none;
+  border-color: var(--m-brand-line-strong);
+  box-shadow: 0 0 0 2px var(--m-brand-focus);
+}
+
+.merchant-menu-page .dish-cx__required {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--m-ink-2);
+  font-size: 0.66rem;
+}
+
+.merchant-menu-page .dish-cx__required input {
+  margin: 0;
+}
+
+.merchant-menu-page .dish-cx__row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+  margin-left: auto;
+}
+
+.merchant-menu-page .dish-cx__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--m-faint);
+  cursor: pointer;
+}
+
+.merchant-menu-page .dish-cx__icon-button:hover:not(:disabled) {
+  border-color: var(--m-line);
+  background: var(--m-card);
+  color: var(--m-ink-2);
+}
+
+.merchant-menu-page .dish-cx__icon-button--danger {
+  color: var(--m-danger-ink);
+}
+
+.merchant-menu-page .dish-cx__icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.merchant-menu-page .dish-cx__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.merchant-menu-page .dish-cx__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.08rem;
+  padding: 0.1rem 0.15rem;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-card);
+}
+
+.merchant-menu-page .dish-cx__option input {
+  width: 3.4rem;
+  min-height: 1.8rem;
+  padding: 0 0.2rem;
+  border: 0;
+  background: transparent;
+  color: var(--m-ink);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.merchant-menu-page .dish-cx__option input:focus {
+  outline: none;
+}
+
+.merchant-menu-page .dish-cx__option-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.merchant-menu-page .dish-cx__chip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--m-faint);
+  cursor: pointer;
+}
+
+.merchant-menu-page .dish-cx__chip-button:hover:not(:disabled) {
+  background: var(--m-surface-2);
+  color: var(--m-ink-2);
+}
+
+.merchant-menu-page .dish-cx__chip-button--danger {
+  color: var(--m-danger-ink);
+}
+
+.merchant-menu-page .dish-cx__chip-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.merchant-menu-page .dish-cx__option-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 1.85rem;
+  padding: 0 0.45rem;
+  border: 1px dashed var(--m-brand-line-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--m-brand-ink);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.merchant-menu-page .dish-cx__option-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.merchant-menu-page .dish-cx__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 0.4rem;
+  align-items: end;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 6px;
+  background: var(--m-surface-2);
+}
+
+.merchant-menu-page .dish-cx__row-bullet {
+  width: 0.3rem;
+  height: 0.3rem;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: var(--m-brand-line-strong);
+}
+
+.merchant-menu-page .dish-cx__price-static {
+  align-self: center;
+  margin-bottom: 0.1rem;
+  color: var(--m-brand-ink);
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.merchant-menu-page .dish-cx__price-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--m-muted);
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+
+.merchant-menu-page .dish-cx__price-field input {
+  width: 4.2rem;
+  min-height: 2rem;
+}
+
+.merchant-menu-page .dish-cx__row .dish-cx__row-actions {
+  align-self: center;
+  margin-bottom: 0.1rem;
+}
+
+.merchant-menu-page .dish-cx-preview {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.85rem;
+  border: 1px solid var(--m-line);
+  border-radius: 8px;
+  background: var(--m-card);
+}
+
+.merchant-menu-page .dish-cx-preview__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.merchant-menu-page .dish-cx-preview__head h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  margin: 0;
+  color: var(--m-ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.merchant-menu-page .dish-cx-preview__head h4 svg {
+  color: var(--m-brand-ink);
+}
+
+.merchant-menu-page .dish-cx-preview__tag {
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--m-line);
+  border-radius: 4px;
+  background: var(--m-surface-2);
+  color: var(--m-faint);
+  font-size: 0.58rem;
+}
+
+.merchant-menu-page .dish-cx-preview__card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  background: transparent;
+}
+
+.merchant-menu-page .dish-cx-preview__dish {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--m-line-soft);
+}
+
+.merchant-menu-page .dish-cx-preview__image {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 4.6rem;
+  height: 4.6rem;
+  overflow: hidden;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-surface-2);
+  color: var(--m-faint);
+  font-size: 0.6rem;
+}
+
+.merchant-menu-page .dish-cx-preview__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.merchant-menu-page .dish-cx-preview__image-empty {
+  display: grid;
+  place-items: center;
+  gap: 0.12rem;
+  font-size: 0.56rem;
+}
+
+.merchant-menu-page .dish-cx-preview__title {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.merchant-menu-page .dish-cx-preview__eyebrow {
+  color: var(--m-faint);
+  font-size: 0.56rem;
+}
+
+.merchant-menu-page .dish-cx-preview__title strong {
+  color: var(--m-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.merchant-menu-page .dish-cx-preview__price {
+  color: var(--m-brand-ink);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.merchant-menu-page .dish-cx-preview__row {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.merchant-menu-page .dish-cx-preview__label {
+  margin: 0;
+  color: var(--m-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.merchant-menu-page .dish-cx-preview__hint {
+  margin-left: 0.25rem;
+  color: var(--m-brand-ink);
+  font-size: 0.58rem;
+}
+
+.merchant-menu-page .dish-cx-preview__required {
+  margin-left: 0.28rem;
+  padding: 0.02rem 0.28rem;
+  border-radius: 4px;
+  background: var(--m-warn-bg);
+  color: var(--m-warn-ink);
+  font-size: 0.58rem;
+}
+
+.merchant-menu-page .dish-cx-preview__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.merchant-menu-page .dish-cx-pill {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-card);
+  color: var(--m-ink-2);
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.merchant-menu-page .dish-cx-pill:hover {
+  border-color: var(--m-brand-line);
+}
+
+.merchant-menu-page .dish-cx-pill--active {
+  border-color: var(--m-brand-line-strong);
+  background: var(--m-brand-soft);
+  color: var(--m-ink);
+  font-weight: 600;
+}
+
+.merchant-menu-page .dish-cx-pill__price {
+  margin-left: 0.2rem;
+  color: var(--m-brand-ink);
+  font-size: 0.62rem;
+}
+
+.merchant-menu-page .dish-cx-preview__sides {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.merchant-menu-page .dish-cx-preview__side {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  color: var(--m-ink-2);
+  font-size: 0.7rem;
+}
+
+.merchant-menu-page .dish-cx-preview__side .dish-cx-preview__buttons {
+  flex: none;
+}
+
+.merchant-menu-page .dish-cx-preview__side .dish-cx-pill {
+  min-height: 1.7rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.65rem;
+}
+
+.merchant-menu-page .dish-cx-preview__empty {
+  margin: 0;
+  color: var(--m-faint);
+  font-size: 0.64rem;
+}
+
+.merchant-menu-page .dish-cx-preview__summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--m-line-soft);
+  color: var(--m-muted);
+  font-size: 0.64rem;
+}
+
+.merchant-menu-page .dish-cx-preview__summary b {
+  color: var(--m-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.merchant-menu-page .dish-cx-preview__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 6px;
+  background: var(--m-surface-2);
+  color: var(--m-muted);
+  font-size: 0.68rem;
+}
+
+.merchant-menu-page .dish-cx-preview__total strong {
+  color: var(--m-brand-ink);
+  font-size: 1.12rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.merchant-menu-page .dish-cx-preview__note {
+  margin: 0;
+  color: var(--m-faint);
+  font-size: 0.58rem;
+  line-height: 1.45;
+}
+
+@media (min-width: 720px) {
+  .merchant-menu-page .dish-cx-preview__title {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .merchant-menu-page .dish-cx-preview__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .app-shell--merchant .merchant-menu-page .menu-editor__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-field--name {
+    grid-column: 1 / -1;
+  }
+
+  .app-shell--merchant .merchant-menu-page .menu-field--switch {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px) {
+  .merchant-menu-page .dish-cx__image-row {
+    grid-template-columns: 6.2rem minmax(0, 1fr);
+  }
+
+  .merchant-menu-page .dish-cx__image-preview {
+    width: 6.2rem;
+    height: 6.2rem;
+  }
+
+  .merchant-menu-page .dish-cx__row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .merchant-menu-page .dish-cx__row .dish-cx__row-actions {
+    grid-column: 2 / -1;
+    justify-self: end;
+    margin-left: 0;
+    margin-bottom: 0;
+  }
+
+  .merchant-menu-page .dish-cx__price-field {
+    grid-column: 3;
+  }
+
+  .merchant-menu-page .dish-cx__row > .dish-cx__row-actions {
+    grid-column: 2 / -1;
+  }
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__actions {
+  margin-top: 0.1rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--m-line-soft);
+  border-radius: 6px;
+  background: var(--m-surface-2);
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__actions .action-button {
+  min-height: 2.75rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__actions .action-button--primary {
+  min-width: 9rem;
+}
+
+.app-shell--merchant .merchant-menu-page .menu-editor__note {
+  color: var(--m-faint);
+  font-size: 0.62rem;
+}
+
+@media (min-width: 1024px) {
+  .app-shell--merchant .merchant-menu-page .menu-editor {
+    padding: 1.1rem 1.2rem;
+  }
+
+  .app-shell--merchant .merchant-menu-page .dish-cx__section {
+    padding: 0.9rem 1rem;
+  }
+
+  .app-shell--merchant .merchant-menu-page .dish-cx-preview {
+    padding: 1rem;
+  }
+}

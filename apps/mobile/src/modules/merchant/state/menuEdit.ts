@@ -13,9 +13,11 @@ export interface DishPatch {
   addOns?: DishOption[];
 }
 
+export type DishPatchField = 'name' | 'type' | 'priceText' | 'quantityText';
+
 export type PatchResult<T> =
   | { ok: true; patch: T }
-  | { ok: false; error: string };
+  | { ok: false; error: string; field: DishPatchField };
 
 export function parseDishPatch(
   nameText: string,
@@ -28,24 +30,24 @@ export function parseDishPatch(
   const price = priceText.trim();
   const quantity = quantityText.trim();
   if (name.length < 1 || name.length > 30) {
-    return { ok: false, error: '菜品名称需为 1—30 个字符。' };
+    return { ok: false, error: '菜品名称需为 1—30 个字符。', field: 'name' };
   }
   if (!isDishType(typeText)) {
-    return { ok: false, error: '请选择菜品类别。' };
+    return { ok: false, error: '请选择菜品类别。', field: 'type' };
   }
   if (!/^\d+(\.\d{1,2})?$/.test(price)) {
-    return { ok: false, error: '价格必须是元，最多两位小数。' };
+    return { ok: false, error: '价格必须是元，最多两位小数。', field: 'priceText' };
   }
   const priceFen = Math.round(Number(price) * 100);
   if (!Number.isSafeInteger(priceFen) || priceFen > 1_000_000) {
-    return { ok: false, error: '价格必须在 0—10000 元之间。' };
+    return { ok: false, error: '价格必须在 0—10000 元之间。', field: 'priceText' };
   }
   if (!/^\d+$/.test(quantity)) {
-    return { ok: false, error: '可售数量必须是 0 或正整数。' };
+    return { ok: false, error: '库存必须是 0 或正整数。', field: 'quantityText' };
   }
   const availableQuantity = Number(quantity);
   if (!Number.isSafeInteger(availableQuantity) || availableQuantity > 10_000) {
-    return { ok: false, error: '可售数量不能超过 10000。' };
+    return { ok: false, error: '库存不能超过 10000。', field: 'quantityText' };
   }
   return { ok: true, patch: { name, type: typeText, priceFen, availableQuantity, onSale } };
 }

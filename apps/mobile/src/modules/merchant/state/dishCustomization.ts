@@ -56,7 +56,7 @@ function textLength(value: string): number {
   return Array.from(value).length;
 }
 
-function parsePriceFen(text: string): number | null {
+export function parsePriceTextToFen(text: string): number | null {
   const trimmed = text.trim();
   if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null;
   const fen = Math.round(Number(trimmed) * 100);
@@ -142,7 +142,7 @@ export function validateCustomizationDraft(draft: DishCustomizationDraft): Custo
       return { ok: false, error: `加购项「${addOnName}」重复了。` };
     }
     addOnNames.add(addOnName);
-    const priceFen = parsePriceFen(addOn.priceText);
+    const priceFen = parsePriceTextToFen(addOn.priceText);
     if (priceFen === null) {
       return { ok: false, error: `「${addOnName}」的加价需为 0—100 元，最多两位小数。` };
     }

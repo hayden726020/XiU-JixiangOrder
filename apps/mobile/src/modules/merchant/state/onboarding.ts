@@ -198,11 +198,11 @@ export function validateNewDish(draft: NewDishDraft): OnboardingResult<NewDishVa
 
   let availableQuantity: number | null = null;
   if (!/^\d+$/.test(quantity)) {
-    errors.quantityText = '可售数量必须是 0 或正整数。';
+    errors.quantityText = '库存必须是 0 或正整数。';
   } else {
     availableQuantity = Number(quantity);
     if (!Number.isSafeInteger(availableQuantity) || availableQuantity > 10_000) {
-      errors.quantityText = '可售数量不能超过 10000。';
+      errors.quantityText = '库存不能超过 10000。';
       availableQuantity = null;
     }
   }

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type {
   CreateDishInput,
   DailyMenuSelection,
@@ -16,6 +16,7 @@ import DishCustomizeEditor from '../components/DishCustomizeEditor';
 import DishCustomizePreview from '../components/DishCustomizePreview';
 import DishThumb from '../components/DishThumb';
 import {
+  IconChevronUp,
   IconEye,
   IconEyeOff,
   IconListPlus,
@@ -43,6 +44,8 @@ import {
 import { DISH_TYPE_OPTIONS, dishTypeLabel, validateNewDish } from '../state/onboarding';
 
 import { formatYuan } from '../utils/money';
+
+type DishFieldErrors = Partial<Record<'name' | 'type' | 'priceText' | 'quantityText', string>>;
 
 interface MenuPageProps {
   dates: ReadonlyArray<string>;
@@ -128,7 +131,9 @@ export default function MenuPage({
   const [dishOnSale, setDishOnSale] = useState(true);
   const [dishRequestId, setDishRequestId] = useState('');
   const [dishError, setDishError] = useState<string | null>(null);
+  const [dishFieldErrors, setDishFieldErrors] = useState<DishFieldErrors>({});
   const [dishSaving, setDishSaving] = useState(false);
+  const dishSavingRef = useRef(false);
   const [dishTogglingId, setDishTogglingId] = useState<string | null>(null);
   const [stockSavingId, setStockSavingId] = useState<string | null>(null);
   const [todayTogglingId, setTodayTogglingId] = useState<string | null>(null);
@@ -146,7 +151,9 @@ export default function MenuPage({
   const [newDishQuantity, setNewDishQuantity] = useState('');
   const [newDishRequestId, setNewDishRequestId] = useState('');
   const [newDishError, setNewDishError] = useState<string | null>(null);
+  const [newDishFieldErrors, setNewDishFieldErrors] = useState<DishFieldErrors>({});
   const [newDishSaving, setNewDishSaving] = useState(false);
+  const newDishSavingRef = useRef(false);
   const [newDishNeedsShop, setNewDishNeedsShop] = useState(false);
 
   useEffect(() => {
@@ -164,11 +171,13 @@ export default function MenuPage({
     setEditingDishId(null);
     setDishRequestId('');
     setDishError(null);
+    setDishFieldErrors({});
     setDishCustomError(null);
     setDishCustomDraft(emptyCustomizationDraft());
     setCreatingDish(false);
     setNewDishRequestId('');
     setNewDishError(null);
+    setNewDishFieldErrors({});
     setNewDishNeedsShop(false);
     setNewDishCustomDraft(emptyCustomizationDraft());
     setNewDishCustomError(null);
@@ -208,6 +217,24 @@ export default function MenuPage({
     if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return 0;
     const fen = Math.round(Number(trimmed) * 100);
     return Number.isSafeInteger(fen) && fen >= 0 ? fen : 0;
+  }
+
+  function clearDishFieldError(key: keyof DishFieldErrors) {
+    setDishFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function clearNewDishFieldError(key: keyof DishFieldErrors) {
+    setNewDishFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   }
 
   function customizationFor(dish: Dish): DishCustomization {
@@ -439,6 +466,7 @@ export default function MenuPage({
     setDishOnSale(dish.onSale);
     setDishRequestId(createRequestId('merchant-dish'));
     setDishError(null);
+    setDishFieldErrors({});
     setDishCustomDraft(customizationToDraft(customizationFor(dish)));
     setDishCustomError(null);
     setDeleteDishId(null);
@@ -451,6 +479,7 @@ export default function MenuPage({
     setEditingDishId(null);
     setDishRequestId('');
     setDishError(null);
+    setDishFieldErrors({});
     setDishCustomError(null);
   }
 
@@ -468,11 +497,14 @@ export default function MenuPage({
   }
 
   async function submitDish(dish: Dish) {
+    if (dishSavingRef.current) return;
     const parsed = parseDishPatch(dishName, dishType, dishPrice, dishQuantity, dishOnSale);
     if (!parsed.ok) {
-      setDishError(parsed.error);
+      setDishFieldErrors({ [parsed.field]: parsed.error });
+      setDishError(null);
       return;
     }
+    setDishFieldErrors({});
     const custom = validateCustomizationDraft(dishCustomDraft);
     if (!custom.ok) {
       setDishCustomError(custom.error);
@@ -481,12 +513,14 @@ export default function MenuPage({
     setDishCustomError(null);
     const requestId = dishRequestId || createRequestId('merchant-dish');
     setDishRequestId(requestId);
+    dishSavingRef.current = true;
     setDishSaving(true);
     setDishError(null);
     let imageUrlForSave: string | null | undefined;
     if (customizations[dish.dishId] !== undefined) {
       const image = await uploadImageForSave(custom.value.imageUrl);
       if (!image.ok) {
+        dishSavingRef.current = false;
         setDishSaving(false);
         setDishCustomError(image.error);
         return;
@@ -494,6 +528,7 @@ export default function MenuPage({
       imageUrlForSave = image.imageUrl;
     }
     const result = await onSaveDish(dish, { ...parsed.patch, imageUrl: imageUrlForSave }, requestId);
+    dishSavingRef.current = false;
     setDishSaving(false);
     if (result.ok) {
       const nextCustom = { ...custom.value, imageUrl: isSample ? custom.value.imageUrl : null };
@@ -505,6 +540,7 @@ export default function MenuPage({
         ));
       }
       setEditingDishId(null);
+      setDishFieldErrors({});
       setDishRequestId('');
       return;
     }
@@ -579,6 +615,7 @@ export default function MenuPage({
     setNewDishQuantity('');
     setNewDishRequestId(createRequestId('merchant-dish-create'));
     setNewDishError(null);
+    setNewDishFieldErrors({});
     setNewDishNeedsShop(false);
     setNewDishCustomDraft(emptyCustomizationDraft());
     setNewDishCustomError(null);
@@ -596,12 +633,14 @@ export default function MenuPage({
     setCreatingDish(false);
     setNewDishRequestId('');
     setNewDishError(null);
+    setNewDishFieldErrors({});
     setNewDishNeedsShop(false);
     setNewDishCustomDraft(emptyCustomizationDraft());
     setNewDishCustomError(null);
   }
 
   async function submitCreateDish() {
+    if (newDishSavingRef.current) return;
     const parsed = validateNewDish({
       type: newDishType,
       name: newDishName,
@@ -609,9 +648,11 @@ export default function MenuPage({
       quantityText: newDishQuantity,
     });
     if (!parsed.ok) {
-      setNewDishError(Object.values(parsed.errors)[0] ?? '请检查新增菜品输入。');
+      setNewDishFieldErrors(parsed.errors as DishFieldErrors);
+      setNewDishError(null);
       return;
     }
+    setNewDishFieldErrors({});
     const custom = validateCustomizationDraft(newDishCustomDraft);
     if (!custom.ok) {
       setNewDishCustomError(custom.error);
@@ -620,6 +661,7 @@ export default function MenuPage({
     setNewDishCustomError(null);
     const requestId = newDishRequestId || createRequestId('merchant-dish-create');
     setNewDishRequestId(requestId);
+    newDishSavingRef.current = true;
     setNewDishSaving(true);
     setNewDishError(null);
     setNewDishNeedsShop(false);
@@ -627,6 +669,7 @@ export default function MenuPage({
     if (custom.value.imageUrl) {
       const image = await uploadImageForSave(custom.value.imageUrl);
       if (!image.ok) {
+        newDishSavingRef.current = false;
         setNewDishSaving(false);
         setNewDishCustomError(image.error);
         return;
@@ -634,6 +677,7 @@ export default function MenuPage({
       imageUrlForSave = image.imageUrl;
     }
     const result = await onCreateDish({ requestId, ...parsed.value, imageUrl: imageUrlForSave });
+    newDishSavingRef.current = false;
     setNewDishSaving(false);
     if (result.ok) {
       const nextCustom = { ...custom.value, imageUrl: isSample ? custom.value.imageUrl : null };
@@ -641,6 +685,7 @@ export default function MenuPage({
         persistCustomizations({ ...customizations, [result.data.dishId]: nextCustom });
       }
       setCreatingDish(false);
+      setNewDishFieldErrors({});
       setNewDishRequestId('');
       setNewDishName('');
       setNewDishPrice('');
@@ -1353,8 +1398,11 @@ data-open-daily-menu
             <section className="menu-editor" data-dish-edit={editingDish.dishId} aria-label="编辑菜品">
               <header className="menu-editor__head">
                 <div>
-                  <h3>编辑菜品</h3>
-                  <p>更新「{shortDate(date)}」的菜单与库存；其他日期保持原样。</p>
+                  <h3 className="menu-editor__title">
+                    编辑菜品
+                    <span className="menu-editor__date">{shortDate(date)}</span>
+                  </h3>
+                  <p>更新当日菜单与库存；其他日期保持原样。</p>
                 </div>
                 <div className="menu-editor__head-actions">
                   <button
@@ -1362,92 +1410,132 @@ data-open-daily-menu
                     className="menu-editor__save-top"
                     onClick={() => void submitDish(editingDish)}
                     disabled={dishSaving}
+                    data-dish-save-top
                   >
                     {dishSaving ? '保存中…' : '保存'}
                   </button>
                   <button type="button" className="menu-editor__close" onClick={cancelDishEdit} disabled={dishSaving}>
+                    <IconChevronUp size={14} />
                     收起
                   </button>
                 </div>
               </header>
-              <div className="menu-editor__fields">
-                <label className="menu-field menu-field--name">
-                  菜品名称
-                  <input
-                    value={dishName}
-                    maxLength={30}
-                    onChange={(event) => setDishName(event.target.value)}
-                    aria-label="菜品名称"
+              <div className="dish-editor-v8" data-dish-editor-grid>
+                <div className="dish-editor-v8__main">
+                  <section className="dish-base" aria-label="菜品基础信息">
+                    <div className="menu-editor__fields">
+                      <label className={dishFieldErrors.name ? 'menu-field menu-field--name is-error' : 'menu-field menu-field--name'}>
+                        <span className="menu-field__label">菜品名称</span>
+                        <input
+                          value={dishName}
+                          maxLength={30}
+                          onChange={(event) => {
+                            setDishName(event.target.value);
+                            clearDishFieldError('name');
+                          }}
+                          aria-label="菜品名称"
+                          aria-invalid={dishFieldErrors.name ? 'true' : undefined}
+                          aria-describedby={dishFieldErrors.name ? 'edit-dish-name-error' : undefined}
+                          placeholder="例如：宫保鸡丁饭"
+                        />
+                        {dishFieldErrors.name && (
+                          <span id="edit-dish-name-error" className="menu-field__error" data-dish-field-error="name">
+                            {dishFieldErrors.name}
+                          </span>
+                        )}
+                      </label>
+                      <label className={dishFieldErrors.type ? 'menu-field is-error' : 'menu-field'}>
+                        <span className="menu-field__label">菜品类别</span>
+                        <select
+                          value={dishType}
+                          onChange={(event) => {
+                            setDishType(event.target.value as DishType);
+                            clearDishFieldError('type');
+                          }}
+                          aria-label="菜品类别"
+                          aria-invalid={dishFieldErrors.type ? 'true' : undefined}
+                        >
+                          {DISH_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                        {dishFieldErrors.type && (
+                          <span id="edit-dish-type-error" className="menu-field__error" data-dish-field-error="type">
+                            {dishFieldErrors.type}
+                          </span>
+                        )}
+                      </label>
+                      <label className={dishFieldErrors.priceText ? 'menu-field is-error' : 'menu-field'}>
+                        <span className="menu-field__label">价格（元）</span>
+                        <input
+                          value={dishPrice}
+                          onChange={(event) => {
+                            setDishPrice(event.target.value);
+                            clearDishFieldError('priceText');
+                          }}
+                          inputMode="decimal"
+                          aria-label="菜品价格（元）"
+                          aria-invalid={dishFieldErrors.priceText ? 'true' : undefined}
+                          aria-describedby={dishFieldErrors.priceText ? 'edit-dish-price-error' : undefined}
+                          placeholder="例如：18.00"
+                        />
+                        {dishFieldErrors.priceText && (
+                          <span id="edit-dish-price-error" className="menu-field__error" data-dish-field-error="priceText">
+                            {dishFieldErrors.priceText}
+                          </span>
+                        )}
+                      </label>
+                      <label className={dishFieldErrors.quantityText ? 'menu-field is-error' : 'menu-field'}>
+                        <span className="menu-field__label">库存（份）</span>
+                        <input
+                          value={dishQuantity}
+                          onChange={(event) => {
+                            setDishQuantity(event.target.value);
+                            clearDishFieldError('quantityText');
+                          }}
+                          inputMode="numeric"
+                          aria-label="菜品可售数量"
+                          aria-invalid={dishFieldErrors.quantityText ? 'true' : undefined}
+                          aria-describedby={dishFieldErrors.quantityText ? 'edit-dish-quantity-error' : undefined}
+                          placeholder="例如：30"
+                        />
+                        {dishFieldErrors.quantityText && (
+                          <span id="edit-dish-quantity-error" className="menu-field__error" data-dish-field-error="quantityText">
+                            {dishFieldErrors.quantityText}
+                          </span>
+                        )}
+                      </label>
+                      <label className="menu-field menu-field--switch">
+                        <input
+                          type="checkbox"
+                          checked={dishOnSale}
+                          onChange={(event) => setDishOnSale(event.target.checked)}
+                          aria-label="菜品在售"
+                        />
+                        <span>在售</span>
+                      </label>
+                    </div>
+                  </section>
+                  <DishCustomizeEditor
+                    value={dishCustomDraft}
+                    onChange={(next) => {
+                      setDishCustomDraft(next);
+                      setDishCustomError(null);
+                    }}
+                    disabled={dishSaving}
+                    mode={scope}
                   />
-                </label>
-                <label className="menu-field">
-                  菜品类别
-                  <select
-                    value={dishType}
-                    onChange={(event) => setDishType(event.target.value as DishType)}
-                    aria-label="菜品类别"
-                  >
-                    {DISH_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="menu-field">
-                  价格（元）
-                  <input
-                    value={dishPrice}
-                    onChange={(event) => setDishPrice(event.target.value)}
-                    inputMode="decimal"
-                    aria-label="菜品价格（元）"
+                </div>
+                <aside className="dish-editor-v8__preview" data-dish-preview>
+                  <DishCustomizePreview
+                    key={`edit-${editingDish.dishId}-${dishRequestId}`}
+                    value={dishCustomDraft}
+                    dishName={dishName}
+                    unitPriceFen={priceFenFromText(dishPrice)}
+                    priceText={dishPrice}
                   />
-                </label>
-                <label className="menu-field">
-                  库存
-                  <input
-                    value={dishQuantity}
-                    onChange={(event) => setDishQuantity(event.target.value)}
-                    inputMode="numeric"
-                    aria-label="菜品可售数量"
-                  />
-                </label>
-                <label className="menu-field menu-field--switch">
-                  <input
-                    type="checkbox"
-                    checked={dishOnSale}
-                    onChange={(event) => setDishOnSale(event.target.checked)}
-                    aria-label="菜品在售"
-                  />
-                  <span>在售</span>
-                </label>
+                </aside>
               </div>
-              <div className="dish-cx-layout">
-                <DishCustomizeEditor
-                  value={dishCustomDraft}
-                  onChange={setDishCustomDraft}
-                  disabled={dishSaving}
-                  mode={scope}
-                />
-                <DishCustomizePreview
-                  value={dishCustomDraft}
-                  dishName={dishName}
-                  unitPriceFen={priceFenFromText(dishPrice)}
-                />
-              </div>
-              <footer className="menu-editor__actions">
-                <button
-                  type="button"
-                  className="action-button action-button--primary"
-                  onClick={() => void submitDish(editingDish)}
-                  disabled={dishSaving}
-                  aria-busy={dishSaving || undefined}
-                >
-                  {dishSaving ? '保存中…' : '保存菜品与配置'}
-                </button>
-                <button type="button" className="action-button" onClick={cancelDishEdit} disabled={dishSaving}>
-                  取消
-                </button>
-                <span className="menu-editor__note">保存前会校验名称、价格、库存与选项。</span>
-              </footer>
               {dishError && (
                 <p className="action-feedback action-feedback--error" role="alert" data-menu-error>
                   {dishError}
@@ -1458,8 +1546,25 @@ data-open-daily-menu
                   {dishCustomError}
                 </p>
               )}
+              <footer className="menu-editor__actions">
+                <button
+                  type="button"
+                  className="action-button action-button--primary"
+                  onClick={() => void submitDish(editingDish)}
+                  disabled={dishSaving}
+                  aria-busy={dishSaving || undefined}
+                  data-dish-save
+                >
+                  {dishSaving ? '保存中…' : '保存菜品与配置'}
+                </button>
+                <button type="button" className="action-button" onClick={cancelDishEdit} disabled={dishSaving}>
+                  取消
+                </button>
+                <span className="menu-editor__note">保存前会校验名称、价格、库存与选项。</span>
+              </footer>
             </section>
           )}
+
 
           {deletingDish && (
             <section className="menu-confirm" data-dish-delete-confirm={deletingDish.dishId} aria-label="确认删除菜品">
@@ -1499,81 +1604,135 @@ data-open-daily-menu
             <section className="menu-editor" data-dish-create-form aria-label="新增菜品">
               <header className="menu-editor__head">
                 <div>
-                  <h3>新增菜品（{shortDate(date)}）</h3>
-                  <p>新增后加入「{shortDate(date)}」的菜单，其他日期不会自动上架。</p>
+                  <h3 className="menu-editor__title">
+                    新增菜品
+                    <span className="menu-editor__date">{shortDate(date)}</span>
+                  </h3>
+                  <p>新增后加入对应日期菜单，其他日期不会自动上架；保存前可实时预览学生端效果。</p>
                 </div>
-                <button type="button" className="menu-editor__close" onClick={cancelCreateDish} disabled={newDishSaving}>
-                  收起
-                </button>
-              </header>
-              <div className="menu-editor__fields">
-                <label className="menu-field menu-field--name">
-                  菜品名称
-                  <input
-                    value={newDishName}
-                    maxLength={30}
-                    onChange={(event) => setNewDishName(event.target.value)}
-                    aria-label="新增菜品名称"
-                  />
-                </label>
-                <label className="menu-field">
-                  菜品类别
-                  <select
-                    value={newDishType}
-                    onChange={(event) => setNewDishType(event.target.value as DishType)}
-                    aria-label="新增菜品类别"
+                <div className="menu-editor__head-actions">
+                  <button
+                    type="button"
+                    className="menu-editor__save-top"
+                    onClick={() => void submitCreateDish()}
+                    disabled={newDishSaving}
+                    data-dish-save-top
                   >
-                    {DISH_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="menu-field">
-                  价格（元）
-                  <input
-                    value={newDishPrice}
-                    onChange={(event) => setNewDishPrice(event.target.value)}
-                    inputMode="decimal"
-                    aria-label="新增菜品价格（元）"
+                    {newDishSaving ? '保存中…' : '保存'}
+                  </button>
+                  <button type="button" className="menu-editor__close" onClick={cancelCreateDish} disabled={newDishSaving}>
+                    <IconChevronUp size={14} />
+                    收起
+                  </button>
+                </div>
+              </header>
+              <div className="dish-editor-v8" data-dish-editor-grid>
+                <div className="dish-editor-v8__main">
+                  <section className="dish-base" aria-label="菜品基础信息">
+                    <div className="menu-editor__fields">
+                      <label className={newDishFieldErrors.name ? 'menu-field menu-field--name is-error' : 'menu-field menu-field--name'}>
+                        <span className="menu-field__label">菜品名称</span>
+                        <input
+                          value={newDishName}
+                          maxLength={30}
+                          onChange={(event) => {
+                            setNewDishName(event.target.value);
+                            clearNewDishFieldError('name');
+                          }}
+                          aria-label="新增菜品名称"
+                          aria-invalid={newDishFieldErrors.name ? 'true' : undefined}
+                          aria-describedby={newDishFieldErrors.name ? 'new-dish-name-error' : undefined}
+                          placeholder="例如：宫保鸡丁饭"
+                        />
+                        {newDishFieldErrors.name && (
+                          <span id="new-dish-name-error" className="menu-field__error" data-dish-field-error="name">
+                            {newDishFieldErrors.name}
+                          </span>
+                        )}
+                      </label>
+                      <label className={newDishFieldErrors.type ? 'menu-field is-error' : 'menu-field'}>
+                        <span className="menu-field__label">菜品类别</span>
+                        <select
+                          value={newDishType}
+                          onChange={(event) => {
+                            setNewDishType(event.target.value as DishType);
+                            clearNewDishFieldError('type');
+                          }}
+                          aria-label="新增菜品类别"
+                          aria-invalid={newDishFieldErrors.type ? 'true' : undefined}
+                        >
+                          {DISH_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                        {newDishFieldErrors.type && (
+                          <span id="new-dish-type-error" className="menu-field__error" data-dish-field-error="type">
+                            {newDishFieldErrors.type}
+                          </span>
+                        )}
+                      </label>
+                      <label className={newDishFieldErrors.priceText ? 'menu-field is-error' : 'menu-field'}>
+                        <span className="menu-field__label">价格（元）</span>
+                        <input
+                          value={newDishPrice}
+                          onChange={(event) => {
+                            setNewDishPrice(event.target.value);
+                            clearNewDishFieldError('priceText');
+                          }}
+                          inputMode="decimal"
+                          aria-label="新增菜品价格（元）"
+                          aria-invalid={newDishFieldErrors.priceText ? 'true' : undefined}
+                          aria-describedby={newDishFieldErrors.priceText ? 'new-dish-price-error' : undefined}
+                          placeholder="例如：18.00"
+                        />
+                        {newDishFieldErrors.priceText && (
+                          <span id="new-dish-price-error" className="menu-field__error" data-dish-field-error="priceText">
+                            {newDishFieldErrors.priceText}
+                          </span>
+                        )}
+                      </label>
+                      <label className={newDishFieldErrors.quantityText ? 'menu-field is-error' : 'menu-field'}>
+                        <span className="menu-field__label">库存（份）</span>
+                        <input
+                          value={newDishQuantity}
+                          onChange={(event) => {
+                            setNewDishQuantity(event.target.value);
+                            clearNewDishFieldError('quantityText');
+                          }}
+                          inputMode="numeric"
+                          aria-label="新增菜品可售数量"
+                          aria-invalid={newDishFieldErrors.quantityText ? 'true' : undefined}
+                          aria-describedby={newDishFieldErrors.quantityText ? 'new-dish-quantity-error' : undefined}
+                          placeholder="例如：30"
+                        />
+                        {newDishFieldErrors.quantityText && (
+                          <span id="new-dish-quantity-error" className="menu-field__error" data-dish-field-error="quantityText">
+                            {newDishFieldErrors.quantityText}
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                  </section>
+                  <DishCustomizeEditor
+                    value={newDishCustomDraft}
+                    onChange={(next) => {
+                      setNewDishCustomDraft(next);
+                      setNewDishCustomError(null);
+                    }}
+                    disabled={newDishSaving}
+                    mode={scope}
                   />
-                </label>
-                <label className="menu-field">
-                  库存
-                  <input
-                    value={newDishQuantity}
-                    onChange={(event) => setNewDishQuantity(event.target.value)}
-                    inputMode="numeric"
-                    aria-label="新增菜品可售数量"
+                </div>
+                <aside className="dish-editor-v8__preview" data-dish-preview>
+                  <DishCustomizePreview
+                    key={`create-${newDishRequestId}`}
+                    value={newDishCustomDraft}
+                    dishName={newDishName}
+                    unitPriceFen={priceFenFromText(newDishPrice)}
+                    priceText={newDishPrice}
                   />
-                </label>
+                </aside>
               </div>
-              <div className="dish-cx-layout">
-                <DishCustomizeEditor
-                  value={newDishCustomDraft}
-                  onChange={setNewDishCustomDraft}
-                  disabled={newDishSaving}
-                  mode={scope}
-                />
-                <DishCustomizePreview
-                  value={newDishCustomDraft}
-                  dishName={newDishName}
-                  unitPriceFen={priceFenFromText(newDishPrice)}
-                />
-              </div>
-              <footer className="menu-editor__actions">
-                <button
-                  type="button"
-                  className="action-button action-button--primary"
-                  onClick={() => void submitCreateDish()}
-                  disabled={newDishSaving}
-                  aria-busy={newDishSaving || undefined}
-                >
-                  {newDishSaving ? '新增中…' : '确认新增菜品与配置'}
-                </button>
-                <button type="button" className="action-button" onClick={cancelCreateDish} disabled={newDishSaving}>
-                  取消
-                </button>
-              </footer>
               {newDishCustomError && (
                 <p className="action-feedback action-feedback--error" role="alert" data-dish-cx-error>
                   {newDishCustomError}
@@ -1589,6 +1748,22 @@ data-open-daily-menu
                   先去商家注册与开店
                 </button>
               )}
+              <footer className="menu-editor__actions">
+                <button
+                  type="button"
+                  className="action-button action-button--primary"
+                  onClick={() => void submitCreateDish()}
+                  disabled={newDishSaving}
+                  aria-busy={newDishSaving || undefined}
+                  data-dish-save
+                >
+                  {newDishSaving ? '保存中…' : '保存新增菜品'}
+                </button>
+                <button type="button" className="action-button" onClick={cancelCreateDish} disabled={newDishSaving}>
+                  取消
+                </button>
+                <span className="menu-editor__note">保存前会校验名称、价格、库存与选项。</span>
+              </footer>
             </section>
           )}
 

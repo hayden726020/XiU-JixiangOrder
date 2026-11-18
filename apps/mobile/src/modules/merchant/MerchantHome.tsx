@@ -101,7 +101,7 @@ import './merchant.v2-fix.css';
 import './merchant.hours.css';
 import './merchant.v5.css';
 import './merchant.v7.css';
-
+import './merchant.v8.css';
 import './merchant.avatar.css';
 
 type DataMode = 'sample' | 'real';

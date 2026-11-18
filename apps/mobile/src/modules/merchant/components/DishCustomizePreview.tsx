@@ -1,34 +1,40 @@
 import { useState } from 'react';
 import type { DishCustomizationDraft } from '../data/types';
+import { parsePriceTextToFen } from '../state/dishCustomization';
 import { formatYuan } from '../utils/money';
+import { IconImage, IconSmartphone } from './MerchantIcons';
 
 interface DishCustomizePreviewProps {
   value: DishCustomizationDraft;
   dishName: string;
   unitPriceFen: number;
+  priceText?: string;
 }
 
-function parsePriceFen(text: string): number {
-  const trimmed = text.trim();
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return 0;
-  const fen = Math.round(Number(trimmed) * 100);
-  return Number.isSafeInteger(fen) && fen >= 0 ? fen : 0;
-}
-
-export default function DishCustomizePreview({ value, dishName, unitPriceFen }: DishCustomizePreviewProps) {
+export default function DishCustomizePreview({
+  value,
+  dishName,
+  unitPriceFen,
+  priceText,
+}: DishCustomizePreviewProps) {
   const [flavorChoice, setFlavorChoice] = useState<Record<string, string>>({});
   const [sideChoice, setSideChoice] = useState<Record<string, boolean>>({});
   const [addOnChoice, setAddOnChoice] = useState<Record<string, boolean>>({});
 
-  const totalFen = unitPriceFen + value.addOns.reduce((sum, addOn) => (
-    addOnChoice[addOn.id] ? sum + parsePriceFen(addOn.priceText) : sum
-  ), 0);
+  const priceValid = priceText === undefined
+    || (/^\d+(\.\d{1,2})?$/.test(priceText.trim()) && Number.isSafeInteger(unitPriceFen) && unitPriceFen > 0);
+  const extraFen = value.addOns.reduce((sum, addOn) => {
+    if (!addOnChoice[addOn.id]) return sum;
+    return sum + (parsePriceTextToFen(addOn.priceText) ?? 0);
+  }, 0);
+  const totalFen = unitPriceFen + extraFen;
+  const hasOptions = value.flavorGroups.length > 0 || value.sides.length > 0 || value.addOns.length > 0;
 
   return (
-    <div className="dish-cx-preview" data-dish-cx-preview>
+    <section className="dish-cx-preview" data-dish-cx-preview aria-label="学生端实时预览">
       <div className="dish-cx-preview__head">
-        <h4>学生端预览</h4>
-        <span className="merchant-readonly-tag">预览 · 不会下单</span>
+        <h4><IconSmartphone size={16} />学生端预览</h4>
+        <span className="dish-cx-preview__tag">本地预览 · 不下单</span>
       </div>
       <div className="dish-cx-preview__card">
         <div className="dish-cx-preview__dish">
@@ -36,18 +42,20 @@ export default function DishCustomizePreview({ value, dishName, unitPriceFen }: 
             {value.imageUrl ? (
               <img src={value.imageUrl} alt="" />
             ) : (
-              <span className="dish-cx-preview__image-empty">暂无图片</span>
+              <span className="dish-cx-preview__image-empty">
+                <IconImage size={20} />
+                <span>暂无图片</span>
+              </span>
             )}
           </div>
           <div className="dish-cx-preview__title">
+            <span className="dish-cx-preview__eyebrow">菜品预览</span>
             <strong>{dishName.trim() || '未命名菜品'}</strong>
-            <span className="dish-cx-preview__price">{formatYuan(unitPriceFen)}</span>
+            <span className="dish-cx-preview__price">
+              {priceValid ? formatYuan(unitPriceFen) : '¥--'}
+            </span>
           </div>
         </div>
-
-        {value.flavorGroups.length === 0 && value.sides.length === 0 && value.addOns.length === 0 && (
-          <p className="hint">还没有特征、配菜或加购项。填好后这里会出现按钮。</p>
-        )}
 
         {value.flavorGroups.map((group) => (
           <div className="dish-cx-preview__row" key={group.id}>
@@ -57,8 +65,7 @@ export default function DishCustomizePreview({ value, dishName, unitPriceFen }: 
             </p>
             <div className="dish-cx-preview__buttons">
               {group.options.map((option) => {
-                const fallback = group.required ? group.options[0]?.id : undefined;
-                const active = (flavorChoice[group.id] ?? fallback) === option.id;
+                const active = flavorChoice[group.id] === option.id;
                 return (
                   <button
                     type="button"
@@ -77,7 +84,7 @@ export default function DishCustomizePreview({ value, dishName, unitPriceFen }: 
 
         {value.sides.length > 0 && (
           <div className="dish-cx-preview__row">
-            <p className="dish-cx-preview__label">固定配菜（不加价）</p>
+            <p className="dish-cx-preview__label">固定配菜 <span className="dish-cx-preview__hint">不加价</span></p>
             <div className="dish-cx-preview__sides">
               {value.sides.map((side) => {
                 const included = sideChoice[side.id] ?? false;
@@ -111,11 +118,14 @@ export default function DishCustomizePreview({ value, dishName, unitPriceFen }: 
 
         {value.addOns.length > 0 && (
           <div className="dish-cx-preview__row">
-            <p className="dish-cx-preview__label">加购（可多选）</p>
+            <p className="dish-cx-preview__label">加购 <span className="dish-cx-preview__hint">可多选</span></p>
             <div className="dish-cx-preview__buttons">
               {value.addOns.map((addOn) => {
                 const selected = addOnChoice[addOn.id] ?? false;
-                const priceFen = parsePriceFen(addOn.priceText);
+                const priceFen = parsePriceTextToFen(addOn.priceText);
+                const priceLabel = priceFen === null
+                  ? '价格待填写'
+                  : priceFen > 0 ? `+${formatYuan(priceFen)}` : '免费';
                 return (
                   <button
                     type="button"
@@ -125,7 +135,7 @@ export default function DishCustomizePreview({ value, dishName, unitPriceFen }: 
                     onClick={() => setAddOnChoice((current) => ({ ...current, [addOn.id]: !selected }))}
                   >
                     {addOn.name.trim() || '未命名加购'}
-                    <span className="dish-cx-pill__price">{priceFen > 0 ? ` +${formatYuan(priceFen)}` : ' 免费'}</span>
+                    <span className="dish-cx-pill__price">{priceLabel}</span>
                   </button>
                 );
               })}
@@ -133,11 +143,20 @@ export default function DishCustomizePreview({ value, dishName, unitPriceFen }: 
           </div>
         )}
 
+        {!hasOptions && (
+          <p className="dish-cx-preview__empty">暂未配置口味、配菜或加购项</p>
+        )}
+
+        <div className="dish-cx-preview__summary">
+          <span>基础价格 <b>{priceValid ? formatYuan(unitPriceFen) : '待填写'}</b></span>
+          {extraFen > 0 && <span>加购 <b>+{formatYuan(extraFen)}</b></span>}
+        </div>
         <div className="dish-cx-preview__total">
           <span>学生看到合计</span>
-          <strong>{formatYuan(totalFen)}</strong>
+          <strong data-dish-cx-preview-total>{priceValid ? formatYuan(totalFen) : '¥--'}</strong>
         </div>
+        <p className="dish-cx-preview__note">只用于本地预览，不创建订单、不扣库存。</p>
       </div>
-    </div>
+    </section>
   );
 }

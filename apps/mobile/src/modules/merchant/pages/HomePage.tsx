@@ -116,6 +116,7 @@ export default function HomePage({
     .map(([label, count]) => ({ key: label, label, endLabel: '', count, enabled: true }));
   const trend: TrendItem[] = slotTrend.length > 0 ? slotTrend : fallbackTrend;
   const maxTrend = Math.max(1, ...trend.map((item) => item.count));
+  const compactTrend = trend.length > 4;
   const metric = (value: number) => (loading ? '—' : String(value));
   const dateLabel = mode === 'sample' ? `演示日 ${formatDate(statDate)} · 样例数据` : `${formatDate(statDate)} · 真实数据`;
 
@@ -318,8 +319,7 @@ export default function HomePage({
                       />
                     </span>
                     <small>
-                      {item.label}
-                      {item.endLabel ? `—${item.endLabel}` : ''}
+                      {compactTrend || !item.endLabel ? item.label : `${item.label}—${item.endLabel}`}
                     </small>
                     {!item.enabled && <em>休息</em>}
                   </button>
