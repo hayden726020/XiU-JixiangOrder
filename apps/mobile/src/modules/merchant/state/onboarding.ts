@@ -97,13 +97,15 @@ export function resolveEffectiveMerchantName(options: {
   const accountName = options.session?.user.role === 'MERCHANT'
     ? (options.session.user.displayName?.trim() || '')
     : '';
-  if (options.mode === 'real') {
-    if (accountName.length > 0) return accountName;
-    if (options.serverMerchantName?.trim()) return options.serverMerchantName.trim();
-    return options.fallback ?? DEFAULT_SAMPLE_MERCHANT_NAME;
+  if (accountName.length >= 2) {
+    return accountName.slice(0, 30);
   }
-  if (options.serverMerchantName?.trim()) return options.serverMerchantName.trim();
-  if (accountName.length >= 2) return accountName.slice(0, 30);
+  if (options.mode === 'real' && accountName.length > 0) {
+    return accountName;
+  }
+  if (options.serverMerchantName?.trim()) {
+    return options.serverMerchantName.trim();
+  }
   return options.fallback ?? DEFAULT_SAMPLE_MERCHANT_NAME;
 }
 

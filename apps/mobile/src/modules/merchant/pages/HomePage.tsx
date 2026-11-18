@@ -24,6 +24,7 @@ interface HomePageProps {
   mode: 'sample' | 'real';
   statDate: string;
   profile: MerchantProfile | null;
+  merchantDisplayName?: string | null;
   orders: MerchantOrder[];
   slots: SlotDay | null;
   loading: boolean;
@@ -55,6 +56,7 @@ export default function HomePage({
   mode,
   statDate,
   profile,
+  merchantDisplayName,
   orders,
   slots,
   loading,
@@ -75,7 +77,10 @@ export default function HomePage({
   const hours = openSlots.length > 0
     ? `${slotClock(openSlots[0].slotStart)}—${slotClock(openSlots[openSlots.length - 1].slotEnd)}`
     : '未设置营业时段';
-  const shopName = profile?.shop?.name ?? profile?.merchant?.name ?? '我的档口';
+  const shopName = profile?.shop?.name
+    ?? merchantDisplayName
+    ?? profile?.merchant?.name
+    ?? '我的档口';
 
   const orderCountByClock = new Map<string, number>();
   for (const order of todayOrders) {

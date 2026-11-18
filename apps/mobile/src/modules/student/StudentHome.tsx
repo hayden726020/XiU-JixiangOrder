@@ -192,6 +192,7 @@ function StudentHomeApp({ previewSlot }: { previewSlot: boolean }) {
       <ProfilePage
         source={source}
         onOpenOrders={() => openOrders('shop')}
+        onOpenOrder={(id) => openOrderFrom('orders', id)}
         onGoToShop={() => {
           setShopTab('home');
           goTo('shop');

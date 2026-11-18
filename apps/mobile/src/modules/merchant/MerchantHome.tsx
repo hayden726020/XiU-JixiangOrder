@@ -39,6 +39,7 @@ import {
 import { formatClock, localInputToZonedIso, shortOrderId, statusView } from './state/orderView';
 import type { DishPatch } from './state/menuEdit';
 import { menuDatesFor, resolveMenuDate, todayIso } from './state/menuView';
+import { resolveEffectiveMerchantName } from './state/onboarding';
 import { formatYuan } from './utils/money';
 import { logout } from '../../shared/auth';
 
@@ -385,8 +386,17 @@ export default function MerchantHome() {
   const activeOrder = view.name === 'detail'
     ? orders.find((order) => order.id === view.orderId) ?? null
     : null;
-  const merchantName = profile?.merchant?.name ?? null;
-  const myShopName = profile?.shop?.name ?? merchantName ?? '我的档口';
+  const accountDisplayName = session?.user.role === 'MERCHANT'
+    ? (session.user.displayName?.trim() || null)
+    : null;
+  const merchantName = profile?.merchant
+    ? resolveEffectiveMerchantName({
+      mode,
+      session,
+      serverMerchantName: profile.merchant.name,
+    })
+    : null;
+  const myShopName = profile?.shop?.name ?? merchantName ?? accountDisplayName ?? '我的档口';
   const hasShop = Boolean(profile?.shop);
   const myOpenSlots = (mySlots?.slots ?? []).filter((slot) => slot.enabled);
   const myIsOpen = myOpenSlots.length > 0;
@@ -929,6 +939,7 @@ export default function MerchantHome() {
           mode={mode}
           statDate={businessDate}
           profile={profile}
+          merchantDisplayName={accountDisplayName}
           orders={homeOrders}
           slots={slots}
           loading={homeOrdersLoading || loading}
@@ -1052,7 +1063,7 @@ export default function MerchantHome() {
                 </span>
               </div>
               <small>
-                {merchantName ?? (mode === 'sample' ? '档口演示账号' : session?.user.displayName ?? '未登录')}
+                {accountDisplayName ?? merchantName ?? (mode === 'sample' ? '档口演示账号' : '未登录')}
                 {mode === 'sample' ? ` · 演示日 ${businessDateLabel}` : ' · 今日营业'}
               </small>
             </div>

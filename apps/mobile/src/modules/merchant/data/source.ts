@@ -1,5 +1,10 @@
 import { ApiError, apiRequest } from '../../../shared/apiClient';
 import { getSession } from '../../../shared/session';
+import {
+  DEFAULT_SAMPLE_MERCHANT_NAME,
+  resolveAccountMerchantName,
+  resolveEffectiveMerchantName,
+} from '../state/onboarding';
 import { sampleMenu, sampleOrders, sampleSlots, SAMPLE_DATES } from './sampleData';
 import type {
   CreateDishInput,
@@ -539,13 +544,8 @@ function createRealSource(scenario: MerchantScenario): MerchantSource {
       if (!currentMerchantId()) {
         return fail('UNAUTHENTICATED', '真实模式需要先登录档口演示账号，未登录不发送注册请求。');
       }
-      const session = getSession();
-      const accountName = session?.user.role === 'MERCHANT'
-        ? session.user.displayName.trim()
-        : '';
-      const merchantName = accountName.length >= 2
-        ? accountName.slice(0, 30)
-        : (input.merchantName?.trim() || `${input.contactName.trim()}的档口`);
+      const fallbackName = input.merchantName?.trim() || `${input.contactName.trim()}的档口`;
+      const merchantName = resolveAccountMerchantName(getSession(), fallbackName);
       try {
         const data = await apiRequest<ApiMerchantProfile>('/merchant/registration', {
           method: 'POST',
@@ -1036,10 +1036,14 @@ export function createMerchantSource(options: {
       return { ok: true, data: structuredClone(sampleProfile) };
     },
     registerMerchant: async (input: MerchantRegistrationInput): Promise<SourceResult<MerchantProfile>> => {
+      const fallbackName = input.merchantName?.trim()
+        || sampleProfile.merchant?.name
+        || DEFAULT_SAMPLE_MERCHANT_NAME;
+      const merchantName = resolveAccountMerchantName(getSession(), fallbackName);
       sampleProfile = {
         merchant: {
           id: 'demo-merchant-01',
-          name: input.merchantName?.trim() || sampleProfile.merchant?.name || '未命名商家',
+          name: merchantName,
           contactName: input.contactName,
           contactPhone: input.contactPhone,
           status: 'ACTIVE',
@@ -1070,20 +1074,30 @@ export function createMerchantSource(options: {
       return { ok: true, data: structuredClone(sampleProfile) };
     },
 
-    getAccount: async (): Promise<SourceResult<MerchantAccount>> => ({
-      ok: true,
-      data: {
-        userId: 'demo-user-merchant-01',
-        account: 'demo-merchant',
-        password: 'demo-pass',
-        active: true,
-        merchantId: sampleProfile.merchant?.id ?? null,
-        merchantName: sampleProfile.merchant?.name ?? null,
-        contactName: sampleProfile.merchant?.contactName ?? null,
-        contactPhone: sampleProfile.merchant?.contactPhone ?? null,
-        createdAt: null,
-      },
-    }),
+    getAccount: async (): Promise<SourceResult<MerchantAccount>> => {
+      const session = getSession();
+      const merchantName = sampleProfile.merchant
+        ? resolveEffectiveMerchantName({
+          mode: 'sample',
+          session,
+          serverMerchantName: sampleProfile.merchant.name,
+        })
+        : (session?.user.role === 'MERCHANT' ? resolveAccountMerchantName(session) : null);
+      return {
+        ok: true,
+        data: {
+          userId: 'demo-user-merchant-01',
+          account: 'demo-merchant',
+          password: 'demo-pass',
+          active: true,
+          merchantId: sampleProfile.merchant?.id ?? null,
+          merchantName,
+          contactName: sampleProfile.merchant?.contactName ?? null,
+          contactPhone: sampleProfile.merchant?.contactPhone ?? null,
+          createdAt: null,
+        },
+      };
+    },
     updateAccount: async (input: UpdateMerchantAccountInput): Promise<SourceResult<MerchantAccount>> => {
       const merchant = sampleProfile.merchant;
       if (!merchant) {
