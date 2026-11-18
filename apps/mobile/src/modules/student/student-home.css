@@ -22,6 +22,7 @@
   --home-calligraphy: "Ma Shan Zheng", "FZShuti", "方正舒体", "STXingkai", "华文行楷", "STKaiti", "KaiTi", "Kaiti SC", serif;
   display: flex;
   flex-direction: column;
+  min-height: 100dvh;
   color: var(--home-navy);
   background: #faf6ea;
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
@@ -741,68 +742,6 @@
 .student-home__mine-row svg { width: 1rem; height: 1rem; }
 .student-home__fineprint { font-size: .75rem; }
 
-.student-home__nav {
-  position: sticky;
-  z-index: 20;
-  bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  align-items: center;
-  min-height: calc(70px + env(safe-area-inset-bottom));
-  padding: 0.4rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
-  border-radius: 22px 22px 0 0;
-  background: #ffffff;
-  border-top: 1px solid rgba(226, 220, 208, 0.55);
-  box-shadow: 0 -6px 22px rgba(15, 23, 42, 0.06);
-}
-
-.student-home__nav button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.15rem 0.25rem;
-  border: 0;
-  background: transparent;
-  color: #334155;
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.student-home__nav .nav-tab-pill {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.14rem;
-  min-width: 78px;
-  padding: 0.34rem 0.85rem;
-  border-radius: 999px;
-  transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
-}
-
-.student-home__nav button svg {
-  width: 1.42rem;
-  height: 1.42rem;
-}
-
-.student-home__nav button.is-active-tab {
-  color: #0d1b36;
-  font-weight: 800;
-}
-
-.student-home__nav button.is-active-tab .nav-tab-pill {
-  background: #ffe37e;
-  box-shadow: 0 2px 8px rgba(253, 214, 72, 0.32);
-}
-
-.student-home__nav button:focus-visible {
-  outline: 2.5px solid #0864e9;
-  outline-offset: 2px;
-  border-radius: 14px;
-}
-
 /* ============================================================
    点餐页面专属样式 (对齐「食麦呼」校园美食点餐页设计稿)
    ============================================================ */
@@ -816,6 +755,7 @@
   color: var(--home-navy);
   background: linear-gradient(180deg, #faf7ee 0%, #f8f4ea 100%);
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  overflow-x: clip;
 }
 
 .student-order-view .student-home__scroll {

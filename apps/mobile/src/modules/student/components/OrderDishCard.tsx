@@ -211,9 +211,13 @@ export default function OrderDishCard({ dish, quantity, index, customization, on
       <div className="meal-dish__bottom">
         <strong className="meal-dish__price">{formatYuan(dish.unitPriceFen)}</strong>
         {view.stepperVisible ? <div className="meal-dish__stepper" role="group" aria-label={`${dish.name} 数量`}>
-          <button type="button" aria-label={`减少 ${dish.name}`} disabled={quantity <= 0} onClick={() => onQuantityChange(quantity - 1)}>−</button>
+          <button type="button" aria-label={`减少 ${dish.name}`} disabled={quantity <= 0} onClick={() => onQuantityChange(quantity - 1)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+          </button>
           <span aria-live="polite">{quantity}</span>
-          <button type="button" aria-label={`增加 ${dish.name}`} disabled={atLimit} onClick={increase}>+</button>
+          <button type="button" aria-label={`增加 ${dish.name}`} disabled={atLimit} onClick={increase}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
         </div> : null}
       </div>
     </div>

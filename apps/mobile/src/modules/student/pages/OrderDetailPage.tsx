@@ -40,6 +40,7 @@ import { createRequestId } from '../../../shared/requestId';
 import { derivePollingView } from '../utils/pollingView';
 import LoginGuide from '../components/LoginGuide';
 import OrderCrowdNote from '../components/OrderCrowdNote';
+import StudentTabBar from '../components/StudentTabBar';
 import dishChickenLeg from '../assets/dish-chicken-leg.png';
 import dishBeefNoodle from '../assets/dish-beef-noodle.png';
 import dishZhajiangNoodle from '../assets/dish-zhajiang-noodle.jpg';
@@ -52,12 +53,12 @@ import '../order-detail.css';
 export interface OrderDetailPageProps {
   source: StudentSource;
   orderId: string;
-  onBack: () => void;
+  onBack: (trigger?: HTMLElement | null) => void;
   backLabel?: string;
-  onGoToHome?: () => void;
-  onGoToShop?: () => void;
-  onGoToOrders?: () => void;
-  onGoToProfile?: () => void;
+  onGoToHome?: (trigger?: HTMLElement | null) => void;
+  onGoToShop?: (trigger?: HTMLElement | null) => void;
+  onGoToOrders?: (trigger?: HTMLElement | null) => void;
+  onGoToProfile?: (trigger?: HTMLElement | null) => void;
   cleanPreview?: boolean;
 }
 
@@ -248,43 +249,6 @@ function ChatBubbleDotsIcon() {
       <circle cx="8.8" cy="11.5" r="0.9" fill="currentColor" stroke="none" />
       <circle cx="12" cy="11.5" r="0.9" fill="currentColor" stroke="none" />
       <circle cx="15.2" cy="11.5" r="0.9" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function TabHomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m3.5 10.2 8.5-6.7 8.5 6.7V20a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 20v-9.8Z" />
-      <path d="M9.5 21.5v-6.5h5v6.5" />
-    </svg>
-  );
-}
-
-function TabBowlIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3.5 12h17a8.5 8.5 0 0 1-17 0Z" />
-      <path d="M6.5 20.5h11" />
-      <path d="M9.5 8.5c0-1.6 1.5-2 1.5-3.6M14 8.8c0-1.6 1.5-2 1.5-3.6" />
-    </svg>
-  );
-}
-
-function TabOrderDocIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="5" y="3.5" width="14" height="17" rx="2.4" />
-      <path d="M8.5 8.5h7M8.5 12.5h7M8.5 16.5h4.5" />
-    </svg>
-  );
-}
-
-function TabUserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="8" r="3.8" />
-      <path d="M4.8 20.5c0-3.7 3.2-6.5 7.2-6.5s7.2 2.8 7.2 6.5" />
     </svg>
   );
 }
@@ -622,7 +586,7 @@ export default function OrderDetailPage({
       <main className="student-order-detail" aria-labelledby="student-order-title">
         <header className="detail-header">
           <div className="detail-header__left">
-            <button type="button" className="detail-header__back" onClick={onBack} aria-label={backLabel}>
+            <button type="button" className="detail-header__back" onClick={(event) => onBack(event.currentTarget)} aria-label={backLabel}>
               <ChevronLeftIcon />
             </button>
             <div className="detail-header__title-wrap">
@@ -634,8 +598,26 @@ export default function OrderDetailPage({
           <HeaderClocheSvg />
         </header>
         <div className="detail-main">
-          <LoginGuide gate={gate} onRecheck={refresh} onBack={onBack} />
+          <LoginGuide gate={gate} onRecheck={refresh} onBack={() => onBack()} />
         </div>
+        <StudentTabBar
+          active="orders"
+          placement="fixed"
+          onSelect={(tab, button) => {
+            if (tab === 'home') {
+              (onGoToHome || onGoToShop || onBack)(button);
+            } else if (tab === 'order') {
+              (onGoToShop || onBack)(button);
+            } else if (tab === 'orders') {
+              (onGoToOrders || onBack)(button);
+            } else if (tab === 'profile') {
+              (onGoToProfile || onBack)(button);
+            }
+          }}
+          onReselectActive={(button) => {
+            (onGoToOrders || onBack)(button);
+          }}
+        />
       </main>
     );
   }
@@ -683,7 +665,7 @@ export default function OrderDetailPage({
       {/* 1. 顶部手绘感标题栏 */}
       <header className="detail-header">
         <div className="detail-header__left">
-          <button type="button" className="detail-header__back" onClick={onBack} aria-label={backLabel}>
+          <button type="button" className="detail-header__back" onClick={(event) => onBack(event.currentTarget)} aria-label={backLabel}>
             <ChevronLeftIcon />
           </button>
           <div className="detail-header__title-wrap">
@@ -702,10 +684,10 @@ export default function OrderDetailPage({
             <p>{errorView.message}</p>
             <button
               type="button"
-              onClick={
+              onClick={(event) =>
                 errorView.action === 'back-to-menu'
-                  ? onBack
-                  : () => setReloadToken((value) => value + 1)
+                  ? onBack(event.currentTarget)
+                  : setReloadToken((value) => value + 1)
               }
             >
               {errorView.action === 'back-to-menu' ? '返回' : errorView.actionLabel}
@@ -946,41 +928,24 @@ export default function OrderDetailPage({
       ) : null}
 
       {/* 4. 底部导航栏 */}
-      <nav className="detail-tabbar" aria-label="底部导航">
-        <button
-          type="button"
-          className="detail-tabbar__item"
-          onClick={onGoToHome || onGoToShop || onBack}
-        >
-          <TabHomeIcon />
-          <span>首页</span>
-        </button>
-        <button
-          type="button"
-          className="detail-tabbar__item"
-          onClick={onGoToShop || onBack}
-        >
-          <TabBowlIcon />
-          <span>点餐</span>
-        </button>
-        <button
-          type="button"
-          className="detail-tabbar__item is-active"
-          aria-current="page"
-          onClick={onGoToOrders || onBack}
-        >
-          <TabOrderDocIcon />
-          <span>订单</span>
-        </button>
-        <button
-          type="button"
-          className="detail-tabbar__item"
-          onClick={onGoToProfile || onBack}
-        >
-          <TabUserIcon />
-          <span>我的</span>
-        </button>
-      </nav>
+      <StudentTabBar
+        active="orders"
+        placement="fixed"
+        onSelect={(tab, button) => {
+          if (tab === 'home') {
+            (onGoToHome || onGoToShop || onBack)(button);
+          } else if (tab === 'order') {
+            (onGoToShop || onBack)(button);
+          } else if (tab === 'orders') {
+            (onGoToOrders || onBack)(button);
+          } else if (tab === 'profile') {
+            (onGoToProfile || onBack)(button);
+          }
+        }}
+        onReselectActive={(button) => {
+          (onGoToOrders || onBack)(button);
+        }}
+      />
 
       {/* 5A. 联系档口与订单服务弹窗 */}
       {contactOpen && statusView ? (

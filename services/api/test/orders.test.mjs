@@ -102,15 +102,24 @@ test('并发下单不受时段名额限制', async () => {
   assert.equal(slot.booked_count, 2);
 });
 
-test('已结束但仍启用且有名额的时段仍可下单', async () => {
+test('当前时段之前的已结束时段在菜单中禁用且不可下单，当前时段仍可下单', async () => {
   const token = await ctx.login('student');
-  ctx.setNow(Date.parse('2026-11-13T12:05:00+08:00'));
+  ctx.setNow(Date.parse('2026-11-13T12:00:00+08:00'));
   const menu = await ctx.api('GET', '/menu?date=2026-11-13', { token });
-  const slot = menu.body.data.slots.find((item) => item.id === SLOT_TODAY);
-  assert.equal(slot.enabled, true);
+  const endedSlot = menu.body.data.slots.find((item) => item.id === SLOT_TODAY);
+  const currentSlot = menu.body.data.slots.find((item) => item.id === 'slot-2026-11-13-lunch-2');
+  assert.equal(endedSlot.enabled, false);
+  assert.equal(currentSlot.enabled, true);
 
-  const response = await placeOrder(token, 'ended-slot-1');
-  assert.equal(response.status, 201);
+  const rejected = await placeOrder(token, 'ended-slot-1');
+  assert.equal(rejected.status, 409);
+  assert.equal(rejected.body.error.code, 'SLOT_CLOSED');
+
+  ctx.setNow(Date.parse('2026-11-13T12:05:00+08:00'));
+  const currentOrder = await placeOrder(token, 'current-slot-1', {
+    slotId: 'slot-2026-11-13-lunch-2',
+  });
+  assert.equal(currentOrder.status, 201);
   assert.equal(ctx.db.prepare('SELECT COUNT(*) AS count FROM orders').get().count, 1);
 });
 

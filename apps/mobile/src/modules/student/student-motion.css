@@ -1,0 +1,881 @@
+/* ==========================================================================
+   学生端 UI-Motion 交互动效规范实现（严格对齐 MOTION_SPEC.md 与 button-motion.css）
+   ========================================================================== */
+
+/* 触控去高光与长按防菜单规则 */
+.student-home button,
+.student-order-view button,
+.meal-menu button,
+.student-booking button,
+.confirm-order-page button,
+.meal-orders button,
+.student-order-detail button,
+.student-profile button,
+.student-tabbar button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ==========================================================================
+   动效 1：数量步进器按压挤压回弹（MenuPage OrderDishCard +/-）
+   ========================================================================== */
+.meal-menu .meal-dish__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+}
+
+.meal-menu .meal-dish__stepper button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #351c0d;
+  border-radius: 10px;
+  background: #fff9ef;
+  box-shadow: 0 3px 0 #c9a67a, 0 5px 10px rgba(53, 28, 13, 0.14);
+  color: #351c0d;
+  cursor: pointer;
+  transform-origin: center bottom;
+  transition:
+    transform 240ms cubic-bezier(.18, 1.3, .36, 1),
+    box-shadow 180ms ease,
+    background-color 150ms ease;
+}
+
+.meal-menu .meal-dish__stepper button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.meal-menu .meal-dish__stepper button:first-child {
+  border-color: #c8a87e;
+}
+
+.meal-menu .meal-dish__stepper button:last-child {
+  border-color: #2e180a;
+  background: #ffd15c;
+  box-shadow: 0 3px 0 #b88214, 0 5px 10px rgba(75, 40, 18, 0.16);
+  color: #2e180a;
+}
+
+.meal-menu .meal-dish__stepper button:first-child:not(:disabled):hover {
+  background: #fff1dc;
+}
+
+.meal-menu .meal-dish__stepper button:last-child:not(:disabled):hover {
+  background: #ffc638;
+}
+
+.meal-menu .meal-dish__stepper button:first-child:not(:disabled):active {
+  transform: translateY(2px) scaleX(1.16) scaleY(.78);
+  box-shadow: 0 1px 0 #c9a67a, 0 2px 4px rgba(53, 28, 13, 0.12);
+}
+
+.meal-menu .meal-dish__stepper button:last-child:not(:disabled):active {
+  transform: translateY(2px) scaleX(1.16) scaleY(.78);
+  box-shadow: 0 1px 0 #b88214, 0 2px 4px rgba(75, 40, 18, 0.14);
+}
+
+.meal-menu .meal-dish__stepper button:disabled {
+  border-color: #e3dcd2;
+  background: #ece6dd;
+  box-shadow: none;
+  color: #9e958a;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.meal-menu .meal-dish__stepper span {
+  min-width: 1.35rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+@media (max-width: 360px) {
+  .meal-menu .meal-dish__stepper button {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+  .meal-menu .meal-dish__stepper button svg {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+/* ==========================================================================
+   动效 2A & 2B：单选卡片（堂食/外带）与时段/规格胶囊选中切换
+   ========================================================================== */
+.student-booking:not(.student-booking--confirm) .booking-mode {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 180ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-mode:not(:disabled):active {
+  transform: scale(.975);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-mode__check {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    transform 240ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-mode__check svg {
+  opacity: 0;
+  transform: scale(.45);
+  transition: opacity 150ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-mode.is-active {
+  box-shadow: 0 3px 10px rgba(118, 92, 0, .08), inset 0 0 1.2rem #f5c35247;
+}
+
+.student-booking:not(.student-booking--confirm) .booking-mode.is-active .booking-mode__check {
+  transform: translateY(-50%) scale(1.08);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-mode.is-active .booking-mode__check svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-mode:active .booking-mode__check {
+  transform: translateY(-50%) scale(.82);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-slot {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 180ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-slot:not(:disabled):active {
+  transform: scale(.97);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-slot__dot {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    transform 240ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-slot__dot svg {
+  opacity: 0;
+  transform: scale(.45);
+  transition: opacity 150ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-slot.is-active {
+  box-shadow: 0 3px 8px rgba(118, 92, 0, .08), inset 0 0 1.2rem #f5c35247;
+}
+
+.student-booking:not(.student-booking--confirm) .booking-slot.is-active .booking-slot__dot {
+  transform: scale(1.06);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-slot.is-active .booking-slot__dot svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.student-booking:not(.student-booking--confirm) .booking-slot:not(:disabled):active .booking-slot__dot {
+  transform: scale(.85);
+}
+
+/* 菜品定制口味/配菜/加料胶囊交互 */
+.meal-dish__cx {
+  animation: student-cx-expand 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes student-cx-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.meal-dish__cx-options button {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    color 180ms ease,
+    transform 180ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.meal-dish__cx-options button:not(:disabled):active {
+  transform: scale(.95);
+}
+
+.meal-dish__cx-options button.is-active {
+  transform: scale(1.03);
+}
+
+/* ==========================================================================
+   动效 3：分段切换弹性拉伸滑块（错峰 45ms + 垂直挤压回弹）
+   3A：菜单页「今天 / 明天」分段日期弹性滑块
+   3B：我的设置弹窗「演示模式 / 真实模式」弹性滑块
+   3C：订单列表页 4 格状态筛选弹性滑块
+   ========================================================================== */
+.meal-menu__dates.meal-menu__dates--elastic {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.24rem;
+  padding: 0.32rem;
+  border: 1px solid var(--edge, #e0c8a9);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.96);
+  box-shadow: 0 4px 12px rgba(83, 45, 15, 0.08);
+  overflow: hidden;
+}
+
+.meal-menu__dates--elastic .meal-menu__dates-thumb,
+.profile-mode-switch--elastic .profile-mode-switch__thumb {
+  position: absolute;
+  top: 0.32rem;
+  bottom: 0.32rem;
+  left: 0.32rem;
+  right: calc(50% + 0.12rem);
+  z-index: 0;
+  border: 1px solid #e7b900;
+  border-radius: 999px;
+  background: #ffd525;
+  box-shadow: 0 2px 8px rgba(231, 185, 0, 0.32), 0 2px 4px rgba(7, 22, 56, 0.09);
+  pointer-events: none;
+  transform-origin: center;
+  will-change: left, right, transform;
+}
+
+.meal-menu__dates--elastic[data-active-index="0"] .meal-menu__dates-thumb,
+.profile-mode-switch--elastic[data-active-index="0"] .profile-mode-switch__thumb {
+  left: 0.32rem;
+  right: calc(50% + 0.12rem);
+  transition:
+    left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    right 420ms cubic-bezier(0.32, 0.72, 0, 1) 45ms;
+}
+
+.meal-menu__dates--elastic[data-active-index="1"] .meal-menu__dates-thumb,
+.profile-mode-switch--elastic[data-active-index="1"] .profile-mode-switch__thumb {
+  left: calc(50% + 0.12rem);
+  right: 0.32rem;
+  transition:
+    right 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 420ms cubic-bezier(0.32, 0.72, 0, 1) 45ms;
+}
+
+.meal-menu__dates--elastic[data-active-index="1"][data-anim-dir="forward"] .meal-menu__dates-thumb,
+.profile-mode-switch--elastic[data-active-index="1"][data-anim-dir="forward"] .profile-mode-switch__thumb {
+  animation: ui-motion-date-squish-right 440ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.meal-menu__dates--elastic[data-active-index="0"][data-anim-dir="backward"] .meal-menu__dates-thumb,
+.profile-mode-switch--elastic[data-active-index="0"][data-anim-dir="backward"] .profile-mode-switch__thumb {
+  animation: ui-motion-date-squish-left 440ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.meal-menu__dates--elastic button {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  min-height: 2.85rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #6f5b46;
+  transition: color 240ms ease, transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.meal-menu__dates--elastic button.is-active {
+  border-color: transparent;
+  background: transparent;
+  color: #2e180a;
+  transform: scale(1.02);
+}
+
+.meal-menu__dates--elastic button.is-active::after {
+  display: none;
+}
+
+.meal-menu__dates--elastic button:active {
+  transform: scale(0.95);
+}
+
+/* 设置弹窗二选一弹性滑块 */
+.profile-mode-switch.profile-mode-switch--elastic {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.24rem;
+  padding: 0.28rem;
+  border-radius: 999px;
+  background: #efe3d2;
+  overflow: hidden;
+}
+
+.profile-mode-switch--elastic .profile-mode-switch__thumb {
+  top: 0.28rem;
+  bottom: 0.28rem;
+  left: 0.28rem;
+  right: calc(50% + 0.12rem);
+}
+
+.profile-mode-switch--elastic[data-active-index="0"] .profile-mode-switch__thumb {
+  left: 0.28rem;
+  right: calc(50% + 0.12rem);
+}
+
+.profile-mode-switch--elastic[data-active-index="1"] .profile-mode-switch__thumb {
+  left: calc(50% + 0.12rem);
+  right: 0.28rem;
+}
+
+.profile-mode-switch--elastic .profile-mode-switch__btn {
+  position: relative;
+  z-index: 1;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  transition: color 240ms ease, transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.profile-mode-switch--elastic .profile-mode-switch__btn.is-active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: #22170f;
+  transform: scale(1.02);
+}
+
+.profile-mode-switch--elastic .profile-mode-switch__btn:active {
+  transform: scale(0.95);
+}
+
+/* 订单列表 4 格筛选弹性滑块 */
+.meal-orders__filters.meal-orders__filters--elastic {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0;
+  padding: 0.24rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(231, 219, 204, 0.75);
+  box-shadow: 0 7px 22px rgba(43, 23, 5, 0.05);
+  overflow: hidden;
+}
+
+.meal-orders__filters-thumb {
+  position: absolute;
+  top: 0.24rem;
+  bottom: 0.24rem;
+  z-index: 0;
+  border: 1px solid #f0cb52;
+  border-radius: 999px;
+  background: #ffe694;
+  box-shadow: 0 2px 8px rgba(231, 185, 0, 0.24);
+  pointer-events: none;
+  transform-origin: center;
+  will-change: left, right, transform;
+}
+
+.meal-orders__filters--elastic[data-active-index="0"] .meal-orders__filters-thumb {
+  left: 0.24rem;
+  right: calc(75% + 0.06rem);
+}
+
+.meal-orders__filters--elastic[data-active-index="1"] .meal-orders__filters-thumb {
+  left: calc(25% + 0.06rem);
+  right: calc(50% + 0.06rem);
+}
+
+.meal-orders__filters--elastic[data-active-index="2"] .meal-orders__filters-thumb {
+  left: calc(50% + 0.06rem);
+  right: calc(25% + 0.06rem);
+}
+
+.meal-orders__filters--elastic[data-active-index="3"] .meal-orders__filters-thumb {
+  left: calc(75% + 0.06rem);
+  right: 0.24rem;
+}
+
+.meal-orders__filters--elastic[data-anim-dir="forward"] .meal-orders__filters-thumb {
+  transition:
+    right 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 420ms cubic-bezier(0.32, 0.72, 0, 1) 45ms;
+}
+
+.meal-orders__filters--elastic[data-anim-dir="backward"] .meal-orders__filters-thumb {
+  transition:
+    left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    right 420ms cubic-bezier(0.32, 0.72, 0, 1) 45ms;
+}
+
+.meal-orders__filters--elastic[data-squish="0"]:not([data-anim-dir="none"]) .meal-orders__filters-thumb {
+  animation: ui-motion-date-squish-left 440ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.meal-orders__filters--elastic[data-squish="1"]:not([data-anim-dir="none"]) .meal-orders__filters-thumb {
+  animation: ui-motion-date-squish-right 440ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.meal-orders__filters--elastic button {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  box-shadow: none;
+  transition: color 240ms ease, transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.meal-orders__filters--elastic button.is-active {
+  background: transparent;
+  box-shadow: none;
+  font-weight: 800;
+  transform: scale(1.02);
+}
+
+.meal-orders__filters--elastic button:active {
+  transform: scale(0.95);
+}
+
+@keyframes ui-motion-date-squish-right {
+  0% { transform: scaleY(1); }
+  32% { transform: scaleY(0.86); }
+  72% { transform: scaleY(1.04); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes ui-motion-date-squish-left {
+  0% { transform: scaleY(1); }
+  32% { transform: scaleY(0.86); }
+  72% { transform: scaleY(1.04); }
+  100% { transform: scaleY(1); }
+}
+
+/* ==========================================================================
+   动效 4：底部导航栏液态双胶囊切换（StudentTabBar / LiquidTabBar）
+   ========================================================================== */
+.student-tabbar {
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  justify-content: stretch;
+  min-height: calc(4.15rem + env(safe-area-inset-bottom));
+  padding: 0.28rem 0.35rem calc(0.28rem + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(53, 28, 13, 0.08);
+  border-radius: 1.25rem 1.25rem 0 0;
+  background: rgba(255, 253, 249, 0.97);
+  box-shadow: 0 -4px 18px rgba(7, 22, 56, 0.08);
+  backdrop-filter: blur(14px);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+}
+
+.student-tabbar *,
+.student-tabbar *::before,
+.student-tabbar *::after {
+  box-sizing: border-box;
+}
+
+.student-tabbar--sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  width: 100%;
+}
+
+.student-tabbar--fixed {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 520px);
+  z-index: 40;
+}
+
+.student-tabbar__track {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.35rem;
+  bottom: calc(0.28rem + env(safe-area-inset-bottom));
+  left: 0.35rem;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.92;
+}
+
+.student-tabbar__indicator,
+.student-tabbar__blob {
+  position: absolute;
+  top: 0.14rem;
+  bottom: 0.14rem;
+  border-radius: 999px;
+  background: #ffe885;
+  will-change: left, right, transform;
+}
+
+.student-tabbar__blob {
+  top: 0.28rem;
+  bottom: 0.28rem;
+}
+
+.student-tabbar[data-active-index="0"] .student-tabbar__indicator,
+.student-tabbar[data-active-index="0"] .student-tabbar__blob {
+  left: 0.2rem;
+  right: calc(75% + 0.2rem);
+}
+
+.student-tabbar[data-active-index="1"] .student-tabbar__indicator,
+.student-tabbar[data-active-index="1"] .student-tabbar__blob {
+  left: calc(25% + 0.2rem);
+  right: calc(50% + 0.2rem);
+}
+
+.student-tabbar[data-active-index="2"] .student-tabbar__indicator,
+.student-tabbar[data-active-index="2"] .student-tabbar__blob {
+  left: calc(50% + 0.2rem);
+  right: calc(25% + 0.2rem);
+}
+
+.student-tabbar[data-active-index="3"] .student-tabbar__indicator,
+.student-tabbar[data-active-index="3"] .student-tabbar__blob {
+  left: calc(75% + 0.2rem);
+  right: 0.2rem;
+}
+
+.student-tabbar[data-anim-dir="forward"] .student-tabbar__indicator {
+  transition:
+    right 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 420ms cubic-bezier(0.32, 0.72, 0, 1) 50ms;
+}
+
+.student-tabbar[data-anim-dir="forward"] .student-tabbar__blob {
+  transition:
+    right 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 320ms cubic-bezier(0.32, 0.72, 0, 1) 25ms;
+}
+
+.student-tabbar[data-anim-dir="backward"] .student-tabbar__indicator {
+  transition:
+    left 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    right 420ms cubic-bezier(0.32, 0.72, 0, 1) 50ms;
+}
+
+.student-tabbar[data-anim-dir="backward"] .student-tabbar__blob {
+  transition:
+    left 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    right 320ms cubic-bezier(0.32, 0.72, 0, 1) 25ms;
+}
+
+.student-tabbar .student-tabbar__item {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 3.1rem;
+  margin: 0;
+  align-content: center;
+  justify-items: center;
+  gap: 0.08rem;
+  padding: 0.2rem 0.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #6b6358;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: normal;
+  cursor: pointer;
+  transition: color 220ms ease, transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.student-tabbar .student-tabbar__item:focus-visible {
+  outline: 3px solid #a88300;
+  outline-offset: 2px;
+}
+
+.student-tabbar .student-tabbar__item:active {
+  transform: scale(0.94);
+}
+
+.student-tabbar .student-tabbar__item > svg {
+  display: block;
+  position: relative;
+  z-index: 1;
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.student-tabbar .student-tabbar__item > span {
+  display: block;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.student-tabbar .student-tabbar__item.is-active {
+  color: #071638;
+  font-weight: 800;
+}
+
+.student-tabbar .student-tabbar__item.is-active > svg {
+  transform: scale(1.06);
+}
+
+/* ==========================================================================
+   动效 5：返回按钮、高频入口卡片与主操作按钮按压反馈
+   ========================================================================== */
+.student-booking:not(.student-booking--confirm) .booking-nav__back,
+.confirm-order__back,
+.detail-header__back {
+  transition:
+    transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 150ms ease,
+    opacity 150ms ease;
+}
+
+.student-booking:not(.student-booking--confirm) .booking-nav__back:active:not(:disabled),
+.confirm-order__back:active:not(:disabled),
+.detail-header__back:active:not(:disabled) {
+  transform: scale(0.92);
+  opacity: 0.76;
+}
+
+.meal-menu__shop button,
+.meal-menu__orders,
+.confirm-meta-row__slot-btn {
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms ease;
+}
+
+.meal-menu__shop button:active:not(:disabled),
+.meal-menu__orders:active:not(:disabled),
+.confirm-meta-row__slot-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  opacity: 0.78;
+}
+
+/* 首页推荐卡、拍立得卡、活动横幅、档口卡、订单票券与我的入口卡 */
+.home-featured-card,
+.home-small-card,
+.home-promo-banner,
+.home-polaroid-card,
+.order-stall-card,
+.order-dish-thumb,
+.order-filter-pill,
+.meal-menu__categories button,
+.meal-menu__basket > button,
+.confirm-submit-btn,
+.order-ticket__detail,
+.order-ticket__primary,
+.profile-ticket__body,
+.profile-ticket__empty,
+.profile-orders-grid__item,
+.profile-services-grid__item,
+.profile-privacy-card,
+.profile-topbar__gear,
+.profile-card__more {
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 140ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.home-featured-card:hover:not(:disabled),
+.home-small-card:hover:not(:disabled),
+.home-promo-banner:hover:not(:disabled),
+.profile-privacy-card:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.home-featured-card:active:not(:disabled),
+.home-small-card:active:not(:disabled),
+.home-promo-banner:active:not(:disabled),
+.home-polaroid-card:active:not(:disabled),
+.order-stall-card:not(.is-disabled):active,
+.profile-ticket__body:active:not(:disabled),
+.profile-ticket__empty:active:not(:disabled),
+.profile-privacy-card:active:not(:disabled) {
+  transform: scale(0.975);
+  opacity: 0.86;
+}
+
+.order-dish-thumb:active:not(:disabled),
+.order-filter-pill:active:not(:disabled),
+.meal-menu__categories button:active:not(:disabled),
+.meal-menu__basket > button:active:not(:disabled),
+.confirm-submit-btn:active:not(:disabled),
+.order-ticket__detail:active:not(:disabled),
+.order-ticket__primary:active:not(:disabled),
+.profile-orders-grid__item:active:not(:disabled),
+.profile-services-grid__item:active:not(:disabled),
+.profile-topbar__gear:active:not(:disabled),
+.profile-card__more:active:not(:disabled) {
+  transform: scale(0.95);
+  opacity: 0.84;
+}
+
+.home-pill-cta svg,
+.home-circle-cta svg,
+.profile-privacy-card__arrow svg,
+.order-stall-card__go svg {
+  transition: transform 200ms ease;
+}
+
+.home-featured-card:hover:not(:disabled) .home-pill-cta svg,
+.home-small-card:hover:not(:disabled) .home-circle-cta svg,
+.home-promo-banner:hover:not(:disabled) .home-pill-cta svg,
+.profile-privacy-card:hover:not(:disabled) .profile-privacy-card__arrow svg,
+.order-stall-card:hover:not(.is-disabled) .order-stall-card__go svg {
+  transform: translateX(3px);
+}
+
+/* ==========================================================================
+   无障碍：prefers-reduced-motion 降级
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .meal-menu .meal-dish__stepper button,
+  .student-booking:not(.student-booking--confirm) .booking-mode,
+  .student-booking:not(.student-booking--confirm) .booking-mode__check,
+  .student-booking:not(.student-booking--confirm) .booking-mode__check svg,
+  .student-booking:not(.student-booking--confirm) .booking-slot,
+  .student-booking:not(.student-booking--confirm) .booking-slot__dot,
+  .student-booking:not(.student-booking--confirm) .booking-slot__dot svg,
+  .meal-dish__cx-options button {
+    transition-duration: 60ms;
+  }
+
+  .meal-menu__dates--elastic .meal-menu__dates-thumb,
+  .meal-menu__dates--elastic button,
+  .profile-mode-switch--elastic .profile-mode-switch__thumb,
+  .profile-mode-switch--elastic .profile-mode-switch__btn,
+  .meal-orders__filters--elastic .meal-orders__filters-thumb,
+  .meal-orders__filters--elastic button,
+  .student-tabbar__indicator,
+  .student-tabbar__blob,
+  .student-tabbar__item,
+  .student-tabbar__item > svg,
+  .meal-dish__cx,
+  .student-booking:not(.student-booking--confirm) .booking-nav__back,
+  .confirm-order__back,
+  .detail-header__back,
+  .meal-menu__shop button,
+  .meal-menu__orders,
+  .confirm-meta-row__slot-btn,
+  .home-featured-card,
+  .home-small-card,
+  .home-promo-banner,
+  .home-polaroid-card,
+  .order-stall-card,
+  .order-dish-thumb,
+  .order-filter-pill,
+  .meal-menu__categories button,
+  .meal-menu__basket > button,
+  .confirm-submit-btn,
+  .order-ticket__detail,
+  .order-ticket__primary,
+  .profile-ticket__body,
+  .profile-ticket__empty,
+  .profile-orders-grid__item,
+  .profile-services-grid__item,
+  .profile-privacy-card,
+  .profile-topbar__gear,
+  .profile-card__more,
+  .home-pill-cta svg,
+  .home-circle-cta svg,
+  .profile-privacy-card__arrow svg,
+  .order-stall-card__go svg {
+    transition: none;
+    animation: none;
+  }
+
+  .meal-menu .meal-dish__stepper button:first-child:not(:disabled):active,
+  .meal-menu .meal-dish__stepper button:last-child:not(:disabled):active,
+  .student-booking:not(.student-booking--confirm) .booking-mode:not(:disabled):active,
+  .student-booking:not(.student-booking--confirm) .booking-slot:not(:disabled):active,
+  .meal-dish__cx-options button:not(:disabled):active,
+  .meal-dish__cx-options button.is-active,
+  .meal-menu__dates--elastic button:active,
+  .meal-menu__dates--elastic button.is-active,
+  .profile-mode-switch--elastic .profile-mode-switch__btn:active,
+  .profile-mode-switch--elastic .profile-mode-switch__btn.is-active,
+  .meal-orders__filters--elastic button:active,
+  .meal-orders__filters--elastic button.is-active,
+  .student-tabbar__item:active,
+  .student-tabbar__item.is-active > svg,
+  .student-booking:not(.student-booking--confirm) .booking-nav__back:active:not(:disabled),
+  .confirm-order__back:active:not(:disabled),
+  .detail-header__back:active:not(:disabled),
+  .meal-menu__shop button:active:not(:disabled),
+  .meal-menu__orders:active:not(:disabled),
+  .confirm-meta-row__slot-btn:active:not(:disabled),
+  .home-featured-card:hover:not(:disabled),
+  .home-featured-card:active:not(:disabled),
+  .home-small-card:hover:not(:disabled),
+  .home-small-card:active:not(:disabled),
+  .home-promo-banner:hover:not(:disabled),
+  .home-promo-banner:active:not(:disabled),
+  .home-polaroid-card:active:not(:disabled),
+  .order-stall-card:not(.is-disabled):active,
+  .order-dish-thumb:active:not(:disabled),
+  .order-filter-pill:active:not(:disabled),
+  .meal-menu__categories button:active:not(:disabled),
+  .meal-menu__basket > button:active:not(:disabled),
+  .confirm-submit-btn:active:not(:disabled),
+  .order-ticket__detail:active:not(:disabled),
+  .order-ticket__primary:active:not(:disabled),
+  .profile-ticket__body:active:not(:disabled),
+  .profile-ticket__empty:active:not(:disabled),
+  .profile-orders-grid__item:active:not(:disabled),
+  .profile-services-grid__item:active:not(:disabled),
+  .profile-privacy-card:hover:not(:disabled),
+  .profile-privacy-card:active:not(:disabled),
+  .profile-topbar__gear:active:not(:disabled),
+  .profile-card__more:active:not(:disabled) {
+    transform: none;
+    opacity: 1;
+  }
+
+  .student-booking:not(.student-booking--confirm) .booking-mode.is-active .booking-mode__check,
+  .student-booking:not(.student-booking--confirm) .booking-mode:active .booking-mode__check {
+    transform: translateY(-50%);
+  }
+}

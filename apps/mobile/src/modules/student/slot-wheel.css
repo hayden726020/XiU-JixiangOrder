@@ -1,0 +1,102 @@
+.slot-wheel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 100%;
+  border: 1.5px solid #e6d6c5;
+  border-radius: 16px;
+  background: #fffaf5;
+  color: #351808;
+  box-sizing: border-box;
+}
+
+.slot-wheel__band {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  right: 10px;
+  left: 10px;
+  height: 44px;
+  border: 1px solid #eccb89;
+  border-radius: 11px;
+  background: #fff0ca;
+  transform: translateY(-50%);
+  box-shadow: inset 0 0 18px #f5c35240;
+  pointer-events: none;
+}
+
+.slot-wheel__control {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.slot-wheel__control:active { cursor: grabbing; }
+.slot-wheel__control:focus-visible { outline: 3px solid #d28a04; outline-offset: -4px; border-radius: 14px; }
+
+.slot-wheel__drum-mask {
+  position: absolute;
+  inset: 0;
+  perspective: 1000px;
+  mask-image: linear-gradient(to bottom, transparent, #000 29%, #000 71%, transparent);
+  pointer-events: none;
+}
+
+.slot-wheel__drum-mask--active {
+  clip-path: inset(calc(50% - 22px) 0 calc(50% - 22px) 0);
+  mask-image: none;
+}
+
+.slot-wheel__drum {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.slot-wheel__row {
+  position: absolute;
+  top: -18px;
+  right: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  height: 36px;
+  color: #a08e80;
+  font-size: clamp(1.2rem, 5.5vw, 1.55rem);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  backface-visibility: hidden;
+}
+
+.slot-wheel__drum-mask--active .slot-wheel__row {
+  color: #351808;
+  font-weight: 700;
+}
+
+.slot-wheel__hint {
+  margin: .55rem .15rem 0;
+  color: #6b5f52;
+  font-size: .8rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.slot-wheel__selection {
+  color: #8d520c;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-wheel__drum { will-change: auto; }
+}

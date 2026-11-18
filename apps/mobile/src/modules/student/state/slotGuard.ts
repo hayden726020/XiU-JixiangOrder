@@ -26,6 +26,7 @@ export interface SlotRequestGuardOptions {
 
 export interface SlotRequestGuard {
   selectSlot(slotId: string): Promise<SlotSelectResult>;
+  clear(): void;
   getState(): SlotGuardState;
 }
 
@@ -76,6 +77,13 @@ export function createSlotRequestGuard({ fetchCrowd }: SlotRequestGuardOptions):
         );
 
       return pending;
+    },
+    clear(): void {
+      seq += 1;
+      currentSlotId = null;
+      crowd = null;
+      error = null;
+      loading = false;
     },
     getState: snapshot,
   };

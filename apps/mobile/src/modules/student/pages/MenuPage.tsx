@@ -7,6 +7,7 @@ import { toSourceErrorView } from '../utils/sourceErrorView';
 import { SHOP_SWITCH_NOTICE } from '../utils/shopTexts';
 import OrderDishCard from '../components/OrderDishCard';
 import OrderMenuIcon from '../components/OrderMenuIcons';
+import StudentTabBar from '../components/StudentTabBar';
 import '../order-menu.css';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -37,13 +38,13 @@ export interface MenuPageProps {
   source: StudentSource;
   draft: OrderDraft;
   shop: ShopSummary;
-  onBackToShops: () => void;
-  onProceed: () => void;
-  onViewSampleOrder: () => void;
-  onViewCancelOrder?: () => void;
-  onOpenOrders: () => void;
-  onGoHome?: () => void;
-  onGoProfile?: () => void;
+  onBackToShops: (trigger?: HTMLElement | null) => void;
+  onProceed: (trigger?: HTMLElement | null) => void;
+  onViewSampleOrder: (trigger?: HTMLElement | null) => void;
+  onViewCancelOrder?: (trigger?: HTMLElement | null) => void;
+  onOpenOrders: (trigger?: HTMLElement | null, viaTab?: boolean) => void;
+  onGoHome?: (trigger?: HTMLElement | null) => void;
+  onGoProfile?: (trigger?: HTMLElement | null) => void;
   focusDishId?: string | null;
   onFocusHandled?: () => void;
 }
@@ -55,6 +56,7 @@ export default function OrderMenuPage({ source, draft, shop, onBackToShops, onPr
   const [errorText, setErrorText] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [category, setCategory] = useState<Category>('全部');
+  const [dateAnimDir, setDateAnimDir] = useState<'none' | 'forward' | 'backward'>('none');
   const date = snapshot.date;
 
   useEffect(() => {
@@ -80,8 +82,12 @@ export default function OrderMenuPage({ source, draft, shop, onBackToShops, onPr
     return () => { cancelled = true; };
   }, [source, draft, shop.merchantId, date, reloadToken]);
 
-  function changeDate(next: string): void {
-    if (!draft.setDate(next)) return;
+  function changeDate(next: string, nextIndex: number): void {
+    const currentIndex = snapshot.allowedDates.indexOf(date);
+    if (next === date || !draft.setDate(next)) return;
+    if (currentIndex >= 0 && nextIndex !== currentIndex) {
+      setDateAnimDir(nextIndex > currentIndex ? 'forward' : 'backward');
+    }
     setMenu(null);
     setStatus('loading');
     setSnapshot(draft.getState());
@@ -108,24 +114,34 @@ export default function OrderMenuPage({ source, draft, shop, onBackToShops, onPr
   const shownDishes = category === '全部' ? shopDishes : shopDishes.filter((dish) => categoryOf(dish) === category);
   const canSwitchShop = draft.canSetShop();
 
+  const isTwoDateSwitch = snapshot.allowedDates.length === 2;
+  const activeDateIndex = Math.max(0, snapshot.allowedDates.indexOf(date));
+
   return <section className="meal-menu" aria-labelledby="meal-menu-title">
     <div className="meal-menu__main">
       <header className="meal-menu__header">
         <div className="meal-menu__heading"><h1 id="meal-menu-title">学生点餐</h1><span className="meal-menu__rays" aria-hidden="true">✳</span></div>
-        <button className="meal-menu__orders ticket-edge" type="button" onClick={onOpenOrders}><OrderMenuIcon name="receipt" size={21} /> 我的订单 <OrderMenuIcon name="chevron" size={17} /></button>
+        <button className="meal-menu__orders ticket-edge" type="button" onClick={(event) => onOpenOrders(event.currentTarget, false)}><OrderMenuIcon name="receipt" size={21} /> 我的订单 <OrderMenuIcon name="chevron" size={17} /></button>
       </header>
 
       <div className="meal-menu__shop ticket-edge">
         <OrderMenuIcon name="shop" size={27} />
         <span className="meal-menu__shop-label">当前店铺</span>
         <strong>{shop.name}</strong>
-        <button type="button" disabled={!canSwitchShop} onClick={onBackToShops}>切换店铺 <OrderMenuIcon name="chevron" size={16} /></button>
+        <button type="button" disabled={!canSwitchShop} onClick={(event) => onBackToShops(event.currentTarget)}>切换店铺 <OrderMenuIcon name="chevron" size={16} /></button>
       </div>
       {!canSwitchShop ? <p className="meal-menu__notice" role="status">订单结果待确认，暂时不能切换店铺。</p> : null}
-      {source.mode === 'sample' ? <p className="meal-menu__demo">示例菜单 · 图片仅供参考</p> : <p className="meal-menu__demo">菜单与价格来自公共服务 · 图片仅供参考</p>}
+      {source.mode === 'sample' ? <p className="meal-menu__demo">示例菜单 · 图片仅供参考</p> : <p className="meal-menu__demo">图片仅供参考</p>}
 
-      <div className="meal-menu__dates" role="group" aria-label="选择菜单日期">
-        {snapshot.allowedDates.map((item, index) => <button key={item} type="button" className={date === item ? 'is-active' : ''} aria-pressed={date === item} onClick={() => changeDate(item)}><OrderMenuIcon name="calendar" size={21} /> {datePrefix(item, index)} {monthDay(item)}</button>)}
+      <div
+        className={`meal-menu__dates${isTwoDateSwitch ? ' meal-menu__dates--elastic' : ''}`}
+        role="group"
+        aria-label="选择菜单日期"
+        data-active-index={isTwoDateSwitch ? activeDateIndex : undefined}
+        data-anim-dir={isTwoDateSwitch ? dateAnimDir : undefined}
+      >
+        {isTwoDateSwitch ? <span className="meal-menu__dates-thumb" aria-hidden="true" /> : null}
+        {snapshot.allowedDates.map((item, index) => <button key={item} type="button" className={date === item ? 'is-active' : ''} aria-pressed={date === item} onClick={() => changeDate(item, index)}><OrderMenuIcon name="calendar" size={21} /> {datePrefix(item, index)} {monthDay(item)}</button>)}
       </div>
 
       <div className="meal-menu__categories" role="tablist" aria-label="菜品分类，按名称整理">
@@ -141,21 +157,32 @@ export default function OrderMenuPage({ source, draft, shop, onBackToShops, onPr
 
       {needsFlavor ? <p className="meal-menu__notice" role="status">有菜品还未选择必选口味，请点菜品上的“选配菜/口味”。</p> : null}
 
-      {source.mode === 'sample' ? <div className="meal-menu__sample-actions"><button type="button" onClick={onViewSampleOrder}>查看示例订单</button>{onViewCancelOrder ? <button type="button" onClick={onViewCancelOrder}>查看取消状态</button> : null}</div> : null}
+      {source.mode === 'sample' ? <div className="meal-menu__sample-actions"><button type="button" onClick={(event) => onViewSampleOrder(event.currentTarget)}>查看示例订单</button>{onViewCancelOrder ? <button type="button" onClick={(event) => onViewCancelOrder(event.currentTarget)}>查看取消状态</button> : null}</div> : null}
     </div>
 
     <div className="meal-menu__bottom">
       <div className="meal-menu__basket ticket-edge">
         <div className="meal-menu__basket-total"><OrderMenuIcon name="basket" size={24} /><span>共 {snapshot.totalQuantity} 份</span><i aria-hidden="true" /><strong>合计 {formatYuan(snapshot.previewFen)}</strong></div>
-        <button type="button" disabled={!snapshot.canProceedToSlot} onClick={onProceed}>选择取餐时间 <OrderMenuIcon name="chevron" size={18} /></button>
+        <button type="button" disabled={!snapshot.canProceedToSlot} onClick={(event) => onProceed(event.currentTarget)}>选择取餐时间 <OrderMenuIcon name="chevron" size={18} /></button>
       </div>
       <p className="meal-menu__estimate">此处为预估金额，下单金额以服务端返回为准</p>
-      <nav className="meal-menu__nav" aria-label="学生端导航">
-        <button type="button" onClick={onGoHome ?? onBackToShops}><OrderMenuIcon name="home" size={25} /><span>首页</span></button>
-        <button type="button" className="is-active" aria-current="page"><OrderMenuIcon name="bowl" size={26} /><span>点餐</span></button>
-        <button type="button" onClick={onOpenOrders}><OrderMenuIcon name="receipt" size={25} /><span>订单</span></button>
-        <button type="button" onClick={onGoProfile ?? onOpenOrders}><OrderMenuIcon name="user" size={25} /><span>我的</span></button>
-      </nav>
+      <StudentTabBar
+        active="order"
+        placement="inline"
+        onSelect={(tab, button) => {
+          if (tab === 'home') {
+            (onGoHome ?? onBackToShops)(button);
+          } else if (tab === 'orders') {
+            onOpenOrders(button, true);
+          } else if (tab === 'profile') {
+            if (onGoProfile) {
+              onGoProfile(button);
+            } else {
+              onOpenOrders(button, true);
+            }
+          }
+        }}
+      />
     </div>
   </section>;
 }

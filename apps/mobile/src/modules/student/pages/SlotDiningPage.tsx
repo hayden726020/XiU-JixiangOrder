@@ -9,9 +9,11 @@ import { EMPTY_SLOTS_TEXT } from '../utils/submitTexts';
 import { filterDishesByShop } from '../utils/dishShopFilter';
 import { toSourceErrorView } from '../utils/sourceErrorView';
 import { formatSlotRange, toSlotView } from '../utils/slotView';
+import { useSourceNowMs } from '../state/useSourceNowMs';
 import { toCrowdView } from '../utils/crowdView';
 import DemoModeNotice from '../components/DemoModeNotice';
 import BookingTicket from '../components/BookingTicket';
+import SlotWheelPicker from '../components/SlotWheelPicker';
 import { formatYuan } from '../utils/money';
 import {
   LOCATION_NO_PROMISE_TEXT,
@@ -239,8 +241,8 @@ export interface SlotDiningPageProps {
   source: StudentSource;
   draft: OrderDraft;
   shop: ShopSummary;
-  onBack: () => void;
-  onConfirm: () => void;
+  onBack: (trigger?: HTMLElement | null) => void;
+  onConfirm: (trigger?: HTMLElement | null) => void;
 }
 
 export default function SlotDiningPage({
@@ -263,6 +265,7 @@ export default function SlotDiningPage({
     getPresenceRuntime(source.mode === 'real' ? 'real' : 'sample'),
   );
   const [presence, setPresence] = useState<PresenceState>(() => presenceRuntime.getState());
+  const [nowMs, syncNowMs] = useSourceNowMs(source);
   const date = snapshot.date;
 
   async function requestCrowd(slotId: string): Promise<void> {
@@ -298,9 +301,11 @@ export default function SlotDiningPage({
     source.getMenu(date).then(
       (data) => {
         if (!cancelled && draft.isMenuReadCurrent(token)) {
+          syncNowMs();
           setMenu(data);
           setStatus('ready');
           draft.applyDishCatalog(filterDishesByShop(data.dishes, shop.merchantId));
+          setSnapshot(draft.getState());
         }
       },
       (error: unknown) => {
@@ -314,10 +319,34 @@ export default function SlotDiningPage({
     return () => {
       cancelled = true;
     };
-  }, [source, draft, shop.merchantId, date, reloadToken]);
+  }, [source, draft, shop.merchantId, date, reloadToken, syncNowMs]);
+
+  useEffect(() => {
+    if (status !== 'ready' || menu === null) {
+      return;
+    }
+    const currentSlotId = draft.getState().slotId;
+    if (currentSlotId === null) {
+      return;
+    }
+    const matchedSlot = menu.slots.find((slot) => slot.slotId === currentSlotId);
+    if (!matchedSlot || !toSlotView(matchedSlot, nowMs).selectable) {
+      draft.clearSlot();
+      guard.clear();
+      setCrowd(guard.getState());
+      setSnapshot(draft.getState());
+    }
+  }, [status, menu, nowMs, draft, guard]);
 
   function selectSlot(slot: SlotDto): void {
-    if (!toSlotView(slot).selectable) {
+    const currentMs = syncNowMs();
+    if (!toSlotView(slot, currentMs).selectable) {
+      if (draft.getState().slotId === slot.slotId) {
+        draft.clearSlot();
+        guard.clear();
+        setCrowd(guard.getState());
+        setSnapshot(draft.getState());
+      }
       return;
     }
     draft.setSlot(slot.slotId);
@@ -356,25 +385,32 @@ export default function SlotDiningPage({
         : '已选菜品';
 
   const slotsToDisplay = menu?.slots ?? [];
+  const bookableSlots = slotsToDisplay.filter((slot) => toSlotView(slot, nowMs).selectable);
   const selectedSlot = slotsToDisplay.find((slot) => slot.slotId === snapshot.slotId) ?? null;
-  const allSlotsClosed =
-    menu !== null && menu.slots.length > 0 && menu.slots.every((slot) => slot.enabled !== true);
+  const selectedSlotSelectable = selectedSlot !== null && toSlotView(selectedSlot, nowMs).selectable;
   const hint =
     snapshot.slotId === null
       ? '请选择时段'
-      : snapshot.diningMode === null
-        ? '请选择堂食或外带'
-        : '进入确认页核对后再提交。';
+      : !selectedSlotSelectable
+        ? '所选时段已不可用，请重新选择'
+        : snapshot.diningMode === null
+          ? '请选择堂食或外带'
+          : '进入确认页核对后再提交。';
 
   return (
     <section className="student-booking" aria-labelledby="student-slot-title">
       <div className="booking-hero">
         <div className="booking-nav">
-          <button type="button" className="booking-nav__back" aria-label="返回菜单" onClick={onBack}>
+          <button
+            type="button"
+            className="booking-nav__back"
+            aria-label="返回菜单"
+            onClick={(event) => onBack(event.currentTarget)}
+          >
             <ChevronLeftIcon />
           </button>
           <h2 id="student-slot-title" className="booking-nav__title">预约取餐</h2>
-          <span className="booking-nav__mode">{source.mode === 'sample' ? '样例数据' : '真实接口'}</span>
+          <span className="booking-nav__mode" aria-hidden="true" />
         </div>
         <BookingTicket name={dishTitle} shop={shop.name} quantity={snapshot.totalQuantity} amountFen={snapshot.previewFen} />
       </div>
@@ -389,8 +425,8 @@ export default function SlotDiningPage({
               aria-pressed={snapshot.diningMode === 'DINE_IN'}
               onClick={() => selectMode('DINE_IN')}
             >
-              <span className="booking-mode__check">
-                {snapshot.diningMode === 'DINE_IN' ? <CheckIcon /> : null}
+              <span className="booking-mode__check" aria-hidden="true">
+                <CheckIcon />
               </span>
               <DineInIcon />
               <span className="booking-mode__label">堂食</span>
@@ -401,8 +437,8 @@ export default function SlotDiningPage({
               aria-pressed={snapshot.diningMode === 'TAKEAWAY'}
               onClick={() => selectMode('TAKEAWAY')}
             >
-              <span className="booking-mode__check">
-                {snapshot.diningMode === 'TAKEAWAY' ? <CheckIcon /> : null}
+              <span className="booking-mode__check" aria-hidden="true">
+                <CheckIcon />
               </span>
               <TakeawayIcon />
               <span className="booking-mode__label">外带</span>
@@ -431,28 +467,24 @@ export default function SlotDiningPage({
             </div>
           ) : null}
 
-          <ul className="booking-slot-list">
-            {slotsToDisplay.map((slot) => {
-              const view = toSlotView(slot);
-              const selected = snapshot.slotId === slot.slotId;
-              return (
-                <li key={slot.slotId}>
-                  <button
-                    type="button"
-                    className={`booking-slot${selected ? ' is-active' : ''}`}
-                    aria-pressed={selected}
-                    disabled={!view.selectable}
-                    onClick={() => selectSlot(slot)}
-                  >
-                    <span className="booking-slot__copy"><strong>{view.selectedText}</strong><small>{view.metaText}</small></span>
-                    <span className="booking-slot__dot" aria-hidden="true">{selected ? <CheckIcon /> : null}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          {status === 'ready' && bookableSlots.length > 0 ? (
+            <>
+              <SlotWheelPicker
+                key={menu?.date ?? date}
+                slots={bookableSlots}
+                selectedId={snapshot.slotId}
+                onSelect={selectSlot}
+              />
+              <p className="slot-wheel__hint">
+                {selectedSlot && selectedSlotSelectable ? (
+                  <span className="slot-wheel__selection">已选 {formatSlotRange(selectedSlot)} · </span>
+                ) : null}
+                上下滑动或轻点选择 · 共 {bookableSlots.length} 个可预约时段
+              </p>
+            </>
+          ) : null}
 
-          {status === 'ready' && menu && (menu.slots.length === 0 || allSlotsClosed) ? (
+          {status === 'ready' && menu && bookableSlots.length === 0 ? (
             <p className="booking-notice">{EMPTY_SLOTS_TEXT}</p>
           ) : null}
         </section>
@@ -475,8 +507,8 @@ export default function SlotDiningPage({
           <button
             type="button"
             className="booking-submit"
-            disabled={!snapshot.canConfirm || status !== 'ready' || !selectedSlot || !toSlotView(selectedSlot).selectable}
-            onClick={onConfirm}
+            disabled={!snapshot.canConfirm || status !== 'ready' || !selectedSlotSelectable}
+            onClick={(event) => onConfirm(event.currentTarget)}
           >
             去确认订单 <ChevronRightIcon />
           </button>

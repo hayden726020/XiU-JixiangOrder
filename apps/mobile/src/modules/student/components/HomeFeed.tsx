@@ -30,7 +30,7 @@ export interface HomeFeedProps {
   notice: string;
   derivedBusy: boolean;
   derivedError: string;
-  onEnterShop: (shop: ShopSummary) => void;
+  onEnterShop: (shop: ShopSummary, trigger?: HTMLElement | null) => void;
   onGoToOrderTab: () => void;
   onRetry: () => void;
   onLoadDerivedShops: () => void;
@@ -260,7 +260,12 @@ export default function HomeFeed({
     setActiveSlide((index) => (index + direction + 3) % 3);
   }
 
-  function handleSlideActivate(slide: PolaroidSlide, index: number, isCenter: boolean): void {
+  function handleSlideActivate(
+    slide: PolaroidSlide,
+    index: number,
+    isCenter: boolean,
+    trigger: HTMLButtonElement,
+  ): void {
     if (!isCenter) {
       setActiveSlide(index);
       return;
@@ -270,7 +275,7 @@ export default function HomeFeed({
       return;
     }
     if (slide.enterable && slide.shop) {
-      onEnterShop(slide.shop);
+      onEnterShop(slide.shop, trigger);
     }
   }
 
@@ -399,7 +404,7 @@ export default function HomeFeed({
                         className="home-polaroid-card"
                         aria-label={ariaLabel}
                         disabled={isCenter && !slide.enterable}
-                        onClick={() => handleSlideActivate(slide, index, isCenter)}
+                        onClick={(event) => handleSlideActivate(slide, index, isCenter, event.currentTarget)}
                       >
                         <span className="home-polaroid-card__frame">
                           <img src={slide.photo} alt={slide.photoAlt} />
@@ -480,8 +485,8 @@ export default function HomeFeed({
                 type="button"
                 className="home-featured-card"
                 disabled={featuredShop === null}
-                onClick={() => {
-                  if (featuredShop) onEnterShop(featuredShop);
+                onClick={(event) => {
+                  if (featuredShop) onEnterShop(featuredShop, event.currentTarget);
                 }}
               >
                 <span className="home-featured-card__media">
@@ -528,8 +533,8 @@ export default function HomeFeed({
                         type="button"
                         className="home-small-card"
                         disabled={shop === null}
-                        onClick={() => {
-                          if (shop) onEnterShop(shop);
+                        onClick={(event) => {
+                          if (shop) onEnterShop(shop, event.currentTarget);
                         }}
                       >
                         <span className="home-small-card__media">
@@ -565,9 +570,9 @@ export default function HomeFeed({
           <button
             type="button"
             className="home-promo-banner"
-            onClick={() => {
+            onClick={(event) => {
               if (noodleShop) {
-                onEnterShop(noodleShop);
+                onEnterShop(noodleShop, event.currentTarget);
               } else {
                 onGoToOrderTab();
               }

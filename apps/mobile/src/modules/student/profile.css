@@ -768,51 +768,6 @@
   background: #dfd2c1;
 }
 
-/* 7. 固定底部导航栏 */
-.profile-nav {
-  position: fixed;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-  width: min(100%, 520px);
-  z-index: 30;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  align-items: center;
-  min-height: calc(64px + env(safe-area-inset-bottom));
-  padding: 0.35rem 0.45rem calc(0.35rem + env(safe-area-inset-bottom));
-  background: rgba(255, 253, 249, 0.97);
-  border-top: 1px solid #eadfce;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -6px 20px rgba(74, 42, 12, 0.06);
-}
-
-.profile-nav button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.16rem;
-  padding: 0.3rem 0.4rem;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #796d61;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.profile-nav button svg {
-  width: 1.38rem;
-  height: 1.38rem;
-}
-
-.profile-nav button.is-active {
-  color: #b46c00;
-  background: #fff3cf;
-  font-weight: 800;
-}
-
 /* 弹窗 & Toast */
 .profile-modal-backdrop {
   position: fixed;

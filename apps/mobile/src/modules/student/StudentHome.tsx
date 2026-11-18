@@ -1,4 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  enableSurfaceMode,
+  registerModuleBackHandler,
+  runAfterPressTransition,
+  runDirectionTransition,
+  runSurfaceTransition,
+} from '../../shared/backPress';
 import { createStudentSource } from './data/sampleSource';
 import { resolveStudentMode, writeStudentModeOverride } from './data/mode';
 import { createOrderDraft } from './state/orderDraft';
@@ -151,20 +158,36 @@ function StudentHomeApp({
     next: StudentView,
     nav: 'push' | 'back' = 'push',
     nextShopTab: 'home' | 'order' = shopTab,
+    trigger?: HTMLElement | null,
   ): void {
     if (nav === 'back') {
       window.history.back();
       return;
     }
-    window.history.pushState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
-    setView(next);
-    window.scrollTo(0, 0);
+    const isTabSwitch =
+      (view === 'shop' || view === 'orders' || view === 'profile') &&
+      (next === 'shop' || next === 'orders' || next === 'profile');
+
+    const update = () => {
+      window.history.pushState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
+      setView(next);
+      window.scrollTo(0, 0);
+    };
+
+    if (isTabSwitch) {
+      runSurfaceTransition(update);
+    } else {
+      runAfterPressTransition(trigger, update, 'forward');
+    }
   }
 
   function replaceTo(next: StudentView, nextShopTab: 'home' | 'order' = shopTab): void {
-    window.history.replaceState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
-    setView(next);
-    window.scrollTo(0, 0);
+    const update = () => {
+      window.history.replaceState({ module: 'student', studentView: next, shopTab: nextShopTab }, '');
+      setView(next);
+      window.scrollTo(0, 0);
+    };
+    runDirectionTransition(update, 'forward');
   }
 
   useEffect(() => {
@@ -175,38 +198,56 @@ function StudentHomeApp({
         studentView?: StudentView;
         shopTab?: 'home' | 'order';
       } | null;
-      if (state && state.module === 'student') {
-        if (pendingShopTabRef.current !== null) {
-          setShopTab(pendingShopTabRef.current);
-          pendingShopTabRef.current = null;
-        } else if (state.shopTab === 'home' || state.shopTab === 'order') {
-          setShopTab(state.shopTab);
+      const applyPop = () => {
+        if (state && state.module === 'student') {
+          if (pendingShopTabRef.current !== null) {
+            setShopTab(pendingShopTabRef.current);
+            pendingShopTabRef.current = null;
+          } else if (state.shopTab === 'home' || state.shopTab === 'order') {
+            setShopTab(state.shopTab);
+          }
+          setView(state.studentView ?? 'shop');
+        } else {
+          setView('shop');
         }
-        setView(state.studentView ?? 'shop');
-      } else {
-        setView('shop');
-      }
-      window.scrollTo(0, 0);
+        window.scrollTo(0, 0);
+      };
+
+      runDirectionTransition(applyPop, 'back');
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  function openOrder(id: string): void {
+  useEffect(() => {
+    return registerModuleBackHandler(() => {
+      if (view !== 'shop') {
+        window.history.back();
+        return true;
+      }
+      return false;
+    });
+  }, [view]);
+
+  useEffect(() => {
+    return enableSurfaceMode();
+  }, []);
+
+  function openOrder(id: string, trigger?: HTMLElement | null): void {
     setOrderId(id);
-    goTo('order');
+    goTo('order', 'push', shopTab, trigger);
   }
 
-  function openOrderFrom(from: DetailFrom, id: string): void {
+  function openOrderFrom(from: DetailFrom, id: string, trigger?: HTMLElement | null): void {
     setDetailFrom(from);
-    openOrder(id);
+    openOrder(id, trigger);
   }
 
-  function enterShop(shop: ShopSummary): void {
+  function enterShop(shop: ShopSummary, trigger?: HTMLElement | null): void {
     const result = draft.setShop(shop.merchantId);
     if (result.reason === 'busy') {
       setShopNotice(SHOP_SWITCH_BUSY);
-      goTo('shop');
+      goTo('shop', 'push', shopTab, trigger);
       return;
     }
     if (!result.ok) {
@@ -220,12 +261,12 @@ function StudentHomeApp({
     }
     setCurrentShop(shop);
     setShopNotice('');
-    goTo('menu');
+    goTo('menu', 'push', shopTab, trigger);
   }
 
-  function openOrders(from: OrdersBackTo): void {
+  function openOrders(from: OrdersBackTo, trigger?: HTMLElement | null): void {
     setOrdersBackTo(from);
-    goTo('orders');
+    goTo('orders', 'push', shopTab, trigger);
   }
 
   if (view === 'profile') {
@@ -233,15 +274,15 @@ function StudentHomeApp({
       <ProfilePage
         source={source}
         onSwitchMode={onSwitchMode}
-        onOpenOrders={() => openOrders('shop')}
-        onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToShop={() => {
+        onOpenOrders={(_filter, trigger) => openOrders('shop', trigger)}
+        onOpenOrder={(id, trigger) => openOrderFrom('orders', id, trigger)}
+        onGoToShop={(trigger) => {
           setShopTab('home');
-          goTo('shop', 'push', 'home');
+          goTo('shop', 'push', 'home', trigger);
         }}
-        onGoToMenu={() => {
+        onGoToMenu={(trigger) => {
           setShopTab('order');
-          goTo('shop', 'push', 'order');
+          goTo('shop', 'push', 'order', trigger);
         }}
       />
     );
@@ -252,18 +293,18 @@ function StudentHomeApp({
     return (
       <OrderListPage
         source={source}
-        onBack={() => goTo(backToShops ? 'shop' : 'menu', 'back')}
+        onBack={(trigger) => goTo(backToShops ? 'shop' : 'menu', 'back', shopTab, trigger)}
         backLabel={backToShops ? '← 返回店铺选择' : '← 返回菜单'}
-        onOpenOrder={(id) => openOrderFrom('orders', id)}
-        onGoToHome={() => {
+        onOpenOrder={(id, trigger) => openOrderFrom('orders', id, trigger)}
+        onGoToHome={(trigger) => {
           setShopTab('home');
-          goTo('shop', 'push', 'home');
+          goTo('shop', 'push', 'home', trigger);
         }}
-        onGoToShop={() => {
+        onGoToShop={(trigger) => {
           setShopTab('order');
-          goTo('shop', 'push', 'order');
+          goTo('shop', 'push', 'order', trigger);
         }}
-        onGoToProfile={() => goTo('profile')}
+        onGoToProfile={(trigger) => goTo('profile', 'push', shopTab, trigger)}
       />
     );
   }
@@ -275,18 +316,18 @@ function StudentHomeApp({
       <OrderDetailPage
         source={source}
         orderId={orderId}
-        onBack={() => goTo(backTarget, 'back')}
+        onBack={(trigger) => goTo(backTarget, 'back', shopTab, trigger)}
         backLabel={backTarget === 'orders' ? '← 返回我的订单' : '← 返回菜单'}
-        onGoToHome={() => {
+        onGoToHome={(trigger) => {
           setShopTab('home');
-          goTo('shop', 'push', 'home');
+          goTo('shop', 'push', 'home', trigger);
         }}
-        onGoToShop={() => {
+        onGoToShop={(trigger) => {
           setShopTab('order');
-          goTo('shop', 'push', 'order');
+          goTo('shop', 'push', 'order', trigger);
         }}
-        onGoToOrders={() => goTo('orders')}
-        onGoToProfile={() => goTo('profile')}
+        onGoToOrders={(trigger) => goTo('orders', 'push', shopTab, trigger)}
+        onGoToProfile={(trigger) => goTo('profile', 'push', shopTab, trigger)}
       />
     );
   }
@@ -303,9 +344,9 @@ function StudentHomeApp({
           setShopTab(nextTab);
           window.history.replaceState({ module: 'student', studentView: 'shop', shopTab: nextTab }, '');
         }}
-        onEnterShop={enterShop}
-        onOpenOrders={() => openOrders('shop')}
-        onOpenProfile={() => goTo('profile')}
+        onEnterShop={(shop, trigger) => enterShop(shop, trigger)}
+        onOpenOrders={(trigger) => openOrders('shop', trigger)}
+        onOpenProfile={(trigger) => goTo('profile', 'push', shopTab, trigger)}
       />
     );
   }
@@ -316,8 +357,8 @@ function StudentHomeApp({
         source={source}
         draft={draft}
         shop={currentShop}
-        onBack={() => goTo('menu', 'back')}
-        onConfirm={() => goTo('confirm')}
+        onBack={(trigger) => goTo('menu', 'back', shopTab, trigger)}
+        onConfirm={(trigger) => goTo('confirm', 'push', shopTab, trigger)}
       />
     );
   }
@@ -328,8 +369,8 @@ function StudentHomeApp({
         source={source}
         draft={draft}
         shop={currentShop}
-        onBack={() => goTo('slot', 'back')}
-        onBackToMenu={() => goTo('menu', 'back')}
+        onBack={(trigger) => goTo('slot', 'back', shopTab, trigger)}
+        onBackToMenu={(trigger) => goTo('menu', 'back', shopTab, trigger)}
         onSubmitted={(id) => { setDetailFrom('menu'); setOrderId(id); replaceTo('order'); }}
       />
     );
@@ -340,20 +381,20 @@ function StudentHomeApp({
       source={source}
       draft={draft}
       shop={currentShop}
-      onBackToShops={() => {
+      onBackToShops={(trigger) => {
         pendingShopTabRef.current = 'order';
         setShopTab('order');
-        goTo('shop', 'back');
+        goTo('shop', 'back', 'order', trigger);
       }}
-      onProceed={() => goTo('slot')}
-      onViewSampleOrder={() => openOrderFrom('menu', 'demo-order-001')}
-      onViewCancelOrder={() => openOrderFrom('menu', 'demo-order-cancel-001')}
-      onOpenOrders={() => openOrders('menu')}
-      onGoHome={() => {
+      onProceed={(trigger) => goTo('slot', 'push', shopTab, trigger)}
+      onViewSampleOrder={(trigger) => openOrderFrom('menu', 'demo-order-001', trigger)}
+      onViewCancelOrder={(trigger) => openOrderFrom('menu', 'demo-order-cancel-001', trigger)}
+      onOpenOrders={(trigger) => openOrders('menu', trigger)}
+      onGoHome={(trigger) => {
         setShopTab('home');
-        goTo('shop', 'push', 'home');
+        goTo('shop', 'push', 'home', trigger);
       }}
-      onGoProfile={() => goTo('profile')}
+      onGoProfile={(trigger) => goTo('profile', 'push', shopTab, trigger)}
     />
   );
 }
