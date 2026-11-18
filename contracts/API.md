@@ -76,7 +76,7 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
 | POST /auth/login、/auth/demo-login | account, password | 服务端签发会话令牌并返回服务端认定的角色；演示路径保留兼容；见上节 |
 | GET /me | 当前会话身份 | 返回 user 与 canteenId；仅本人信息 |
 | POST /auth/logout | 无 | 204；删除服务端会话，不删除订单 |
-| GET /menu?date=YYYY-MM-DD | 未来 7 天内菜单及时段 | 菜品含 `imageUrl/flavorGroups/sides/addOns`，已配置每日菜单的店铺按当天选品和每日库存返回 |
+| GET /menu?date=YYYY-MM-DD&merchantId?&shopId? | 未来 7 天内菜单及时段（支持按 `merchantId`/`shopId` 过滤） | 菜品含 `imageUrl/flavorGroups/sides/addOns`，已配置每日菜单的店铺按当天选品和每日库存返回 |
 | GET /images/{id} | 公开读取已上传菜品图片 | 返回图片二进制与 `Content-Type`；`X-Content-Type-Options: nosniff` |
 | GET /merchants | 已登录会话读取店铺列表 | `{ merchants: [{ merchantId, shopId, name, location, description, canteenId, openAt, closeAt, active, orderable, sortOrder }] }`；只读，不返回联系方式 |
 | POST /orders | requestId, items[{dishId,quantity,selectedFlavors?,selectedSides?,selectedAddOns?}], slotId, diningMode, remark?（≤50 字） | 服务端校验必选口味与加购计价并模拟付款 |
@@ -149,10 +149,10 @@ delay 为 { reason, expectedReadyAt }，不替换主状态。仅 ACCEPTED/PREPAR
   - 当前没有档口营业时间、启用状态或档口名称字段；管理端真实模式不得用样例值填充。
   - 管理端 S3 已按此结构只读展示，S5 已接入 `PUT /admin/settings`：每次只提交一个 `section`，`value` 只含该段白名单字段；成功返回 `{ section, ...该段配置, version }`，以返回的 `version` 为准；保存后页面重新 `GET /admin/settings` 确认；`SETTING_VERSION_CONFLICT`（409）时保留输入、不自动覆盖，需用户重新读取最新配置。
 
-`GET /menu?date=YYYY-MM-DD` 返回 `{ data: { date, slots, dishes } }`：
+`GET /menu?date=YYYY-MM-DD&merchantId?&shopId?` 返回 `{ data: { date, slots, dishes } }`：
 
 - `slots[]` 字段为 `id,date,startAt,endAt,capacity,booked,remainingCapacity,enabled,version`；已满或服务端停用的时段 `enabled=false`。在当前未发布阶段，时段结束时间不限制下单；仍须属于今天或明天、服务端启用且有剩余名额。
-- `dishes[]` 字段为 `id,merchantId,shopId,type,name,priceFen,availableQuantity,onSale,version,imageUrl,flavorGroups,sides,addOns`。`type` 取值 `STAPLE`（主食）/`SNACK`（小吃）/`DRINK`（饮品）/`SET`（套餐），由新增菜品时写入。`GET /menu` 返回全部菜品（若店铺已配置该日每日菜单，则仅返回该日上架菜品并覆盖每日库存）；档口端按登录身份过滤展示，服务端写操作按归属校验。
+- `dishes[]` 字段为 `id,merchantId,shopId,type,name,priceFen,availableQuantity,onSale,version,imageUrl,flavorGroups,sides,addOns`。`type` 取值 `STAPLE`（主食）/`SNACK`（小吃）/`DRINK`（饮品）/`SET`（套餐），由新增菜品时写入。未传 `merchantId`/`shopId` 时返回全部店铺菜品；传入 `merchantId` 或 `shopId` 时按对应商家/店铺过滤返回（传空串返回 400 `VALIDATION_ERROR`，未知商家/店铺返回空数组）；若店铺已配置该日每日菜单，则仅返回该日上架菜品并覆盖每日库存；档口端写操作仍由服务端按归属校验。
 - `version` 与 `PUT /merchant/menu/{dishId}`、`PUT /merchant/slots/{slotId}` 的 `expectedVersion` 同源；保存成功后 `version` + 1 并在响应中返回新版本；旧版本返回 `MENU_VERSION_CONFLICT`（409）。
 
 ### 商家注册、多店管理、每日菜单、营业时间与钱包（v0.4—v0.7 增补）

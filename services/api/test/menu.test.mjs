@@ -248,3 +248,124 @@ test('删除菜品受版本与档口归属约束', async () => {
   });
   assert.equal(forbiddenDelete.status, 403);
 });
+
+test('GET /menu 传入 merchantId 时按商家过滤菜品，未知商家返回空列表，空值返回 400', async () => {
+  const m1 = await ctx.api('GET', '/menu?date=2026-11-13&merchantId=demo-merchant-01');
+  assert.equal(m1.status, 200);
+  assert.deepEqual(
+    m1.body.data.dishes.map((item) => item.id),
+    ['demo-dish-01', 'demo-dish-03'],
+  );
+  assert.ok(m1.body.data.dishes.every((item) => item.merchantId === 'demo-merchant-01'));
+
+  const m2 = await ctx.api('GET', '/menu?merchantId=demo-merchant-02');
+  assert.equal(m2.status, 200);
+  assert.deepEqual(
+    m2.body.data.dishes.map((item) => item.id),
+    ['demo-dish-02'],
+  );
+
+  const missing = await ctx.api('GET', '/menu?date=2026-11-13&merchantId=nonexistent-merchant');
+  assert.equal(missing.status, 200);
+  assert.deepEqual(missing.body.data.dishes, []);
+
+  const empty = await ctx.api('GET', '/menu?date=2026-11-13&merchantId=');
+  assert.equal(empty.status, 400);
+  assert.equal(empty.body.error.code, 'VALIDATION_ERROR');
+
+  const blank = await ctx.api('GET', '/menu?date=2026-11-13&merchantId=%20%20');
+  assert.equal(blank.status, 400);
+  assert.equal(blank.body.error.code, 'VALIDATION_ERROR');
+
+  const all = await ctx.api('GET', '/menu?date=2026-11-13');
+  assert.equal(all.status, 200);
+  assert.deepEqual(
+    all.body.data.dishes.map((item) => item.id),
+    ['demo-dish-01', 'demo-dish-03', 'demo-dish-02'],
+  );
+});
+
+test('GET /menu 传入 shopId 与每日菜单时仅返回对应店铺当日上架菜品', async () => {
+  const token = await ctx.login('merchant');
+  await ctx.api('POST', '/merchant/registration', {
+    token,
+    body: {
+      requestId: 'menu-filter-reg-1',
+      merchantName: '分店测试商家',
+      contactName: '张三',
+      contactPhone: '13800138001',
+    },
+  });
+  const shop1Res = await ctx.api('POST', '/merchant/shops', {
+    token,
+    body: { requestId: 'menu-filter-shop-1', shopName: '一店', location: '一楼' },
+  });
+  const shop2Res = await ctx.api('POST', '/merchant/shops', {
+    token,
+    body: { requestId: 'menu-filter-shop-2', shopName: '二店', location: '二楼' },
+  });
+  const shop1Id = shop1Res.body.data.shops[0].id;
+  const shop2Id = shop2Res.body.data.shops[1].id;
+  const shop2MerchantId = shop2Res.body.data.shops[1].merchantId;
+
+  const dish2Res = await ctx.api('POST', '/merchant/menu', {
+    token,
+    body: {
+      requestId: 'menu-filter-dish-2',
+      shopId: shop2Id,
+      type: 'STAPLE',
+      name: '二店牛肉面',
+      priceFen: 1900,
+      availableQuantity: 12,
+      onSale: true,
+    },
+  });
+  assert.equal(dish2Res.status, 201);
+  const dish2Id = dish2Res.body.data.id;
+
+  const dailyRes = await ctx.api('PUT', '/merchant/menus/2026-11-13', {
+    token,
+    body: {
+      requestId: 'menu-filter-daily-1',
+      shopId: shop1Id,
+      dishes: [{ dishId: DISH, availableQuantity: 7 }],
+    },
+  });
+  assert.equal(dailyRes.status, 200);
+
+  const byShop1 = await ctx.api('GET', `/menu?date=2026-11-13&shopId=${encodeURIComponent(shop1Id)}`);
+  assert.equal(byShop1.status, 200);
+  assert.deepEqual(
+    byShop1.body.data.dishes.map((item) => ({ id: item.id, qty: item.availableQuantity })),
+    [{ id: DISH, qty: 7 }],
+  );
+
+  const byShop2 = await ctx.api('GET', `/menu?date=2026-11-13&shopId=${encodeURIComponent(shop2Id)}`);
+  assert.equal(byShop2.status, 200);
+  assert.deepEqual(
+    byShop2.body.data.dishes.map((item) => item.id),
+    [dish2Id],
+  );
+
+  const byMerchant2 = await ctx.api('GET', `/menu?date=2026-11-13&merchantId=${encodeURIComponent(shop2MerchantId)}`);
+  assert.equal(byMerchant2.status, 200);
+  assert.deepEqual(
+    byMerchant2.body.data.dishes.map((item) => item.id),
+    [dish2Id],
+  );
+
+  const mismatch = await ctx.api(
+    'GET',
+    `/menu?date=2026-11-13&merchantId=demo-merchant-01&shopId=${encodeURIComponent(shop2Id)}`,
+  );
+  assert.equal(mismatch.status, 200);
+  assert.deepEqual(mismatch.body.data.dishes, []);
+
+  const missingShop = await ctx.api('GET', '/menu?date=2026-11-13&shopId=nonexistent-shop');
+  assert.equal(missingShop.status, 200);
+  assert.deepEqual(missingShop.body.data.dishes, []);
+
+  const emptyShop = await ctx.api('GET', '/menu?date=2026-11-13&shopId=');
+  assert.equal(emptyShop.status, 400);
+  assert.equal(emptyShop.body.error.code, 'VALIDATION_ERROR');
+});

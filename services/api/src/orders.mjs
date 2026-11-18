@@ -869,10 +869,16 @@ export function listAdminOrders({ db, user, query }) {
 export function listMenu({ db, clock, query }) {
   const now = clock();
   const allowedDates = allowedOrderDates(now);
-  const requested = query.get('date') ?? allowedDates[0];
+  const requested = query?.get('date') ?? allowedDates[0];
   if (!allowedDates.includes(requested)) {
     throw validationError('只能查询未来 7 天内的菜单。');
   }
+  const merchantId = query?.has('merchantId')
+    ? requireString(query.get('merchantId'), 'merchantId', { max: 120 })
+    : null;
+  const shopId = query?.has('shopId')
+    ? requireString(query.get('shopId'), 'shopId', { max: 120 })
+    : null;
   ensureDateSlots(db, requested);
   const slots = db
     .prepare('SELECT * FROM slots WHERE date = ? ORDER BY start_at')
@@ -889,31 +895,66 @@ export function listMenu({ db, clock, query }) {
       version: slot.version,
     }));
 
-  const configuredMerchants = new Set(
-    db.prepare('SELECT merchant_id FROM daily_menu_days WHERE date = ?').all(requested).map((row) => row.merchant_id),
-  );
-  const dailyOverrides = new Map();
-  if (configuredMerchants.size > 0) {
-    for (const row of db
-      .prepare('SELECT merchant_id, dish_id, available_quantity FROM daily_menu_items WHERE date = ?')
-      .all(requested)) {
-      if (!dailyOverrides.has(row.merchant_id)) {
-        dailyOverrides.set(row.merchant_id, new Map());
-      }
-      dailyOverrides.get(row.merchant_id).set(row.dish_id, row.available_quantity);
+  const resolvedShop =
+    shopId !== null ? db.prepare('SELECT id, merchant_id FROM shops WHERE id = ?').get(shopId) : null;
+  let dishRows = [];
+  if (shopId !== null) {
+    if (resolvedShop && (merchantId === null || merchantId === resolvedShop.merchant_id)) {
+      dishRows = db
+        .prepare(
+          'SELECT * FROM dishes WHERE (shop_id = ? OR (shop_id IS NULL AND merchant_id = ?)) ORDER BY merchant_id, id',
+        )
+        .all(resolvedShop.id, resolvedShop.merchant_id);
     }
+  } else if (merchantId !== null) {
+    dishRows = db
+      .prepare('SELECT * FROM dishes WHERE merchant_id = ? ORDER BY merchant_id, id')
+      .all(merchantId);
+  } else {
+    dishRows = db.prepare('SELECT * FROM dishes ORDER BY merchant_id, id').all();
   }
 
   const dishes = [];
-  for (const dish of db.prepare('SELECT * FROM dishes ORDER BY merchant_id, id').all()) {
-    if (configuredMerchants.has(dish.merchant_id)) {
-      const overrides = dailyOverrides.get(dish.merchant_id);
-      if (!overrides || !overrides.has(dish.id)) {
-        continue;
+  if (dishRows.length > 0) {
+    const targetMerchantId = merchantId ?? resolvedShop?.merchant_id ?? null;
+    const configuredMerchants = new Set(
+      (targetMerchantId !== null
+        ? db
+            .prepare('SELECT merchant_id FROM daily_menu_days WHERE date = ? AND merchant_id = ?')
+            .all(requested, targetMerchantId)
+        : db.prepare('SELECT merchant_id FROM daily_menu_days WHERE date = ?').all(requested)
+      ).map((row) => row.merchant_id),
+    );
+    const dailyOverrides = new Map();
+    if (configuredMerchants.size > 0) {
+      const overrideRows =
+        targetMerchantId !== null
+          ? db
+              .prepare(
+                'SELECT merchant_id, dish_id, available_quantity FROM daily_menu_items WHERE date = ? AND merchant_id = ?',
+              )
+              .all(requested, targetMerchantId)
+          : db
+              .prepare('SELECT merchant_id, dish_id, available_quantity FROM daily_menu_items WHERE date = ?')
+              .all(requested);
+      for (const row of overrideRows) {
+        if (!dailyOverrides.has(row.merchant_id)) {
+          dailyOverrides.set(row.merchant_id, new Map());
+        }
+        dailyOverrides.get(row.merchant_id).set(row.dish_id, row.available_quantity);
       }
-      dishes.push(serializeDish({ ...dish, available_quantity: overrides.get(dish.id) }));
-    } else {
-      dishes.push(serializeDish(dish));
+    }
+
+    for (const dish of dishRows) {
+      if (configuredMerchants.has(dish.merchant_id)) {
+        const overrides = dailyOverrides.get(dish.merchant_id);
+        if (!overrides || !overrides.has(dish.id)) {
+          continue;
+        }
+        dishes.push(serializeDish({ ...dish, available_quantity: overrides.get(dish.id) }));
+      } else {
+        dishes.push(serializeDish(dish));
+      }
     }
   }
   return { status: 200, body: { data: { date: requested, slots, dishes } } };
