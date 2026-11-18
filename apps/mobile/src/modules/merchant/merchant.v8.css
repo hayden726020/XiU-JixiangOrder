@@ -682,8 +682,8 @@
 
 .merchant-menu-page .dish-cx-preview__dish {
   display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
+  align-items: center;
+  gap: 0.65rem;
   padding-bottom: 0.55rem;
   border-bottom: 1px solid var(--m-line-soft);
 }
@@ -692,11 +692,13 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 4.6rem;
-  height: 4.6rem;
+  width: 5.2rem;
+  height: 5.2rem;
+  box-sizing: border-box;
+  padding: 0.45rem;
   overflow: hidden;
   border: 1px solid var(--m-line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--m-surface-2);
   color: var(--m-faint);
   font-size: 0.6rem;
@@ -711,7 +713,11 @@
 .merchant-menu-page .dish-cx-preview__image-empty {
   display: grid;
   place-items: center;
-  gap: 0.12rem;
+  gap: 0.38rem;
+  width: 100%;
+  padding: 0.2rem;
+  text-align: center;
+  line-height: 1.25;
   font-size: 0.56rem;
 }
 
